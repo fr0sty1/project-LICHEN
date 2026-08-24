@@ -1,0 +1,295 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "node_handoff",
+  "description": "Node handoff test vectors for GCP-7 (Gateway Coordination Protocol). Covers handoff request/response CoAP messages, OSCORE state transfer payloads, freshness state, sequence number handling, and RPL route update sequences.",
+  "spec": "spec/08-gateway-coordination.md",
+  "vectors": [
+    {
+      "name": "handoff_request_minimal",
+      "type": "handoff_request",
+      "description": "GCP-7: Minimal handoff request with only required fields (node address and timestamp).",
+      "node_address": "200::1234:5678:9abc:def0",
+      "node_address_bytes": "0200000000000000123456789abcdef0",
+      "timestamp": 1720001000,
+      "rssi": null,
+      "cbor_encoded": "a201500200000000000000123456789abcdef00a1a668521e8"
+    },
+    {
+      "name": "handoff_request_with_rssi",
+      "type": "handoff_request",
+      "description": "GCP-7: Handoff request with optional RSSI field indicating signal strength at new gateway.",
+      "node_address": "200::aabb:ccdd:eeff:11",
+      "node_address_bytes": "0200000000000000aabbccddeeff0011",
+      "timestamp": 1720001234,
+      "rssi": -75,
+      "cbor_encoded": "a301500200000000000000aabbccddeeff00110a1a668522d209384a"
+    },
+    {
+      "name": "handoff_request_roundtrip",
+      "type": "roundtrip_verification",
+      "description": "GCP-7: Verify handoff request survives CBOR encode/decode roundtrip.",
+      "input": {
+        "node_address": "200::dead:beef:cafe:babe",
+        "timestamp": 1720005000,
+        "rssi": -82
+      },
+      "cbor_encoded": "a301500200000000000000deadbeefcafebabe0a1a66853188093851",
+      "expected_decoded": {
+        "node_address": "200::dead:beef:cafe:babe",
+        "timestamp": 1720005000,
+        "rssi": -82
+      },
+      "roundtrip_match": true
+    },
+    {
+      "name": "handoff_response_error_not_found",
+      "type": "handoff_response",
+      "description": "GCP-7: Error response when node is not found in source gateway registry.",
+      "status": 1,
+      "status_name": "NODE_NOT_FOUND",
+      "message": "node not in registry",
+      "cbor_encoded": "a21864011865746e6f6465206e6f7420696e207265676973747279"
+    },
+    {
+      "name": "handoff_response_error_busy",
+      "type": "handoff_response",
+      "description": "GCP-7: Error response when node is busy with active transaction.",
+      "status": 2,
+      "status_name": "NODE_BUSY",
+      "message": "node in active transaction",
+      "cbor_encoded": "a21864021865781a6e6f646520696e20616374697665207472616e73616374696f6e"
+    },
+    {
+      "name": "handoff_response_error_auth_failed",
+      "type": "handoff_response",
+      "description": "GCP-7 SECURITY: Error when OSCORE authentication fails on handoff request.",
+      "status": 3,
+      "status_name": "AUTH_FAILED",
+      "message": "OSCORE verification failed",
+      "cbor_encoded": "a21864031865781a4f53434f524520766572696669636174696f6e206661696c6564"
+    },
+    {
+      "name": "handoff_response_error_malformed",
+      "type": "handoff_response",
+      "description": "GCP-7: Error when handoff request payload is malformed.",
+      "status": 4,
+      "status_name": "MALFORMED_REQUEST",
+      "message": "invalid CBOR",
+      "cbor_encoded": "a218640418656c696e76616c69642043424f52"
+    },
+    {
+      "name": "handoff_response_error_rate_limited",
+      "type": "handoff_response",
+      "description": "GCP-7 SECURITY: Error when handoff requests are rate-limited (DoS protection).",
+      "status": 6,
+      "status_name": "RATE_LIMITED",
+      "message": "too many requests",
+      "cbor_encoded": "a2186406186571746f6f206d616e79207265717565737473"
+    },
+    {
+      "name": "handoff_response_success_minimal",
+      "type": "handoff_response",
+      "description": "GCP-7: Minimal success response with required state fields.",
+      "status": 0,
+      "status_name": "SUCCESS",
+      "node_address": "200::1234:5678:9abc:def0",
+      "dao_sequence": 42,
+      "path_sequence": 10,
+      "cbor_encoded": "a418640001500200000000000000123456789abcdef002182a030a"
+    },
+    {
+      "name": "handoff_response_success_full",
+      "type": "handoff_response",
+      "description": "GCP-7: Complete success response with OSCORE state, freshness, and parent list.",
+      "status": 0,
+      "status_name": "SUCCESS",
+      "node_address": "200::cafe:babe:dead:beef",
+      "dao_sequence": 100,
+      "path_sequence": 50,
+      "oscore_state": {
+        "master_secret": "0102030405060708090a0b0c0d0e0f10",
+        "sender_sequence": 12345,
+        "replay_index": 100,
+        "replay_bitfield": 4294967295
+      },
+      "freshness": {
+        "sequence": 42,
+        "active_until": 1720010000.0,
+        "retain_until": 1720020000.0
+      },
+      "parents": [
+        "200::1111:2222:3333:4444",
+        "200::5555:6666:7777:8888"
+      ],
+      "cbor_encoded": "a918640001500200000000000000cafebabedeadbeef02186403183204a701500102030405060708090a0b0c0d0e0f1002489e7ca92223786340034100044101050a06675348412d32353607182005193039068218641affffffff07a463736571182a6672657461696efb41d9a15b080000006775706461746564fb41d9a1487a00000066616374697665fb41d9a15144000000088250020000000000000011112222333344445002000000000000005555666677778888"
+    },
+    {
+      "name": "oscore_state_transfer",
+      "type": "oscore_state",
+      "description": "GCP-7: OSCORE security context state for handoff transfer including sequence and replay window.",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "00",
+      "recipient_id": "01",
+      "algorithm": 10,
+      "hashfun": "SHA-256",
+      "window_size": 32,
+      "id_context": null,
+      "sender_sequence": 12345,
+      "replay_index": 100,
+      "replay_bitfield": 4294967295,
+      "cbor_encoded": "a304a701500102030405060708090a0b0c0d0e0f1002489e7ca92223786340034100044101050a06675348412d32353607182005193039068218641affffffff"
+    },
+    {
+      "name": "oscore_state_with_id_context",
+      "type": "oscore_state",
+      "description": "GCP-7: OSCORE state with optional ID context field set.",
+      "master_secret": "aabbccdd11223344aabbccdd11223344",
+      "master_salt": "1234567890abcdef",
+      "sender_id": "0a",
+      "recipient_id": "0b",
+      "algorithm": 10,
+      "hashfun": "SHA-256",
+      "window_size": 64,
+      "id_context": "fedcba0987654321",
+      "sender_sequence": 99999,
+      "replay_index": 500,
+      "replay_bitfield": 2147483663,
+      "cbor_encoded": "a304a80150aabbccdd11223344aabbccdd1122334402481234567890abcdef03410a04410b050a06675348412d3235360718400848fedcba0987654321051a0001869f06821901f41a8000000f"
+    },
+    {
+      "name": "freshness_state_transfer",
+      "type": "freshness_state",
+      "description": "GCP-7: DAO freshness tracking state for handoff transfer.",
+      "sequence": 42,
+      "active_until": 1720010000.0,
+      "retain_until": 1720020000.0,
+      "updated_at": 1720001000.0,
+      "cbor_encoded": "a463736571182a6672657461696efb41d9a15b080000006775706461746564fb41d9a1487a00000066616374697665fb41d9a15144000000"
+    },
+    {
+      "name": "freshness_state_inactive",
+      "type": "freshness_state",
+      "description": "GCP-7: Freshness state for inactive node (no active_until field).",
+      "sequence": 0,
+      "active_until": null,
+      "retain_until": 1720050000.0,
+      "updated_at": 1720000000.0,
+      "cbor_encoded": "a363736571006672657461696efb41d9a178540000006775706461746564fb41d9a14780000000"
+    },
+    {
+      "name": "handoff_sequence_increment",
+      "type": "sequence_increment",
+      "description": "GCP-7 SECURITY: After handoff, new gateway MUST increment sequence numbers to prevent replay.",
+      "transferred_dao_sequence": 100,
+      "transferred_path_sequence": 50,
+      "transferred_oscore_sender_seq": 12345,
+      "expected_dao_sequence": 101,
+      "expected_path_sequence": 51,
+      "expected_oscore_sender_seq": 12346,
+      "increment_reason": "Prevents acceptance of in-flight messages from before handoff as replays"
+    },
+    {
+      "name": "rpl_route_update_after_handoff",
+      "type": "rpl_route_update",
+      "description": "GCP-7: After handoff completes, node sends DAO to establish route via new gateway.",
+      "node_address": "0200:0000:0000:0000:1234:5678:9abc:def0",
+      "old_gateway": "0200:0000:0000:0000:aaaa:bbbb:cccc:dddd",
+      "new_gateway": "0200:0000:0000:0000:eeee:ffff:0000:1111",
+      "old_dao_sequence": 42,
+      "new_dao_sequence": 43,
+      "sequence_from": "handoff_state_transfer",
+      "update_steps": [
+        "Node detects better RSSI from new_gateway",
+        "Node sends DAO to new_gateway (triggers handoff)",
+        "new_gateway POSTs /handoff to old_gateway",
+        "old_gateway returns state with dao_sequence=42",
+        "new_gateway increments to 43, registers node",
+        "new_gateway confirms handoff to node via CoAP",
+        "Node routes now via new_gateway"
+      ]
+    },
+    {
+      "name": "handoff_protocol_flow_complete",
+      "type": "protocol_flow",
+      "description": "GCP-7: Complete handoff protocol flow with all messages.",
+      "actors": {
+        "node": "0200:0000:0000:0000:1234:5678:9abc:def0",
+        "gateway_a": "0200:0000:0000:0000:aaaa:0000:0000:0001",
+        "gateway_b": "0200:0000:0000:0000:bbbb:0000:0000:0002"
+      },
+      "initial_state": {
+        "node_registered_at": "gateway_a",
+        "dao_sequence": 42,
+        "path_sequence": 10
+      },
+      "messages": [
+        {
+          "step": 1,
+          "from": "node",
+          "to": "gateway_b",
+          "type": "RPL DAO",
+          "description": "Node sends DAO to new gateway (detected via RSSI improvement)"
+        },
+        {
+          "step": 2,
+          "from": "gateway_b",
+          "to": "gateway_a",
+          "type": "POST /handoff",
+          "uri": "/.well-known/lichen-gw/handoff",
+          "protection": "OSCORE",
+          "description": "New gateway requests handoff from old gateway"
+        },
+        {
+          "step": 3,
+          "from": "gateway_a",
+          "to": "gateway_b",
+          "type": "2.04 Changed",
+          "content": "HandoffResponse with state",
+          "description": "Old gateway releases node, returns state"
+        },
+        {
+          "step": 4,
+          "from": "gateway_b",
+          "to": "node",
+          "type": "CoAP (application)",
+          "description": "New gateway confirms handoff to node"
+        }
+      ],
+      "final_state": {
+        "node_registered_at": "gateway_b",
+        "dao_sequence": 43,
+        "path_sequence": 11,
+        "reason": "Sequence numbers incremented by 1 per GCP-7 security requirement"
+      }
+    },
+    {
+      "name": "handoff_request_invalid_not_map",
+      "type": "invalid_request",
+      "description": "GCP-7: Reject handoff request that is CBOR array instead of map.",
+      "cbor_input": "83010203",
+      "expected_error": "expected CBOR map",
+      "expected_status": 4,
+      "expected_status_name": "MALFORMED_REQUEST"
+    },
+    {
+      "name": "handoff_request_invalid_missing_timestamp",
+      "type": "invalid_request",
+      "description": "GCP-7: Reject handoff request missing required timestamp field.",
+      "cbor_input": "a1015002000000000000000000000000000001",
+      "expected_error": "malformed request",
+      "expected_status": 4,
+      "expected_status_name": "MALFORMED_REQUEST"
+    },
+    {
+      "name": "handoff_request_invalid_truncated",
+      "type": "invalid_request",
+      "description": "GCP-7: Reject truncated CBOR payload.",
+      "cbor_input": "a201",
+      "expected_error": "invalid CBOR",
+      "expected_status": 4,
+      "expected_status_name": "MALFORMED_REQUEST"
+    }
+  ]
+}

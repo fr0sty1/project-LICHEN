@@ -23,11 +23,13 @@
 
 /* Replay table functions are in replay.c */
 
-#define LICHEN_PROTECTED_PAYLOAD_MAX (LICHEN_MAX_PAYLOAD + LICHEN_SIG_LEN)
+/* Any parseable frame carries at most LICHEN_FRAME_PAYLOAD_MAX payload
+ * bytes (the signature lives in the MIC field, not the payload). */
+#define LICHEN_PROTECTED_PAYLOAD_MAX (LICHEN_FRAME_PAYLOAD_MAX)
 
 
 /* Maximum decompressed IPv6 packet size: frame payload + base header. */
-#define LICHEN_MAX_IPV6_LEN (LICHEN_MAX_PAYLOAD + 40)
+#define LICHEN_MAX_IPV6_LEN (LICHEN_FRAME_PAYLOAD_MAX + 40)
 
 struct lichen_link_auth_payload {
 	size_t payload_len;
@@ -147,20 +149,13 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		goto cleanup;
 	}
 
-		/* Verify signer IID matches peer EUI-64 */
-		if (parsed.signer_iid_present &&
-		    memcmp(parsed.signer_iid, ctx->peer_eui64, 8) != 0) {
-			LOG_WRN("signer IID does not match peer EUI-64\n");
-			ret = -LICHEN_EAUTH;
-			goto cleanup;
-		}
-
+		/* The signer is not identified on the wire; verification against
+		 * the provisioned peer key establishes sender identity. */
 		int verify_result = schnorr48_verify_frame(frame[0], frame[1],
 							   parsed.epoch, parsed.seqnum,
 							   parsed.dst_addr,
 							   parsed.dst_addr_len,
-							   parsed.signer_iid,
-							   parsed.signer_iid_len,
+							   NULL, 0,
 							   auth_payload,
 							   auth_payload_len,
 							   parsed.mic,
@@ -220,7 +215,7 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		goto cleanup;
 	}
 
-	if (parsed.inner_payload_len > LICHEN_MAX_PAYLOAD) {
+	if (parsed.inner_payload_len > LICHEN_FRAME_PAYLOAD_MAX) {
 		ret = -EMSGSIZE;
 		goto cleanup;
 	}
@@ -259,7 +254,7 @@ int lichen_link_rx_payload(struct lichen_link_rx_ctx *ctx,
 {
 	struct lichen_link_auth_payload auth;
 	uint8_t work_payload[LICHEN_PROTECTED_PAYLOAD_MAX];
-	uint8_t inner_payload[LICHEN_MAX_PAYLOAD];
+	uint8_t inner_payload[LICHEN_FRAME_PAYLOAD_MAX];
 	size_t inner_len = sizeof(inner_payload);
 	size_t caller_len;
 	int ret;

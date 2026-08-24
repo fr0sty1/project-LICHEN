@@ -55,8 +55,44 @@ async def test_neighbors_returns_table() -> None:
     info = _node_info()
     client, server = await _client_server(info)
     try:
-        resp = await client.request(Message(code=GET, uri="coap://server/neighbors")).response
+        resp = await client.request(
+            Message(code=GET, uri="coap://server/status/neighbors")
+        ).response
         assert cbor2.loads(resp.payload) == info.neighbors
+    finally:
+        await client.shutdown()
+        await server.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_routes_returns_routing_table() -> None:
+    """GET /status/routes returns routing table per spec 17.5.3."""
+    info = StaticNodeInfo(
+        status={},
+        neighbors=[],
+        routes={
+            "routes": [
+                {
+                    "prefix": "0200:1234:5678:9abc::/64",
+                    "via": "fe80::1234:5678:9abc:def0",
+                    "metric": 512,
+                    "lifetime_s": 1800,
+                }
+            ],
+            "default_route": "fe80::1234:5678:9abc:def0",
+        },
+        config={},
+    )
+    client, server = await _client_server(info)
+    try:
+        resp = await client.request(
+            Message(code=GET, uri="coap://server/status/routes")
+        ).response
+        assert resp.code == aiocoap.CONTENT
+        data = cbor2.loads(resp.payload)
+        assert data["routes"][0]["prefix"] == "0200:1234:5678:9abc::/64"
+        assert data["routes"][0]["metric"] == 512
+        assert data["default_route"] == "fe80::1234:5678:9abc:def0"
     finally:
         await client.shutdown()
         await server.shutdown()
@@ -72,9 +108,10 @@ async def test_well_known_core_lists_resources() -> None:
         ).response
         body = resp.payload.decode()
         assert "</status>" in body
-        assert "</neighbors>" in body
+        assert "</status/neighbors>" in body
+        assert "</status/routes>" in body
         assert "</config>" in body
-        assert 'rt="lichen.status"' in body
+        assert 'rt="status"' in body
     finally:
         await client.shutdown()
         await server.shutdown()
@@ -129,7 +166,7 @@ async def test_config_get_and_put() -> None:
 @pytest.mark.asyncio
 async def test_config_put_is_unauthorized_by_default_before_parsing() -> None:
     info = _node_info()
-    client, server = await _client_server(info, config_allow_writes=True)
+    client, server = await _client_server(info, config_allow_writes=False)
     try:
         put = Message(code=PUT, uri="coap://server/config", payload=b"")
         resp = await client.request(put).response
@@ -179,7 +216,7 @@ async def test_config_put_non_dict_cbor_returns_bad_request() -> None:
 @pytest.mark.asyncio
 async def test_config_put_is_atomic_and_rejects_unknown_fields() -> None:
     info = _node_info()
-    client, server = await _client_server(info, allow_config_write=True)
+    client, server = await _client_server(info, config_allow_writes=True)
     try:
         valid = Message(
             code=PUT,
@@ -203,7 +240,7 @@ async def test_config_put_is_atomic_and_rejects_unknown_fields() -> None:
 @pytest.mark.asyncio
 async def test_config_put_rejects_trailing_cbor_without_mutation() -> None:
     info = _node_info()
-    client, server = await _client_server(info, allow_config_write=True)
+    client, server = await _client_server(info, config_allow_writes=True)
     try:
         payload = cbor2.dumps({"tx_power_dbm": 20}) + b"trailing"
         response = await client.request(
@@ -219,7 +256,7 @@ async def test_config_put_rejects_trailing_cbor_without_mutation() -> None:
 @pytest.mark.asyncio
 async def test_config_put_rejects_duplicate_cbor_keys_without_mutation() -> None:
     info = _node_info()
-    client, server = await _client_server(info, allow_config_write=True)
+    client, server = await _client_server(info, config_allow_writes=True)
     try:
         key = cbor2.dumps("tx_power_dbm")
         payload = b"\xa2" + key + cbor2.dumps(20) + key + cbor2.dumps(21)
@@ -236,7 +273,7 @@ async def test_config_put_rejects_duplicate_cbor_keys_without_mutation() -> None
 @pytest.mark.asyncio
 async def test_config_put_accepts_canonical_map_with_float16() -> None:
     info = _node_info()
-    client, server = await _client_server(info, allow_config_write=True)
+    client, server = await _client_server(info, config_allow_writes=True)
     try:
         key = cbor2.dumps("tx_power_dbm")
         payload = b"\xa1" + key + b"\xf9\x3e\x00"  # preferred float16 1.5
@@ -269,7 +306,7 @@ async def test_config_put_rejects_tags_and_remains_serializable(
     tagged_value: bytes,
 ) -> None:
     info = _node_info()
-    client, server = await _client_server(info, allow_config_write=True)
+    client, server = await _client_server(info, config_allow_writes=True)
     try:
         payload = b"\xa1" + cbor2.dumps("tx_power_dbm") + tagged_value
         response = await client.request(
@@ -279,6 +316,75 @@ async def test_config_put_rejects_tags_and_remains_serializable(
         assert response.code == aiocoap.BAD_REQUEST
         assert cbor2.loads(current.payload) == info.config
         assert info.config["tx_power_dbm"] == 14
+    finally:
+        await client.shutdown()
+        await server.shutdown()
+
+
+# ---------------------------------------------------------------------------
+# /status/neighbors — Observe
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_neighbors_observe_receives_notification_on_change() -> None:
+    """Observe /status/neighbors receives notification when notify_changed() is called."""
+    import asyncio
+
+    from lichen.coap.resources.node_resources import NeighborsResource
+
+    info = _node_info()
+    neighbors = NeighborsResource(info)
+    net = InMemoryNetwork()
+    server = await create_lichen_context(
+        net.channel("server"),
+        "server",
+        site=build_site(info, neighbors_resource=neighbors),
+    )
+    client = await create_lichen_context(net.channel("client"), "client")
+    try:
+        # Start observing
+        req = client.request(
+            Message(code=GET, observe=0, uri="coap://server/status/neighbors")
+        )
+        first_resp = await req.response
+        assert first_resp.code == aiocoap.CONTENT
+        assert cbor2.loads(first_resp.payload) == info.neighbors
+
+        # Update neighbours in the node_info and notify
+        obs_iter = req.observation.__aiter__()
+        info.neighbors.append({"addr": "fe80::3", "rank": 512, "etx": 2.0})
+        neighbors.notify_changed()
+
+        # Notification should arrive with updated data
+        notification = await asyncio.wait_for(obs_iter.__anext__(), timeout=5.0)
+        updated = cbor2.loads(notification.payload)
+        assert len(updated) == 2
+        assert updated[1]["addr"] == "fe80::3"
+    finally:
+        await client.shutdown()
+        await server.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_neighbors_advertises_observability() -> None:
+    """NeighborsResource advertises obs attribute in .well-known/core."""
+    info = _node_info()
+    client, server = await _client_server(info)
+    try:
+        resp = await client.request(
+            Message(code=GET, uri="coap://server/.well-known/core")
+        ).response
+        body = resp.payload.decode()
+        # The obs attribute should appear for /status/neighbors
+        assert "</status/neighbors>" in body
+        # Check that obs attribute is present (may appear as ;obs or obs=)
+        # The link format entry should contain obs
+        import re
+        # Find the /status/neighbors entry and check for obs
+        neighbors_entry = re.search(r'</status/neighbors>[^<]*', body)
+        assert neighbors_entry is not None
+        assert "obs" in neighbors_entry.group(0)
     finally:
         await client.shutdown()
         await server.shutdown()

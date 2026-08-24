@@ -315,6 +315,18 @@ class TxQueue:
         Raises:
             QueueFullError: If queue is full and preemption not possible.
         """
+        if type(data) is not bytes:
+            raise TypeError("data must be bytes")
+        if type(dst_addr) is not bytes:
+            raise TypeError("dst_addr must be bytes")
+        if type(priority) is not Priority:
+            raise TypeError("priority must be an exact Priority")
+        if deadline_ms is not None and (type(deadline_ms) is not int or deadline_ms < 0):
+            raise TypeError("deadline_ms must be a non-negative integer or None")
+        if type(channel) is not int or channel < 0:
+            raise TypeError("channel must be a non-negative integer")
+        if type(return_reservation) is not bool:
+            raise TypeError("return_reservation must be bool")
         self.expire_stale()
         self.ensure_can_push(priority)
 
@@ -364,6 +376,8 @@ class TxQueue:
 
     def ensure_can_push(self, priority: Priority) -> None:
         """Reject a non-preemptible full queue without mutating live entries."""
+        if type(priority) is not Priority:
+            raise TypeError("priority must be an exact Priority")
         now = self._clock()
         active_entries = [entry for entry in self._entries if entry.deadline_ms > now]
         if len(active_entries) < self._capacity:
@@ -493,12 +507,18 @@ class TxQueue:
             Reservation is NOT signaled here - it will be signaled False when
             the entry is definitively dropped (expired or preempted).
         """
-        if success and entry.reservation is not None:
-            entry.reservation.set_result(True)
-
+        if type(entry) is not TxQueueEntry:
+            raise TypeError("entry must be an exact TxQueueEntry")
+        if type(success) is not bool:
+            raise TypeError("success must be bool")
+        if not self._entries or self._entries[0] is not entry:
+            logger.warning("complete but entry not head of queue")
+            return
         if success:
             if self._entries and self._entries[0] is entry:
                 popped = self._entries.pop(0)
+                if popped.reservation is not None:
+                    popped.reservation.set_result(True)
                 latency = self._clock() - popped.enqueue_time_ms
                 if latency > self.stats.max_latency_ms:
                     self.stats.max_latency_ms = latency
@@ -515,8 +535,6 @@ class TxQueue:
                     len(self._entries),
                     self._capacity,
                 )
-            else:
-                logger.warning("complete(success) but entry not head of queue")
         else:
             # re-queued with original deadline_ms - prevents lifetime extension
             logger.debug(
@@ -524,13 +542,41 @@ class TxQueue:
                 entry.deadline_ms,
             )
 
+    def fail(self, entry: TxQueueEntry) -> None:
+        """Terminally fail and remove one exact reserved entry."""
+        if type(entry) is not TxQueueEntry:
+            raise TypeError("entry must be an exact TxQueueEntry")
+        if not self._entries or self._entries[0] is not entry:
+            logger.warning("fail but entry not head of queue")
+            return
+        popped = self._entries.pop(0)
+        if popped.reservation is not None:
+            popped.reservation.set_result(False)
+
+    def cancel_reservation(self, reservation: TxReservation) -> bool:
+        """Remove one exact caller reservation after cancellation or failure."""
+        if type(reservation) is not TxReservation:
+            raise TypeError("reservation must be an exact TxReservation")
+        for index, entry in enumerate(self._entries):
+            if entry.reservation is reservation:
+                self._entries.pop(index)
+                reservation.set_result(False)
+                return True
+        if not reservation.done():
+            reservation.set_result(False)
+        return False
+
     def signal_all_pending(self, success: bool) -> None:
         """Signal all queued reservations as complete (for CAD failure case).
 
         Prevents senders from hanging when drain_tx_queue exits without
         attempting transmission. Signals all entries in the queue.
         """
-        for entry in self._entries:
+        if type(success) is not bool:
+            raise TypeError("success must be bool")
+        entries = self._entries
+        self._entries = []
+        for entry in entries:
             if entry.reservation is not None:
                 entry.reservation.set_result(success)
 

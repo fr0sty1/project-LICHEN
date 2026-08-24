@@ -1,10 +1,13 @@
 //! Production integration against independently derived shared vectors.
 
+mod support;
+
 use std::collections::BTreeSet;
 
 use lichen_schc::fragment::{
     ack_request, compute_mic, receiver_abort, sender_abort, Ack, Fragment, FragmentReceiver,
-    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, TILE_SIZE,
+    ReceiverResponse, SenderStatus, INACTIVITY_TIMEOUT_S, MAX_ACK_REQUESTS, MAX_PACKET_SIZE,
+    RETRANSMISSION_TIMEOUT_S, TILE_SIZE,
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -36,7 +39,13 @@ struct Vector {
     loss: Option<Loss>,
     controls: Option<Controls>,
     attempts_before: Option<u8>,
+    retransmission_timeout_s: Option<u32>,
+    max_ack_requests: Option<u32>,
+    inactivity_timeout_s: Option<u32>,
+    bitmap_one_means: Option<String>,
     trigger: Option<BytesValue>,
+    trigger_event: Option<String>,
+    pre_exhaustion_message: Option<BytesValue>,
     expected_message: Option<BytesValue>,
     expect_status: Option<String>,
     wire: Option<BytesValue>,
@@ -184,7 +193,7 @@ fn exercise_transfer(vector: &Vector) {
     let packet = expand(vector.packet.as_ref().unwrap());
     assert_eq!(packet.len(), vector.packet_length.unwrap());
     let rule_id = vector.rule_id.unwrap();
-    let sender = FragmentSender::new(&packet, rule_id, packet.len()).unwrap();
+    let sender = support::fragment_sender(&packet, rule_id, packet.len()).unwrap();
     if let Some(count) = vector.fragment_count {
         assert_eq!(sender.fragment_count(), count, "{}", vector.name);
     }
@@ -258,7 +267,7 @@ fn exercise_transfer(vector: &Vector) {
         assert_eq!(result.mic_ok, Some(false));
         assert_eq!(write_response(result.response.unwrap()), expand(expected));
 
-        let mut sender = FragmentSender::new(&packet, rule_id, packet.len()).unwrap();
+        let mut sender = support::fragment_sender(&packet, rule_id, packet.len()).unwrap();
         sender.start().unwrap();
         let mut output = sender.handle_ack_bytes(&expand(expected)).unwrap();
         let mut wire = [0u8; TILE_SIZE + 6];
@@ -293,30 +302,56 @@ fn exercise_controls(controls: &Controls) {
 }
 
 fn exercise_retry(vector: &Vector) {
-    assert_eq!(vector.attempts_before, Some(4));
+    assert_eq!(vector.attempts_before, Some(MAX_ACK_REQUESTS as u8));
+    if vector.name.starts_with("sender") {
+        assert_eq!(
+            vector.retransmission_timeout_s,
+            Some(RETRANSMISSION_TIMEOUT_S)
+        );
+        assert_eq!(vector.max_ack_requests, Some(MAX_ACK_REQUESTS));
+        assert_eq!(vector.inactivity_timeout_s, Some(INACTIVITY_TIMEOUT_S));
+        assert_eq!(vector.bitmap_one_means.as_deref(), Some("received"));
+    }
     assert_eq!(vector.expect_status.as_deref(), Some("aborted"));
     let rule_id = vector.rule_id.unwrap();
     let expected = expand(vector.expected_message.as_ref().unwrap());
-    assert_eq!(
-        expand(vector.trigger.as_ref().unwrap()),
-        vec![rule_id, 0x80]
-    );
     if vector.name.starts_with("sender") {
+        assert_eq!(vector.trigger_event.as_deref(), Some("timeout"));
         let packet = [0xa5];
-        let mut sender = FragmentSender::new(&packet, rule_id, 1).unwrap();
+        let mut sender = support::fragment_sender(&packet, rule_id, 1).unwrap();
         sender.start().unwrap();
-        for _ in 1..4 {
-            sender.timeout().unwrap();
-        }
-        let mut output = sender.timeout().unwrap();
         let mut wire = [0u8; 3];
+        for _ in 0..2 {
+            let mut output = sender.handle_ack(Ack::new(rule_id, 0, 0, false));
+            let mut fragment_wire = [0u8; TILE_SIZE + 6];
+            assert!(sender
+                .write_next(&mut output, &mut fragment_wire)
+                .unwrap()
+                .is_some());
+        }
+        assert_eq!(sender.attempts(), MAX_ACK_REQUESTS as u8 - 1);
+        let mut output = sender.timeout().unwrap();
+        let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+        assert_eq!(
+            &wire[..length],
+            expand(vector.pre_exhaustion_message.as_ref().unwrap())
+        );
+        assert_eq!(sender.write_next(&mut output, &mut wire).unwrap(), None);
+        assert_eq!(sender.attempts(), vector.attempts_before.unwrap());
+        let mut output = sender.timeout().unwrap();
         let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
         assert_eq!(&wire[..length], expected);
         assert_eq!(sender.status(), SenderStatus::Aborted);
+        assert_eq!(sender.write_next(&mut output, &mut wire).unwrap(), None);
+        assert!(sender.timeout().is_err());
     } else {
+        assert_eq!(
+            expand(vector.trigger.as_ref().unwrap()),
+            vec![rule_id, 0x80]
+        );
         let mut storage = [0u8; 1];
         let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
-        for _ in 0..4 {
+        for _ in 0..MAX_ACK_REQUESTS {
             receiver.receive_bytes(&[rule_id, 0x80]).unwrap();
         }
         let result = receiver.receive_bytes(&[rule_id, 0x80]).unwrap();
@@ -328,7 +363,7 @@ fn exercise_retry(vector: &Vector) {
 fn exercise_capacity(vector: &Vector) {
     let packet = expand(vector.packet.as_ref().unwrap());
     assert_eq!(packet.len(), vector.packet_length.unwrap());
-    let result = FragmentSender::new(&packet, 0x78, MAX_PACKET_SIZE);
+    let result = support::fragment_sender(&packet, 0x78, MAX_PACKET_SIZE);
     if packet.len() > MAX_PACKET_SIZE {
         assert!(result.is_err());
         assert_eq!(vector.fragment_count, Some(0));

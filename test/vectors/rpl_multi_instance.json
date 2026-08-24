@@ -1,0 +1,1557 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "rpl_multi_instance",
+  "description": "RPL Multi-Instance Coordination test vectors per spec/08-gateway-coordination.md GCP-5. Covers shared RPLInstanceID management, multi-DODAG-root simulation, DAO backbone propagation, and gateway role election. Expected values are hand-derived from spec rules (lowest-IID election GCP-6.1, slot-conflict resolution GCP-6.3, instance-ID sharing GCP-5, lollipop wrap RFC 6550 7.2); shared with the Rust implementation via rust/lichen-rpl/tests/multi_instance_vectors.rs.",
+  "spec": "spec/08-gateway-coordination.md#GCP-5",
+  "vectors": [
+    {
+      "name": "multi_root_basic",
+      "type": "coordination",
+      "description": "Two gateways in same RPL instance, lowest IID elected as time master",
+      "rpl_instance_id": 0,
+      "gateways": [
+        {
+          "iid": "fe80::1234:5678:9abc:def0",
+          "has_gps": false
+        },
+        {
+          "iid": "fe80::abcd:ef01:2345:6789",
+          "has_gps": false
+        }
+      ],
+      "expected_time_master": "fe80::1234:5678:9abc:def0",
+      "election_rule": "lowest_iid"
+    },
+    {
+      "name": "slot_conflict_iid_resolution",
+      "type": "conflict_resolution",
+      "description": "Slot conflict resolved by lowest IID per GCP-6.3",
+      "conflict_slot": 7,
+      "claimant_a": "fe80::1234:5678:9abc:def0",
+      "claimant_b": "fe80::abcd:ef01:2345:6789",
+      "expected_winner": "fe80::1234:5678:9abc:def0",
+      "loser_action": "select_next_available"
+    },
+    {
+      "name": "dao_backbone_propagation",
+      "type": "dao_propagation",
+      "description": "DAO propagated from gateway A to gateway B over backbone",
+      "origin_gateway": "fe80::1234:5678:9abc:def0",
+      "rpl_instance_id": 0,
+      "dao_sequence": 42,
+      "targets": [
+        {
+          "target": "0200:1234:5678:9abc::",
+          "prefix_length": 64
+        }
+      ],
+      "transit": [
+        {
+          "path_sequence": 42,
+          "path_lifetime": 60,
+          "path_control": 0,
+          "parent": "fe80::1111:2222:3333:4444"
+        }
+      ]
+    },
+    {
+      "name": "dio_validation_same_instance",
+      "type": "dio_validation",
+      "description": "Peer gateway DIO with matching RPLInstanceID accepted",
+      "rpl_instance_id": 0,
+      "dio_instance_id": 0,
+      "dio_rank": 256,
+      "expected_valid": true
+    },
+    {
+      "name": "dio_validation_different_instance",
+      "type": "dio_validation",
+      "description": "Peer gateway DIO with different RPLInstanceID rejected per GCP-5",
+      "rpl_instance_id": 0,
+      "dio_instance_id": 1,
+      "dio_rank": 256,
+      "expected_valid": false,
+      "rejection_reason": "RPLInstanceID mismatch"
+    },
+    {
+      "name": "dodag_version_lollipop",
+      "type": "version_management",
+      "description": "DODAG version increments using lollipop semantics",
+      "initial_version": 254,
+      "increments": 3,
+      "expected_versions": [
+        255,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "three_gateway_federation",
+      "type": "coordination",
+      "description": "Three gateways sharing RPL instance, route aggregation",
+      "rpl_instance_id": 0,
+      "gateways": [
+        {
+          "iid": "fe80::aaaa:1111:2222:3333",
+          "routes_learned": 5
+        },
+        {
+          "iid": "fe80::bbbb:4444:5555:6666",
+          "routes_learned": 3
+        },
+        {
+          "iid": "fe80::cccc:7777:8888:9999",
+          "routes_learned": 7
+        }
+      ],
+      "expected_time_master": "fe80::aaaa:1111:2222:3333",
+      "total_aggregated_routes": 15
+    },
+    {
+      "name": "unified_dodag_view",
+      "type": "node_perspective",
+      "description": "Node receives DIOs from multiple roots, sees unified DODAG",
+      "rpl_instance_id": 0,
+      "root_a": {
+        "iid": "fe80::1234:5678:9abc:def0",
+        "rank": 256,
+        "version": 1
+      },
+      "root_b": {
+        "iid": "fe80::abcd:ef01:2345:6789",
+        "rank": 256,
+        "version": 1
+      },
+      "node_can_select_either_parent": true,
+      "parent_selection": "objective_function"
+    },
+    {
+      "name": "dodag_version_synchronization",
+      "type": "version_management",
+      "description": "All gateways in federation synchronize DODAG version on increment",
+      "rpl_instance_id": 0,
+      "initial_version": 128,
+      "gateways": [
+        {
+          "iid": "fe80::1234:5678:9abc:def0",
+          "role": "primary"
+        },
+        {
+          "iid": "fe80::abcd:ef01:2345:6789",
+          "role": "secondary"
+        }
+      ],
+      "after_increment": {
+        "primary_version": 129,
+        "secondary_version": 129,
+        "versions_match": true
+      }
+    },
+    {
+      "name": "gateway_role_determination",
+      "type": "role_assignment",
+      "description": "Gateway roles determined by IID comparison and federation membership",
+      "test_cases": [
+        {
+          "scenario": "standalone",
+          "local_gateway": "fe80::1234:5678:9abc:def0",
+          "peers": [],
+          "expected_role": "standalone"
+        },
+        {
+          "scenario": "primary_lowest_iid",
+          "local_gateway": "fe80::0001:0002:0003:0004",
+          "peers": [
+            "fe80::ffff:ffff:ffff:ffff"
+          ],
+          "expected_role": "primary"
+        },
+        {
+          "scenario": "secondary_higher_iid",
+          "local_gateway": "fe80::ffff:ffff:ffff:ffff",
+          "peers": [
+            "fe80::0001:0002:0003:0004"
+          ],
+          "expected_role": "secondary"
+        }
+      ]
+    },
+    {
+      "name": "rpl_instance_id_validation",
+      "type": "validation",
+      "description": "RPLInstanceID must be 0-255 per RFC 6550",
+      "valid_ids": [
+        0,
+        1,
+        127,
+        128,
+        255
+      ],
+      "invalid_ids": [
+        -1,
+        256,
+        1000
+      ],
+      "default_id": 0
+    },
+    {
+      "name": "dao_target_aggregation",
+      "type": "dao_propagation",
+      "description": "Multiple targets from single DAO aggregated in backbone message",
+      "origin_gateway": "fe80::1234:5678:9abc:def0",
+      "rpl_instance_id": 0,
+      "dao_sequence": 100,
+      "targets": [
+        {
+          "target": "0200:aaaa::",
+          "prefix_length": 64
+        },
+        {
+          "target": "0200:bbbb::",
+          "prefix_length": 64
+        },
+        {
+          "target": "0200:cccc::",
+          "prefix_length": 64
+        }
+      ],
+      "target_count": 3
+    },
+    {
+      "name": "iid_comparison_bytes",
+      "type": "comparison",
+      "description": "IID comparison uses packed byte representation for ordering",
+      "comparisons": [
+        {
+          "a": "fe80::0001:0002:0003:0004",
+          "b": "fe80::ffff:ffff:ffff:ffff",
+          "result": -1,
+          "winner": "fe80::0001:0002:0003:0004"
+        },
+        {
+          "a": "fe80::1234:5678:9abc:def0",
+          "b": "fe80::abcd:ef01:2345:6789",
+          "result": -1,
+          "winner": "fe80::1234:5678:9abc:def0"
+        },
+        {
+          "a": "::1",
+          "b": "fe80::0001:0002:0003:0004",
+          "result": -1,
+          "winner": "::1"
+        },
+        {
+          "a": "fe80::ffff:ffff:ffff:ffff",
+          "b": "ff02::1",
+          "result": -1,
+          "winner": "fe80::ffff:ffff:ffff:ffff"
+        },
+        {
+          "a": "ff02::1",
+          "b": "ff02::2",
+          "result": -1,
+          "winner": "ff02::1"
+        },
+        {
+          "a": "fe80::1234:5678:9abc:def0",
+          "b": "fe80::1234:5678:9abc:def0",
+          "result": 0,
+          "winner": "either"
+        }
+      ]
+    },
+    {
+      "name": "receive_guard_stale_timestamp",
+      "type": "receive_from_peer_guard",
+      "description": "Timestamp aged 400s exceeds the 300s freshness window (GCP-9 replay guard); rejected as stale_timestamp",
+      "receiver_local_iid": "fe80::abcd:ef01:2345:6789",
+      "authenticated_sender": "fe80::1234:5678:9abc:def0",
+      "current_time": 1000.0,
+      "prior_stored_origins": [],
+      "message": {
+        "origin_gateway": "fe80::1234:5678:9abc:def0",
+        "rpl_instance_id": 0,
+        "dao_sequence": 42,
+        "targets": [
+          {
+            "target": "0200:5678::",
+            "prefix_length": 64
+          }
+        ],
+        "transit": [
+          {
+            "path_sequence": 42,
+            "path_lifetime": 60,
+            "path_control": 0,
+            "parent": "fe80::1111:2222:3333:4444"
+          }
+        ],
+        "timestamp": 600.0
+      },
+      "expected_accepted": false,
+      "expected_reason": "stale_timestamp"
+    },
+    {
+      "name": "receive_guard_future_timestamp",
+      "type": "receive_from_peer_guard",
+      "description": "Timestamp 300s in the future yields negative age outside [0, 300]; rejected as stale_timestamp",
+      "receiver_local_iid": "fe80::abcd:ef01:2345:6789",
+      "authenticated_sender": "fe80::1234:5678:9abc:def0",
+      "current_time": 1000.0,
+      "prior_stored_origins": [],
+      "message": {
+        "origin_gateway": "fe80::1234:5678:9abc:def0",
+        "rpl_instance_id": 0,
+        "dao_sequence": 42,
+        "targets": [
+          {
+            "target": "0200:5678::",
+            "prefix_length": 64
+          }
+        ],
+        "transit": [
+          {
+            "path_sequence": 42,
+            "path_lifetime": 60,
+            "path_control": 0,
+            "parent": "fe80::1111:2222:3333:4444"
+          }
+        ],
+        "timestamp": 1300.0
+      },
+      "expected_accepted": false,
+      "expected_reason": "stale_timestamp"
+    },
+    {
+      "name": "receive_guard_nan_timestamp",
+      "type": "receive_from_peer_guard",
+      "description": "NaN timestamp makes age NaN, bypassing range comparisons; explicit NaN check rejects as stale_timestamp. Field timestamp \"NaN\" is the string sentinel for IEEE-754 NaN.",
+      "receiver_local_iid": "fe80::abcd:ef01:2345:6789",
+      "authenticated_sender": "fe80::1234:5678:9abc:def0",
+      "current_time": 1000.0,
+      "prior_stored_origins": [],
+      "message": {
+        "origin_gateway": "fe80::1234:5678:9abc:def0",
+        "rpl_instance_id": 0,
+        "dao_sequence": 42,
+        "targets": [
+          {
+            "target": "0200:5678::",
+            "prefix_length": 64
+          }
+        ],
+        "transit": [
+          {
+            "path_sequence": 42,
+            "path_lifetime": 60,
+            "path_control": 0,
+            "parent": "fe80::1111:2222:3333:4444"
+          }
+        ],
+        "timestamp": "NaN"
+      },
+      "expected_accepted": false,
+      "expected_reason": "stale_timestamp"
+    },
+    {
+      "name": "receive_guard_self_origin",
+      "type": "receive_from_peer_guard",
+      "description": "Claimed origin equals the receiver's own IID (self-loop prevention, GCP-9); rejected as self_origin",
+      "receiver_local_iid": "fe80::abcd:ef01:2345:6789",
+      "authenticated_sender": "fe80::abcd:ef01:2345:6789",
+      "current_time": 1000.0,
+      "prior_stored_origins": [],
+      "message": {
+        "origin_gateway": "fe80::abcd:ef01:2345:6789",
+        "rpl_instance_id": 0,
+        "dao_sequence": 42,
+        "targets": [
+          {
+            "target": "0200:5678::",
+            "prefix_length": 64
+          }
+        ],
+        "transit": [
+          {
+            "path_sequence": 42,
+            "path_lifetime": 60,
+            "path_control": 0,
+            "parent": "fe80::1111:2222:3333:4444"
+          }
+        ],
+        "timestamp": 990.0
+      },
+      "expected_accepted": false,
+      "expected_reason": "self_origin"
+    },
+    {
+      "name": "receive_guard_origin_auth_mismatch",
+      "type": "receive_from_peer_guard",
+      "description": "Claimed origin fe80::1234:... does not match the OSCORE-authenticated sender fe80::5555:... ; rejected as origin_auth_mismatch",
+      "receiver_local_iid": "fe80::abcd:ef01:2345:6789",
+      "authenticated_sender": "fe80::5555:6666:7777:8888",
+      "current_time": 1000.0,
+      "prior_stored_origins": [],
+      "message": {
+        "origin_gateway": "fe80::1234:5678:9abc:def0",
+        "rpl_instance_id": 0,
+        "dao_sequence": 42,
+        "targets": [
+          {
+            "target": "0200:5678::",
+            "prefix_length": 64
+          }
+        ],
+        "transit": [
+          {
+            "path_sequence": 42,
+            "path_lifetime": 60,
+            "path_control": 0,
+            "parent": "fe80::1111:2222:3333:4444"
+          }
+        ],
+        "timestamp": 990.0
+      },
+      "expected_accepted": false,
+      "expected_reason": "origin_auth_mismatch"
+    },
+    {
+      "name": "receive_guard_too_many_routes",
+      "type": "receive_from_peer_guard",
+      "description": "257 route targets exceed MAX_ROUTES_PER_MESSAGE (256); rejected as too_many_routes",
+      "receiver_local_iid": "fe80::abcd:ef01:2345:6789",
+      "authenticated_sender": "fe80::1234:5678:9abc:def0",
+      "current_time": 1000.0,
+      "prior_stored_origins": [],
+      "message": {
+        "origin_gateway": "fe80::1234:5678:9abc:def0",
+        "rpl_instance_id": 0,
+        "dao_sequence": 42,
+        "targets": [
+          {
+            "target": "0200::0",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::1",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::2",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::3",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::4",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::5",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::6",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::7",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::8",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::9",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::10",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::11",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::12",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::13",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::14",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::15",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::16",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::17",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::18",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::19",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::1a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::1b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::1c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::1d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::1e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::1f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::20",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::21",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::22",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::23",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::24",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::25",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::26",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::27",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::28",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::29",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::2a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::2b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::2c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::2d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::2e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::2f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::30",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::31",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::32",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::33",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::34",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::35",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::36",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::37",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::38",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::39",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::3a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::3b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::3c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::3d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::3e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::3f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::40",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::41",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::42",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::43",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::44",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::45",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::46",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::47",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::48",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::49",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::4a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::4b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::4c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::4d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::4e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::4f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::50",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::51",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::52",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::53",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::54",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::55",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::56",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::57",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::58",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::59",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::5a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::5b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::5c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::5d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::5e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::5f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::60",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::61",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::62",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::63",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::64",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::65",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::66",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::67",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::68",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::69",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::6a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::6b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::6c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::6d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::6e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::6f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::70",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::71",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::72",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::73",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::74",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::75",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::76",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::77",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::78",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::79",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::7a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::7b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::7c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::7d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::7e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::7f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::80",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::81",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::82",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::83",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::84",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::85",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::86",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::87",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::88",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::89",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::8a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::8b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::8c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::8d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::8e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::8f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::90",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::91",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::92",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::93",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::94",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::95",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::96",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::97",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::98",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::99",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::9a",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::9b",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::9c",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::9d",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::9e",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::9f",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a0",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a1",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a2",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a3",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a4",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a5",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a6",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a7",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a8",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::a9",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::aa",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ab",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ac",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ad",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ae",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::af",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b0",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b1",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b2",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b3",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b4",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b5",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b6",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b7",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b8",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::b9",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ba",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::bb",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::bc",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::bd",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::be",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::bf",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c0",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c1",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c2",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c3",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c4",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c5",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c6",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c7",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c8",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::c9",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ca",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::cb",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::cc",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::cd",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ce",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::cf",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d0",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d1",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d2",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d3",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d4",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d5",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d6",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d7",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d8",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::d9",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::da",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::db",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::dc",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::dd",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::de",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::df",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e0",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e1",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e2",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e3",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e4",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e5",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e6",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e7",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e8",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::e9",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ea",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::eb",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ec",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ed",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ee",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ef",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f0",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f1",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f2",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f3",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f4",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f5",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f6",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f7",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f8",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::f9",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::fa",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::fb",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::fc",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::fd",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::fe",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::ff",
+            "prefix_length": 64
+          },
+          {
+            "target": "0200::100",
+            "prefix_length": 64
+          }
+        ],
+        "transit": [],
+        "timestamp": 990.0
+      },
+      "expected_accepted": false,
+      "expected_reason": "too_many_routes"
+    },
+    {
+      "name": "receive_guard_peer_limit_reached",
+      "type": "receive_from_peer_guard",
+      "description": "64 origins already stored (MAX_RECEIVED_ROUTE_PEERS); a 65th distinct origin is refused as peer_limit_reached",
+      "receiver_local_iid": "fe80::abcd:ef01:2345:6789",
+      "authenticated_sender": "fe80::900:ffff",
+      "current_time": 1000.0,
+      "prior_stored_origins": [
+        "fe80::900:0000",
+        "fe80::900:0001",
+        "fe80::900:0002",
+        "fe80::900:0003",
+        "fe80::900:0004",
+        "fe80::900:0005",
+        "fe80::900:0006",
+        "fe80::900:0007",
+        "fe80::900:0008",
+        "fe80::900:0009",
+        "fe80::900:000a",
+        "fe80::900:000b",
+        "fe80::900:000c",
+        "fe80::900:000d",
+        "fe80::900:000e",
+        "fe80::900:000f",
+        "fe80::900:0010",
+        "fe80::900:0011",
+        "fe80::900:0012",
+        "fe80::900:0013",
+        "fe80::900:0014",
+        "fe80::900:0015",
+        "fe80::900:0016",
+        "fe80::900:0017",
+        "fe80::900:0018",
+        "fe80::900:0019",
+        "fe80::900:001a",
+        "fe80::900:001b",
+        "fe80::900:001c",
+        "fe80::900:001d",
+        "fe80::900:001e",
+        "fe80::900:001f",
+        "fe80::900:0020",
+        "fe80::900:0021",
+        "fe80::900:0022",
+        "fe80::900:0023",
+        "fe80::900:0024",
+        "fe80::900:0025",
+        "fe80::900:0026",
+        "fe80::900:0027",
+        "fe80::900:0028",
+        "fe80::900:0029",
+        "fe80::900:002a",
+        "fe80::900:002b",
+        "fe80::900:002c",
+        "fe80::900:002d",
+        "fe80::900:002e",
+        "fe80::900:002f",
+        "fe80::900:0030",
+        "fe80::900:0031",
+        "fe80::900:0032",
+        "fe80::900:0033",
+        "fe80::900:0034",
+        "fe80::900:0035",
+        "fe80::900:0036",
+        "fe80::900:0037",
+        "fe80::900:0038",
+        "fe80::900:0039",
+        "fe80::900:003a",
+        "fe80::900:003b",
+        "fe80::900:003c",
+        "fe80::900:003d",
+        "fe80::900:003e",
+        "fe80::900:003f"
+      ],
+      "message": {
+        "origin_gateway": "fe80::900:ffff",
+        "rpl_instance_id": 0,
+        "dao_sequence": 7,
+        "targets": [
+          {
+            "target": "0200:ffff::",
+            "prefix_length": 64
+          }
+        ],
+        "transit": [],
+        "timestamp": 990.0
+      },
+      "expected_accepted": false,
+      "expected_reason": "peer_limit_reached"
+    }
+  ]
+}

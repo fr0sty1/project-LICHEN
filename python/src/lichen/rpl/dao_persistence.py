@@ -18,20 +18,37 @@ survives interruption at any point.
 Note: The RX side interface is compatible with the `OriginReplayStore` protocol
 defined in `dao_origin.py`.
 """
+
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import hashlib
 import os
+import stat
 import struct
+import tempfile
 import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+from lichen.rollback_anchor import (
+    AnchoredState,
+    StateRevisionAnchor,
+    advance_anchor,
+    read_anchor,
+)
+
 # Slot header: magic (4) + generation (4) + sequence (8) + payload_len (4) + checksum (32)
 _SLOT_HEADER_SIZE: Final[int] = 52
 _SLOT_MAGIC: Final[bytes] = b"DAO1"
+_MAX_PAYLOAD_SIZE: Final[int] = 64 * 1024
+_MAX_GENERATION: Final[int] = (1 << 32) - 1
+_NOFOLLOW: Final[int] = getattr(os, "O_NOFOLLOW", 0)
+_TX_INITIALIZED_MARKER: Final[bytes] = b"LICHEN-DAO-TX-INITIALIZED-v1\n"
+_DAO_ANCHOR_DOMAIN: Final[bytes] = b"LICHEN-DAO-STATE-ANCHOR-v1\x00"
 
 
 class DaoPersistenceError(Exception):
@@ -136,9 +153,7 @@ class DaoPersistence(ABC):
             The stored floor, or None if no valid state exists.
         """
 
-    def store_rx_floors_batch(
-        self, floors: list[tuple[bytes, int, bytes]]
-    ) -> None:
+    def store_rx_floors_batch(self, floors: list[tuple[bytes, int, bytes]]) -> None:
         """Atomically commit multiple RX replay floors.
 
         Per spec section 8.6, partial commits violate atomicity requirements
@@ -152,9 +167,11 @@ class DaoPersistence(ABC):
         Raises:
             DaoPersistenceError: If the commit fails.
 
-        The default implementation calls store_rx_floor sequentially, which
-        is NOT atomic. Subclasses that require atomicity MUST override this.
+        The default rejects multi-floor requests because silently performing
+        partial sequential commits would violate this method's contract.
         """
+        if len(floors) > 1:
+            raise DaoPersistenceError("backend does not support atomic multi-floor commits")
         for pubkey, sequence, dao_digest in floors:
             self.store_rx_floor(pubkey, sequence, dao_digest)
 
@@ -193,10 +210,15 @@ class MemoryPersistence(DaoPersistence):
             raise ValueError("dao_digest must be 64 bytes (SHA-512)")
         self._rx_floors[pubkey] = RxFloor(sequence, dao_digest)
 
-    def store_rx_floors_batch(
-        self, floors: list[tuple[bytes, int, bytes]]
-    ) -> None:
+    def store_rx_floors_batch(self, floors: list[tuple[bytes, int, bytes]]) -> None:
         """In-memory batch is effectively atomic (no I/O failure points)."""
+        for pubkey, sequence, dao_digest in floors:
+            if type(pubkey) is not bytes or len(pubkey) not in (16, 32):
+                raise ValueError("pubkey must be 16 or 32 immutable bytes")
+            if type(sequence) is not int or not 0 <= sequence <= (1 << 64) - 1:
+                raise ValueError("sequence must fit in u64")
+            if type(dao_digest) is not bytes or len(dao_digest) != 64:
+                raise ValueError("dao_digest must be 64 immutable bytes")
         for pubkey, sequence, dao_digest in floors:
             self.store_rx_floor(pubkey, sequence, dao_digest)
 
@@ -260,7 +282,15 @@ class TwoSlotFilePersistence(DaoPersistence):
         """
         return self._fail_closed
 
-    def __init__(self, base_dir: Path, *, fail_closed: bool = True) -> None:
+    def __init__(
+        self,
+        base_dir: Path,
+        *,
+        revision_anchor: StateRevisionAnchor,
+        anchor_key: bytes,
+        allow_tx_bootstrap: bool,
+        fail_closed: bool = True,
+    ) -> None:
         """Initialize persistence.
 
         Args:
@@ -270,22 +300,139 @@ class TwoSlotFilePersistence(DaoPersistence):
         Raises:
             DaoPersistenceError: If base_dir exists and is a file (not a directory).
         """
+        if type(fail_closed) is not bool or type(allow_tx_bootstrap) is not bool:
+            raise ValueError("fail_closed and allow_tx_bootstrap must be exact booleans")
+        if type(anchor_key) is not bytes or len(anchor_key) != 32:
+            raise ValueError("anchor_key must be exact 32-byte bytes")
         self._base_dir = Path(base_dir)
         self._fail_closed = fail_closed
+        self._allow_tx_bootstrap = allow_tx_bootstrap
+        self._revision_anchor = revision_anchor
+        self._anchor_key = hashlib.sha256(_DAO_ANCHOR_DOMAIN + anchor_key).digest()
         # Check if base_dir is an existing file before mkdir - this would cause
         # mkdir to fail with a confusing FileExistsError or NotADirectoryError
+        if self._base_dir.exists() or self._base_dir.is_symlink():
+            info = self._base_dir.lstat()
+            if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid():
+                raise DaoPersistenceError(
+                    f"base_dir exists but is not an owned directory: {self._base_dir}"
+                )
         if self._base_dir.exists() and not self._base_dir.is_dir():
-            raise DaoPersistenceError(
-                f"base_dir exists but is not a directory: {self._base_dir}"
-            )
-        self._base_dir.mkdir(parents=True, exist_ok=True)
+            raise DaoPersistenceError(f"base_dir exists but is not a directory: {self._base_dir}")
+        self._base_dir.mkdir(parents=True, mode=0o700, exist_ok=True)
+        os.chmod(self._base_dir, 0o700)
+        self._process_lock_path = self._base_dir / ".dao.lock"
         # Lock to prevent TOCTOU race in _write_to_older_slot: concurrent
         # readers could both determine the same slot is "older" and both
         # write to it with the same generation, losing one write.
         self._write_lock = threading.Lock()
 
+    def _state_anchor_key(self, kind: bytes, identity: bytes = b"") -> bytes:
+        return hashlib.sha256(self._anchor_key + kind + identity).digest()
+
+    @staticmethod
+    def _slot_anchor(generation: int, sequence: int, payload: bytes) -> AnchoredState:
+        digest = hashlib.sha256(struct.pack(">Q", sequence) + payload).digest()
+        return AnchoredState(generation, digest)
+
+    def _get_anchored_slot(
+        self,
+        path0: Path,
+        path1: Path,
+        anchor_key: bytes,
+        *,
+        allow_initial: bool,
+        missing_message: str,
+    ) -> tuple[int, int, int, bytes] | None:
+        slot0 = self._read_slot(path0)
+        slot1 = self._read_slot(path1)
+        if (
+            slot0 is not None
+            and slot1 is not None
+            and slot0[0] == slot1[0]
+            and slot0[1:] != slot1[1:]
+        ):
+            raise DaoPersistenceError("DAO persistence slots have conflicting generations")
+        external = read_anchor(self._revision_anchor, anchor_key, DaoPersistenceError)
+        if external is not None:
+            for index, candidate in enumerate((slot0, slot1)):
+                if candidate is not None and self._slot_anchor(*candidate) == external:
+                    return (index, *candidate)
+            if slot0 is None and slot1 is None:
+                raise DaoPersistenceError(missing_message)
+            raise DaoPersistenceError("DAO persistence rollback or substitution detected")
+        result = self._get_best_slot(path0, path1)
+        if result is None:
+            if external is not None:
+                raise DaoPersistenceError(missing_message)
+            return None
+        _, generation, sequence, payload = result
+        state = self._slot_anchor(generation, sequence, payload)
+        if not allow_initial or generation != 1:
+            raise DaoPersistenceError("DAO state is missing its rollback anchor")
+        advance_anchor(
+            self._revision_anchor,
+            anchor_key,
+            None,
+            state,
+            DaoPersistenceError,
+        )
+        return result
+
     def _tx_slot_path(self, slot: int) -> Path:
         return self._base_dir / f"dao_tx_{slot}.bin"
+
+    def _tx_marker_path(self) -> Path:
+        return self._base_dir / ".dao_tx_initialized"
+
+    def _tx_marker_exists(self) -> bool:
+        path = self._tx_marker_path()
+        try:
+            descriptor = os.open(path, os.O_RDONLY | _NOFOLLOW)
+        except FileNotFoundError:
+            return False
+        except OSError as exc:
+            raise DaoPersistenceError("DAO TX initialization marker is unreadable") from exc
+        try:
+            info = os.fstat(descriptor)
+            marker = os.read(descriptor, len(_TX_INITIALIZED_MARKER) + 1)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.geteuid()
+                or info.st_mode & 0o077
+                or marker != _TX_INITIALIZED_MARKER
+            ):
+                raise DaoPersistenceError("DAO TX initialization marker is unsafe")
+            return True
+        finally:
+            os.close(descriptor)
+
+    def _ensure_tx_marker(self) -> None:
+        if self._tx_marker_exists():
+            return
+        path = self._tx_marker_path()
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=".dao-tx-marker.", suffix=".tmp", dir=self._base_dir
+        )
+        temporary = Path(temporary_name)
+        try:
+            os.fchmod(descriptor, 0o600)
+            with os.fdopen(descriptor, "wb", closefd=True) as stream:
+                stream.write(_TX_INITIALIZED_MARKER)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, path)
+            directory = os.open(self._base_dir, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                os.close(descriptor)
+            with contextlib.suppress(OSError):
+                temporary.unlink(missing_ok=True)
+            raise
 
     def _rx_slot_path(self, pubkey: bytes, slot: int) -> Path:
         key_hex = pubkey.hex()
@@ -293,6 +440,8 @@ class TwoSlotFilePersistence(DaoPersistence):
 
     def _write_slot(self, path: Path, generation: int, sequence: int, payload: bytes) -> None:
         """Write a slot atomically with checksum validation."""
+        if len(payload) > _MAX_PAYLOAD_SIZE:
+            raise DaoPersistenceError("DAO persistence payload exceeds size limit")
         content = struct.pack(">IQ", generation, sequence) + payload
         checksum = hashlib.sha256(content).digest()
         slot_data = (
@@ -304,13 +453,22 @@ class TwoSlotFilePersistence(DaoPersistence):
             + payload
         )
 
-        # Write to temp file, fsync, then rename for atomicity
-        tmp_path = path.with_suffix(".tmp")
-        with open(tmp_path, "wb") as f:
-            f.write(slot_data)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp_path, path)
+        fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+        tmp_path = Path(tmp_name)
+        try:
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "wb", closefd=True) as file:
+                file.write(slot_data)
+                file.flush()
+                os.fsync(file.fileno())
+            os.replace(tmp_path, path)
+            os.chmod(path, 0o600)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                os.close(fd)
+            with contextlib.suppress(OSError):
+                tmp_path.unlink(missing_ok=True)
+            raise
 
         # Sync the directory to ensure rename is durable
         dir_fd = os.open(str(path.parent), os.O_RDONLY | os.O_DIRECTORY)
@@ -325,11 +483,22 @@ class TwoSlotFilePersistence(DaoPersistence):
         Returns:
             (generation, sequence, payload) or None if invalid/missing.
         """
-        if not path.exists():
+        try:
+            descriptor = os.open(path, os.O_RDONLY | _NOFOLLOW)
+        except FileNotFoundError:
+            return None
+        except OSError:
             return None
         try:
-            with open(path, "rb") as f:
-                data = f.read()
+            info = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.geteuid()
+                or info.st_mode & 0o077
+                or info.st_size > _SLOT_HEADER_SIZE + _MAX_PAYLOAD_SIZE
+            ):
+                return None
+            data = os.read(descriptor, _SLOT_HEADER_SIZE + _MAX_PAYLOAD_SIZE + 1)
             if len(data) < _SLOT_HEADER_SIZE:
                 return None
             if data[:4] != _SLOT_MAGIC:
@@ -351,16 +520,44 @@ class TwoSlotFilePersistence(DaoPersistence):
                 return None
 
             return generation, sequence, payload
-        except OSError:
-            return None
+        finally:
+            os.close(descriptor)
 
-    def _slot_exists(self, path: Path) -> bool:
-        """Check if a slot file exists (regardless of validity)."""
-        return path.exists()
+    @contextlib.contextmanager
+    def _process_lock(self):  # type: ignore[no-untyped-def]
+        try:
+            descriptor = os.open(
+                self._process_lock_path,
+                os.O_RDWR | os.O_CREAT | _NOFOLLOW,
+                0o600,
+            )
+            info = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.geteuid()
+                or info.st_mode & 0o077
+            ):
+                raise DaoPersistenceError("DAO persistence lock is unsafe")
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+        except OSError as exc:
+            if "descriptor" in locals():
+                with contextlib.suppress(OSError):
+                    os.close(descriptor)
+            raise DaoPersistenceError(f"DAO persistence lock failed: {exc}") from exc
+        except BaseException:
+            if "descriptor" in locals():
+                with contextlib.suppress(OSError):
+                    os.close(descriptor)
+            raise
+        try:
+            yield
+        finally:
+            with contextlib.suppress(OSError):
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+            with contextlib.suppress(OSError):
+                os.close(descriptor)
 
-    def _get_best_slot(
-        self, path0: Path, path1: Path
-    ) -> tuple[int, int, int, bytes] | None:
+    def _get_best_slot(self, path0: Path, path1: Path) -> tuple[int, int, int, bytes] | None:
         """Get the slot with higher valid generation.
 
         Returns:
@@ -376,6 +573,8 @@ class TwoSlotFilePersistence(DaoPersistence):
             return (1, slot1[0], slot1[1], slot1[2])
         if slot1 is None:
             return (0, slot0[0], slot0[1], slot0[2])
+        if slot0[0] == slot1[0] and slot0[1:] != slot1[1:]:
+            raise DaoPersistenceError("DAO persistence slots have conflicting generations")
         # Both valid: use higher generation
         if slot1[0] > slot0[0]:
             return (1, slot1[0], slot1[1], slot1[2])
@@ -389,10 +588,17 @@ class TwoSlotFilePersistence(DaoPersistence):
         used" sequence to protect, so it may start with default values.
         Corrupt state (files exist but are invalid) is a hard failure.
         """
-        return path0.exists() or path1.exists()
+        return os.path.lexists(path0) or os.path.lexists(path1)
 
     def _write_to_older_slot(
-        self, path0: Path, path1: Path, sequence: int, payload: bytes
+        self,
+        path0: Path,
+        path1: Path,
+        sequence: int,
+        payload: bytes,
+        anchor_key: bytes,
+        *,
+        allow_initial: bool,
     ) -> None:
         """Write to the older slot with incremented generation.
 
@@ -400,99 +606,152 @@ class TwoSlotFilePersistence(DaoPersistence):
         callers could read the same slot state, both compute the same
         "older" slot and generation, and one write would be lost.
         """
-        with self._write_lock:
+        with self._write_lock, self._process_lock():
+            current_result = self._get_anchored_slot(
+                path0,
+                path1,
+                anchor_key,
+                allow_initial=allow_initial,
+                missing_message="initialized DAO state was deleted",
+            )
             slot0 = self._read_slot(path0)
             slot1 = self._read_slot(path1)
+            if (
+                self._fail_closed
+                and slot0 is None
+                and slot1 is None
+                and self._any_slot_exists(path0, path1)
+            ):
+                raise DaoPersistenceError("refusing to overwrite corrupt DAO persistence state")
 
-            gen0 = slot0[0] if slot0 else 0
-            gen1 = slot1[0] if slot1 else 0
+            if current_result is not None:
+                if sequence < current_result[2]:
+                    raise DaoPersistenceError("DAO persistence sequence rollback")
+                if sequence == current_result[2]:
+                    if payload != current_result[3]:
+                        raise DaoPersistenceError("DAO persistence sequence collision")
+                    return
 
             # Write to older slot with generation = max + 1
-            new_gen = max(gen0, gen1) + 1
-            if gen0 <= gen1:
+            current_generation = 0 if current_result is None else current_result[1]
+            if current_generation == _MAX_GENERATION:
+                raise DaoPersistenceError("DAO persistence generation exhausted")
+            new_gen = current_generation + 1
+            if current_result is None or current_result[0] == 1:
                 self._write_slot(path0, new_gen, sequence, payload)
             else:
                 self._write_slot(path1, new_gen, sequence, payload)
+            previous = read_anchor(self._revision_anchor, anchor_key, DaoPersistenceError)
+            advance_anchor(
+                self._revision_anchor,
+                anchor_key,
+                previous,
+                self._slot_anchor(new_gen, sequence, payload),
+                DaoPersistenceError,
+            )
 
     def store_tx_state(self, sequence: int, dao_bytes: bytes) -> None:
+        if type(sequence) is not int or not 0 <= sequence <= (1 << 64) - 1:
+            raise ValueError("sequence must fit in u64")
+        if type(dao_bytes) is not bytes:
+            raise TypeError("dao_bytes must be immutable bytes")
         path0 = self._tx_slot_path(0)
         path1 = self._tx_slot_path(1)
-        self._write_to_older_slot(path0, path1, sequence, dao_bytes)
+        # Establish the legacy initialization sentinel before the anchored
+        # state transaction.  A marker failure therefore cannot report a
+        # failed store after the slot and external rollback anchor committed.
+        self._ensure_tx_marker()
+        self._write_to_older_slot(
+            path0,
+            path1,
+            sequence,
+            dao_bytes,
+            self._state_anchor_key(b"tx"),
+            allow_initial=self._allow_tx_bootstrap,
+        )
 
     def load_tx_state(self) -> TxState | None:
         path0 = self._tx_slot_path(0)
         path1 = self._tx_slot_path(1)
-        result = self._get_best_slot(path0, path1)
+        marker_exists = self._tx_marker_exists()
+        with self._write_lock, self._process_lock():
+            result = self._get_anchored_slot(
+                path0,
+                path1,
+                self._state_anchor_key(b"tx"),
+                allow_initial=self._allow_tx_bootstrap,
+                missing_message="initialized TX state was deleted",
+            )
         if result is None:
             # Per spec 8.6, distinguish missing (fresh node) from corrupt:
             # - No slots exist: fresh node, return None (allowed to start fresh)
             # - Slots exist but invalid: corrupt state, fail closed if configured
-            if self._fail_closed and self._any_slot_exists(path0, path1):
+            if self._fail_closed and (self._any_slot_exists(path0, path1) or marker_exists):
                 raise DaoPersistenceError("TX state corrupt")
             return None
         _, _, sequence, payload = result
         return TxState(sequence, payload)
 
     def store_rx_floor(self, pubkey: bytes, sequence: int, dao_digest: bytes) -> None:
+        if type(pubkey) is not bytes:
+            raise TypeError("pubkey must be immutable bytes")
         if len(pubkey) not in (16, 32):
             raise ValueError("pubkey must be 16 or 32 bytes")
+        if type(sequence) is not int or not 0 <= sequence <= (1 << 64) - 1:
+            raise ValueError("sequence must fit in u64")
+        if type(dao_digest) is not bytes:
+            raise TypeError("dao_digest must be immutable bytes")
         if len(dao_digest) != 64:
             raise ValueError("dao_digest must be 64 bytes (SHA-512)")
         path0 = self._rx_slot_path(pubkey, 0)
         path1 = self._rx_slot_path(pubkey, 1)
-        self._write_to_older_slot(path0, path1, sequence, dao_digest)
+        self._write_to_older_slot(
+            path0,
+            path1,
+            sequence,
+            dao_digest,
+            self._state_anchor_key(b"rx", pubkey),
+            allow_initial=True,
+        )
 
-    def store_rx_floors_batch(
-        self, floors: list[tuple[bytes, int, bytes]]
-    ) -> None:
+    def store_rx_floors_batch(self, floors: list[tuple[bytes, int, bytes]]) -> None:
         """Atomically commit multiple RX replay floors.
 
-        All floors are written while holding the write lock to ensure no
-        interleaving with concurrent operations. If any write fails, an
-        exception is raised immediately (fail-fast), leaving the successfully
-        written floors committed. This is the best atomicity guarantee possible
-        with independent per-pubkey two-slot files.
-
-        For true all-or-nothing semantics, a transactional backend (e.g., SQLite)
-        would be required.
+        This backend deliberately rejects more than one floor because separate
+        per-key slot files cannot provide an all-or-nothing multi-key commit.
         """
         if not floors:
             return
+        if len(floors) > 1:
+            raise DaoPersistenceError("two-slot backend rejects non-atomic multi-floor commit")
         # Validate all inputs before writing any
         for pubkey, _sequence, dao_digest in floors:
             if len(pubkey) not in (16, 32):
                 raise ValueError("pubkey must be 16 or 32 bytes")
             if len(dao_digest) != 64:
                 raise ValueError("dao_digest must be 64 bytes (SHA-512)")
-        # Write all floors under a single lock acquisition to prevent interleaving
-        with self._write_lock:
-            for pubkey, sequence, dao_digest in floors:
-                path0 = self._rx_slot_path(pubkey, 0)
-                path1 = self._rx_slot_path(pubkey, 1)
-                slot0 = self._read_slot(path0)
-                slot1 = self._read_slot(path1)
-                gen0 = slot0[0] if slot0 else 0
-                gen1 = slot1[0] if slot1 else 0
-                new_gen = max(gen0, gen1) + 1
-                if gen0 <= gen1:
-                    self._write_slot(path0, new_gen, sequence, dao_digest)
-                else:
-                    self._write_slot(path1, new_gen, sequence, dao_digest)
+        pubkey, sequence, dao_digest = floors[0]
+        self.store_rx_floor(pubkey, sequence, dao_digest)
 
     def load_rx_floor(self, pubkey: bytes) -> RxFloor | None:
         if len(pubkey) not in (16, 32):
             raise ValueError("pubkey must be 16 or 32 bytes")
         path0 = self._rx_slot_path(pubkey, 0)
         path1 = self._rx_slot_path(pubkey, 1)
-        result = self._get_best_slot(path0, path1)
+        with self._write_lock, self._process_lock():
+            result = self._get_anchored_slot(
+                path0,
+                path1,
+                self._state_anchor_key(b"rx", pubkey),
+                allow_initial=True,
+                missing_message=f"initialized RX floor was deleted for pubkey {pubkey.hex()}",
+            )
         if result is None:
             # Per spec 8.6, distinguish missing (no prior DAO from this origin)
             # from corrupt. Missing RX floor for an origin is normal (first DAO).
             # Corrupt floor files are a hard failure when fail_closed.
             if self._fail_closed and self._any_slot_exists(path0, path1):
-                raise DaoPersistenceError(
-                    f"RX floor corrupt for pubkey {pubkey.hex()}"
-                )
+                raise DaoPersistenceError(f"RX floor corrupt for pubkey {pubkey.hex()}")
             return None
         _, _, sequence, digest = result
         return RxFloor(sequence, digest)

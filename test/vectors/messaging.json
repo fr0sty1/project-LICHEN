@@ -1,0 +1,513 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "messaging",
+  "description": "Messaging test vectors per spec Section 17.5.7 (LCI) and 18.1 (Apps). Covers /msg/inbox POST, /msg/sent GET, /msg/ack POST.",
+  "spec": "spec/11-lci.md Section 17.5.7, spec/12-apps.md Section 18.1",
+  "vectors": [
+    {
+      "name": "inbox_post_valid_body",
+      "description": "Valid POST to /msg/inbox with body field.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "to": "0200:1234:5678:9abc::aaaa:bbbb:cccc:dddd",
+        "body": "Hello from the mesh!",
+        "ack": true
+      },
+      "expected": {
+        "response_code": "2.01 Created",
+        "location_path": "/msg/sent/{id}",
+        "message_stored": true
+      }
+    },
+    {
+      "name": "inbox_post_valid_text_legacy",
+      "description": "Valid POST with legacy 'text' field (alias for body).",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "to": "0200:1234:5678:9abc::1111:2222:3333:4444",
+        "text": "Legacy text field"
+      },
+      "expected": {
+        "response_code": "2.01 Created",
+        "note": "Implementations MUST accept 'text' as alias for 'body'"
+      }
+    },
+    {
+      "name": "inbox_post_body_only",
+      "description": "Minimal valid POST with just body field.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "body": "Minimal message"
+      },
+      "expected": {
+        "response_code": "2.01 Created",
+        "note": "to/ack/id are optional"
+      }
+    },
+    {
+      "name": "inbox_post_with_explicit_id",
+      "description": "Valid POST with explicit message ID.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 42,
+        "body": "Message with explicit ID"
+      },
+      "expected": {
+        "response_code": "2.01 Created",
+        "location_path": "/msg/sent/42",
+        "assigned_id": 42
+      }
+    },
+    {
+      "name": "inbox_post_max_u64_id",
+      "description": "Valid POST with maximum uint64 message ID.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 18446744073709551615,
+        "body": "Max ID message"
+      },
+      "expected": {
+        "response_code": "2.01 Created",
+        "note": "Max uint64 is valid per spec"
+      }
+    },
+    {
+      "name": "inbox_post_canned_message",
+      "description": "Valid POST using canned message reference (per 18.1.3).",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "canned": 4,
+        "ack": true
+      },
+      "expected": {
+        "response_code": "2.01 Created",
+        "note": "Canned message expansion is implementation-specific"
+      }
+    },
+    {
+      "name": "inbox_post_full_message",
+      "description": "Valid POST with all optional fields (per 18.1.1).",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 12345,
+        "to": "0200:1234:5678:9abc::aaaa:bbbb:cccc:dddd",
+        "body": "Full message with all fields",
+        "ack": true,
+        "priority": 1,
+        "reply_to": 12340,
+        "ttl": 3600
+      },
+      "expected": {
+        "response_code": "2.01 Created",
+        "location_path": "/msg/sent/12345"
+      }
+    },
+    {
+      "name": "inbox_post_broadcast",
+      "description": "Valid POST to broadcast address.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "to": "ff02::1",
+        "body": "Broadcast to all nodes"
+      },
+      "expected": {
+        "response_code": "2.01 Created",
+        "note": "ff02::1 is link-local all-nodes multicast"
+      }
+    },
+    {
+      "name": "inbox_get_observable",
+      "description": "GET /msg/inbox returns inbox with Observe support.",
+      "resource": "/msg/inbox",
+      "method": "GET",
+      "observe": 0,
+      "expected": {
+        "response_code": "2.05 Content",
+        "content_format": "application/cbor",
+        "response_schema": {
+          "messages": "array of message objects"
+        },
+        "observable": true
+      }
+    },
+    {
+      "name": "sent_get_valid",
+      "description": "GET /msg/sent/{id} returns a stored sent message.",
+      "resource": "/msg/sent/42",
+      "method": "GET",
+      "precondition": {
+        "message_id_exists": 42
+      },
+      "expected": {
+        "response_code": "2.05 Content",
+        "content_format": "application/cbor",
+        "fields_present": ["id", "body"]
+      }
+    },
+    {
+      "name": "sent_get_collection",
+      "description": "GET /msg/sent returns all sent messages.",
+      "resource": "/msg/sent",
+      "method": "GET",
+      "expected": {
+        "response_code": "2.05 Content",
+        "content_format": "application/cbor",
+        "response_schema": {
+          "messages": "array of sent message objects"
+        }
+      }
+    },
+    {
+      "name": "sent_get_not_found",
+      "description": "GET /msg/sent/{id} for non-existent ID returns 4.04.",
+      "resource": "/msg/sent/99999",
+      "method": "GET",
+      "precondition": {
+        "message_id_exists": false
+      },
+      "expected": {
+        "response_code": "4.04 Not Found"
+      }
+    },
+    {
+      "name": "sent_get_invalid_id_format",
+      "description": "GET /msg/sent/{id} with non-numeric ID returns 4.04.",
+      "resource": "/msg/sent/abc",
+      "method": "GET",
+      "expected": {
+        "response_code": "4.04 Not Found",
+        "note": "Non-decimal IDs are invalid"
+      }
+    },
+    {
+      "name": "receipt_post_delivered",
+      "description": "Valid delivery receipt POST to /msg/ack.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "delivered",
+        "ts": 1716742900
+      },
+      "cbor_hex": "a3626964193039667374617475736964656c6976657265646274731a66536af4",
+      "expected": {
+        "response_code": "2.04 Changed",
+        "receipt_stored": true
+      }
+    },
+    {
+      "name": "receipt_post_read",
+      "description": "Valid read receipt POST.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "read",
+        "ts": 1716742901
+      },
+      "expected": {
+        "response_code": "2.04 Changed"
+      }
+    },
+    {
+      "name": "receipt_post_failed",
+      "description": "Valid failure receipt POST.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "failed",
+        "ts": 1716742902
+      },
+      "expected": {
+        "response_code": "2.04 Changed"
+      }
+    },
+    {
+      "name": "receipt_post_min_values",
+      "description": "Valid receipt with minimum field values.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 0,
+        "status": "delivered",
+        "ts": 0
+      },
+      "expected": {
+        "response_code": "2.04 Changed",
+        "note": "id=0 and ts=0 are valid edge cases"
+      }
+    },
+    {
+      "name": "receipt_post_max_u64",
+      "description": "Valid receipt with maximum uint64 values.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 18446744073709551615,
+        "status": "delivered",
+        "ts": 4294967295
+      },
+      "expected": {
+        "response_code": "2.04 Changed",
+        "note": "Max uint64 id, max uint32 ts"
+      }
+    },
+    {
+      "name": "inbox_post_empty_payload",
+      "description": "POST with empty payload is rejected.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "payload": "",
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "empty_payload"
+      }
+    },
+    {
+      "name": "inbox_post_missing_body",
+      "description": "POST missing both body and text fields is rejected.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "to": "0200:1234:5678:9abc::aaaa:bbbb:cccc:dddd",
+        "ack": true
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "missing_body_or_text"
+      }
+    },
+    {
+      "name": "inbox_post_not_map",
+      "description": "POST with non-map CBOR payload is rejected.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": ["array", "not", "map"],
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "payload_not_map"
+      }
+    },
+    {
+      "name": "inbox_post_body_not_string",
+      "description": "POST with non-string body is rejected.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "body": 12345
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "body_not_string"
+      }
+    },
+    {
+      "name": "inbox_post_negative_id",
+      "description": "POST with negative message ID is rejected.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "id": -1,
+        "body": "Invalid ID"
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "invalid_id_type"
+      }
+    },
+    {
+      "name": "inbox_post_string_id",
+      "description": "POST with string message ID is rejected.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "id": "not-an-int",
+        "body": "Invalid ID type"
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "invalid_id_type"
+      }
+    },
+    {
+      "name": "inbox_post_id_exceeds_u64",
+      "description": "POST with ID exceeding uint64 max is rejected.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 18446744073709551616,
+        "body": "ID too large"
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "id_exceeds_u64"
+      }
+    },
+    {
+      "name": "inbox_post_invalid_cbor",
+      "description": "POST with malformed CBOR is rejected.",
+      "resource": "/msg/inbox",
+      "method": "POST",
+      "payload_hex": "ff",
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "cbor_decode_failed"
+      }
+    },
+    {
+      "name": "receipt_post_missing_id",
+      "description": "Receipt missing required 'id' field is rejected.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "status": "delivered",
+        "ts": 1716742900
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "missing_required_field"
+      }
+    },
+    {
+      "name": "receipt_post_missing_status",
+      "description": "Receipt missing required 'status' field is rejected.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 12345,
+        "ts": 1716742900
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "missing_required_field"
+      }
+    },
+    {
+      "name": "receipt_post_missing_ts",
+      "description": "Receipt missing required 'ts' field is rejected.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "delivered"
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "missing_required_field"
+      }
+    },
+    {
+      "name": "receipt_post_invalid_status",
+      "description": "Receipt with invalid status value is rejected.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "unknown",
+        "ts": 1716742900
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "invalid_status",
+        "valid_statuses": ["delivered", "read", "failed"]
+      }
+    },
+    {
+      "name": "receipt_post_negative_id",
+      "description": "Receipt with negative message ID is rejected.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": -1,
+        "status": "delivered",
+        "ts": 1716742900
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "invalid_id_type"
+      }
+    },
+    {
+      "name": "receipt_post_negative_ts",
+      "description": "Receipt with negative timestamp is rejected.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "delivered",
+        "ts": -1
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "invalid_ts_type"
+      }
+    },
+    {
+      "name": "receipt_post_string_id",
+      "description": "Receipt with string ID instead of integer is rejected.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {
+        "id": "12345",
+        "status": "delivered",
+        "ts": 1716742900
+      },
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "invalid_id_type"
+      }
+    },
+    {
+      "name": "receipt_post_empty_payload",
+      "description": "Receipt with empty CBOR map is rejected.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "cbor_payload": {},
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "missing_required_field"
+      }
+    },
+    {
+      "name": "receipt_post_no_payload",
+      "description": "Receipt POST with no payload is rejected.",
+      "resource": "/msg/ack",
+      "method": "POST",
+      "payload": "",
+      "expected": {
+        "response_code": "4.00 Bad Request",
+        "error": "empty_payload"
+      }
+    },
+    {
+      "name": "sent_get_leading_zeros",
+      "description": "GET /msg/sent/{id} with leading zeros in ID is rejected.",
+      "resource": "/msg/sent/0042",
+      "method": "GET",
+      "expected": {
+        "response_code": "4.04 Not Found",
+        "note": "IDs must be canonical decimal (no leading zeros except for id=0)"
+      }
+    },
+    {
+      "name": "sent_get_overflow_id",
+      "description": "GET /msg/sent/{id} with ID > uint64 max returns 4.04.",
+      "resource": "/msg/sent/18446744073709551616",
+      "method": "GET",
+      "expected": {
+        "response_code": "4.04 Not Found",
+        "note": "ID exceeds uint64 range"
+      }
+    }
+  ]
+}

@@ -89,6 +89,33 @@ class TestTxQueueBasic:
         with pytest.raises(ValueError):
             TxQueue(capacity=0)
 
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"data": "not-bytes"},
+            {"data": b"x", "dst_addr": "not-bytes"},
+            {"data": b"x", "priority": 1},
+            {"data": b"x", "priority": True},
+            {"data": b"x", "deadline_ms": float("nan")},
+            {"data": b"x", "deadline_ms": "soon"},
+            {"data": b"x", "channel": True},
+            {"data": b"x", "return_reservation": 1},
+        ],
+    )
+    def test_invalid_push_is_atomic_before_expiry(self, kwargs: dict[str, object]) -> None:
+        clock = FakeClock(0)
+        queue = TxQueue(clock=clock)
+        queue.push(b"stale-but-untouched", deadline_ms=1)
+        clock.advance(2)
+        before_entries = list(queue._entries)
+        before_stats = vars(queue.stats).copy()
+
+        with pytest.raises(TypeError):
+            queue.push(**kwargs)  # type: ignore[arg-type]
+
+        assert queue._entries == before_entries
+        assert vars(queue.stats) == before_stats
+
     def test_clear_removes_all(self):
         """clear() empties the queue."""
         q = TxQueue()
@@ -144,6 +171,20 @@ class TestTxQueueBasic:
 
         # Awaiting should immediately return False
         assert await res.wait() is False
+
+    @pytest.mark.asyncio
+    async def test_fail_terminally_removes_exact_reserved_entry(self):
+        q = TxQueue()
+        reservation = q.push(b"attempted-once", return_reservation=True)
+        assert reservation is not None
+        entry = q.reserve()
+        assert entry is not None
+
+        q.fail(entry)
+
+        assert len(q) == 0
+        assert await reservation.wait() is False
+        assert q.stats.packets_transmitted == 0
 
     def test_peek_without_removing(self):
         """peek() returns packet without removing it."""
@@ -969,7 +1010,8 @@ class TestReserveComplete:
         e2 = q._entries[1]
         q.complete(e2, success=True)
 
-        assert "complete(success) but entry not head of queue" in caplog.text
+        assert "complete but entry not head of queue" in caplog.text
+        assert len(q) == 2
 
     @pytest.mark.asyncio
     async def test_signal_all_pending_then_complete_first_wins(self, caplog):
@@ -995,13 +1037,14 @@ class TestReserveComplete:
         # Reservation should now be done with False
         assert res.done()
         assert res.result() is False
+        assert len(q) == 0
 
         # complete(True) comes later - should be ignored with warning
         q.complete(entry, success=True)
 
         # Result is still False (first wins), warning was logged
         assert res.result() is False
-        assert "set_result(True) ignored: already set to False" in caplog.text
+        assert "complete but entry not head of queue" in caplog.text
 
     @pytest.mark.asyncio
     async def test_complete_true_then_clear_no_conflict(self, caplog):

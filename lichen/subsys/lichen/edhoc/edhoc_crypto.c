@@ -14,6 +14,7 @@
 #include <zephyr/logging/log.h>
 
 #include <monocypher.h>
+#include <monocypher-ed25519.h>
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/hmac.h>
 #include <tinycrypt/aes.h>
@@ -272,6 +273,37 @@ int x25519_keypair(uint8_t sk[32], uint8_t pk[32])
 	}
 	crypto_x25519_public_key(pk, sk);
 	return 0;
+}
+
+/*
+ * Derive X25519 keypair from Ed25519 seed (for static DH)
+ *
+ * x25519_private = clamp(SHA-512(seed)[0:32]) per RFC 7748 section 5.
+ * x25519_public  = X25519(x25519_private, basepoint)
+ *
+ * SECURITY: The clamping operation is required to place the scalar in
+ * the correct subgroup, avoiding small-subgroup attacks in static DH.
+ */
+void x25519_keypair_from_seed(const uint8_t seed[32],
+			      uint8_t sk[32],
+			      uint8_t pk[32])
+{
+	uint8_t hash[64];
+
+	/* h = SHA-512(seed) */
+	crypto_sha512(hash, seed, 32);
+
+	/* sk = clamp(h[0:32]) per RFC 7748 section 5 */
+	memcpy(sk, hash, 32);
+	sk[0] &= 248;   /* Clear bits 0-2 */
+	sk[31] &= 127;  /* Clear bit 255 */
+	sk[31] |= 64;   /* Set bit 254 */
+
+	/* pk = X25519(sk, basepoint) */
+	crypto_x25519_public_key(pk, sk);
+
+	/* SECURITY: Wipe intermediate hash */
+	crypto_wipe(hash, sizeof(hash));
 }
 
 /*

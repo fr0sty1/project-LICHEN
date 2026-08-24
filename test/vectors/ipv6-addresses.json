@@ -1,60 +1,72 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "IPv6 addressing vectors: Ed25519 pubkey \u2192 IID (SHA-512 U/L cleared) \u2192 link-local fe80::/10 and primary 0200::/7 (Yggdrasil AddrForKey). Includes legacy EUI-64 and short-address IID. Oracle: python/src/lichen/ipv6/addr.py and crypto/identity.py; key binding 02xx[8:16]==IID.",
+  "description": "Exact Ed25519 pubkey to SHA-512 IID, link-local, and primary 0200::/8 native-address derivation. EUI-64 and short-address cases are explicitly link-interoperability helpers, not node identities.",
+  "oracle": {
+    "basis": "spec/03-addressing.md and spec/06-security.md Section 8.5",
+    "derivation": "h=SHA-512(pubkey); iid=h[0:8] with U/L cleared; native=0x02||h[0:7]||iid",
+    "implementation": "Python stdlib hashlib and ipaddress only",
+    "generator_command": "python3 test/vectors/generate_ipv6_addresses.py"
+  },
   "vectors": [
     {
       "name": "all_zero_pubkey",
+      "profile": "key_derived_identity",
       "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
-      "iid": "0000000000000000",
-      "link_local": "fe80::",
-      "link_local_packed": "fe800000000000000000000000000000",
-      "yggdrasil": "2ff::",
-      "yggdrasil_packed": "02ff0000000000000000000000000000",
-      "iid_in_yggdrasil": true
+      "iid": "5046adc1dba83886",
+      "link_local": "fe80::5046:adc1:dba8:3886",
+      "link_local_packed": "fe800000000000005046adc1dba83886",
+      "native": "250:46ad:c1db:a838:5046:adc1:dba8:3886",
+      "native_packed": "025046adc1dba8385046adc1dba83886",
+      "iid_in_native": true
     },
     {
-      "name": "all_01_pubkey_ed25519",
+      "name": "sha256_empty_as_pubkey",
+      "profile": "key_derived_identity",
       "pubkey": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "iid": "c7d6ca08166ecd20",
-      "link_local": "fe80::c7d6:ca08:166e:cd20",
-      "link_local_packed": "fe80000000000000c7d6ca08166ecd20",
-      "yggdrasil": "200:389e:777a:ce07:c7d6:ca08:166e:cd20",
-      "yggdrasil_packed": "0200389e777ace07c7d6ca08166ecd20",
-      "iid_in_yggdrasil": true
+      "iid": "694e6c1fe36504e1",
+      "link_local": "fe80::694e:6c1f:e365:4e1",
+      "link_local_packed": "fe80000000000000694e6c1fe36504e1",
+      "native": "26b:4e6c:1fe3:6504:694e:6c1f:e365:4e1",
+      "native_packed": "026b4e6c1fe36504694e6c1fe36504e1",
+      "iid_in_native": true
     },
     {
-      "name": "yggdrasil_official",
+      "name": "rfc8032_test_public_key",
+      "profile": "key_derived_identity",
       "pubkey": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
-      "iid": "ea90556802586d37",
-      "link_local": "fe80::ea90:5568:258:6d37",
-      "link_local_packed": "fe80000000000000ea90556802586d37",
-      "yggdrasil": "200:514a:cffc:fa9d:ea90:5568:258:6d37",
-      "yggdrasil_packed": "0200514acffcfa9dea90556802586d37",
-      "iid_in_yggdrasil": true
+      "iid": "0c02a50225b4baaa",
+      "link_local": "fe80::c02:a502:25b4:baaa",
+      "link_local_packed": "fe800000000000000c02a50225b4baaa",
+      "native": "20e:2a5:225:b4ba:c02:a502:25b4:baaa",
+      "native_packed": "020e02a50225b4ba0c02a50225b4baaa",
+      "iid_in_native": true
     },
     {
       "name": "all_ab_pubkey",
+      "profile": "key_derived_identity",
       "pubkey": "abababababababababababababababababababababababababababababababab",
-      "iid": "a8a8a8a8a8a8a8a8",
-      "link_local": "fe80::a8a8:a8a8:a8a8:a8a8",
-      "link_local_packed": "fe80000000000000a8a8a8a8a8a8a8a8",
-      "yggdrasil": "200:a8a8:a8a8:a8a8:a8a8:a8a8:a8a8:a8a8",
-      "yggdrasil_packed": "0200a8a8a8a8a8a8a8a8a8a8a8a8a8a8",
-      "iid_in_yggdrasil": true
+      "iid": "dde68b6d67350a45",
+      "link_local": "fe80::dde6:8b6d:6735:a45",
+      "link_local_packed": "fe80000000000000dde68b6d67350a45",
+      "native": "2dd:e68b:6d67:350a:dde6:8b6d:6735:a45",
+      "native_packed": "02dde68b6d67350adde68b6d67350a45",
+      "iid_in_native": true
     },
     {
       "name": "all_ff_pubkey",
+      "profile": "key_derived_identity",
       "pubkey": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-      "iid": "0000000000000000",
-      "link_local": "fe80::",
-      "link_local_packed": "fe800000000000000000000000000000",
-      "yggdrasil": "200::",
-      "yggdrasil_packed": "02000000000000000000000000000000",
-      "iid_in_yggdrasil": true
+      "iid": "25cd6935864716a7",
+      "link_local": "fe80::25cd:6935:8647:16a7",
+      "link_local_packed": "fe8000000000000025cd6935864716a7",
+      "native": "227:cd69:3586:4716:25cd:6935:8647:16a7",
+      "native_packed": "0227cd693586471625cd6935864716a7",
+      "iid_in_native": true
     },
     {
       "name": "eui64_spec_example",
+      "profile": "link_interoperability_only",
       "eui64": "103456789abcdef0",
       "iid": "123456789abcdef0",
       "link_local": "fe80::1234:5678:9abc:def0",
@@ -62,6 +74,7 @@
     },
     {
       "name": "eui64_zero",
+      "profile": "link_interoperability_only",
       "eui64": "0000000000000000",
       "iid": "0200000000000000",
       "link_local": "fe80::200:0:0:0",
@@ -69,6 +82,7 @@
     },
     {
       "name": "eui64_all_ff",
+      "profile": "link_interoperability_only",
       "eui64": "ffffffffffffffff",
       "iid": "fdffffffffffffff",
       "link_local": "fe80::fdff:ffff:ffff:ffff",
@@ -76,18 +90,21 @@
     },
     {
       "name": "short_0x0001",
+      "profile": "link_interoperability_only",
       "short_addr": 1,
       "short_hex": "0001",
       "iid": "000000fffe000001"
     },
     {
       "name": "short_0xabcd",
+      "profile": "link_interoperability_only",
       "short_addr": 43981,
       "short_hex": "abcd",
       "iid": "000000fffe00abcd"
     },
     {
       "name": "short_0xffff",
+      "profile": "link_interoperability_only",
       "short_addr": 65535,
       "short_hex": "ffff",
       "iid": "000000fffe00ffff"

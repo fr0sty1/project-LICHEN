@@ -75,7 +75,10 @@ impl Response {
         if !self.is_service_unavailable() {
             return None;
         }
-        let raw = self.max_age.map(|v| v as u64).unwrap_or(DEFAULT_503_BACKOFF_S);
+        let raw = self
+            .max_age
+            .map(|v| v as u64)
+            .unwrap_or(DEFAULT_503_BACKOFF_S);
         Some(raw.min(MAX_BACKOFF_S))
     }
 }
@@ -189,7 +192,8 @@ impl CoapClient {
         path: &str,
         body: &[u8],
     ) -> Result<Response, ClientError> {
-        self.request(addr, MessageCode::POST, path, Some(body)).await
+        self.request(addr, MessageCode::POST, path, Some(body))
+            .await
     }
 
     /// PUT coap://[addr][path] with CBOR body.
@@ -660,8 +664,13 @@ mod tests {
     fn response_with_max_age_parses_correctly() {
         let mid = 0x1234;
         let token: [u8; 0] = [];
-        let resp_data =
-            build_response_with_max_age(MessageCode::SERVICE_UNAVAILABLE, mid, &token, Some(120), None);
+        let resp_data = build_response_with_max_age(
+            MessageCode::SERVICE_UNAVAILABLE,
+            mid,
+            &token,
+            Some(120),
+            None,
+        );
         let resp = decode(&resp_data, mid, &token).unwrap();
         assert!(resp.is_service_unavailable());
         assert_eq!(resp.max_age, Some(120));
@@ -684,8 +693,13 @@ mod tests {
         let mid = 0x1234;
         let token: [u8; 0] = [];
         // Max-Age of 10000 seconds should be capped to MAX_BACKOFF_S (3600)
-        let resp_data =
-            build_response_with_max_age(MessageCode::SERVICE_UNAVAILABLE, mid, &token, Some(10000), None);
+        let resp_data = build_response_with_max_age(
+            MessageCode::SERVICE_UNAVAILABLE,
+            mid,
+            &token,
+            Some(10000),
+            None,
+        );
         let resp = decode(&resp_data, mid, &token).unwrap();
         assert_eq!(resp.max_age, Some(10000));
         assert_eq!(resp.retry_after_s(), Some(MAX_BACKOFF_S));
@@ -695,8 +709,13 @@ mod tests {
     fn response_retry_after_none_for_non_503() {
         let mid = 0x1234;
         let token: [u8; 0] = [];
-        let resp_data =
-            build_response_with_max_age(MessageCode::CONTENT, mid, &token, Some(120), Some(b"data"));
+        let resp_data = build_response_with_max_age(
+            MessageCode::CONTENT,
+            mid,
+            &token,
+            Some(120),
+            Some(b"data"),
+        );
         let resp = decode(&resp_data, mid, &token).unwrap();
         assert!(!resp.is_service_unavailable());
         assert_eq!(resp.max_age, Some(120)); // Max-Age is still parsed
@@ -715,7 +734,9 @@ mod tests {
         let mut client = CoapClient::new();
         let addr: SocketAddr = "127.0.0.1:5683".parse().unwrap();
         // Manually insert a backoff
-        client.backoffs.insert(addr, Instant::now() + Duration::from_secs(100));
+        client
+            .backoffs
+            .insert(addr, Instant::now() + Duration::from_secs(100));
         assert!(client.is_backed_off(&addr));
         client.clear_backoff(&addr);
         assert!(!client.is_backed_off(&addr));
@@ -726,8 +747,12 @@ mod tests {
         let mut client = CoapClient::new();
         let addr1: SocketAddr = "127.0.0.1:5683".parse().unwrap();
         let addr2: SocketAddr = "127.0.0.2:5683".parse().unwrap();
-        client.backoffs.insert(addr1, Instant::now() + Duration::from_secs(100));
-        client.backoffs.insert(addr2, Instant::now() + Duration::from_secs(100));
+        client
+            .backoffs
+            .insert(addr1, Instant::now() + Duration::from_secs(100));
+        client
+            .backoffs
+            .insert(addr2, Instant::now() + Duration::from_secs(100));
         assert!(client.is_backed_off(&addr1));
         assert!(client.is_backed_off(&addr2));
         client.clear_all_backoffs();

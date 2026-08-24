@@ -17,18 +17,10 @@
 
 #ifdef CONFIG_LICHEN_TDMA
 
-uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots)
+uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t sfn, uint8_t num_slots)
 {
 	if (num_slots == 0) num_slots = 8;
-	uint8_t buf[8];
-	memcpy(buf, eui64, 8);
-	uint32_t e = epoch;
-	for (size_t i = 0; i < 8; i++) {
-		buf[i] ^= (uint8_t)e;
-		e >>= 8;
-	}
-	uint32_t h = lichen_hash_32(buf, 8);
-	return (uint8_t)(h % num_slots);
+	return (uint8_t)((lichen_hash_32(eui64, 8) + sfn) % num_slots);
 }
 
 int lichen_tdma_init(struct lichen_tdma_ctx *tdma, struct lichen_link_ctx *ctx)

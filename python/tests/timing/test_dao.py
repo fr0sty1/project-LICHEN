@@ -67,6 +67,11 @@ class TestDaoRetryDelay:
         with pytest.raises(ValueError, match="attempt must be non-negative"):
             dao_retry_delay(-1)
 
+    @pytest.mark.parametrize("attempt", [True, 1.0, "1"])
+    def test_coercive_attempt_rejected(self, attempt: object) -> None:
+        with pytest.raises(TypeError, match="exact integer"):
+            dao_retry_delay(attempt)  # type: ignore[arg-type]
+
 
 class TestDaoRetryExhausted:
     """Test dao_retry_exhausted check."""
@@ -86,6 +91,15 @@ class TestDaoRetryExhausted:
     def test_10_attempts_exhausted(self) -> None:
         assert dao_retry_exhausted(10) is True
 
+    def test_negative_attempts_rejected(self) -> None:
+        with pytest.raises(ValueError, match="attempts must be non-negative"):
+            dao_retry_exhausted(-1)
+
+    @pytest.mark.parametrize("attempts", [True, 1.0, "1"])
+    def test_coercive_attempts_rejected(self, attempts: object) -> None:
+        with pytest.raises(TypeError, match="exact integer"):
+            dao_retry_exhausted(attempts)  # type: ignore[arg-type]
+
 
 class TestIsValidDaoSequence:
     """Test DAO sequence validation."""
@@ -103,9 +117,8 @@ class TestIsValidDaoSequence:
     def test_max_minus_one_valid(self) -> None:
         assert is_valid_dao_sequence(DAO_SEQUENCE_MAX - 1) is True
 
-    def test_max_invalid(self) -> None:
-        # Must not be exactly max (reserved/sentinel)
-        assert is_valid_dao_sequence(DAO_SEQUENCE_MAX) is False
+    def test_max_valid_as_final_sequence(self) -> None:
+        assert is_valid_dao_sequence(DAO_SEQUENCE_MAX) is True
 
     def test_negative_invalid(self) -> None:
         # Out of valid range
@@ -113,6 +126,11 @@ class TestIsValidDaoSequence:
 
     def test_above_max_invalid(self) -> None:
         assert is_valid_dao_sequence(DAO_SEQUENCE_MAX + 1) is False
+
+    def test_coercive_values_invalid(self) -> None:
+        assert is_valid_dao_sequence(True) is False
+        assert is_valid_dao_sequence(1.0) is False  # type: ignore[arg-type]
+        assert is_valid_dao_sequence("1") is False  # type: ignore[arg-type]
 
 
 class TestIsValidDaoSequenceWithPrevMax:
@@ -135,9 +153,14 @@ class TestIsValidDaoSequenceWithPrevMax:
         # No previous, any valid seq works
         assert is_valid_dao_sequence(1, prev_max=None) is True
 
-    def test_max_with_prev_invalid(self) -> None:
-        # Even with valid prev, max itself is invalid
-        assert is_valid_dao_sequence(DAO_SEQUENCE_MAX, prev_max=100) is False
+    def test_max_with_lower_previous_is_valid_terminal_value(self) -> None:
+        assert is_valid_dao_sequence(DAO_SEQUENCE_MAX, prev_max=100) is True
+
+    def test_invalid_previous_floors_rejected(self) -> None:
+        assert is_valid_dao_sequence(1, prev_max=True) is False
+        assert is_valid_dao_sequence(1, prev_max=-1) is False
+        assert is_valid_dao_sequence(1, prev_max=DAO_SEQUENCE_MAX + 1) is False
+        assert is_valid_dao_sequence(1, prev_max=0.0) is False  # type: ignore[arg-type]
 
 
 class TestDaoTimingScenarios:

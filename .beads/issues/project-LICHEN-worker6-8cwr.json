@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-8cwr",
+  "title": "Normalize extreme trust timestamps without raw overflow",
+  "description": "Robustness review finding in python/src/lichen/crypto/trust.py lines 132-141 and python/src/lichen/crypto/key_persistence.py lines 813-870: math.isfinite() and float() are applied to arbitrary Python/JSON integers without consistently catching OverflowError. A representable JSON integer such as 10**309 causes raw OverflowError instead of ValueError/TrustStorePersistenceError; very long JSON integers can also make json.loads raise ValueError not caught by _read_json_locked. Convert under a bounded/caught validation path and add direct/API plus authenticated-document tests.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:29:20.466191Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:29:39.535676Z",
+  "started_at": "2026-08-24T18:29:39.535676Z",
+  "lease_expires_at": "2026-08-24T18:34:39.535676Z",
+  "heartbeat_at": "2026-08-24T18:29:39.535676Z"
+}

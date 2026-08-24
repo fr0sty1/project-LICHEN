@@ -28,10 +28,14 @@
 //!
 //! Wire layout (spec 4.1):
 //! ```text
-//! +--------+--------+-------+--------+----------+---------+-------+
-//! | Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload |  MIC  |
-//! +--------+--------+-------+--------+----------+---------+-------+
-//!    1B       1B       1B      2B       0/2/8B     var      0/48B
+//! +--------+--------+-------+--------+----------+------------+---------+-------+
+//! | Length | LLSec  | Epoch | SeqNum | Dst Addr | Signer EUI | Payload |  MIC  |
+//! +--------+--------+-------+--------+----------+------------+---------+-------+
+//!    1B       1B       1B      2B       0/2/8B       8B*        var      0/48B
+//! ```
+//! `Signer EUI` is present exactly when the SI bit is set; signed production
+//! frames set SI so receivers can perform an exact peer lookup before crypto.
+//! ```text
 //! ```
 //!
 //! LLSec byte packs from LSB:
@@ -39,16 +43,22 @@
 //!   bits 2-4 : MicLength compatibility selector (0 or 1; ignored for wire MIC length)
 //!   bit  5   : signature present (Schnorr-48)
 //!   bit  6   : encrypted (unsupported; receivers reject)
-//!   bit  7   : reserved (must be 0)
+//!   bit  7   : signer EUI-64 present (SI)
 
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod evidence;
 pub mod frame;
 pub mod keys;
 pub mod replay;
 pub mod seqnum;
+pub mod sos;
 
+pub use evidence::{
+    AuthenticatedLinkFrame, DurablePeerKeyGeneration, PeerKeyGeneration, ReceiptClock,
+    ReceiptClockError, ReceiptEvidence,
+};
 #[cfg(feature = "schnorr")]
 pub use keys::{PrivateKey, PublicKey, Seed};
 pub use seqnum::LinkSeqNum;
@@ -61,6 +71,11 @@ pub mod identity;
 #[cfg(feature = "schnorr")]
 pub use identity::{human_address_from_pubkey, iid_from_pubkey};
 pub use lichen_core::addr::ygg_addr_from_pubkey;
+
+pub use sos::{
+    SosAlert, SosAlertType, SosRateLimitConfig, SosRateLimitConfigError, SosRateLimitResult,
+    SosRateLimitState,
+};
 
 #[cfg(all(feature = "schnorr", feature = "std"))]
 pub mod link_layer;

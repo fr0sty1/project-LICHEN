@@ -1,0 +1,160 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "no_silent_drops",
+  "description": "No Silent Drops oracle per spec appendix-bufferbloat.md B.2.5. Validates that packet drops are explicitly signaled via exceptions, return values, and logging.",
+  "spec": "spec/appendix-bufferbloat.md",
+  "spec_section": "B.2.5",
+  "requirements": [
+    {
+      "id": "B.2.5.1",
+      "text": "Return error to local sender",
+      "implementation": "QueueFullError exception from TxQueue.push() and ForwardingResult.BACKPRESSURE from ForwardingBuffer.try_buffer()"
+    },
+    {
+      "id": "B.2.5.2",
+      "text": "NACK to mesh source (if routable)",
+      "implementation": "ICMPv6 Destination Unreachable (ADMIN_PROHIBITED) via make_resource_exhausted() helper"
+    },
+    {
+      "id": "B.2.5.3",
+      "text": "Log queue-full events for diagnostics",
+      "implementation": "WARNING-level logging on all packet drops (backpressure, eviction, pending queue full)"
+    }
+  ],
+  "vectors": [
+    {
+      "name": "tx_queue_full_raises_exception",
+      "description": "TxQueue.push() raises QueueFullError when full and cannot preempt (explicit backpressure).",
+      "component": "TxQueue",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "bulk1", "priority": "BULK"},
+          {"data": "bulk2", "priority": "BULK"}
+        ],
+        "incoming": {"data": "bulk3", "priority": "BULK"}
+      },
+      "expected": {
+        "raises": "QueueFullError",
+        "stats": {
+          "packets_dropped_full": 1
+        }
+      }
+    },
+    {
+      "name": "tx_queue_preemption_signals_reservation",
+      "description": "Preempted packets signal their reservation with False (No Silent Drops).",
+      "component": "TxQueue",
+      "scenario": {
+        "capacity": 1,
+        "initial_packets": [
+          {"data": "bulk1", "priority": "BULK", "has_reservation": true}
+        ],
+        "incoming": {"data": "routing1", "priority": "ROUTING"}
+      },
+      "expected": {
+        "preempted_reservation_result": false,
+        "stats": {
+          "packets_dropped_preempt": 1
+        }
+      }
+    },
+    {
+      "name": "tx_queue_expiry_signals_reservation",
+      "description": "Expired packets signal their reservation with False (No Silent Drops).",
+      "component": "TxQueue",
+      "scenario": {
+        "enqueue_time_ms": 0,
+        "packet": {"data": "stale", "deadline_ms": 100, "has_reservation": true},
+        "time_advance_ms": 200
+      },
+      "expected": {
+        "expired_reservation_result": false,
+        "stats": {
+          "packets_dropped_deadline": 1
+        }
+      }
+    },
+    {
+      "name": "tx_queue_clear_signals_reservations",
+      "description": "TxQueue.clear() signals all pending reservations with False (No Silent Drops).",
+      "component": "TxQueue",
+      "scenario": {
+        "packets": [
+          {"data": "p1", "has_reservation": true},
+          {"data": "p2", "has_reservation": true},
+          {"data": "p3", "has_reservation": true}
+        ]
+      },
+      "expected": {
+        "all_reservations_signaled": true,
+        "all_reservations_result": false
+      }
+    },
+    {
+      "name": "forwarding_buffer_backpressure_per_source",
+      "description": "ForwardingBuffer returns BACKPRESSURE when per-source limit reached.",
+      "component": "ForwardingBuffer",
+      "scenario": {
+        "max_per_source": 2,
+        "source_iid": "0101010101010101",
+        "initial_packets": 2,
+        "incoming": {"source_iid": "0101010101010101"}
+      },
+      "expected": {
+        "result": "BACKPRESSURE",
+        "stats": {
+          "packets_backpressure": 1
+        }
+      }
+    },
+    {
+      "name": "forwarding_buffer_eviction_logged",
+      "description": "ForwardingBuffer eviction is logged at WARNING level for diagnostics.",
+      "component": "ForwardingBuffer",
+      "scenario": {
+        "max_sources": 2,
+        "max_per_source": 1,
+        "initial_sources": ["0101010101010101", "0202020202020202"],
+        "incoming": {"source_iid": "0303030303030303"}
+      },
+      "expected": {
+        "result": "EVICTED",
+        "stats": {
+          "packets_evicted": 1
+        },
+        "log_level": "WARNING"
+      }
+    },
+    {
+      "name": "icmpv6_resource_exhausted_nack",
+      "description": "make_resource_exhausted() creates ICMPv6 DEST_UNREACHABLE with ADMIN_PROHIBITED code.",
+      "component": "icmpv6",
+      "scenario": {
+        "invoking_packet_hex": "60000000002011fd0001020304050607000000000000000002060000000000000000000000000001"
+      },
+      "expected": {
+        "type": 1,
+        "code": 1,
+        "type_name": "DEST_UNREACHABLE",
+        "code_name": "ADMIN_PROHIBITED"
+      }
+    },
+    {
+      "name": "pending_queue_drop_logged",
+      "description": "Pending queue drops oldest packet and logs at WARNING level.",
+      "component": "Router",
+      "scenario": {
+        "max_pending_per_dest": 2,
+        "destination": "fd00::100",
+        "initial_packets": 2,
+        "incoming": {"destination": "fd00::100"}
+      },
+      "expected": {
+        "oldest_dropped": true,
+        "log_level": "WARNING"
+      }
+    }
+  ]
+}

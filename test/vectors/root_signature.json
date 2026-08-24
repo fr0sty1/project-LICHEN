@@ -1,0 +1,112 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "root_signature",
+  "description": "Root signature verification for RPL DIO messages (spec sections 8.2, 8.4). Root legitimacy requires: (1) valid Schnorr48 signature on RPL message, (2) DODAGID == AddrForKey(root_pubkey) cryptographic binding. Expected results are fixed literals independently checked with test/vectors/reference_schnorr48.py and direct SHA-512 address derivation.",
+  "spec": "spec/drafts/draft-lichen-rpl-lora-00.md",
+  "vectors": [
+    {
+      "description": "Valid signature with correct DODAGID binding",
+      "seed": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "message": "746573742044494f206d657373616765",
+      "signature": "712a75eb2752c2fffcaf1b96c16fca472b32ce3597f162561a5e10fa02da33c8119a761ad9793d359c9412bf9525920b",
+      "dodagid": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "valid": true,
+      "error": null
+    },
+    {
+      "description": "Valid signature with different identity",
+      "seed": "55545756515053525d5c5f5e59585b5a45444746414043424d4c4f4e49484b4a",
+      "pubkey": "06d6fa0d1601bc9668b7c078134d65e9b30a34153a32b267f668d668f415ac1e",
+      "message": "616e6f746865722044494f",
+      "signature": "97d894858f7a2dfdd24f34d8b5bf4a64cf21728f4b255661cf820477ecf6e91f33f40909dc654d28a8360ac8f585fd0f",
+      "dodagid": "02ab12715856c246a912715856c2468b",
+      "dodagid_str": "2ab:1271:5856:c246:a912:7158:56c2:468b",
+      "valid": true,
+      "error": null
+    },
+    {
+      "description": "Valid signature with empty message",
+      "seed": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "message": "",
+      "signature": "da23cf60924c920d917e99ac05c9ee1c1a06692c80c265004ca8f695398b89fe9d4c8e4d7398cc0ada83845dc5bb5109",
+      "dodagid": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "valid": true,
+      "error": null
+    },
+    {
+      "description": "Valid signature with long (256-byte) message",
+      "seed": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "message": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "signature": "e90c7383d65a40e1ec50cf674c4904598637b5799532c4fbb34374ebbba71ca43bc3e86f953e7e48935f6bc1a54ae40a",
+      "dodagid": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "valid": true,
+      "error": null
+    },
+    {
+      "description": "Error: tampered signature (bit flip)",
+      "pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "message": "746573742044494f206d657373616765",
+      "signature": "702b74ea2653c3fefdae1a97c06ecb462a33cf3496f063571b5f11fb03db32c9109b771bd8783c349d9513be9424930a",
+      "dodagid": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "valid": false,
+      "error": "SIGNATURE_INVALID"
+    },
+    {
+      "description": "Error: signature over different message",
+      "pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "message": "77726f6e67206d657373616765",
+      "signature": "712a75eb2752c2fffcaf1b96c16fca472b32ce3597f162561a5e10fa02da33c8119a761ad9793d359c9412bf9525920b",
+      "dodagid": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "valid": false,
+      "error": "SIGNATURE_INVALID"
+    },
+    {
+      "description": "Error: attacker cannot claim victim DODAGID (impersonation attack)",
+      "pubkey": "bafc71bead3ac5e4b63e9c8216ee71a34aaec65722eedbca728b4e9b3ccce396",
+      "message": "746573742044494f206d657373616765",
+      "signature": "a5c3136f3ee9e861d3cb3bac534554a90336b5d6db55c64829318f33f5ffb96b19567c49f438abf4282110bdd4fda90c",
+      "dodagid": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "valid": false,
+      "error": "DODAGID_MISMATCH",
+      "note": "Attacker with different key cannot claim victim's DODAGID - this is the core security property"
+    },
+    {
+      "description": "Error: zero DODAGID does not match any pubkey",
+      "pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "message": "746573742044494f206d657373616765",
+      "signature": "712a75eb2752c2fffcaf1b96c16fca472b32ce3597f162561a5e10fa02da33c8119a761ad9793d359c9412bf9525920b",
+      "dodagid": "00000000000000000000000000000000",
+      "dodagid_str": "::",
+      "valid": false,
+      "error": "DODAGID_MISMATCH"
+    },
+    {
+      "description": "Error: all-zero signature is invalid",
+      "pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "message": "746573742044494f206d657373616765",
+      "signature": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "dodagid": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "valid": false,
+      "error": "SIGNATURE_INVALID"
+    },
+    {
+      "description": "DODAGID binding: pubkey derives to specific Yggdrasil address",
+      "pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "dodagid": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "binding_valid": true,
+      "note": "DODAGID == AddrForKey(pubkey), LICHEN native 0200::/8 address"
+    }
+  ]
+}

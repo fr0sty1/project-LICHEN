@@ -56,14 +56,14 @@ async def test_bind_coap_udp_status(node):
 
 @pytest.mark.asyncio
 async def test_bind_coap_udp_neighbors(node):
-    """Test that /neighbors is queryable via real UDP."""
+    """Test that /status/neighbors is queryable via real UDP."""
     ctx = await bind_coap_udp(node, port=TEST_PORT + 1, bind=TEST_BIND)
     try:
         client = await aiocoap.Context.create_client_context()
         try:
             request = aiocoap.Message(
                 code=aiocoap.GET,
-                uri=f"coap://{TEST_BIND}:{TEST_PORT + 1}/neighbors",
+                uri=f"coap://{TEST_BIND}:{TEST_PORT + 1}/status/neighbors",
             )
             response = await client.request(request).response
             assert response.code.is_successful()
@@ -100,7 +100,7 @@ async def test_bind_coap_udp_config_put_explicit_opt_in(node):
         node,
         port=TEST_PORT + 3,
         bind=TEST_BIND,
-        allow_config_write=True,
+        config_allow_writes=True,
     )
     try:
         client = await aiocoap.Context.create_client_context()

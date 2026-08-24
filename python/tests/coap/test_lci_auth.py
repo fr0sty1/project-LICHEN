@@ -230,7 +230,13 @@ class TestKeysAuth:
             await client.shutdown()
             await server.shutdown()
 
-    async def test_keys_put_not_implemented(self) -> None:
+    async def test_keys_put_on_root_returns_method_not_allowed(self) -> None:
+        """PUT on /keys root (without IID) returns METHOD_NOT_ALLOWED.
+
+        PUT is only allowed on individual keys (/keys/{iid}), not the collection.
+        """
+        from aiocoap import METHOD_NOT_ALLOWED
+
         net = InMemoryNetwork()
         pubkey = bytes(32)
         server = await create_lichen_context(
@@ -242,7 +248,7 @@ class TestKeysAuth:
             resp = await client.request(
                 Message(code=PUT, uri="coap://srv/keys")
             ).response
-            assert resp.code == NOT_FOUND
+            assert resp.code == METHOD_NOT_ALLOWED
         finally:
             await client.shutdown()
             await server.shutdown()
@@ -322,7 +328,7 @@ class TestWellKnownCoreAuth:
             body = resp.payload.decode()
             assert "</status>" in body
             assert "</config>" in body
-            assert "</neighbors>" in body
+            assert "</status/neighbors>" in body
         finally:
             await client.shutdown()
             await server.shutdown()

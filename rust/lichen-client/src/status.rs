@@ -143,6 +143,38 @@ impl Neighbors {
     }
 }
 
+/// Queue latency/drop statistics from `GET /status/queues`.
+///
+/// Wire contract (firmware `lichen/apps/gateway/src/status_cbor.c`,
+/// `lichen_gateway_encode_queues_cbor`): a 5-element CBOR map with keys
+/// `packets_queued`, `dropped_deadline`, `dropped_full`, `max_latency_ms`,
+/// `avg_latency_ms`, per spec/appendix-bufferbloat.md "Measuring Queue
+/// Latency".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QueueStats {
+    /// Total packets accepted into the TX queue.
+    pub packets_queued: u64,
+    /// Packets dropped because their deadline expired before TX.
+    #[serde(rename = "dropped_deadline")]
+    pub dropped_deadline: u64,
+    /// Packets dropped because the queue was full and preemption failed.
+    #[serde(rename = "dropped_full")]
+    pub dropped_full: u64,
+    /// Worst-case time a packet spent in the queue, in milliseconds.
+    #[serde(rename = "max_latency_ms")]
+    pub max_latency_ms: u64,
+    /// Smoothed average queue time (EWMA alpha 1/8), in milliseconds.
+    #[serde(rename = "avg_latency_ms")]
+    pub avg_latency_ms: u64,
+}
+
+impl QueueStats {
+    /// Decode a `GET /status/queues` CBOR response.
+    pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
+        ciborium::from_reader(bytes).map_err(|e| Error::Decode(e.to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -308,5 +340,26 @@ mod tests {
         let wire = Value::Map(vec![(txt("neighbors"), Value::Array(vec![]))]);
         let ns = Neighbors::from_cbor(&encode(&wire)).unwrap();
         assert!(ns.neighbors.is_empty());
+    }
+
+    /// Oracle: a CBOR map built with the firmware's exact `/status/queues`
+    /// keys (`lichen_gateway_encode_queues_cbor`), independent of the
+    /// struct's serde mapping.
+    #[test]
+    fn queue_stats_decode_firmware_map() {
+        let wire = Value::Map(vec![
+            (txt("packets_queued"), Value::Integer(120u64.into())),
+            (txt("dropped_deadline"), Value::Integer(3u64.into())),
+            (txt("dropped_full"), Value::Integer(7u64.into())),
+            (txt("max_latency_ms"), Value::Integer(950u64.into())),
+            (txt("avg_latency_ms"), Value::Integer(88u64.into())),
+        ]);
+
+        let q = QueueStats::from_cbor(&encode(&wire)).unwrap();
+        assert_eq!(q.packets_queued, 120);
+        assert_eq!(q.dropped_deadline, 3);
+        assert_eq!(q.dropped_full, 7);
+        assert_eq!(q.max_latency_ms, 950);
+        assert_eq!(q.avg_latency_ms, 88);
     }
 }

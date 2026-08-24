@@ -68,11 +68,7 @@ fn ema_single_update_vectors() {
 
         // Verify Q16.16 result matches expected
         let expected_fp = out["new_avg_fp"].as_i64().unwrap() as i32;
-        assert_eq!(
-            new_avg_fp, expected_fp,
-            "{}: new_avg_fp mismatch",
-            name
-        );
+        assert_eq!(new_avg_fp, expected_fp, "{}: new_avg_fp mismatch", name);
 
         // Verify integer conversion with round-half-up
         let new_avg_int = fp_to_int_round_half_up(new_avg_fp);
@@ -131,11 +127,7 @@ fn ema_sequence_vectors() {
 
         // Verify final value
         let expected_final_fp = out["final_avg_fp"].as_i64().unwrap() as i32;
-        assert_eq!(
-            avg_fp, expected_final_fp,
-            "{}: final_avg_fp mismatch",
-            name
-        );
+        assert_eq!(avg_fp, expected_final_fp, "{}: final_avg_fp mismatch", name);
 
         // Verify final integer conversion
         let final_int = fp_to_int_round_half_up(avg_fp);

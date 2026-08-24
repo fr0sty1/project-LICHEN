@@ -43,7 +43,8 @@
               {"$ref": "#/definitions/hash_32_vector"},
               {"$ref": "#/definitions/ccp_load_balancing_vector"},
               {"$ref": "#/definitions/ipv6_malformed_vector"},
-              {"$ref": "#/definitions/schc_adaptation_vector"}
+              {"$ref": "#/definitions/schc_adaptation_vector"},
+              {"$ref": "#/definitions/gcp_vector"}
             ]
           }
         }
@@ -99,7 +100,8 @@
           {"$ref": "#/definitions/compact_cot_vector"},
           {"$ref": "#/definitions/schnorr48_vector"},
           {"$ref": "#/definitions/hash_32_vector"},
-          {"$ref": "#/definitions/ccp_load_balancing_vector"}
+          {"$ref": "#/definitions/ccp_load_balancing_vector"},
+          {"$ref": "#/definitions/gcp_vector"}
         ]
       },
       "description": "v2 bare array root (used by ccp16-desync.json for desync test vectors)"
@@ -241,6 +243,30 @@
           }
         }
       ]
+    },
+    "gateway_coordination_document": {
+      "description": "GCP vector family branch (gateway_coordination.json, gcp6_slot_coordination.json, rpl_multi_instance.json): enforces per-vector name/type/description key presence (project-LICHEN-worker6-jo3q/hik5).",
+      "allOf": [
+        {"$ref": "#/definitions/document_base"},
+        {
+          "properties": {
+            "vectors": {
+              "items": {"$ref": "#/definitions/gcp_vector"}
+            }
+          }
+        }
+      ]
+    },
+    "gcp_vector": {
+      "type": "object",
+      "required": ["name", "type", "description"],
+      "additionalProperties": true,
+      "description": "Gateway Coordination Protocol (GCP) vector: heterogeneous per-type payloads are allowed; the required keys guarantee every vector is identifiable and self-describing for cross-implementation consumers.",
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "type": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1}
+      }
     },
     "compact_cot_document": {
       "allOf": [
@@ -405,7 +431,7 @@
             "rule_79": {"$ref": "#/definitions/fragmentation_controls"}
           }
         },
-        "attempts_before": {"type": "integer", "const": 4},
+        "attempts_before": {"type": "integer", "const": 2},
         "trigger": {"$ref": "#/definitions/byte_value"},
         "expected_message": {"$ref": "#/definitions/byte_value"},
         "expect_status": {"type": "string", "enum": ["ok", "packet_too_large", "aborted"]},
@@ -962,6 +988,10 @@
         "tx_ms": {"type": "integer", "minimum": 0},
         "expected_remaining_ms": {"type": "integer", "minimum": 0},
         "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "density": {"type": "integer", "minimum": 0, "maximum": 255},
+        "region": {"type": "integer", "minimum": 0, "maximum": 1},
+        "expected_duty_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "input_crc32": {"$ref": "#/definitions/hex"},
         "notes": {"type": "string"},
         "binary_hex": {"$ref": "#/definitions/hex"},
         "decoded_fields": {

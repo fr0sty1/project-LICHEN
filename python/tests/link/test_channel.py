@@ -17,6 +17,22 @@ from lichen.sim.tdma import synchronized_hop_channel as tdma_synchronized_hop_ch
 from lichen.time_provider import SimulatedTimeProvider
 
 
+def _fnv1a32(data: bytes) -> int:
+    """Published FNV-1a 32-bit (offset 0x811c9dc5, prime 0x01000193).
+
+    Independent of lichen.link.channel.hash_32 so wrap tests have an
+    oracle that is not the function under test.
+    """
+    h = 0x811C9DC5
+    for b in data:
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
+def _u32le(value: int) -> bytes:
+    return (value & 0xFFFFFFFF).to_bytes(4, "little")
+
+
 class TestSfnFromUnixTime:
     """Tests for sfn_from_unix_time function."""
 
@@ -56,6 +72,12 @@ class TestSfnFromUnixTime:
         custom_epoch = 1_000_000_000_000_000  # Some arbitrary epoch
         time_us = custom_epoch + 3 * SUPERFRAME_DURATION_US
         assert sfn_from_unix_time(time_us, epoch_base_us=custom_epoch) == 3
+
+    def test_zero_superframe_duration_returns_zero(self) -> None:
+        """Duration 0 must not divide; SFN is defined as 0 (Rust/C contract)."""
+        after_epoch = GNSS_EPOCH_BASE_US + 1_000_000
+        assert sfn_from_unix_time(after_epoch, superframe_duration_us=0) == 0
+        assert sfn_from_unix_time(after_epoch, superframe_duration_us=-1) == 0
 
 
 class TestSynchronizedHopChannel:
@@ -111,6 +133,24 @@ class TestSynchronizedHopChannel:
         """Edge case: n_channels=1 should return channel 1."""
         ch = synchronized_hop_channel(42, seed=0, n_channels=1)
         assert ch == 1
+
+    def test_seed_wraps_as_u32(self) -> None:
+        """Negative or oversized seed is little-endian u32, matching SFN masking."""
+        sfn = 42
+        n_channels = 64
+        n = max(n_channels - 1, 1)
+
+        data_neg = _u32le(-1) + _u32le(sfn)
+        expected_neg = 1 + (_fnv1a32(data_neg) % n)
+        assert synchronized_hop_channel(sfn, seed=-1, n_channels=n_channels) == expected_neg
+
+        data_over = _u32le(0x1_0000_0005) + _u32le(sfn)
+        expected_over = 1 + (_fnv1a32(data_over) % n)
+        assert (
+            synchronized_hop_channel(sfn, seed=0x1_0000_0005, n_channels=n_channels)
+            == expected_over
+        )
+        assert expected_over == 1 + (_fnv1a32(_u32le(5) + _u32le(sfn)) % n)
 
 
 class TestSynchronizedHopChannelCompatibility:
@@ -298,6 +338,55 @@ class TestSelectChannel:
         )
         # Should use hash-based since no time provider
         assert 1 <= ch <= 7
+
+    def test_epoch_wraps_as_u32(self) -> None:
+        """Negative or oversized epoch is little-endian u32, matching SFN masking."""
+        eui = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+        sfn = 42
+        n_channels = 8
+        n = max(n_channels - 1, 1)
+
+        expected = 1 + (_fnv1a32(eui + _u32le(-1) + _u32le(sfn)) % n)
+        assert (
+            select_channel(
+                peer_eui64=eui,
+                peer_known=True,
+                sfn=sfn,
+                epoch=-1,
+                n_channels=n_channels,
+            )
+            == expected
+        )
+
+        expected_over = 1 + (_fnv1a32(eui + _u32le(0x1_0000_0007) + _u32le(sfn)) % n)
+        assert (
+            select_channel(
+                peer_eui64=eui,
+                peer_known=True,
+                sfn=sfn,
+                epoch=0x1_0000_0007,
+                n_channels=n_channels,
+            )
+            == expected_over
+        )
+        assert expected_over == 1 + (_fnv1a32(eui + _u32le(7) + _u32le(sfn)) % n)
+
+    def test_gnss_zero_duration_does_not_raise(self) -> None:
+        """Zero superframe duration must not crash GNSS-synced selection."""
+        time_provider = SimulatedTimeProvider(
+            unix_time_us=GNSS_EPOCH_BASE_US + 5 * SUPERFRAME_DURATION_US,
+            has_gnss=True,
+        )
+        gnss_config = GnssHopConfig(enabled=True, seed=0, superframe_duration_us=0)
+        ch = select_channel(
+            peer_known=False,
+            n_channels=8,
+            time_provider=time_provider,
+            gnss_config=gnss_config,
+        )
+        n = max(8 - 1, 1)
+        expected = 1 + (_fnv1a32(_u32le(0) + _u32le(0)) % n)
+        assert ch == expected
 
 
 class TestGnssHopConfig:

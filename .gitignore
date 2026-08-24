@@ -29,6 +29,7 @@ rust/target/
 
 # Temporary files
 .tmp_check/
+.lichen-vector-batch.lock
 
 # Build artifacts
 .cache/

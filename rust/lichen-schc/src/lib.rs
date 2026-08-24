@@ -11,6 +11,7 @@
 //! - 4  RPL DAO (link-local ICMPv6)
 //! - 5  link-local IPv6 + UDP + OSCORE CoAP
 //! - 6  global IPv6 + UDP + OSCORE CoAP
+//! - 7  specialized canonical IPv6 + UDP + MQTT-SN
 //! - 255 uncompressed passthrough
 
 #![no_std]
@@ -26,18 +27,31 @@ pub mod fragment;
 pub mod headers;
 pub mod rules;
 
+pub use fragment::AuthenticatedFragmentReceiver;
+
 // Re-export LICHEN-specific compression/decompression
-pub use codec::{compress, decompress, SchcError};
-pub use context::{rule_matches, FieldId, NoMatchingRuleError, SchcContext};
+#[cfg(feature = "std")]
+pub use codec::decompress_authenticated_frame_tracked;
+pub use codec::{
+    compress, decode_rule255, decompress, encode_rule255, validate_full_ipv6,
+    AuthenticatedPeerSchcContext, DioAdmissionError, ExpectedDioRole, PeerContextAuthority,
+    SchcError,
+};
+pub use context::{
+    rule_matches, FailureTrackerFull, FieldId, NoMatchingRuleError, RuleVersionFailureTracker,
+    SchcContext,
+};
 pub use headers::{
     CoapUdpGlobalProfile, CoapUdpLinkLocalProfile, Icmpv6EchoProfile, PacketError, PacketProfile,
     ParsedPacket, RplDaoProfile, RplDioProfile, DEFAULT_PROFILES, MAX_FIELDS,
 };
 
-// Re-export LICHEN-specific rule constants
+// Re-export LICHEN-specific rule constants and versioning
 pub use rules::{
-    GLOBAL_COAP_RULE, GLOBAL_OSCORE_RULE, ICMPV6_ECHO_RULE, LINK_LOCAL_COAP_RULE,
-    LINK_LOCAL_OSCORE_RULE, MQTT_SN_RULE, RPL_DAO_RULE, RPL_DIO_RULE, UNCOMPRESSED_RULE,
+    rule_set_v3_descriptor_hash, versions_compatible, SchcRuleVersionOption, GLOBAL_COAP_RULE,
+    GLOBAL_OSCORE_RULE, ICMPV6_ECHO_RULE, LINK_LOCAL_COAP_RULE, LINK_LOCAL_OSCORE_RULE,
+    RPL_DAO_RULE, RPL_DIO_RULE, RULE_SET_V3, RULE_SET_VERSION, SCHC_RULE_VERSION_TYPE,
+    UNCOMPRESSED_RULE,
 };
 
 #[cfg(feature = "std")]

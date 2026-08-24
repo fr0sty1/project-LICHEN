@@ -5,7 +5,7 @@
 
 use crate::{output, ConfigAction, KeyAction, OutputFormat, PositionAction};
 use lichen_client::keys::{KeyEntry, KeyList, KeyPin};
-use lichen_client::msg::{Inbox, OutgoingMessage, SentMessage};
+use lichen_client::msg::{Inbox, OutgoingMessage, Sent, SentMessage};
 use lichen_client::paths;
 use lichen_client::pos::Position;
 use lichen_client::status::Neighbors;
@@ -155,6 +155,30 @@ pub async fn inbox(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
                     println!(
                         "  [{}] from {} (t={}): {}",
                         m.id, m.from, m.received, m.body
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub async fn sent(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
+    let resp = client::get(node, paths::MSG_SENT).await?;
+    if !resp.is_success() {
+        return Err(format!("sent failed: {}", resp.code_str()).into());
+    }
+    let sent = Sent::from_cbor(&resp.payload)?;
+    match fmt {
+        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&sent)?),
+        OutputFormat::Human => {
+            if sent.messages.is_empty() {
+                println!("(no sent messages)");
+            } else {
+                for m in &sent.messages {
+                    println!(
+                        "  [{}] to {} (t={}, {}): {}",
+                        m.id, m.to, m.timestamp, m.status, m.body
                     );
                 }
             }

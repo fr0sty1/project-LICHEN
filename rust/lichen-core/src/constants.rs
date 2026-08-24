@@ -14,8 +14,8 @@ pub const LORA_MAX_PAYLOAD: usize = 255;
 /// + max practical SRH (~8+16*8=136 bytes) + margin.
 pub const SCHC_MAX_DECOMPRESSED: usize = 1500;
 /// Maximum packet size for SCHC fragmentation (ACK-on-Error, window_size=63,
-/// max 2 windows, tile_size=187). 2 * 63 * 187 = 23562.
-pub const SCHC_FRAG_MAX_PACKET_SIZE: usize = 23562;
+/// max 2 windows, tile_size=179). 2 * 63 * 179 = 22554.
+pub const SCHC_FRAG_MAX_PACKET_SIZE: usize = 22554;
 
 // Well-known UDP ports (spec Section 9.1)
 pub const PORT_COMPACT_COT: u16 = 5681;
@@ -50,6 +50,11 @@ pub const RPL_INFINITE_RANK: u16 = 0xFFFF;
 pub const RPL_ROOT_RANK: u16 = 256;
 pub const RPL_MIN_HOP_RANK_INCREASE: u16 = 256;
 
+/// LICHEN-local provisional RPL DIO option for gateway-assigned spreading
+/// factor. Reserved by the project option registry in spec/09-packets-timing.md;
+/// this is not an IANA assignment.
+pub const DIO_OPTION_ASSIGNED_SF: u8 = 0x14;
+
 pub const ANNOUNCE_TYPE_BYTE: u8 = 0x01;
 pub const SENML_CONTENT_FORMAT: u16 = 112;
 pub const SENML_BASE_NAME_PREFIX: &str = "urn:dev:mac:";
@@ -74,5 +79,7 @@ pub const SENML_TELEMETRY_PRESSURE: &str = "pressure";
 pub const SENML_TELEMETRY_UNIT_CEL: &str = "Cel";
 pub const SENML_TELEMETRY_UNIT_RH: &str = "%RH";
 pub const SENML_TELEMETRY_UNIT_PA: &str = "Pa";
-pub const TDMA_GUARD_MS: u32 = 100;
-pub const TDMA_SLOT_MS: u32 = 250;
+/// Guard interval added after the worst-case SF10 airtime.
+pub const TDMA_GUARD_MS: u32 = 50;
+/// Minimum slot length: ceil(2296 ms airtime for 255 bytes at SF10) + guard.
+pub const TDMA_SLOT_MS: u32 = 2346;

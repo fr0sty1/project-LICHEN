@@ -20,6 +20,7 @@
 #ifndef LICHEN_IPV6_ADDR_H_
 #define LICHEN_IPV6_ADDR_H_
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <errno.h>
@@ -157,6 +158,28 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid);
  */
 int lichen_pubkey_to_human_address(const uint8_t *pubkey,
                                    char *buf, size_t buflen);
+
+/**
+ * @brief Check if IPv6 address is in mesh address space
+ *
+ * SECURITY: Validates that the target address is within the LICHEN mesh
+ * address space. Used by forward proxy to prevent SSRF attacks by ensuring
+ * only mesh-reachable addresses are accepted.
+ *
+ * Mesh address space:
+ * - ULA fd00::/8: LICHEN mesh internal addresses (locally-assigned ULAs)
+ * - Link-local fe80::/10: Direct neighbor addresses
+ *
+ * Non-mesh addresses rejected (SSRF prevention):
+ * - Global unicast 2000::/3: Internet-routable addresses
+ * - Loopback ::1: Host-local only
+ * - IPv4-mapped ::ffff:0:0/96: IPv4 addresses
+ * - Other special-use prefixes
+ *
+ * @param addr IPv6 address to validate
+ * @return true if address is in mesh space, false otherwise (or if NULL)
+ */
+bool lichen_is_mesh_addr(const struct in6_addr *addr);
 
 /**
  * @brief Construct link-local address from IID

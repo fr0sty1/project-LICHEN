@@ -3,7 +3,7 @@
   "format_version": 2,
   "vector_type": "mic_length_selector",
   "description": "MIC Length selector (LLSec bits 2-4) semantics test vectors per spec/02-physical-link.md section 4.2. Spec says: '0 or 1=compatibility selector; 2-7=reserved'. This file tests the difference (if any) between selector values 0 and 1.",
-  "oracle_provenance": "Independent analysis of spec text. The spec does not define any behavioral difference between selector 0 and selector 1 - both result in no MIC when signature_present=false, or 48-byte Schnorr signature when signature_present=true.",
+  "oracle_provenance": "Independent analysis of spec text. Signed cases use fixed Link Signature Domain Version 1 (4c494348454e2d4c494e4b2d763100), non-wire DST_LEN, and the PyNaCl reference oracle; selector 0 and selector 1 have identical wire-length behavior.",
   "spec_reference": "spec/02-physical-link.md section 4.2 - Link-Layer Security (LLSec) Byte",
   "clarification": {
     "selector_0_behavior": "No MIC field (0 bytes) when signature_present=false; 48-byte Schnorr when signature_present=true",
@@ -39,9 +39,16 @@
     },
     {
       "name": "mic_length_0_signed",
-      "description": "MIC selector 0 with signature_present=true: 48-byte Schnorr signature",
-      "input_hex": "372001000261626398f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102",
-      "llsec_byte": "0x20",
+      "description": "MIC selector 0 with signature_present=true and mandatory signer EUI-64: 48-byte Schnorr signature",
+      "input_hex": "3fa00100027fd5cfc679ab63426162631d8efcec77d664081e6f0bdcfe1e444688aab91502ebe4680d67a4e0d1b158ea47cac9c1b0417489a603751692869508",
+      "llsec_byte": "0xa0",
+      "crypto": {
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "signer_eui64": "7fd5cfc679ab6342",
+        "wire_prefix": "3fa00100027fd5cfc679ab6342616263",
+        "preimage": "4c494348454e2d4c494e4b2d7631003fa0010002007fd5cfc679ab6342616263",
+        "signature": "1d8efcec77d664081e6f0bdcfe1e444688aab91502ebe4680d67a4e0d1b158ea47cac9c1b0417489a603751692869508"
+      },
       "expected": {
         "mic_length_selector": 0,
         "signature_present": true,
@@ -51,9 +58,16 @@
     },
     {
       "name": "mic_length_1_signed",
-      "description": "MIC selector 1 with signature_present=true: 48-byte Schnorr signature (identical to selector 0)",
-      "input_hex": "372401000261626398f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102",
-      "llsec_byte": "0x24",
+      "description": "MIC selector 1 with signature_present=true and mandatory signer EUI-64: 48-byte Schnorr signature (same semantics as selector 0)",
+      "input_hex": "3fa40100027fd5cfc679ab6342616263a184c2c37c1b58728c981f1ce46f0e568d7fdddc3787109668973d2374a678bc0a19be7d33e538bbdaa5adef2d0d7f00",
+      "llsec_byte": "0xa4",
+      "crypto": {
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "signer_eui64": "7fd5cfc679ab6342",
+        "wire_prefix": "3fa40100027fd5cfc679ab6342616263",
+        "preimage": "4c494348454e2d4c494e4b2d7631003fa4010002007fd5cfc679ab6342616263",
+        "signature": "a184c2c37c1b58728c981f1ce46f0e568d7fdddc3787109668973d2374a678bc0a19be7d33e538bbdaa5adef2d0d7f00"
+      },
       "expected": {
         "mic_length_selector": 1,
         "signature_present": true,
@@ -98,26 +112,32 @@
     {
       "name": "selector_0_with_short_addr",
       "description": "MIC selector 0 with 16-bit address, unsigned",
-      "input_hex": "080102001234abcd68",
+      "input_hex": "0701021234abcd68",
       "llsec_byte": "0x01",
       "expected": {
         "addr_mode": 1,
         "mic_length_selector": 0,
         "signature_present": false,
+        "epoch": 2,
+        "seqnum": 4660,
         "dst_addr_hex": "abcd",
+        "payload_hex": "68",
         "valid": true
       }
     },
     {
       "name": "selector_1_with_short_addr",
       "description": "MIC selector 1 with 16-bit address, unsigned (identical behavior to selector 0)",
-      "input_hex": "080502001234abcd68",
+      "input_hex": "0705021234abcd68",
       "llsec_byte": "0x05",
       "expected": {
         "addr_mode": 1,
         "mic_length_selector": 1,
         "signature_present": false,
+        "epoch": 2,
+        "seqnum": 4660,
         "dst_addr_hex": "abcd",
+        "payload_hex": "68",
         "valid": true,
         "note": "Selector 1 parses identically to selector 0"
       }

@@ -42,4 +42,6 @@ pub mod content_format {
     pub const APPLICATION_SENML_JSON: u16 = 110;
     /// `application/senml+cbor` — SenML records (RFC 8428).
     pub const SENML_CBOR: u16 = 112;
+    /// `application/vnd.ocf+cbor` — OCF CBOR format.
+    pub const OCF_CBOR: u16 = 11542;
 }

@@ -1,41 +1,44 @@
 {
   "format_version": 2,
-  "description": "Independent test vectors for TDMA slot assignment using hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code). Includes guard time boundaries, drift compensation.",
+  "description": "Independent TDMA vectors for (FNV-1a32(EUI64) + u32(SFN)) mod N, the 2346 ms SF10 maximum-frame slot, its single trailing 50 ms guard, and drift compensation.",
   "vectors": [
     {
       "name": "slot_static_hash_eui1",
       "eui64_hex": "0000000000000001",
+      "sfn": 0,
       "n_slots": 8,
       "expected_slot": 2,
-      "hash_method": "hash_32(eui64 + epoch.to_bytes(4, 'little')) % n_slots",
+      "hash_method": "(hash_32(eui64) + (sfn & 0xffffffff)) % n_slots",
       "description": "Slot assignment test vector 1"
     },
     {
       "name": "slot_static_hash_eui2",
       "eui64_hex": "aabbccddeeff0011",
+      "sfn": 0,
       "n_slots": 16,
       "expected_slot": 13,
-      "hash_method": "hash_32(eui64 + epoch.to_bytes(4, 'little')) % n_slots",
+      "hash_method": "(hash_32(eui64) + (sfn & 0xffffffff)) % n_slots",
       "description": "Slot assignment test vector 2"
     },
     {
-      "name": "guard_boundary_inside",
+      "name": "data_window_last_millisecond",
       "slot_start_ms": 1000,
-      "current_ms": 1070,
-      "slot_duration_ms": 250,
-      "guard_ms": 100,
+      "current_ms": 3295,
+      "slot_duration_ms": 2346,
+      "guard_ms": 50,
       "expected_in_guard": false,
-      "expected_tx_window_start": 1100,
-      "description": "Inside data slot, after guard"
+      "expected_tx_allowed": true,
+      "description": "Last whole millisecond before the trailing guard starts"
     },
     {
-      "name": "guard_boundary_pre_guard",
+      "name": "guard_boundary_start",
       "slot_start_ms": 1000,
-      "current_ms": 990,
-      "slot_duration_ms": 250,
-      "guard_ms": 100,
+      "current_ms": 3296,
+      "slot_duration_ms": 2346,
+      "guard_ms": 50,
       "expected_in_guard": true,
-      "description": "Pre-slot guard period"
+      "expected_tx_allowed": false,
+      "description": "The final 50 ms of the slot is guard time and forbids transmission"
     },
     {
       "name": "drift_compensation",

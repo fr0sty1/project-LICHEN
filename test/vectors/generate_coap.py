@@ -481,7 +481,7 @@ def coap_transport_vectors() -> list[dict]:
                 "blockwise": {"designed_for": "Reliable networks", "ack": "Per-block ACK", "recovery": "Application retry"},
                 "schc": {"designed_for": "LPWAN (LoRa)", "ack": "ACK-on-Error (sparse)", "recovery": "L2 retransmission"},
             },
-            "capacity": {"fcn_bits": 6, "tiles_per_window": 63, "windows": 2, "tile_size": 187, "ceiling": 23562, "mandatory_receiver": 1281},
+            "capacity": {"fcn_bits": 6, "tiles_per_window": 63, "windows": 2, "tile_size": 179, "ceiling": 22554, "mandatory_receiver": 1281},
             "chunking_protocol": "Application-level chunking with POST /firmware/upload {chunk, total, data}",
         }
     )

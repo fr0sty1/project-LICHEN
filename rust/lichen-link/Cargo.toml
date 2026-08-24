@@ -10,6 +10,7 @@ default = []
 std = []
 alloc = []  # Enables alloc-dependent code; required by schnorr feature
 schnorr = ["alloc", "dep:schnorr48", "dep:sha2"]
+test-utils = [] # Explicitly test-only evidence constructors; never enable in production.
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "lichen-core/defmt"]
 log = ["dep:log", "lichen-core/log"]
@@ -28,3 +29,7 @@ log = { version = "0.4", default-features = false, optional = true }
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[[test]]
+name = "root_authorization_vectors"
+required-features = ["schnorr"]

@@ -198,7 +198,11 @@ pub trait DatagramChannel {
         if check_congestion_allows(state.level, priority) {
             Ok(())
         } else {
-            Err(CongestionError::new(state.level, priority, state.retry_after_ms))
+            Err(CongestionError::new(
+                state.level,
+                priority,
+                state.retry_after_ms,
+            ))
         }
     }
 }
@@ -209,38 +213,98 @@ mod tests {
 
     #[test]
     fn check_congestion_normal_allows_all() {
-        assert!(check_congestion_allows(CongestionLevel::Normal, TxPriority::Sos));
-        assert!(check_congestion_allows(CongestionLevel::Normal, TxPriority::Routing));
-        assert!(check_congestion_allows(CongestionLevel::Normal, TxPriority::Urgent));
-        assert!(check_congestion_allows(CongestionLevel::Normal, TxPriority::Normal));
-        assert!(check_congestion_allows(CongestionLevel::Normal, TxPriority::Bulk));
+        assert!(check_congestion_allows(
+            CongestionLevel::Normal,
+            TxPriority::Sos
+        ));
+        assert!(check_congestion_allows(
+            CongestionLevel::Normal,
+            TxPriority::Routing
+        ));
+        assert!(check_congestion_allows(
+            CongestionLevel::Normal,
+            TxPriority::Urgent
+        ));
+        assert!(check_congestion_allows(
+            CongestionLevel::Normal,
+            TxPriority::Normal
+        ));
+        assert!(check_congestion_allows(
+            CongestionLevel::Normal,
+            TxPriority::Bulk
+        ));
     }
 
     #[test]
     fn check_congestion_elevated_blocks_low_priority() {
-        assert!(check_congestion_allows(CongestionLevel::Elevated, TxPriority::Sos));
-        assert!(check_congestion_allows(CongestionLevel::Elevated, TxPriority::Routing));
-        assert!(check_congestion_allows(CongestionLevel::Elevated, TxPriority::Urgent));
-        assert!(!check_congestion_allows(CongestionLevel::Elevated, TxPriority::Normal));
-        assert!(!check_congestion_allows(CongestionLevel::Elevated, TxPriority::Bulk));
+        assert!(check_congestion_allows(
+            CongestionLevel::Elevated,
+            TxPriority::Sos
+        ));
+        assert!(check_congestion_allows(
+            CongestionLevel::Elevated,
+            TxPriority::Routing
+        ));
+        assert!(check_congestion_allows(
+            CongestionLevel::Elevated,
+            TxPriority::Urgent
+        ));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Elevated,
+            TxPriority::Normal
+        ));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Elevated,
+            TxPriority::Bulk
+        ));
     }
 
     #[test]
     fn check_congestion_critical_only_sos_routing() {
-        assert!(check_congestion_allows(CongestionLevel::Critical, TxPriority::Sos));
-        assert!(check_congestion_allows(CongestionLevel::Critical, TxPriority::Routing));
-        assert!(!check_congestion_allows(CongestionLevel::Critical, TxPriority::Urgent));
-        assert!(!check_congestion_allows(CongestionLevel::Critical, TxPriority::Normal));
-        assert!(!check_congestion_allows(CongestionLevel::Critical, TxPriority::Bulk));
+        assert!(check_congestion_allows(
+            CongestionLevel::Critical,
+            TxPriority::Sos
+        ));
+        assert!(check_congestion_allows(
+            CongestionLevel::Critical,
+            TxPriority::Routing
+        ));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Critical,
+            TxPriority::Urgent
+        ));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Critical,
+            TxPriority::Normal
+        ));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Critical,
+            TxPriority::Bulk
+        ));
     }
 
     #[test]
     fn check_congestion_exhausted_blocks_all() {
-        assert!(!check_congestion_allows(CongestionLevel::Exhausted, TxPriority::Sos));
-        assert!(!check_congestion_allows(CongestionLevel::Exhausted, TxPriority::Routing));
-        assert!(!check_congestion_allows(CongestionLevel::Exhausted, TxPriority::Urgent));
-        assert!(!check_congestion_allows(CongestionLevel::Exhausted, TxPriority::Normal));
-        assert!(!check_congestion_allows(CongestionLevel::Exhausted, TxPriority::Bulk));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Exhausted,
+            TxPriority::Sos
+        ));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Exhausted,
+            TxPriority::Routing
+        ));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Exhausted,
+            TxPriority::Urgent
+        ));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Exhausted,
+            TxPriority::Normal
+        ));
+        assert!(!check_congestion_allows(
+            CongestionLevel::Exhausted,
+            TxPriority::Bulk
+        ));
     }
 
     #[test]

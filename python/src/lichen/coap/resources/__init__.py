@@ -2,9 +2,10 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """CoAP resources for a LICHEN node (spec section 7, RFC 6690).
 
-Exposes ``/.well-known/core`` (resource discovery), ``/status``, ``/neighbors``,
-and ``/config``. Payloads use CBOR (content-format 60), the compact encoding
-appropriate for constrained LoRa links.
+Exposes ``/.well-known/core`` (resource discovery), ``/status``,
+``/status/neighbors``, ``/status/routes``, and ``/config``. Payloads use
+CBOR (content-format 60), the compact encoding appropriate for constrained
+LoRa links.
 
 Also provides optional :class:`ProxyResource` compatibility support for local
 transports that cannot route directly to mesh IPv6 addresses. The
@@ -51,9 +52,35 @@ from lichen.coap.resources.cbor_validation import (
     _decode_single_cbor,
     _scan_cbor_item,
 )
+from lichen.coap.resources.confessions import (
+    CONFESSION_COOLDOWN_S,
+    CONFESSION_DEFAULT_TTL,
+    CONFESSION_HOURLY_MAX,
+    CONFESSION_MAX_SIZE,
+    CONFESSION_MAX_TTL,
+    CONFESSION_STORAGE_BR,
+    CONFESSION_STORAGE_LEAF,
+    ConfessionsResource,
+)
+from lichen.coap.resources.deaddrop import (
+    DEADDROP_DEFAULT_TTL,
+    DEADDROP_MAX_DROP_SIZE,
+    DEADDROP_MAX_TTL,
+    DEADDROP_POSTS_PER_HOUR,
+    DEADDROP_STORAGE_BR,
+    DEADDROP_STORAGE_LEAF,
+    DeadDropDetailsResource,
+    DeadDropResource,
+)
 from lichen.coap.resources.edhoc import EdhocResource
-from lichen.coap.resources.emergency import RollcallResource, SosResource
-from lichen.coap.resources.keys import KeyResource
+from lichen.coap.resources.emergency import (
+    CHECKIN_STATUS_VALUES,
+    MAX_CHECKINS,
+    CheckInResource,
+    RollcallResource,
+    SosResource,
+)
+from lichen.coap.resources.keys import KeyResource, KeyStoreResource
 from lichen.coap.resources.messaging import (
     _MESSAGES_MAX,
     LegacyMessagesAliasResource,
@@ -64,13 +91,28 @@ from lichen.coap.resources.messaging import (
 )
 from lichen.coap.resources.node_resources import (
     ConfigResource,
+    IdentityConfigResource,
     NeighborsResource,
+    RadioConfigResource,
+    RoutesResource,
     StatusResource,
 )
+from lichen.coap.resources.position import PositionCacheResource
 from lichen.coap.resources.presence import PresenceResource
 from lichen.coap.resources.proxy import ProxyResource, _is_mesh_uri
+from lichen.coap.resources.rangetest import (
+    DEFAULT_INTERVAL_MS,
+    MAX_COUNT,
+    MAX_PAYLOAD_LEN,
+    RadioMetrics,
+    RadioMetricsProvider,
+    RangeTestResource,
+    TracerouteHop,
+    TracerouteResource,
+)
 from lichen.coap.resources.resource_directory import ResourceDirectoryResource
 from lichen.coap.resources.senml import (
+    PositionBeaconResource,
     SenMLLocationResource,
     SenMLMetricsResource,
     SenMLSensorsResource,
@@ -79,6 +121,10 @@ from lichen.coap.resources.site import (
     CongestionAwareSite,
     CongestionProvider,
     build_site,
+)
+from lichen.coap.resources.waypoints import (
+    WaypointDetailsResource,
+    WaypointsResource,
 )
 
 __all__ = [
@@ -102,18 +148,27 @@ __all__ = [
     "_scan_cbor_item",
     # Node resources
     "ConfigResource",
+    "IdentityConfigResource",
     "NeighborsResource",
+    "RadioConfigResource",
+    "RoutesResource",
     "StatusResource",
     # Proxy
     "ProxyResource",
     "_is_mesh_uri",
     # SenML resources
+    "PositionBeaconResource",
     "SenMLLocationResource",
     "SenMLMetricsResource",
     "SenMLSensorsResource",
+    # Position
+    "PositionCacheResource",
     # Presence
     "PresenceResource",
     # Emergency
+    "CHECKIN_STATUS_VALUES",
+    "CheckInResource",
+    "MAX_CHECKINS",
     "RollcallResource",
     "SosResource",
     # Messaging
@@ -127,11 +182,42 @@ __all__ = [
     "ResourceDirectoryResource",
     # Keys
     "KeyResource",
+    "KeyStoreResource",
     # EDHOC
     "EdhocResource",
+    # Confessions
+    "CONFESSION_COOLDOWN_S",
+    "CONFESSION_DEFAULT_TTL",
+    "CONFESSION_HOURLY_MAX",
+    "CONFESSION_MAX_SIZE",
+    "CONFESSION_MAX_TTL",
+    "CONFESSION_STORAGE_BR",
+    "CONFESSION_STORAGE_LEAF",
+    "ConfessionsResource",
     # Site builder
     "build_site",
     # Congestion-aware site
     "CongestionAwareSite",
     "CongestionProvider",
+    # Dead Drop
+    "DEADDROP_DEFAULT_TTL",
+    "DEADDROP_MAX_DROP_SIZE",
+    "DEADDROP_MAX_TTL",
+    "DEADDROP_POSTS_PER_HOUR",
+    "DEADDROP_STORAGE_BR",
+    "DEADDROP_STORAGE_LEAF",
+    "DeadDropDetailsResource",
+    "DeadDropResource",
+    # Waypoints
+    "WaypointDetailsResource",
+    "WaypointsResource",
+    # Range Testing
+    "DEFAULT_INTERVAL_MS",
+    "MAX_COUNT",
+    "MAX_PAYLOAD_LEN",
+    "RadioMetrics",
+    "RadioMetricsProvider",
+    "RangeTestResource",
+    "TracerouteHop",
+    "TracerouteResource",
 ]

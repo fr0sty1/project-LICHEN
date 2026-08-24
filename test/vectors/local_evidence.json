@@ -1,0 +1,220 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "Local evidence (reachability) lookup",
+  "description": "Test vectors for local evidence gate (spec B2.5, section 10.2). Local evidence means a non-expired gradient table entry for the destination exists, populated by authenticated sources (Announce, RREP, RPL, or DATA). LOADng RREQ is only initiated when no local evidence exists. The oracle is GradientTable.lookup(destination, now) returning non-None.",
+  "spec": "spec/appendix-loadng.md B2.5, spec/05-routing.md section 11",
+  "vectors": {
+    "has_evidence": [
+      {
+        "name": "fresh_announce_entry",
+        "description": "Gradient entry from ANNOUNCE is not expired, evidence exists",
+        "gradient_entry": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "next_hop": "fe80::aaaa:bbbb:cccc:dddd",
+          "hop_count": 3,
+          "seq_num": 42,
+          "source": "announce",
+          "expires": 600000
+        },
+        "lookup_destination": "fe80::1234:5678:9abc:def0",
+        "now": 100000,
+        "evidence_exists": true
+      },
+      {
+        "name": "fresh_rrep_entry",
+        "description": "Gradient entry from RREP is not expired, evidence exists",
+        "gradient_entry": {
+          "destination": "fe80::1111:2222:3333:4444",
+          "next_hop": "fe80::5555:6666:7777:8888",
+          "hop_count": 5,
+          "seq_num": 100,
+          "source": "rrep",
+          "expires": 500000
+        },
+        "lookup_destination": "fe80::1111:2222:3333:4444",
+        "now": 250000,
+        "evidence_exists": true
+      },
+      {
+        "name": "fresh_rpl_entry",
+        "description": "Gradient entry from RPL is not expired, evidence exists",
+        "gradient_entry": {
+          "destination": "fe80::dead:beef:cafe:babe",
+          "next_hop": "fe80::face:b00c:1234:5678",
+          "hop_count": 2,
+          "seq_num": 77,
+          "source": "rpl",
+          "expires": 1000000
+        },
+        "lookup_destination": "fe80::dead:beef:cafe:babe",
+        "now": 999999,
+        "evidence_exists": true
+      },
+      {
+        "name": "fresh_data_entry",
+        "description": "Gradient entry from DATA (passive learning) is not expired, evidence exists",
+        "gradient_entry": {
+          "destination": "fe80::0001:0002:0003:0004",
+          "next_hop": "fe80::0005:0006:0007:0008",
+          "hop_count": 1,
+          "seq_num": 15,
+          "source": "data",
+          "expires": 60000
+        },
+        "lookup_destination": "fe80::0001:0002:0003:0004",
+        "now": 30000,
+        "evidence_exists": true
+      }
+    ],
+    "no_evidence_expired": [
+      {
+        "name": "expired_announce_entry",
+        "description": "Gradient entry from ANNOUNCE is expired, no evidence",
+        "gradient_entry": {
+          "destination": "fe80::aaaa:bbbb:cccc:dddd",
+          "next_hop": "fe80::1111:1111:1111:1111",
+          "hop_count": 4,
+          "seq_num": 50,
+          "source": "announce",
+          "expires": 300000
+        },
+        "lookup_destination": "fe80::aaaa:bbbb:cccc:dddd",
+        "now": 300001,
+        "evidence_exists": false
+      },
+      {
+        "name": "expired_exactly_at_boundary",
+        "description": "Entry expires exactly at lookup time (expires <= now), no evidence",
+        "gradient_entry": {
+          "destination": "fe80::ffff:eeee:dddd:cccc",
+          "next_hop": "fe80::bbbb:aaaa:9999:8888",
+          "hop_count": 6,
+          "seq_num": 200,
+          "source": "rrep",
+          "expires": 500000
+        },
+        "lookup_destination": "fe80::ffff:eeee:dddd:cccc",
+        "now": 500000,
+        "evidence_exists": false
+      },
+      {
+        "name": "long_expired_data_entry",
+        "description": "DATA entry expired long ago (shorter DATA_GRADIENT_TIMEOUT_MS), no evidence",
+        "gradient_entry": {
+          "destination": "fe80::1234:1234:1234:1234",
+          "next_hop": "fe80::5678:5678:5678:5678",
+          "hop_count": 1,
+          "seq_num": 10,
+          "source": "data",
+          "expires": 60000
+        },
+        "lookup_destination": "fe80::1234:1234:1234:1234",
+        "now": 120000,
+        "evidence_exists": false
+      }
+    ],
+    "no_evidence_missing": [
+      {
+        "name": "destination_not_in_table",
+        "description": "Destination never added to gradient table, no evidence",
+        "gradient_entry": null,
+        "lookup_destination": "fe80::aaaa:aaaa:aaaa:aaaa",
+        "now": 100000,
+        "evidence_exists": false
+      },
+      {
+        "name": "different_destination",
+        "description": "Entry exists for different destination, no evidence for queried destination",
+        "gradient_entry": {
+          "destination": "fe80::1111:1111:1111:1111",
+          "next_hop": "fe80::2222:2222:2222:2222",
+          "hop_count": 2,
+          "seq_num": 30,
+          "source": "announce",
+          "expires": 600000
+        },
+        "lookup_destination": "fe80::3333:3333:3333:3333",
+        "now": 100000,
+        "evidence_exists": false
+      }
+    ],
+    "edge_cases": [
+      {
+        "name": "one_ms_before_expiry",
+        "description": "Entry checked 1ms before expiry, evidence still exists",
+        "gradient_entry": {
+          "destination": "fe80::edge:case:0001:0001",
+          "next_hop": "fe80::edge:case:0002:0002",
+          "hop_count": 3,
+          "seq_num": 99,
+          "source": "rrep",
+          "expires": 500000
+        },
+        "lookup_destination": "fe80::edge:case:0001:0001",
+        "now": 499999,
+        "evidence_exists": true
+      },
+      {
+        "name": "zero_time_fresh_entry",
+        "description": "Entry checked at time 0 with future expiry, evidence exists",
+        "gradient_entry": {
+          "destination": "fe80::zero:time:test:addr",
+          "next_hop": "fe80::zero:time:next:hop1",
+          "hop_count": 1,
+          "seq_num": 1,
+          "source": "announce",
+          "expires": 600000
+        },
+        "lookup_destination": "fe80::zero:time:test:addr",
+        "now": 0,
+        "evidence_exists": true
+      },
+      {
+        "name": "max_seq_num",
+        "description": "Entry with maximum 16-bit seq_num, evidence exists if not expired",
+        "gradient_entry": {
+          "destination": "fe80::max1:seq1:test:addr",
+          "next_hop": "fe80::max1:seq1:next:hop1",
+          "hop_count": 7,
+          "seq_num": 65535,
+          "source": "rpl",
+          "expires": 1000000
+        },
+        "lookup_destination": "fe80::max1:seq1:test:addr",
+        "now": 500000,
+        "evidence_exists": true
+      },
+      {
+        "name": "ula_address",
+        "description": "ULA address (fd00::/8) follows same evidence rules",
+        "gradient_entry": {
+          "destination": "fd00:1234:5678:9abc::1",
+          "next_hop": "fe80::ula1:test:next:hop1",
+          "hop_count": 4,
+          "seq_num": 88,
+          "source": "announce",
+          "expires": 600000
+        },
+        "lookup_destination": "fd00:1234:5678:9abc::1",
+        "now": 300000,
+        "evidence_exists": true
+      },
+      {
+        "name": "yggdrasil_address",
+        "description": "Yggdrasil /128 address follows same evidence rules",
+        "gradient_entry": {
+          "destination": "200:1234:5678:9abc:def0:1234:5678:9abc",
+          "next_hop": "fe80::yggd:test:next:hop1",
+          "hop_count": 5,
+          "seq_num": 123,
+          "source": "rpl",
+          "expires": 800000
+        },
+        "lookup_destination": "200:1234:5678:9abc:def0:1234:5678:9abc",
+        "now": 400000,
+        "evidence_exists": true
+      }
+    ]
+  }
+}

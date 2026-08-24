@@ -52,16 +52,6 @@ static int tx_queue_clock_gettime(clockid_t clock_id, struct timespec *ts)
 static int tx_queue_platform_now_ms(uint32_t *now_ms)
 {
 	struct timespec ts;
-	/* SECURITY: On failure, return 0 to avoid using uninitialized data.
-	 * This is safe: deadlines will appear not-yet-expired (signed wrap
-	 * math in deadline_expired()), preventing premature packet drops.
-	 * clock_gettime(CLOCK_MONOTONIC) should essentially never fail. */
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-		return 0;
-	}
-	return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
-}
-
 	if (tx_queue_clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
 		return -EIO;
 	}
@@ -222,7 +212,10 @@ int tx_queue_init(struct tx_queue *queue)
 #ifdef __ZEPHYR__
 	k_mutex_init(&queue->lock);
 #else
-	pthread_mutex_init(&queue->lock, NULL);
+	int err = pthread_mutex_init(&queue->lock, NULL);
+	if (err != 0) {
+		return -err;
+	}
 #endif
 
 	return 0;
@@ -264,6 +257,7 @@ static int tx_queue_push_at(struct tx_queue *queue, const uint8_t *data,
 	memcpy(queue->entries[slot].data, data, len);
 	queue->entries[slot].len = len;
 	queue->entries[slot].deadline_ms = deadline_ms;
+	queue->entries[slot].enqueue_ms = now_ms;
 	queue->entries[slot].priority = priority;
 	queue->entries[slot].valid = true;
 	queue->stats.packets_queued++;
@@ -361,18 +355,33 @@ int tx_queue_pop(struct tx_queue *queue, uint8_t *data, uint16_t *len,
 	memcpy(data, entry->data, entry->len);
 	*len = entry->len;
 
-	/* Calculate latency if requested */
+	/*
+	 * Latency = time spent in queue, from the enqueue timestamp taken at
+	 * push time. Signed difference handles 32-bit uptime wraparound;
+	 * a negative result (clock stepped backwards) clamps to zero.
+	 * EWMA alpha = 1/8, stored scaled by 8 to avoid a divide per update:
+	 *   scaled = scaled - scaled/8 + latency
+	 *   avg_latency_ms = scaled / 8
+	 */
+	uint32_t latency_ms_now = 0;
+	int32_t signed_diff = (int32_t)(now_ms - entry->enqueue_ms);
+	if (signed_diff > 0) {
+		latency_ms_now = (uint32_t)signed_diff;
+	}
+	if (latency_ms_now > queue->stats.max_latency_ms) {
+		queue->stats.max_latency_ms = latency_ms_now;
+	}
+	uint32_t decayed = queue->avg_latency_scaled -
+			   queue->avg_latency_scaled / 8U;
+	if (decayed > UINT32_MAX - latency_ms_now) {
+		queue->avg_latency_scaled = UINT32_MAX;
+	} else {
+		queue->avg_latency_scaled = decayed + latency_ms_now;
+	}
+	queue->stats.avg_latency_ms = queue->avg_latency_scaled / 8U;
+
 	if (latency_ms != NULL) {
-		/*
-		 * Latency = time from when deadline was set minus TTL.
-		 * Since we store absolute deadline, we calculate based on
-		 * the difference between now and when it would have been
-		 * queued. This is approximate since we don't store enqueue time.
-		 *
-		 * For accurate latency, we'd need to store enqueue timestamp.
-		 * For now, report 0 as a placeholder.
-		 */
-		*latency_ms = 0;
+		*latency_ms = latency_ms_now;
 	}
 
 	/* Mark entry as consumed */
@@ -384,59 +393,53 @@ out:
 	return ret;
 }
 
-int tx_queue_count(const struct tx_queue *queue)
+int tx_queue_count(struct tx_queue *queue)
 {
 	if (queue == NULL) {
 		return -EINVAL;
 	}
 
-	struct tx_queue *q = (struct tx_queue *)queue;
-	lock_queue(q);
+	lock_queue(queue);
 
 	int count = 0;
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
-		if (q->entries[i].valid) {
+		if (queue->entries[i].valid) {
 			count++;
 		}
 	}
 
-	unlock_queue(q);
+	unlock_queue(queue);
 	return count;
 }
 
-bool tx_queue_empty(const struct tx_queue *queue)
+bool tx_queue_empty(struct tx_queue *queue)
 {
 	if (queue == NULL) {
 		return true;
 	}
 
-	struct tx_queue *q = (struct tx_queue *)queue;
-	lock_queue(q);
+	lock_queue(queue);
 
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
-		if (q->entries[i].valid) {
-			unlock_queue(q);
+		if (queue->entries[i].valid) {
+			unlock_queue(queue);
 			return false;
 		}
 	}
 
-	unlock_queue(q);
+	unlock_queue(queue);
 	return true;
 }
 
-int tx_queue_stats_get(const struct tx_queue *queue,
-		       struct tx_queue_stats *stats)
+int tx_queue_stats_get(struct tx_queue *queue, struct tx_queue_stats *stats)
 {
 	if (queue == NULL || stats == NULL) {
 		return -EINVAL;
 	}
 
-	/*
-	 * Note: This read is not atomic with respect to concurrent writes.
-	 * For diagnostic purposes this is acceptable; for precise accounting
-	 * the caller should serialize access externally.
-	 */
+	lock_queue(queue);
 	*stats = queue->stats;
+	unlock_queue(queue);
 	return 0;
 }
 
@@ -453,6 +456,25 @@ void tx_queue_clear(struct tx_queue *queue)
 	}
 
 	memset(&queue->stats, 0, sizeof(queue->stats));
+	queue->avg_latency_scaled = 0;
 
 	unlock_queue(queue);
+}
+
+int tx_queue_destroy(struct tx_queue *queue)
+{
+	if (queue == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef __ZEPHYR__
+	/* Zephyr k_mutex has no destroy operation */
+	return 0;
+#else
+	int ret = pthread_mutex_destroy(&queue->lock);
+	if (ret != 0) {
+		return -ret;
+	}
+	return 0;
+#endif
 }

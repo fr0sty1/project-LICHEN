@@ -1,0 +1,200 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "presence_cbor",
+  "description": "Presence and presence-cache CBOR encoding vectors (spec 18.5.1). Validates status, activity, msg, battery, ts, nodes, addr, age_s fields.",
+  "spec": "spec/12-apps.md",
+  "vectors": [
+    {
+      "name": "minimal_available",
+      "description": "Minimal presence with status and timestamp only (spec 18.5.1).",
+      "input": {
+        "status": "available",
+        "ts": 1716742800
+      },
+      "encoded_hex": "a26673746174757369617661696c61626c656274731a66536a90"
+    },
+    {
+      "name": "all_fields",
+      "description": "Presence with all fields: status, activity, msg, battery, ts (spec 18.5.1).",
+      "input": {
+        "status": "available",
+        "activity": "moving",
+        "msg": "On patrol",
+        "battery": 87,
+        "ts": 1716742800
+      },
+      "encoded_hex": "a56673746174757369617661696c61626c65686163746976697479666d6f76696e67636d7367694f6e20706174726f6c676261747465727918576274731a66536a90"
+    },
+    {
+      "name": "busy_working",
+      "description": "Busy status with working activity (spec 18.5.1).",
+      "input": {
+        "status": "busy",
+        "activity": "working",
+        "ts": 1716742800
+      },
+      "encoded_hex": "a366737461747573646275737968616374697669747967776f726b696e676274731a66536a90"
+    },
+    {
+      "name": "away_with_battery",
+      "description": "Away status with battery percentage (spec 18.5.1).",
+      "input": {
+        "status": "away",
+        "battery": 45,
+        "ts": 1716742800
+      },
+      "encoded_hex": "a36673746174757364617761796762617474657279182d6274731a66536a90"
+    },
+    {
+      "name": "busy_with_message",
+      "description": "Busy status with custom message (spec 18.5.1).",
+      "input": {
+        "status": "busy",
+        "msg": "In meeting",
+        "ts": 1716742800
+      },
+      "encoded_hex": "a3667374617475736462757379636d73676a496e206d656574696e676274731a66536a90"
+    },
+    {
+      "name": "emergency_status",
+      "description": "Emergency status (spec 18.5.1, status table).",
+      "input": {
+        "status": "emergency",
+        "ts": 1716742800
+      },
+      "encoded_hex": "a26673746174757369656d657267656e63796274731a66536a90"
+    },
+    {
+      "name": "offline_status",
+      "description": "Offline status (spec 18.5.1, status table).",
+      "input": {
+        "status": "offline",
+        "ts": 1716742800
+      },
+      "encoded_hex": "a266737461747573676f66666c696e656274731a66536a90"
+    },
+    {
+      "name": "battery_zero",
+      "description": "Battery at 0% (edge case).",
+      "input": {
+        "status": "available",
+        "battery": 0,
+        "ts": 1716742800
+      },
+      "encoded_hex": "a36673746174757369617661696c61626c656762617474657279006274731a66536a90"
+    },
+    {
+      "name": "battery_full",
+      "description": "Battery at 100% (edge case).",
+      "input": {
+        "status": "available",
+        "battery": 100,
+        "ts": 1716742800
+      },
+      "encoded_hex": "a36673746174757369617661696c61626c65676261747465727918646274731a66536a90"
+    },
+    {
+      "name": "activity_stationary",
+      "description": "Stationary activity hint (spec 18.5.1, activity table).",
+      "input": {
+        "status": "available",
+        "activity": "stationary",
+        "ts": 1716742800
+      },
+      "encoded_hex": "a36673746174757369617661696c61626c656861637469766974796a73746174696f6e6172796274731a66536a90"
+    },
+    {
+      "name": "activity_resting",
+      "description": "Resting activity hint (spec 18.5.1, activity table).",
+      "input": {
+        "status": "away",
+        "activity": "resting",
+        "ts": 1716742800
+      },
+      "encoded_hex": "a36673746174757364617761796861637469766974796772657374696e676274731a66536a90"
+    },
+    {
+      "name": "long_message",
+      "description": "Presence with longer custom message (spec 18.5.1).",
+      "input": {
+        "status": "busy",
+        "msg": "Temporarily unavailable, back in 30 minutes",
+        "ts": 1716742800
+      },
+      "encoded_hex": "a3667374617475736462757379636d7367782b54656d706f726172696c7920756e617661696c61626c652c206261636b20696e203330206d696e757465736274731a66536a90"
+    },
+    {
+      "name": "cache_empty",
+      "description": "Empty presence cache response (spec 18.5.1).",
+      "input": {
+        "nodes": []
+      },
+      "encoded_hex": "a1656e6f64657380"
+    },
+    {
+      "name": "cache_single_node",
+      "description": "Presence cache with single node (spec 18.5.1).",
+      "input": {
+        "nodes": [
+          {
+            "addr": "0200::1111",
+            "status": "available",
+            "battery": 87,
+            "age_s": 30
+          }
+        ]
+      },
+      "encoded_hex": "a1656e6f64657381a464616464726a303230303a3a313131316673746174757369617661696c61626c6567626174746572791857656167655f73181e"
+    },
+    {
+      "name": "cache_multi_node",
+      "description": "Presence cache with multiple nodes (spec 18.5.1).",
+      "input": {
+        "nodes": [
+          {
+            "addr": "0200::1111",
+            "status": "available",
+            "battery": 87,
+            "age_s": 30
+          },
+          {
+            "addr": "0200::2222",
+            "status": "away",
+            "age_s": 120
+          }
+        ]
+      },
+      "encoded_hex": "a1656e6f64657382a464616464726a303230303a3a313131316673746174757369617661696c61626c6567626174746572791857656167655f73181ea364616464726a303230303a3a32323232667374617475736461776179656167655f731878"
+    },
+    {
+      "name": "cache_no_battery",
+      "description": "Presence cache node without battery field (spec 18.5.1).",
+      "input": {
+        "nodes": [
+          {
+            "addr": "0200::3333",
+            "status": "busy",
+            "age_s": 60
+          }
+        ]
+      },
+      "encoded_hex": "a1656e6f64657381a364616464726a303230303a3a33333333667374617475736462757379656167655f73183c"
+    },
+    {
+      "name": "cache_emergency",
+      "description": "Presence cache with emergency status node (spec 18.5.1).",
+      "input": {
+        "nodes": [
+          {
+            "addr": "0200::4444",
+            "status": "emergency",
+            "battery": 15,
+            "age_s": 5
+          }
+        ]
+      },
+      "encoded_hex": "a1656e6f64657381a464616464726a303230303a3a343434346673746174757369656d657267656e637967626174746572790f656167655f7305"
+    }
+  ]
+}

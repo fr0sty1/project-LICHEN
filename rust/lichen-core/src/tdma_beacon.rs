@@ -171,7 +171,10 @@ pub const MAX_SLOT_MAP_ENTRIES: usize = 64;
 ///
 /// Returns Ok(slots) if valid, Err if malformed or validation fails.
 /// Validation: each slot < num_slots, array is sorted ascending.
-pub fn parse_slot_map(cbor: &[u8], num_slots: u8) -> Result<heapless::Vec<u8, MAX_SLOT_MAP_ENTRIES>, SlotMapError> {
+pub fn parse_slot_map(
+    cbor: &[u8],
+    num_slots: u8,
+) -> Result<heapless::Vec<u8, MAX_SLOT_MAP_ENTRIES>, SlotMapError> {
     if cbor.is_empty() {
         return Ok(heapless::Vec::new());
     }
@@ -182,7 +185,7 @@ pub fn parse_slot_map(cbor: &[u8], num_slots: u8) -> Result<heapless::Vec<u8, MA
     let first = cbor[pos];
     pos += 1;
 
-    let len = if first >= 0x80 && first <= 0x97 {
+    let len = if (0x80..=0x97).contains(&first) {
         // Short array: length 0-23 encoded in low 5 bits
         (first - 0x80) as usize
     } else if first == 0x98 {
@@ -321,7 +324,10 @@ mod tests {
     fn test_reserved_flag_rejected() {
         let mut buf = [0u8; HEADER_SIZE];
         buf[13] = 0x10; // reserved bit 4 set
-        assert_eq!(TdmaBeaconHeader::parse(&buf), Err(ParseError::ReservedFlagSet));
+        assert_eq!(
+            TdmaBeaconHeader::parse(&buf),
+            Err(ParseError::ReservedFlagSet)
+        );
     }
 
     #[test]
@@ -405,7 +411,13 @@ mod tests {
         // slot 10 with num_slots=8
         let cbor = [0x81, 0x0a];
         let err = parse_slot_map(&cbor, 8).unwrap_err();
-        assert_eq!(err, SlotMapError::SlotOutOfBounds { slot: 10, num_slots: 8 });
+        assert_eq!(
+            err,
+            SlotMapError::SlotOutOfBounds {
+                slot: 10,
+                num_slots: 8
+            }
+        );
     }
 
     #[test]

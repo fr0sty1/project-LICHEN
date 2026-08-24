@@ -21,6 +21,15 @@ logger = logging.getLogger(__name__)
 DEFAULT_INTERVAL_MS = 300_000
 DEFAULT_JITTER_MS = 30_000
 DEFAULT_CHANNEL = 0
+MAX_SCHEDULER_DELAY_MS = 86_400_000
+
+
+def _exact_ms(name: str, value: object, *, minimum: int) -> int:
+    if type(value) is not int or not minimum <= value <= MAX_SCHEDULER_DELAY_MS:
+        raise ValueError(
+            f"{name} must be an integer in {minimum}..{MAX_SCHEDULER_DELAY_MS}"
+        )
+    return value
 
 
 class AnnounceTransmitter(Protocol):
@@ -41,13 +50,12 @@ class SchedulerConfig:
     rx_channel: int = DEFAULT_CHANNEL
 
     def __post_init__(self) -> None:
-        if self.interval_ms <= 0:
-            raise ValueError(f"interval_ms must be > 0, got {self.interval_ms}")
-        if self.jitter_ms < 0:
-            raise ValueError(f"jitter_ms must be >= 0, got {self.jitter_ms}")
-        if self.initial_delay_ms < 0:
-            raise ValueError(f"initial_delay_ms must be >= 0, got {self.initial_delay_ms}")
-        if not 0 <= self.rx_channel < 8:
+        self.interval_ms = _exact_ms("interval_ms", self.interval_ms, minimum=1)
+        self.jitter_ms = _exact_ms("jitter_ms", self.jitter_ms, minimum=0)
+        self.initial_delay_ms = _exact_ms(
+            "initial_delay_ms", self.initial_delay_ms, minimum=0
+        )
+        if type(self.rx_channel) is not int or not 0 <= self.rx_channel < 8:
             raise ValueError(f"rx_channel must be 0-7, got {self.rx_channel}")
 
 
@@ -77,6 +85,8 @@ class AnnounceScheduler:
     _seq_num: int = field(default=0, init=False, repr=False)
     _running: bool = field(default=False, init=False, repr=False)
     _task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
+    _config_changed: asyncio.Event = field(default_factory=asyncio.Event, init=False, repr=False)
+    _config_revision: int = field(default=0, init=False, repr=False)
 
     # Callbacks for persistence (optional)
     _on_seq_change: Callable[[int], None] | None = field(default=None, init=False, repr=False)
@@ -107,9 +117,16 @@ class AnnounceScheduler:
         Raises:
             ValueError: If channel is out of range.
         """
-        if not 0 <= channel < 8:
+        if type(channel) is not int or not 0 <= channel < 8:
             raise ValueError(f"channel must be 0-7, got {channel}")
         self.config.rx_channel = channel
+
+    def set_interval_ms(self, interval_ms: int) -> None:
+        """Atomically apply an exact bounded interval and wake a live wait."""
+        interval_ms = _exact_ms("interval_ms", interval_ms, minimum=1)
+        self.config.interval_ms = interval_ms
+        self._config_revision += 1
+        self._config_changed.set()
 
     def set_seq_num(self, seq_num: int) -> None:
         """Set the sequence number (for persistence restore).
@@ -123,7 +140,7 @@ class AnnounceScheduler:
         Raises:
             ValueError: If seq_num is out of range.
         """
-        if not 0 <= seq_num <= 0xFFFF:
+        if type(seq_num) is not int or not 0 <= seq_num <= 0xFFFF:
             raise ValueError(f"seq_num out of range: {seq_num}")
         self._seq_num = seq_num
         logger.info("sequence number set to %d", seq_num)
@@ -271,9 +288,17 @@ class AnnounceScheduler:
             try:
                 await self._send_announce()
 
+                revision = self._config_revision
                 jitter = random.randint(0, self.config.jitter_ms)
-                delay = (self.config.interval_ms + jitter) / 1000
-                await asyncio.sleep(delay)
+                delay_ms = self.config.interval_ms + jitter
+                self._config_changed.clear()
+                if revision != self._config_revision:
+                    continue
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(
+                        self._config_changed.wait(),
+                        timeout=delay_ms / 1000,
+                    )
 
             except asyncio.CancelledError:
                 break
@@ -322,12 +347,11 @@ class AnnounceScheduler:
 
         Queried by LCI to expose the value through the Local Client Interface.
         """
-        return self.rx_channel
+        return self.current_channel
 
     def set_rx_channel(self, channel: int) -> None:
         """Set the rx_channel for future announces (CCP-9 rendezvous).
 
         Changes take effect on the next announce transmission.
-        Values >= 8 are clamped to 0.
         """
-        self.rx_channel = channel if 0 <= channel < 8 else 0
+        self.set_channel(channel)

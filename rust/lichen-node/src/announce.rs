@@ -221,9 +221,31 @@ impl AnnounceProcessor {
     }
 
     pub fn pinned_pubkey_for(&self, iid: &[u8; 8]) -> Option<PublicKey> {
-        self.pinned_keys
-            .get(iid)
-            .map(|entry| PublicKey::new(entry.pubkey))
+        let public_key = PublicKey::new(self.pinned_keys.get(iid)?.pubkey);
+        (iid_from_pubkey(&public_key) == *iid).then_some(public_key)
+    }
+
+    /// Return a bounded, canonical snapshot for security-sensitive fallback
+    /// resolution when an indexed claimed-IID lookup misses.
+    ///
+    /// `None` fails closed if internal capacity or key/IID invariants are not
+    /// satisfied. Callers must still cryptographically identify exactly one
+    /// matching key; snapshot order has no semantic meaning.
+    pub fn pinned_pubkeys_snapshot(&self) -> Option<Vec<PublicKey>> {
+        if self.pinned_keys.len() > self.max_entries
+            || self.pinned_keys.len() > MAX_TRACKED_ORIGINATORS
+        {
+            return None;
+        }
+        let mut snapshot = Vec::with_capacity(self.pinned_keys.len());
+        for (iid, entry) in &self.pinned_keys {
+            let public_key = PublicKey::new(entry.pubkey);
+            if iid_from_pubkey(&public_key) != *iid {
+                return None;
+            }
+            snapshot.push(public_key);
+        }
+        Some(snapshot)
     }
 
     #[cfg(test)]
@@ -302,7 +324,7 @@ fn parse_congestion(app_data: &[u8]) -> Option<u8> {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
-    use lichen_core::announce::AnnounceBuilder;
+    use lichen_core::announce::{write_announce_signed_data, AnnounceBuilder};
     use lichen_link::identity::Identity;
     use lichen_link::keys::Seed;
     use lichen_link::schnorr::sign;
@@ -332,12 +354,15 @@ mod tests {
         buf: &mut [u8],
     ) -> usize {
         let mut signed_data = [0u8; 256];
-        let signed_len = 8 + 32 + 2 + 1 + app_data.len();
-        signed_data[..8].copy_from_slice(&identity.iid);
-        signed_data[8..40].copy_from_slice(identity.pubkey.as_bytes());
-        signed_data[40..42].copy_from_slice(&seq_num.to_be_bytes());
-        signed_data[42] = rx_channel;
-        signed_data[43..signed_len].copy_from_slice(app_data);
+        let signed_len = write_announce_signed_data(
+            &identity.iid,
+            identity.pubkey.as_bytes(),
+            seq_num,
+            rx_channel,
+            app_data,
+            &mut signed_data,
+        )
+        .unwrap();
 
         let sig = sign(
             &identity.privkey,
@@ -355,6 +380,42 @@ mod tests {
             app_data,
         };
         builder.write_to(buf).unwrap()
+    }
+
+    #[test]
+    fn canonical_signed_data_vectors_match_production_codec_and_verifier() {
+        let document: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../test/vectors/announce_signed_data.json"
+        ))
+        .unwrap();
+        let vectors = document["vectors"].as_array().unwrap();
+        assert_eq!(vectors.len(), 4);
+
+        for vector in vectors {
+            let frame = hex::decode(vector["announce_frame"].as_str().unwrap()).unwrap();
+            let expected_transcript =
+                hex::decode(vector["signed_data_transcript"].as_str().unwrap()).unwrap();
+            let announce = Announce::from_bytes(&frame).unwrap();
+            let mut transcript = [0u8; 256];
+            let transcript_len = announce.write_signed_data(&mut transcript).unwrap();
+            assert_eq!(
+                &transcript[..transcript_len],
+                expected_transcript,
+                "{}",
+                vector["name"]
+            );
+
+            let public_key = PublicKey::new(*announce.pubkey);
+            assert!(
+                schnorr::verify(
+                    &public_key,
+                    &transcript[..transcript_len],
+                    announce.signature
+                ),
+                "{}",
+                vector["name"]
+            );
+        }
     }
 
     #[test]
@@ -406,12 +467,17 @@ mod tests {
         let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
 
         let wrong_iid = [0xAA; 8];
-        let mut signed_data = [0u8; 43];
-        signed_data[..8].copy_from_slice(&identity.iid);
-        signed_data[8..40].copy_from_slice(identity.pubkey.as_bytes());
-        signed_data[40..42].copy_from_slice(&100u16.to_be_bytes());
-        signed_data[42] = 0;
-        let sig = sign(&identity.privkey, &identity.pubkey, &signed_data[..43]);
+        let mut signed_data = [0u8; 64];
+        write_announce_signed_data(
+            &identity.iid,
+            identity.pubkey.as_bytes(),
+            100,
+            0,
+            &[],
+            &mut signed_data,
+        )
+        .unwrap();
+        let sig = sign(&identity.privkey, &identity.pubkey, &signed_data);
 
         let builder = AnnounceBuilder {
             originator_iid: &wrong_iid,
@@ -516,12 +582,17 @@ mod tests {
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(result.accepted);
 
-        let mut signed_data = [0u8; 43];
-        signed_data[..8].copy_from_slice(&identity1.iid);
-        signed_data[8..40].copy_from_slice(identity2.pubkey.as_bytes());
-        signed_data[40..42].copy_from_slice(&200u16.to_be_bytes());
-        signed_data[42] = 0;
-        let sig = sign(&identity2.privkey, &identity2.pubkey, &signed_data[..43]);
+        let mut signed_data = [0u8; 64];
+        write_announce_signed_data(
+            &identity1.iid,
+            identity2.pubkey.as_bytes(),
+            200,
+            0,
+            &[],
+            &mut signed_data,
+        )
+        .unwrap();
+        let sig = sign(&identity2.privkey, &identity2.pubkey, &signed_data);
 
         let builder = AnnounceBuilder {
             originator_iid: &identity1.iid,
@@ -562,6 +633,24 @@ mod tests {
         let pinned = processor.pinned_pubkey_for(&identity.iid);
         assert!(pinned.is_some());
         assert_eq!(pinned.unwrap(), identity.pubkey);
+    }
+
+    #[test]
+    fn exhaustive_pin_snapshot_is_bounded_and_revalidates_canonical_iids() {
+        let identity = make_identity(0x01);
+        let gradient_table = GradientTable::new(64);
+        let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
+        processor.pin_for_test(identity.pubkey);
+        assert_eq!(processor.pinned_pubkeys_snapshot().unwrap().len(), 1);
+
+        processor.max_entries = 0;
+        assert!(processor.pinned_pubkeys_snapshot().is_none());
+        processor.max_entries = MAX_TRACKED_ORIGINATORS;
+
+        let entry = processor.pinned_keys.remove(&identity.iid).unwrap();
+        processor.pinned_keys.insert([0xff; 8], entry);
+        assert!(processor.pinned_pubkey_for(&[0xff; 8]).is_none());
+        assert!(processor.pinned_pubkeys_snapshot().is_none());
     }
 
     #[test]

@@ -111,14 +111,17 @@ pub(crate) fn bootstrap_announce_peer(wire: &[u8]) -> Option<PeerIdentity> {
     let inner = frame.payload;
     let announce = Announce::from_bytes(routing_announce(inner).ok()?).ok()?;
     let peer = PeerIdentity::from_pubkey(lichen_link::keys::PublicKey::new(*announce.pubkey));
+    let mut expected_signer_eui64 = peer.iid;
+    expected_signer_eui64[0] ^= 0x02;
     if peer.iid != *announce.originator_iid
+        || frame.signer_eui64 != expected_signer_eui64
         || !schnorr::verify_frame(
             wire[0],
             wire[1],
             frame.epoch,
             frame.seqnum,
             frame.dst_addr,
-            &peer.iid,
+            frame.signer_eui64,
             frame.payload,
             frame.mic,
             &peer.pubkey,
@@ -195,8 +198,15 @@ pub(crate) fn dio_dis_destination_is_allowed(ipv6: &[u8], local_rpl_addr: [u8; 1
     if !matches!(*code, rpl_code::DIO | rpl_code::DIS) {
         return true;
     }
-    ipv6_destination(ipv6)
-        .is_some_and(|destination| destination == local_rpl_addr || destination == RPL_ALL_NODES)
+    let canonical_source = ipv6
+        .get(field::SRC_OFFSET..field::DST_OFFSET)
+        .is_some_and(|source| source[..8] == [0xfe, 0x80, 0, 0, 0, 0, 0, 0]);
+    canonical_source
+        && ipv6_destination(ipv6).is_some_and(|destination| {
+            destination == RPL_ALL_NODES
+                || (destination[..8] == [0xfe, 0x80, 0, 0, 0, 0, 0, 0]
+                    && destination[8..] == local_rpl_addr[8..])
+        })
 }
 
 pub(crate) fn advance_rpl_source_route(

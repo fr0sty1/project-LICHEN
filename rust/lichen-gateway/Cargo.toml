@@ -12,14 +12,21 @@ log = ["lichen-core/log", "lichen-kiss/log", "lichen-node/log", "lichen-schc/log
 
 [dependencies]
 lichen-core = { path = "../lichen-core" }
+lichen-coap = { path = "../lichen-coap" }
 lichen-hal = { path = "../lichen-hal", features = ["std"] }
 lichen-ipv6 = { path = "../lichen-ipv6" }
 lichen-kiss = { path = "../lichen-kiss", features = ["kiss"] }
-lichen-link = { path = "../lichen-link", features = ["std"] }
+lichen-link = { path = "../lichen-link", features = ["std", "schnorr"] }
 lichen-node = { path = "../lichen-node", features = ["std"] }
+lichen-oscore = { path = "../lichen-oscore", features = ["std"] }
 lichen-rpl = { path = "../lichen-rpl", features = ["std"] }
 lichen-schc = { path = "../lichen-schc", features = ["std"] }
 lichen-sim  = { path = "../lichen-sim" }
+schnorr48 = "0.1"
+sha2 = "0.10"
+zeroize = { version = "1", features = ["derive"] }
+ciborium = "0.2"
+hex = "0.4"
 
 # Async runtime + serial I/O
 tokio        = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "net", "time", "signal", "sync"] }
@@ -40,7 +47,9 @@ clap = { version = "4", features = ["derive", "env"] }
 libc = "0.2"
 
 [dev-dependencies]
-lichen-link = { path = "../lichen-link", features = ["std"] }
+lichen-node = { path = "../lichen-node", features = ["std", "raw-rpl-test-api"] }
+lichen-link = { path = "../lichen-link", features = ["std", "schnorr"] }
+hex-literal = "0.4"
 
 [[bin]]
 name = "lichend"

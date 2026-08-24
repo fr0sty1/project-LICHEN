@@ -48,6 +48,7 @@ class AnnounceRejectReason(Enum):
     HOP_LIMIT_EXCEEDED = auto()
     MALFORMED = auto()
     PIN_TABLE_FULL = auto()
+    KEY_MISMATCH = auto()  # TOFU: pubkey differs from pinned key
 
 
 @dataclass
@@ -66,6 +67,8 @@ class AnnounceProcessor:
     address_builder: Callable[[bytes], IPv6Address]
     _seen: OrderedDict[bytes, int] = field(default_factory=OrderedDict, repr=False)
     _pinned_keys: OrderedDict[bytes, bytes] = field(default_factory=OrderedDict, repr=False)
+    _pending_reconciliation: set[bytes] = field(default_factory=set, repr=False)
+    state_committer: Callable[[bytes, bytes, int], None] | None = field(default=None, repr=False)
 
     def process(
         self,
@@ -121,7 +124,12 @@ class AnnounceProcessor:
             )
 
         existing_seq = self._seen.get(iid)
-        if existing_seq is not None and not seq_gt(announce.seq_num, existing_seq):
+        reconciling = existing_seq == announce.seq_num and iid in self._pending_reconciliation
+        if (
+            existing_seq is not None
+            and not seq_gt(announce.seq_num, existing_seq)
+            and not reconciling
+        ):
             logger.debug(
                 "announce stale: originator=%s seq=%d <= seen=%d",
                 iid.hex(),
@@ -146,6 +154,35 @@ class AnnounceProcessor:
                 reject_reason=AnnounceRejectReason.HOP_LIMIT_EXCEEDED,
             )
 
+        # Complete TOFU admission before constructing or mutating routing
+        # state. A rejected colliding key, or a first-seen key when the pin
+        # table is full, must have no effect on the gradient table.
+        existing_pubkey = self._pinned_keys.get(iid)
+        if existing_pubkey is not None and existing_pubkey != announce.pubkey:
+            logger.warning(
+                "announce key mismatch: originator=%s pinned_key=%s new_key=%s",
+                iid.hex(),
+                existing_pubkey.hex()[:16] + "...",
+                announce.pubkey.hex()[:16] + "...",
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.KEY_MISMATCH,
+            )
+
+        if existing_pubkey is None and len(self._pinned_keys) >= MAX_ENTRIES:
+            logger.warning(
+                "announce pin table full: originator=%s max=%d",
+                iid.hex(),
+                MAX_ENTRIES,
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.PIN_TABLE_FULL,
+            )
+
         destination = self.address_builder(iid)
         coords = decode_coords(announce.app_data)
         congestion = decode_congestion(announce.app_data)
@@ -158,19 +195,20 @@ class AnnounceProcessor:
             expires=now_ms + GRADIENT_TIMEOUT_MS,
             coords=coords,
         )
-        self.gradient_table.update(entry, now=now_ms)
 
-        if iid not in self._pinned_keys and len(self._pinned_keys) >= MAX_ENTRIES:
-            logger.warning(
-                "announce pin table full: originator=%s max=%d",
-                iid.hex(),
-                MAX_ENTRIES,
-            )
-            return AnnounceResult(
-                accepted=False,
-                should_relay=False,
-                reject_reason=AnnounceRejectReason.PIN_TABLE_FULL,
-            )
+        # Persistence is part of admission, not a best-effort afterthought.
+        # A failure is terminal to the receive loop and occurs before any
+        # routable or in-memory trust state is exposed.
+        if self.state_committer is not None:
+            self.state_committer(iid, announce.pubkey, announce.seq_num)
+            # The durable floor now exists even if the local route update
+            # raises. Retain a one-shot equal-sequence reconciliation permit.
+            self._pending_reconciliation.add(iid)
+        self.gradient_table.update(entry, now=now_ms)
+        self._pending_reconciliation.discard(iid)
+
+        # Commit the already-admitted pin only after gradient construction and
+        # update succeed, preserving retryability on local routing failures.
         self._pinned_keys[iid] = announce.pubkey
         self._pinned_keys.move_to_end(iid)
 
@@ -208,3 +246,9 @@ class AnnounceProcessor:
 
     def known_originators(self) -> list[bytes]:
         return list(self._seen.keys())
+
+    def _restore_reconciliation_permit(self, iid: bytes, pubkey: bytes, sequence: int) -> None:
+        """Restore one exact permit after a post-commit Node admission failure."""
+        if self._seen.get(iid) != sequence or self._pinned_keys.get(iid) != pubkey:
+            raise RuntimeError("announce reconciliation state does not match durable admission")
+        self._pending_reconciliation.add(iid)

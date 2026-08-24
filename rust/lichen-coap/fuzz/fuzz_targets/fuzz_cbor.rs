@@ -2,7 +2,7 @@
 
 use arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
-use lichen_coap::{CoapOption, CoapPacket};
+use lichen_coap::CoapPacket;
 
 /// Structured option input for more targeted fuzzing
 #[derive(Arbitrary, Debug)]
@@ -21,9 +21,9 @@ fuzz_target!(|inputs: Vec<OptionInput>| {
 
     // Build a packet with these options
     let mut bytes = vec![
-        0x40,  // Ver=1, Type=CON, TKL=0
-        0x01,  // Code = GET
-        0x00, 0x01,  // Message ID
+        0x40, // Ver=1, Type=CON, TKL=0
+        0x01, // Code = GET
+        0x00, 0x01, // Message ID
     ];
 
     let mut current_delta = 0u16;
@@ -35,7 +35,7 @@ fuzz_target!(|inputs: Vec<OptionInput>| {
         // Calculate relative delta
         let delta = input.delta.saturating_sub(current_delta);
         if delta > 0xFFFF - 269 {
-            continue;  // Would overflow
+            continue; // Would overflow
         }
 
         // Encode option
@@ -55,7 +55,7 @@ fuzz_target!(|inputs: Vec<OptionInput>| {
         } else if len < 65536 {
             (14, ((len - 269) as u16).to_be_bytes().to_vec())
         } else {
-            continue;  // Too long
+            continue; // Too long
         };
 
         bytes.push((delta_nibble << 4) | len_nibble);
@@ -67,15 +67,17 @@ fuzz_target!(|inputs: Vec<OptionInput>| {
     }
 
     // Try to parse the constructed packet
-    if let Ok(packet) = CoapPacket::parse(&bytes) {
+    if let Ok(packet) = CoapPacket::from_bytes(&bytes) {
         // Access all options
         let mut count = 0;
-        for option in packet.options() {
-            let _ = option.number();
-            let _ = option.value();
+        for option_result in packet.options() {
+            if let Ok(option) = option_result {
+                let _ = option.number;
+                let _ = option.value;
+            }
             count += 1;
             if count > 100 {
-                break;  // Safety limit
+                break; // Safety limit
             }
         }
     }

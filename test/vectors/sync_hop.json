@@ -1,0 +1,378 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "CCP-12 GNSS-synchronized frequency hopping vectors. FNV-1a32 (basis 0x811c9dc5). Oracle: independent Python implementation, NOT LICHEN code. Covers: SFN derivation, channel selection, SFN wrap, edge cases, fallback scenarios.",
+  "vectors": [
+    {
+      "name": "sfn_at_epoch_base",
+      "description": "Exactly at epoch base yields SFN=0",
+      "type": "sfn_derivation",
+      "input": {
+        "unix_time_us": 1704067200000000,
+        "superframe_duration_us": 2000000,
+        "epoch_base_us": 1704067200000000
+      },
+      "output": {
+        "expected_sfn": 0
+      }
+    },
+    {
+      "name": "sfn_one_superframe",
+      "description": "One superframe after epoch yields SFN=1",
+      "type": "sfn_derivation",
+      "input": {
+        "unix_time_us": 1704067202000000,
+        "superframe_duration_us": 2000000,
+        "epoch_base_us": 1704067200000000
+      },
+      "output": {
+        "expected_sfn": 1
+      }
+    },
+    {
+      "name": "sfn_before_epoch",
+      "description": "Time before epoch yields SFN=0 (clamped)",
+      "type": "sfn_derivation",
+      "input": {
+        "unix_time_us": 1704067199999000,
+        "superframe_duration_us": 2000000,
+        "epoch_base_us": 1704067200000000
+      },
+      "output": {
+        "expected_sfn": 0
+      }
+    },
+    {
+      "name": "sfn_large_offset",
+      "description": "24 hours after epoch = 43200 superframes",
+      "type": "sfn_derivation",
+      "input": {
+        "unix_time_us": 1704153600000000,
+        "superframe_duration_us": 2000000,
+        "epoch_base_us": 1704067200000000
+      },
+      "output": {
+        "expected_sfn": 43200
+      }
+    },
+    {
+      "name": "sfn_half_superframe",
+      "description": "Half superframe rounds down to SFN=0",
+      "type": "sfn_derivation",
+      "input": {
+        "unix_time_us": 1704067201000000,
+        "superframe_duration_us": 2000000,
+        "epoch_base_us": 1704067200000000
+      },
+      "output": {
+        "expected_sfn": 0
+      }
+    },
+    {
+      "name": "sfn_custom_superframe_100ms",
+      "description": "100ms superframe: 100ms offset yields SFN=1",
+      "type": "sfn_derivation",
+      "input": {
+        "unix_time_us": 1704067200100000,
+        "superframe_duration_us": 100000,
+        "epoch_base_us": 1704067200000000
+      },
+      "output": {
+        "expected_sfn": 1
+      }
+    },
+    {
+      "name": "sfn_custom_superframe_5s",
+      "description": "5s superframe: 10s offset yields SFN=2",
+      "type": "sfn_derivation",
+      "input": {
+        "unix_time_us": 1704067210000000,
+        "superframe_duration_us": 5000000,
+        "epoch_base_us": 1704067200000000
+      },
+      "output": {
+        "expected_sfn": 2
+      }
+    },
+    {
+      "name": "sfn_u32_wrap_boundary",
+      "description": "Near u32 max SFN value",
+      "type": "sfn_derivation",
+      "input": {
+        "unix_time_us": 10294001790000000,
+        "superframe_duration_us": 2000000,
+        "epoch_base_us": 1704067200000000
+      },
+      "output": {
+        "expected_sfn": 4294967295
+      }
+    },
+    {
+      "name": "hop_sfn0_seed0_8ch",
+      "description": "SFN=0, seed=0, 8 channels",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 0,
+        "seed": 0,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "0000000000000000",
+        "hash_32": 2615243109,
+        "expected_channel": 4
+      }
+    },
+    {
+      "name": "hop_sfn1_seed0_8ch",
+      "description": "SFN=1, seed=0, 8 channels - verify sequence changes",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 1,
+        "seed": 0,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "0000000001000000",
+        "hash_32": 1270166100,
+        "expected_channel": 1
+      }
+    },
+    {
+      "name": "hop_sfn5_seed0_8ch",
+      "description": "SFN=5 from spec example",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 5,
+        "seed": 0,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "0000000005000000",
+        "hash_32": 184825360,
+        "expected_channel": 7
+      }
+    },
+    {
+      "name": "hop_sfn0_seed42_8ch",
+      "description": "Non-zero seed changes sequence",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 0,
+        "seed": 42,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "2a00000000000000",
+        "hash_32": 3990555855,
+        "expected_channel": 7
+      }
+    },
+    {
+      "name": "hop_sfn0_seed0_64ch",
+      "description": "64 channels (larger spread)",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 0,
+        "seed": 0,
+        "n_channels": 64
+      },
+      "output": {
+        "hash_input_hex": "0000000000000000",
+        "hash_32": 2615243109,
+        "expected_channel": 25
+      }
+    },
+    {
+      "name": "hop_sfn0_seed0_3ch",
+      "description": "Minimum 3 channels",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 0,
+        "seed": 0,
+        "n_channels": 3
+      },
+      "output": {
+        "hash_input_hex": "0000000000000000",
+        "hash_32": 2615243109,
+        "expected_channel": 2
+      }
+    },
+    {
+      "name": "hop_sfn0_seed0_2ch",
+      "description": "2 channels: n_channels-1=1, so always channel 1",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 0,
+        "seed": 0,
+        "n_channels": 2
+      },
+      "output": {
+        "hash_input_hex": "0000000000000000",
+        "hash_32": 2615243109,
+        "expected_channel": 1
+      }
+    },
+    {
+      "name": "hop_sfn_max_seed0_8ch",
+      "description": "Max SFN value",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 4294967295,
+        "seed": 0,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "00000000ffffffff",
+        "hash_32": 3025216001,
+        "expected_channel": 4
+      }
+    },
+    {
+      "name": "hop_sfn0_seed_max_8ch",
+      "description": "Max seed value",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 0,
+        "seed": 4294967295,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "ffffffff00000000",
+        "hash_32": 2227149249,
+        "expected_channel": 4
+      }
+    },
+    {
+      "name": "hop_sequence_0to4",
+      "description": "Start of hopping sequence",
+      "type": "channel_selection",
+      "input": {
+        "sfn": 0,
+        "seed": 0,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "0000000000000000",
+        "hash_32": 2615243109,
+        "expected_channel": 4
+      }
+    },
+    {
+      "name": "sfn_wrap_at_boundary",
+      "description": "SFN at u32 max",
+      "type": "sfn_wrap_edge_case",
+      "input": {
+        "sfn": 4294967295,
+        "seed": 0,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "00000000ffffffff",
+        "hash_32": 3025216001,
+        "expected_channel": 4
+      }
+    },
+    {
+      "name": "sfn_wrap_post_boundary",
+      "description": "SFN after wrap back to 0",
+      "type": "sfn_wrap_edge_case",
+      "input": {
+        "sfn": 0,
+        "seed": 0,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "0000000000000000",
+        "hash_32": 2615243109,
+        "expected_channel": 4
+      }
+    },
+    {
+      "name": "sfn_continuity_before_wrap",
+      "description": "Two before wrap",
+      "type": "sfn_wrap_edge_case",
+      "input": {
+        "sfn": 4294967294,
+        "seed": 0,
+        "n_channels": 8
+      },
+      "output": {
+        "hash_input_hex": "00000000feffffff",
+        "hash_32": 1603466992,
+        "expected_channel": 2
+      }
+    },
+    {
+      "name": "hopping_sequence_8_frames",
+      "description": "First 8 superframes of hopping sequence for seed=0, 8 channels. Verifies deterministic, non-degenerate sequence.",
+      "type": "sequence_consistency",
+      "input": {
+        "seed": 0,
+        "n_channels": 8,
+        "sfn_start": 0,
+        "sfn_count": 8
+      },
+      "output": {
+        "sequence": [
+          4,
+          1,
+          6,
+          7,
+          3,
+          7,
+          2,
+          6
+        ]
+      }
+    },
+    {
+      "name": "fallback_gnss_unavailable",
+      "description": "When GNSS time is unavailable, fallback uses epoch-based hash. This vector documents the expected behavior.",
+      "type": "fallback",
+      "input": {
+        "gnss_available": false,
+        "peer_eui64": "0011223344556677",
+        "epoch": 1
+      },
+      "output": {
+        "fallback_to": "hash_based_ccp16",
+        "notes": "When GNSS unavailable, use CCP-16 hash-based selection per priority chain"
+      }
+    },
+    {
+      "name": "cross_seed_diversity",
+      "description": "Same SFN with different seeds should produce different channels (statistically, for interference avoidance between networks).",
+      "type": "seed_diversity",
+      "input": {
+        "sfn": 0,
+        "n_channels": 8,
+        "seeds": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "output": {
+        "channels": [
+          {
+            "seed": 0,
+            "channel": 4
+          },
+          {
+            "seed": 1,
+            "channel": 4
+          },
+          {
+            "seed": 2,
+            "channel": 7
+          },
+          {
+            "seed": 3,
+            "channel": 4
+          }
+        ]
+      }
+    }
+  ]
+}

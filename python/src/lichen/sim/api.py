@@ -35,6 +35,7 @@ from lichen.sim.websocket import (
     WebSocketObserver,
     handle_websocket,
 )
+from lichen.timing.sfn import TDMA_GUARD_MS, TDMA_SLOT_MS
 
 # Maximum value for integer parameters (signed 64-bit).
 # Python ints have arbitrary precision, so we must bounds-check explicitly
@@ -998,7 +999,7 @@ class SimulatorAPI:
             "superframe": {
                 "sfn": 0,
                 "num_slots": 8,
-                "slot_duration_ms": 250,
+                "slot_duration_ms": 2346,
                 "guard_ms": 50
             },
             "slots": [
@@ -1024,8 +1025,8 @@ class SimulatorAPI:
 
         # Get TDMA parameters from first node or use defaults
         num_slots = 8
-        slot_duration_ms = 250
-        guard_ms = 50
+        slot_duration_ms = TDMA_SLOT_MS
+        guard_ms = TDMA_GUARD_MS
         current_sfn = 0
 
         if all_nodes:

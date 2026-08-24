@@ -57,13 +57,31 @@ class TestSerialize:
             mic_length=MicLength.BITS64,
             signature_present=True,
             encrypted=True,
+            signer_eui64=bytes.fromhex("0011223344556677"),
         )
-        assert frame.llsec_byte() == 0x66
+        assert frame.llsec_byte() == 0xE6
         with pytest.raises(FrameError, match="encrypted frames are unsupported"):
             frame.to_bytes()
 
 
 class TestRoundTrip:
+    @pytest.mark.parametrize("mic_length", [MicLength.BITS32, MicLength.BITS64])
+    @pytest.mark.parametrize(
+        ("signature_present", "expected"),
+        [(False, 0), (True, 48)],
+    )
+    def test_selector_wire_mic_length_depends_only_on_signature(
+        self,
+        mic_length: MicLength,
+        signature_present: bool,
+        expected: int,
+    ) -> None:
+        assert mic_length.wire_mic_len(signature_present=signature_present) == expected
+
+    def test_selector_wire_mic_length_requires_bool(self) -> None:
+        with pytest.raises(TypeError, match="signature_present must be bool"):
+            MicLength.BITS32.wire_mic_len(signature_present=1)  # type: ignore[arg-type]
+
     @pytest.mark.parametrize(
         "addr_mode,dst",
         [
@@ -93,11 +111,66 @@ class TestRoundTrip:
             mic_length=mic_length,
             signature_present=signature_present,
             encrypted=False,
+            signer_eui64=bytes(range(8)) if signature_present else b"",
         )
         assert LichenFrame.from_bytes(original.to_bytes()) == original
 
 
+def test_spec_signed_shape_fixture_is_explicitly_parser_only() -> None:
+    path = Path(__file__).resolve().parents[3] / "spec" / "test-vectors" / "frame.json"
+    document = json.loads(path.read_text())
+    vector = next(item for item in document["vectors"] if item["name"] == "frame_with_signature")
+    frame = LichenFrame.from_bytes(bytes.fromhex(vector["input_hex"]))
+
+    assert frame.signature_present is True
+    assert len(frame.mic) == 48
+    assert vector["expected"]["authentication_expected"] is False
+    assert frame.mic == b"\x55" * 48
+
+
 class TestValidation:
+    @pytest.mark.parametrize(
+        ("field", "value", "message"),
+        [
+            ("addr_mode", 0, "addr_mode must be an AddrMode"),
+            ("mic_length", 0, "mic_length must be a supported MicLength selector"),
+            ("signature_present", 0, "signature_present must be bool"),
+            ("encrypted", 0, "encrypted must be bool"),
+            ("epoch", True, "epoch must be an integer"),
+            ("epoch", 1.0, "epoch must be an integer"),
+            ("seqnum", False, "seqnum must be an integer"),
+            ("seqnum", 1.0, "seqnum must be an integer"),
+            ("dst_addr", bytearray(), "dst_addr must be bytes"),
+            ("payload", bytearray(), "payload must be bytes"),
+            ("mic", bytearray(), "mic must be bytes"),
+            ("signer_eui64", bytearray(), "signer_eui64 must be bytes"),
+        ],
+    )
+    def test_serializer_rejects_noncanonical_field_types(
+        self, field: str, value: object, message: str
+    ) -> None:
+        values: dict[str, object] = {
+            "epoch": 0,
+            "seqnum": 0,
+            "dst_addr": b"",
+            "payload": b"",
+            "mic": b"",
+            "addr_mode": AddrMode.NONE,
+            "mic_length": MicLength.BITS32,
+            "signature_present": False,
+            "encrypted": False,
+            "signer_eui64": b"",
+        }
+        values[field] = value
+        frame = LichenFrame(**values)  # type: ignore[arg-type]
+        with pytest.raises(FrameError, match=message):
+            frame.to_bytes()
+
+    @pytest.mark.parametrize("data", [bytearray(b"\x04\x00\x00\x00\x00"), memoryview(b"x")])
+    def test_parser_requires_exact_bytes(self, data: object) -> None:
+        with pytest.raises(FrameError, match="frame must be bytes"):
+            LichenFrame.from_bytes(data)  # type: ignore[arg-type]
+
     def _base(self, **kw: object) -> LichenFrame:
         defaults: dict[str, object] = {
             "epoch": 1,
@@ -119,6 +192,11 @@ class TestValidation:
         with pytest.raises(FrameError, match="0 are required"):
             self._base(mic=b"\x00").to_bytes()
 
+    @pytest.mark.parametrize("selector", [2, 7, True, object()])
+    def test_serializer_rejects_non_enum_mic_selector(self, selector: object) -> None:
+        with pytest.raises(FrameError, match="supported MicLength"):
+            self._base(mic_length=selector).to_bytes()
+
     def test_epoch_out_of_range(self) -> None:
         with pytest.raises(FrameError, match="epoch"):
             self._base(epoch=256).to_bytes()
@@ -129,7 +207,7 @@ class TestValidation:
 
     @pytest.mark.parametrize(
         "signature_present,mic,max_payload",
-        [(False, b"", 250), (True, b"\x00" * 48, 202)],
+        [(False, b"", 250), (True, b"\x00" * 48, 194)],
     )
     def test_broadcast_payload_boundary(
         self, signature_present: bool, mic: bytes, max_payload: int
@@ -140,6 +218,7 @@ class TestValidation:
             payload=b"\xaa" * max_payload,
             mic=mic,
             signature_present=signature_present,
+            signer_eui64=bytes(8) if signature_present else b"",
         )
         encoded = frame.to_bytes()
         assert len(encoded) == 255
@@ -153,7 +232,7 @@ class TestValidation:
         with pytest.raises(FrameError, match="frame body is 255 bytes, exceeds 254"):
             LichenFrame.from_bytes(b"\xff\x00")
 
-    def test_frame_limit_is_checked_before_concatenation(self) -> None:
+    def test_nonbytes_payload_is_rejected_before_concatenation(self) -> None:
         class ExplodingPayload:
             def __len__(self) -> int:
                 return 251
@@ -161,7 +240,7 @@ class TestValidation:
             def __radd__(self, other: object) -> bytes:
                 raise AssertionError("payload was concatenated before bounds check")
 
-        with pytest.raises(FrameError, match="exceeds 254"):
+        with pytest.raises(FrameError, match="payload must be bytes"):
             self._base(dst_addr=b"", addr_mode=AddrMode.NONE, payload=ExplodingPayload()).to_bytes()
 
 
@@ -192,31 +271,31 @@ class TestParseErrors:
         with pytest.raises(FrameError, match="length field"):
             LichenFrame.from_bytes(b"\x05\x00\x00\x00\x00")
 
-    def test_frame_limit_is_checked_before_body_slice(self) -> None:
+    def test_bytes_subclass_is_rejected_before_body_slice(self) -> None:
         class ExplodingSlice(bytes):
             def __getitem__(self, key: object) -> object:
                 if isinstance(key, slice):
                     raise AssertionError("body was sliced before length check")
                 return super().__getitem__(key)
 
-        with pytest.raises(FrameError, match="frame is 257 bytes, exceeds 255"):
+        with pytest.raises(FrameError, match="frame must be bytes"):
             LichenFrame.from_bytes(ExplodingSlice(b"\x00" + b"x" * 256))
 
     @pytest.mark.parametrize("signed", [False, True])
     def test_parser_rejects_256_byte_frame(self, signed: bool) -> None:
-        llsec = 0x20 if signed else 0
+        llsec = 0xA0 if signed else 0
         mic = b"\x00" * (48 if signed else 0)
-        payload = b"\xaa" * (203 if signed else 251)
-        data = bytes([255, llsec, 0, 0, 0]) + payload + mic
+        signer_eui64 = bytes(8) if signed else b""
+        payload = b"\xaa" * (195 if signed else 251)
+        data = bytes([255, llsec, 0, 0, 0]) + signer_eui64 + payload + mic
         assert len(data) == 256
         with pytest.raises(FrameError, match="frame is 256 bytes, exceeds 255"):
             LichenFrame.from_bytes(data)
 
-    def test_reserved_bit7_rejected(self) -> None:
-        """Bit 7 is reserved and must be rejected per spec 4.2."""
-        # LLSec=0x80 sets bit 7
-        data = bytes.fromhex("10 80 01 1234 aabbccdd aabbccdd deadbeef".replace(" ", ""))
-        with pytest.raises(FrameError, match="reserved bit is set"):
+    @pytest.mark.parametrize("llsec", [0x20, 0x80])
+    def test_signature_and_signer_eui64_presence_must_match(self, llsec: int) -> None:
+        data = bytes([4, llsec, 0, 0, 0])
+        with pytest.raises(FrameError, match="presence bits must match"):
             LichenFrame.from_bytes(data)
 
     def test_encrypted_only_rejected(self) -> None:
@@ -243,16 +322,18 @@ class TestParseErrors:
             LichenFrame.from_bytes(b"\x04\x01\x00\x00\x00")
 
     def test_signature_present_requires_48_byte_mic(self) -> None:
-        data = bytes.fromhex("1220000000" + "00" * 10 + "deadbeef")
+        data = bytes.fromhex("1aa0000000" + "00" * 18 + "deadbeef")
         with pytest.raises(FrameError, match="declared address/MIC"):
             LichenFrame.from_bytes(data)
 
     def test_signature_present_short_payload_parses(self) -> None:
-        data = bytes.fromhex("3a20000000" + "00" * 6 + "11" * 48)
+        data = bytes.fromhex("42a0000000" + "22" * 8 + "00" * 6 + "11" * 48)
         frame = LichenFrame.from_bytes(data)
         assert frame.signature_present is True
         assert frame.payload == bytes(6)
         assert frame.mic == bytes.fromhex("11" * 48)
+        assert frame.signer_eui64 == bytes.fromhex("22" * 8)
+
 
 # ─── Cross-validation tests from spec/test-vectors/frame.json ─────────────────
 
@@ -289,6 +370,7 @@ class TestSpecVectors:
                 "length_mismatch": "length field says",
                 "reserved_mic_length": "reserved MIC-length value",
                 "reserved_bit_set": "reserved bit is set",
+                "signer_presence_mismatch": "signature and signer EUI-64 presence bits must match",
                 "frame_too_short": "frame body too short",
                 "encrypted_unsupported": "encrypted frames are unsupported",
                 "frame_too_large": "exceeds",
@@ -312,6 +394,9 @@ class TestSpecVectors:
         assert frame.epoch == expected["epoch"], f"{name}: epoch"
         assert frame.seqnum == expected["seqnum"], f"{name}: seqnum"
         assert frame.dst_addr == bytes.fromhex(expected["dst_addr_hex"]), f"{name}: dst_addr"
+        assert frame.signer_eui64 == bytes.fromhex(expected.get("signer_eui64_hex", "")), (
+            f"{name}: signer_eui64"
+        )
         if expected["signature_present"]:
             assert frame.mic == bytes.fromhex(expected["mic_hex"]), f"{name}: mic"
         else:

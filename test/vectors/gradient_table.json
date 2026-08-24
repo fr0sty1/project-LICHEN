@@ -1,0 +1,345 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "Gradient Table operations and subsystems",
+  "description": "Test vectors for gradient table operations (spec section 11). Covers passive learning (11.2), backpressure encoding (11.4), table operations (LRU eviction, expiration, wrap detection), and path selection. Entry ranking is covered separately in gradient_entry.json.",
+  "spec": "spec/05-routing.md section 11",
+  "vectors": {
+    "passive_learning": [
+      {
+        "name": "learn_from_forwarded_packet",
+        "description": "Forwarding a packet creates a DATA gradient toward the packet source via the sender neighbor (spec 11.2)",
+        "scenario": {
+          "packet_source": "fe80::0211:22ff:fe33:4455",
+          "from_neighbor_iid": "0102030405060708",
+          "now_ms": 1000000
+        },
+        "expected_entry": {
+          "destination": "fe80::0211:22ff:fe33:4455",
+          "next_hop": "fe80::0102:0304:0506:0708",
+          "hop_count": 0,
+          "seq_num": 0,
+          "source": "data",
+          "expires": 1060000
+        },
+        "notes": "DATA_GRADIENT_TIMEOUT_MS = 60000 (60 sec)"
+      },
+      {
+        "name": "passive_cannot_replace_explicit",
+        "description": "DATA-learned gradient cannot replace an existing ANNOUNCE gradient (lower priority)",
+        "existing_entry": {
+          "destination": "fe80::aaaa:bbbb:cccc:dddd",
+          "next_hop": "fe80::1111:2222:3333:4444",
+          "hop_count": 3,
+          "seq_num": 100,
+          "source": "announce",
+          "expires": 2000000
+        },
+        "new_entry": {
+          "destination": "fe80::aaaa:bbbb:cccc:dddd",
+          "next_hop": "fe80::5555:6666:7777:8888",
+          "hop_count": 1,
+          "seq_num": 200,
+          "source": "data",
+          "expires": 1500000
+        },
+        "now_ms": 1000000,
+        "entry_replaced": false
+      },
+      {
+        "name": "passive_replaces_expired_explicit",
+        "description": "DATA gradient replaces an expired ANNOUNCE gradient (existing has expired)",
+        "existing_entry": {
+          "destination": "fe80::aaaa:bbbb:cccc:dddd",
+          "next_hop": "fe80::1111:2222:3333:4444",
+          "hop_count": 3,
+          "seq_num": 100,
+          "source": "announce",
+          "expires": 900000
+        },
+        "new_entry": {
+          "destination": "fe80::aaaa:bbbb:cccc:dddd",
+          "next_hop": "fe80::5555:6666:7777:8888",
+          "hop_count": 1,
+          "seq_num": 0,
+          "source": "data",
+          "expires": 1060000
+        },
+        "now_ms": 1000000,
+        "entry_replaced": true
+      },
+      {
+        "name": "passive_updates_better_data",
+        "description": "Fresher DATA gradient replaces older DATA gradient (same priority, compare seq_num)",
+        "existing_entry": {
+          "destination": "fe80::aaaa:bbbb:cccc:dddd",
+          "next_hop": "fe80::1111:2222:3333:4444",
+          "hop_count": 5,
+          "seq_num": 10,
+          "source": "data",
+          "expires": 1030000
+        },
+        "new_entry": {
+          "destination": "fe80::aaaa:bbbb:cccc:dddd",
+          "next_hop": "fe80::5555:6666:7777:8888",
+          "hop_count": 2,
+          "seq_num": 20,
+          "source": "data",
+          "expires": 1060000
+        },
+        "now_ms": 1000000,
+        "entry_replaced": true
+      }
+    ],
+    "congestion_encoding": [
+      {
+        "name": "encode_congestion_zero",
+        "description": "Encode queue depth 0 (no congestion)",
+        "queue_depth": 0,
+        "encoded_hex": "0200",
+        "notes": "Type=0x02, Q=0x00"
+      },
+      {
+        "name": "encode_congestion_moderate",
+        "description": "Encode moderate queue depth",
+        "queue_depth": 42,
+        "encoded_hex": "022a",
+        "notes": "Type=0x02, Q=0x2a (42)"
+      },
+      {
+        "name": "encode_congestion_max",
+        "description": "Encode maximum queue depth",
+        "queue_depth": 255,
+        "encoded_hex": "02ff",
+        "notes": "Type=0x02, Q=0xff (255)"
+      },
+      {
+        "name": "decode_congestion_from_app_data",
+        "description": "Decode congestion from app_data with multiple TLVs",
+        "app_data_hex": "011c602130b7159a58022a",
+        "decoded_queue_depth": 42,
+        "notes": "Coords TLV (type=0x01, lat=476062000, lon=-1223321000), then congestion TLV (type=0x02, Q=42)"
+      },
+      {
+        "name": "decode_congestion_missing",
+        "description": "No congestion TLV in app_data returns null",
+        "app_data_hex": "011c602130b7159a58",
+        "decoded_queue_depth": null,
+        "notes": "Only coords TLV present (Seattle), no congestion indicator"
+      },
+      {
+        "name": "encode_congestion_invalid_negative",
+        "description": "Negative queue depth is invalid",
+        "queue_depth": -1,
+        "error": "ValueError"
+      },
+      {
+        "name": "encode_congestion_invalid_overflow",
+        "description": "Queue depth > 255 is invalid",
+        "queue_depth": 256,
+        "error": "ValueError"
+      }
+    ],
+    "table_operations": [
+      {
+        "name": "lru_eviction_order",
+        "description": "When table exceeds max_entries, least-recently-used entries are evicted first",
+        "max_entries": 3,
+        "operations": [
+          {"op": "update", "dest": "fe80::1", "next_hop": "fe80::a", "source": "announce"},
+          {"op": "update", "dest": "fe80::2", "next_hop": "fe80::b", "source": "announce"},
+          {"op": "update", "dest": "fe80::3", "next_hop": "fe80::c", "source": "announce"},
+          {"op": "lookup", "dest": "fe80::1"},
+          {"op": "update", "dest": "fe80::4", "next_hop": "fe80::d", "source": "announce"}
+        ],
+        "expected_remaining": ["fe80::1", "fe80::3", "fe80::4"],
+        "expected_evicted": ["fe80::2"],
+        "notes": "fe80::2 evicted because lookup of fe80::1 made it MRU"
+      },
+      {
+        "name": "expire_old_entries",
+        "description": "expire_old removes entries whose expires <= now",
+        "entries": [
+          {"dest": "fe80::1", "expires": 500000},
+          {"dest": "fe80::2", "expires": 1000000},
+          {"dest": "fe80::3", "expires": 1500000}
+        ],
+        "now_ms": 1000000,
+        "expected_remaining": ["fe80::3"],
+        "expected_expired_count": 2
+      },
+      {
+        "name": "lookup_returns_none_for_expired",
+        "description": "lookup returns None for expired entry even if present in table",
+        "entry": {
+          "destination": "fe80::dead:beef:cafe:babe",
+          "next_hop": "fe80::1111:2222:3333:4444",
+          "hop_count": 2,
+          "seq_num": 50,
+          "source": "rrep",
+          "expires": 900000
+        },
+        "lookup_dest": "fe80::dead:beef:cafe:babe",
+        "lookup_now_ms": 1000000,
+        "lookup_result": null
+      },
+      {
+        "name": "remove_via_next_hop",
+        "description": "remove_via removes all entries routing through a specific next_hop",
+        "entries": [
+          {"dest": "fe80::1", "next_hop": "fe80::a"},
+          {"dest": "fe80::2", "next_hop": "fe80::b"},
+          {"dest": "fe80::3", "next_hop": "fe80::a"},
+          {"dest": "fe80::4", "next_hop": "fe80::c"}
+        ],
+        "remove_via": "fe80::a",
+        "expected_removed": ["fe80::1", "fe80::3"],
+        "expected_remaining": ["fe80::2", "fe80::4"]
+      }
+    ],
+    "wrap_detection": [
+      {
+        "name": "wrap_detected_high_to_low",
+        "description": "Seq wrap detected: existing >49152, new <16384, entry aged >50% TTL",
+        "existing_entry": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "next_hop": "fe80::aaaa:bbbb:cccc:dddd",
+          "hop_count": 3,
+          "seq_num": 65000,
+          "source": "announce",
+          "expires": 1600000
+        },
+        "new_entry": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "next_hop": "fe80::eeee:ffff:0000:1111",
+          "hop_count": 4,
+          "seq_num": 100,
+          "source": "announce",
+          "expires": 1900000
+        },
+        "insert_time_ms": 1000000,
+        "now_ms": 1350000,
+        "entry_replaced": true,
+        "notes": "Entry created at 1000000ms (expires=1600000, TTL=600000). At now=1350000, age=350000 > 300000 (50% of TTL). Existing seq=65000 > 49152, new seq=100 < 16384. Wrap detected."
+      },
+      {
+        "name": "wrap_not_detected_too_young",
+        "description": "No wrap detection if entry has not aged past 50% TTL",
+        "existing_entry": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "next_hop": "fe80::aaaa:bbbb:cccc:dddd",
+          "hop_count": 3,
+          "seq_num": 65000,
+          "source": "announce",
+          "expires": 1600000
+        },
+        "new_entry": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "next_hop": "fe80::eeee:ffff:0000:1111",
+          "hop_count": 4,
+          "seq_num": 100,
+          "source": "announce",
+          "expires": 1200000
+        },
+        "insert_time_ms": 1000000,
+        "now_ms": 1100000,
+        "entry_replaced": false,
+        "notes": "At now=1100000, age=100000 < 300000 (50% of TTL=600000). Wrap heuristic not triggered. RFC 1982 comparison: 100 vs 65000 gives diff=(65000-100)&0xFFFF=64900 >= 32768, so 100 is NOT fresher. New entry loses."
+      },
+      {
+        "name": "wrap_not_detected_seq_in_middle",
+        "description": "No wrap detection if existing seq not in high range (>49152)",
+        "existing_entry": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "next_hop": "fe80::aaaa:bbbb:cccc:dddd",
+          "hop_count": 3,
+          "seq_num": 40000,
+          "source": "announce",
+          "expires": 1600000
+        },
+        "new_entry": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "next_hop": "fe80::eeee:ffff:0000:1111",
+          "hop_count": 4,
+          "seq_num": 100,
+          "source": "announce",
+          "expires": 1900000
+        },
+        "insert_time_ms": 1000000,
+        "now_ms": 1350000,
+        "entry_replaced": false,
+        "notes": "existing seq=40000 is NOT > 49152, so wrap heuristic not triggered. RFC 1982: 100 vs 40000 gives diff=(40000-100)&0xFFFF=39900 >= 32768, so 100 is NOT fresher."
+      }
+    ],
+    "path_selection": [
+      {
+        "name": "select_least_congested",
+        "description": "When multiple next-hops have equal hop count, select least congested (spec 11.4)",
+        "candidates": [
+          {"next_hop": "fe80::a", "hop_count": 3, "queue_depth": 50},
+          {"next_hop": "fe80::b", "hop_count": 3, "queue_depth": 10},
+          {"next_hop": "fe80::c", "hop_count": 3, "queue_depth": 100}
+        ],
+        "selected_next_hop": "fe80::b",
+        "notes": "All have hop_count=3, select min(queue_depth)=10"
+      },
+      {
+        "name": "hop_count_beats_congestion",
+        "description": "Fewer hops wins even if more congested (hop_count has priority)",
+        "candidates": [
+          {"next_hop": "fe80::a", "hop_count": 2, "queue_depth": 200},
+          {"next_hop": "fe80::b", "hop_count": 5, "queue_depth": 0}
+        ],
+        "selected_next_hop": "fe80::a",
+        "notes": "hop_count is compared first per spec 11.3; congestion only breaks ties"
+      },
+      {
+        "name": "congestion_breaks_tie",
+        "description": "Equal hop_count, congestion determines winner",
+        "candidates": [
+          {"next_hop": "fe80::a", "hop_count": 4, "queue_depth": 80},
+          {"next_hop": "fe80::b", "hop_count": 4, "queue_depth": 20}
+        ],
+        "selected_next_hop": "fe80::b"
+      },
+      {
+        "name": "no_congestion_data_available",
+        "description": "When congestion data is missing (null), treat as 0",
+        "candidates": [
+          {"next_hop": "fe80::a", "hop_count": 3, "queue_depth": null},
+          {"next_hop": "fe80::b", "hop_count": 3, "queue_depth": 50}
+        ],
+        "selected_next_hop": "fe80::a",
+        "notes": "null queue_depth treated as 0 (no congestion info = assume not congested)"
+      }
+    ],
+    "timeouts": [
+      {
+        "name": "announce_timeout",
+        "description": "ANNOUNCE/RREP gradients use GRADIENT_TIMEOUT_MS (600 sec = 10 min)",
+        "source": "announce",
+        "timeout_ms": 600000,
+        "notes": "spec section 9"
+      },
+      {
+        "name": "data_timeout",
+        "description": "DATA (passive learning) gradients use DATA_GRADIENT_TIMEOUT_MS (60 sec)",
+        "source": "data",
+        "timeout_ms": 60000,
+        "notes": "spec section 11.2"
+      },
+      {
+        "name": "rrep_timeout",
+        "description": "RREP gradients use GRADIENT_TIMEOUT_MS (600 sec)",
+        "source": "rrep",
+        "timeout_ms": 600000
+      },
+      {
+        "name": "rpl_timeout",
+        "description": "RPL gradients use GRADIENT_TIMEOUT_MS (600 sec)",
+        "source": "rpl",
+        "timeout_ms": 600000
+      }
+    ]
+  }
+}

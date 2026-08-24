@@ -1,0 +1,294 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "waypoint",
+  "description": "Waypoint CBOR encoding vectors (spec 18.3.1). Validates id, name, lat, lon, alt, icon, color, notes, created, creator, expires fields.",
+  "spec": "spec/12-apps.md",
+  "vectors": [
+    {
+      "name": "minimal_required",
+      "description": "Minimal waypoint with required fields only: id, name, lat, lon, created, creator (spec 18.3.1).",
+      "input": {
+        "id": "wpt-001",
+        "name": "Rally Point Alpha",
+        "lat": 37.774929,
+        "lon": -122.419416,
+        "created": 1716742800,
+        "creator": "0200::1111"
+      },
+      "encoded_hex": "a6626964677770742d303031646e616d657152616c6c7920506f696e7420416c706861636c6174fb4042e330df9bdc6a636c6f6efbc05e9ad7b634dad367637265617465641a66536a906763726561746f726a303230303a3a31313131"
+    },
+    {
+      "name": "all_fields",
+      "description": "Waypoint with all fields: id, name, lat, lon, alt, icon, color, notes, created, creator, expires (spec 18.3.1).",
+      "input": {
+        "id": "wpt-002",
+        "name": "Water Source",
+        "lat": 37.78,
+        "lon": -122.42,
+        "alt": 10.5,
+        "icon": "water",
+        "color": "#0000FF",
+        "notes": "Potable water available",
+        "created": 1716742800,
+        "creator": "0200::2222",
+        "expires": 1716829200
+      },
+      "encoded_hex": "ab626964677770742d303032646e616d656c576174657220536f75726365636c6174fb4042e3d70a3d70a4636c6f6efbc05e9ae147ae147b63616c74fb40250000000000006469636f6e65776174657265636f6c6f726723303030304646656e6f74657377506f7461626c6520776174657220617661696c61626c6567637265617465641a66536a906763726561746f726a303230303a3a3232323267657870697265731a6654bc10"
+    },
+    {
+      "name": "icon_flag",
+      "description": "Waypoint with flag icon (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-003",
+        "name": "Flag Point",
+        "lat": 37.77,
+        "lon": -122.41,
+        "icon": "flag",
+        "created": 1716742800,
+        "creator": "0200::3333"
+      },
+      "encoded_hex": "a7626964677770742d303033646e616d656a466c616720506f696e74636c6174fb4042e28f5c28f5c3636c6f6efbc05e9a3d70a3d70a6469636f6e64666c616767637265617465641a66536a906763726561746f726a303230303a3a33333333"
+    },
+    {
+      "name": "icon_checkpoint",
+      "description": "Waypoint with checkpoint icon (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-004",
+        "name": "Checkpoint 3",
+        "lat": 37.78,
+        "lon": -122.42,
+        "icon": "checkpoint",
+        "created": 1716742800,
+        "creator": "0200::4444"
+      },
+      "encoded_hex": "a7626964677770742d303034646e616d656c436865636b706f696e742033636c6174fb4042e3d70a3d70a4636c6f6efbc05e9ae147ae147b6469636f6e6a636865636b706f696e7467637265617465641a66536a906763726561746f726a303230303a3a34343434"
+    },
+    {
+      "name": "icon_danger",
+      "description": "Waypoint with danger icon and warning notes (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-005",
+        "name": "Hazard Area",
+        "lat": 37.79,
+        "lon": -122.43,
+        "icon": "danger",
+        "color": "#FF0000",
+        "notes": "Avoid this area",
+        "created": 1716742800,
+        "creator": "0200::5555"
+      },
+      "encoded_hex": "a9626964677770742d303035646e616d656b48617a6172642041726561636c6174fb4042e51eb851eb85636c6f6efbc05e9b851eb851ec6469636f6e6664616e67657265636f6c6f726723464630303030656e6f7465736f41766f69642074686973206172656167637265617465641a66536a906763726561746f726a303230303a3a35353535"
+    },
+    {
+      "name": "icon_medical",
+      "description": "Waypoint with medical icon (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-006",
+        "name": "First Aid Station",
+        "lat": 37.775,
+        "lon": -122.415,
+        "icon": "medical",
+        "created": 1716742800,
+        "creator": "0200::6666"
+      },
+      "encoded_hex": "a7626964677770742d303036646e616d65714669727374204169642053746174696f6e636c6174fb4042e33333333333636c6f6efbc05e9a8f5c28f5c36469636f6e676d65646963616c67637265617465641a66536a906763726561746f726a303230303a3a36363636"
+    },
+    {
+      "name": "icon_camp",
+      "description": "Waypoint with camp icon and notes (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-007",
+        "name": "Base Camp",
+        "lat": 37.77,
+        "lon": -122.40,
+        "icon": "camp",
+        "notes": "Main staging area",
+        "created": 1716742800,
+        "creator": "0200::7777"
+      },
+      "encoded_hex": "a8626964677770742d303037646e616d6569426173652043616d70636c6174fb4042e28f5c28f5c3636c6f6efbc05e99999999999a6469636f6e6463616d70656e6f746573714d61696e2073746167696e67206172656167637265617465641a66536a906763726561746f726a303230303a3a37373737"
+    },
+    {
+      "name": "negative_lat",
+      "description": "Waypoint with negative latitude (Southern hemisphere - Sydney).",
+      "input": {
+        "id": "wpt-008",
+        "name": "Southern Point",
+        "lat": -33.8688,
+        "lon": 151.2093,
+        "created": 1716742800,
+        "creator": "0200::8888"
+      },
+      "encoded_hex": "a6626964677770742d303038646e616d656e536f75746865726e20506f696e74636c6174fbc040ef34d6a161e5636c6f6efb4062e6b295e9e1b167637265617465641a66536a906763726561746f726a303230303a3a38383838"
+    },
+    {
+      "name": "high_alt",
+      "description": "Waypoint with high altitude (Mt Everest summit).",
+      "input": {
+        "id": "wpt-009",
+        "name": "Mountain Peak",
+        "lat": 27.9881,
+        "lon": 86.925,
+        "alt": 8848.86,
+        "icon": "marker",
+        "created": 1716742800,
+        "creator": "0200::9999"
+      },
+      "encoded_hex": "a8626964677770742d303039646e616d656d4d6f756e7461696e205065616b636c6174fb403bfcf41f212d77636c6f6efb4055bb333333333363616c74fb40c1486e147ae1486469636f6e666d61726b657267637265617465641a66536a906763726561746f726a303230303a3a39393939"
+    },
+    {
+      "name": "negative_alt",
+      "description": "Waypoint with negative altitude (Dead Sea, below sea level).",
+      "input": {
+        "id": "wpt-010",
+        "name": "Dead Sea Shore",
+        "lat": 31.5,
+        "lon": 35.5,
+        "alt": -430.5,
+        "created": 1716742800,
+        "creator": "0200::aaaa"
+      },
+      "encoded_hex": "a7626964677770742d303130646e616d656e44656164205365612053686f7265636c6174fb403f800000000000636c6f6efb4041c0000000000063616c74fbc07ae8000000000067637265617465641a66536a906763726561746f726a303230303a3a61616161"
+    },
+    {
+      "name": "with_expires",
+      "description": "Waypoint with expires field for temporary location (spec 18.3.1).",
+      "input": {
+        "id": "wpt-011",
+        "name": "Temporary Rally",
+        "lat": 37.77,
+        "lon": -122.41,
+        "created": 1716742800,
+        "creator": "0200::bbbb",
+        "expires": 1716829200
+      },
+      "encoded_hex": "a7626964677770742d303131646e616d656f54656d706f726172792052616c6c79636c6174fb4042e28f5c28f5c3636c6f6efbc05e9a3d70a3d70a67637265617465641a66536a906763726561746f726a303230303a3a6262626267657870697265731a6654bc10"
+    },
+    {
+      "name": "icon_vehicle",
+      "description": "Waypoint with vehicle icon (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-012",
+        "name": "Vehicle Parking",
+        "lat": 37.765,
+        "lon": -122.405,
+        "icon": "vehicle",
+        "created": 1716742800,
+        "creator": "0200::cccc"
+      },
+      "encoded_hex": "a7626964677770742d303132646e616d656f56656869636c65205061726b696e67636c6174fb4042e1eb851eb852636c6f6efbc05e99eb851eb8526469636f6e6776656869636c6567637265617465641a66536a906763726561746f726a303230303a3a63636363"
+    },
+    {
+      "name": "icon_poi",
+      "description": "Waypoint with poi (point of interest) icon (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-013",
+        "name": "Scenic Overlook",
+        "lat": 37.82,
+        "lon": -122.37,
+        "icon": "poi",
+        "notes": "Great view of the bay",
+        "created": 1716742800,
+        "creator": "0200::dddd"
+      },
+      "encoded_hex": "a8626964677770742d303133646e616d656f5363656e6963204f7665726c6f6f6b636c6174fb4042e8f5c28f5c29636c6f6efbc05e97ae147ae1486469636f6e63706f69656e6f7465737547726561742076696577206f66207468652062617967637265617465641a66536a906763726561746f726a303230303a3a64646464"
+    },
+    {
+      "name": "icon_start",
+      "description": "Waypoint with start icon (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-014",
+        "name": "Start Line",
+        "lat": 37.76,
+        "lon": -122.50,
+        "icon": "start",
+        "created": 1716742800,
+        "creator": "0200::eeee"
+      },
+      "encoded_hex": "a7626964677770742d303134646e616d656a5374617274204c696e65636c6174fb4042e147ae147ae1636c6f6efbc05ea000000000006469636f6e65737461727467637265617465641a66536a906763726561746f726a303230303a3a65656565"
+    },
+    {
+      "name": "icon_finish",
+      "description": "Waypoint with finish icon (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-015",
+        "name": "Finish Line",
+        "lat": 37.80,
+        "lon": -122.40,
+        "icon": "finish",
+        "created": 1716742800,
+        "creator": "0200::ffff"
+      },
+      "encoded_hex": "a7626964677770742d303135646e616d656b46696e697368204c696e65636c6174fb4042e66666666666636c6f6efbc05e99999999999a6469636f6e6666696e69736867637265617465641a66536a906763726561746f726a303230303a3a66666666"
+    },
+    {
+      "name": "icon_marker",
+      "description": "Waypoint with generic marker icon (spec 18.3.1, icon table).",
+      "input": {
+        "id": "wpt-016",
+        "name": "Reference Point",
+        "lat": 37.775,
+        "lon": -122.42,
+        "icon": "marker",
+        "created": 1716742800,
+        "creator": "0200::1000"
+      },
+      "encoded_hex": "a7626964677770742d303136646e616d656f5265666572656e636520506f696e74636c6174fb4042e33333333333636c6f6efbc05e9ae147ae147b6469636f6e666d61726b657267637265617465641a66536a906763726561746f726a303230303a3a31303030"
+    },
+    {
+      "name": "unicode_name",
+      "description": "Waypoint with ASCII name (Paris location).",
+      "input": {
+        "id": "wpt-017",
+        "name": "Cafe Rendezvous",
+        "lat": 48.8566,
+        "lon": 2.3522,
+        "icon": "poi",
+        "created": 1716742800,
+        "creator": "0200::1111"
+      },
+      "encoded_hex": "a7626964677770742d303137646e616d656f436166652052656e64657a766f7573636c6174fb40486da5119ce076636c6f6efb4002d14e3bcd35a86469636f6e63706f6967637265617465641a66536a906763726561746f726a303230303a3a31313131"
+    },
+    {
+      "name": "long_notes",
+      "description": "Waypoint with longer notes field (spec 18.3.1).",
+      "input": {
+        "id": "wpt-018",
+        "name": "Briefing Point",
+        "lat": 37.78,
+        "lon": -122.41,
+        "notes": "Team briefing at 0800. Bring maps and radios. Check in required.",
+        "created": 1716742800,
+        "creator": "0200::2000"
+      },
+      "encoded_hex": "a7626964677770742d303138646e616d656e4272696566696e6720506f696e74636c6174fb4042e3d70a3d70a4636c6f6efbc05e9a3d70a3d70a656e6f74657378405465616d206272696566696e6720617420303830302e204272696e67206d61707320616e6420726164696f732e20436865636b20696e2072657175697265642e67637265617465641a66536a906763726561746f726a303230303a3a32303030"
+    },
+    {
+      "name": "zero_coords",
+      "description": "Waypoint at zero coordinates (Null Island - edge case).",
+      "input": {
+        "id": "wpt-019",
+        "name": "Null Island",
+        "lat": 0.0,
+        "lon": 0.0,
+        "created": 1716742800,
+        "creator": "0200::3000"
+      },
+      "encoded_hex": "a6626964677770742d303139646e616d656b4e756c6c2049736c616e64636c6174fb0000000000000000636c6f6efb000000000000000067637265617465641a66536a906763726561746f726a303230303a3a33303030"
+    },
+    {
+      "name": "extreme_lon",
+      "description": "Waypoint near the date line (extreme longitude edge case).",
+      "input": {
+        "id": "wpt-020",
+        "name": "Date Line Point",
+        "lat": 0.0,
+        "lon": 179.9999,
+        "created": 1716742800,
+        "creator": "0200::4000"
+      },
+      "encoded_hex": "a6626964677770742d303230646e616d656f44617465204c696e6520506f696e74636c6174fb0000000000000000636c6f6efb40667fff2e48e8a767637265617465641a66536a906763726561746f726a303230303a3a34303030"
+    }
+  ]
+}

@@ -595,7 +595,7 @@
     {
       "name": "rrep_gradient_stale_no_update",
       "type": "rrep",
-      "description": "RREP with stale sequence number does not update existing gradient (RFC 1982: newer seq wins). Still delivered if destination.",
+      "description": "RREP with stale sequence number does not update existing gradient (RFC 1982: newer seq wins) and never installs into the cache either: when the cache holds no entry for the originator, the unified verdict consults the surviving gradient as authority, so the gradient retains its seq=200 entry toward node5 and nothing is written anywhere (project-LICHEN-worker6-3ae7). Still delivered if destination.",
       "initial_state": {
         "node_address": "fe80::1",
         "cache_entries": [],
@@ -625,14 +625,127 @@
         "action": "delivered",
         "forward": null,
         "dropped": false,
+        "cache_added": false,
+        "gradient_added": false,
+        "gradient_unchanged": true
+      }
+    },
+    {
+      "name": "rrep_hop_boundary_dropped",
+      "type": "rrep",
+      "description": "RREP at MAX_HOP_LIMIT (hop_count=15): installing costs one more hop (16), which no wire-legal RREP can carry (spec B2.1); drop cleanly with no state change instead of storing an unserializable route cost.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::1",
+          "seq_num": 200,
+          "hop_count": 15,
+          "flags": 0
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "dropped_rrep",
+        "forward": null,
+        "forward_next_hop": null,
+        "dropped": true,
+        "cache_added": false,
+        "gradient_added": false
+      }
+    },
+    {
+      "name": "rrep_stale_rejected_by_fresh_cache",
+      "type": "rrep",
+      "description": "Cache holds fresher knowledge (seq=300) while the gradient table has no entry: a stale RREP (seq=200) is rejected by the unified verdict, so neither store is written even though the reply reaches its requester.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [
+          {
+            "destination": "fe80::3",
+            "next_hop": "fe80::4",
+            "hop_count": 2,
+            "metric": 2,
+            "seq_num": 300,
+            "valid_until_ms": 301000
+          }
+        ],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::1",
+          "seq_num": 200,
+          "hop_count": 1,
+          "flags": 0
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "delivered",
+        "forward": null,
+        "dropped": false,
+        "cache_added": false,
+        "cache_unchanged": true,
+        "gradient_added": false
+      }
+    },
+    {
+      "name": "rrep_equal_seq_fewer_hops_updates",
+      "type": "rrep",
+      "description": "Equal sequence number with strictly fewer hops is superior (RFC 3561 section 6.2): replaces the cached route and installs the forward gradient.",
+      "initial_state": {
+        "node_address": "fe80::1",
+        "cache_entries": [
+          {
+            "destination": "fe80::3",
+            "next_hop": "fe80::4",
+            "hop_count": 4,
+            "metric": 4,
+            "seq_num": 200,
+            "valid_until_ms": 301000
+          }
+        ],
+        "gradient_entries": [],
+        "seen_entries": []
+      },
+      "input": {
+        "rrep": {
+          "originator": "fe80::3",
+          "destination": "fe80::1",
+          "seq_num": 200,
+          "hop_count": 2,
+          "flags": 0
+        },
+        "from_neighbor": "fe80::2",
+        "now_ms": 1000
+      },
+      "expected": {
+        "action": "delivered",
+        "forward": null,
+        "dropped": false,
         "cache_added": true,
         "cache_entry": {
           "destination": "fe80::3",
           "next_hop": "fe80::2",
-          "hop_count": 2
+          "hop_count": 3
         },
-        "gradient_added": false,
-        "gradient_unchanged": true
+        "gradient_added": true,
+        "gradient_entry": {
+          "destination": "fe80::3",
+          "next_hop": "fe80::2",
+          "hop_count": 3,
+          "seq_num": 200
+        }
       }
     },
     {

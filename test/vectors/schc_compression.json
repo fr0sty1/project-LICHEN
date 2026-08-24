@@ -48,9 +48,213 @@
     {
       "name": "oscore_global",
       "rule_id": 6,
-      "description": "Global IPv6+UDP+OSCORE CoAP (Yggdrasil 02xx::/7)",
+      "description": "Global IPv6+UDP+OSCORE CoAP (Yggdrasil 0200::/8)",
       "packet": "6000000000161140027dd5cfc679ab637dd5cfc679ab634202f77a7baa1226b5f57a7baa1226b50c1633163300165339420112340001920900ffdeadbeef",
       "compressed": "06407dd5cfc679ab637dd5cfc679ab6342f77a7baa1226b5f57a7baa1226b50c33080448d00001920900ffdeadbeef"
+    },
+    {
+      "name": "mqtt_sn_source_port_linklocal",
+      "rule_id": 7,
+      "description": "Rule 7 source-only port 10883 with canonical fe80::/64 IID mode",
+      "packet": "60000000000c1140fe800000000000000000000000000001fe8000000000000000000000000000022a831388000cdcec74657374",
+      "compressed": "07400000000000000000800000000000000104e20074657374"
+    },
+    {
+      "name": "mqtt_sn_empty_payload_linklocal",
+      "rule_id": 7,
+      "description": "Rule 7 source-only port 10883 with an empty MQTT-SN payload",
+      "packet": "6000000000081140fe800000000000000000000000000001fe8000000000000000000000000000022a8313880008c4ce",
+      "compressed": "07400000000000000000800000000000000104e200"
+    },
+    {
+      "name": "mqtt_sn_destination_port_linklocal",
+      "rule_id": 7,
+      "description": "Rule 7 destination-only port 10883 with PortDirection one",
+      "packet": "60000000000f1140fe800000000000000000000000000001fe80000000000000000000000000000213882a83000f197f636f6e6e656374",
+      "compressed": "07400000000000000000800000000000000144e200636f6e6e656374"
+    },
+    {
+      "name": "mqtt_sn_both_ports_linklocal",
+      "rule_id": 7,
+      "description": "Rule 7 both-port canonical form uses PortDirection zero",
+      "packet": "6000000000091140fe800000000000000000000000000001fe8000000000000000000000000000022a832a83000935d178",
+      "compressed": "0740000000000000000080000000000000010aa0c078"
+    },
+    {
+      "name": "mqtt_sn_global_full_addresses",
+      "rule_id": 7,
+      "description": "Rule 7 global endpoints use two full 128-bit addresses",
+      "packet": "60000000000b114020010db800000000000000000000000120010db80000000000000000000000022a8322b8000b84b2707562",
+      "compressed": "0740900086dc000000000000000000000000900086dc00000000000000000000000108ae00707562"
+    },
+    {
+      "name": "mqtt_sn_mixed_full_addresses",
+      "rule_id": 7,
+      "description": "Rule 7 mixed link-local/global endpoints use full-address mode",
+      "packet": "6000000000091140fe80000000000000000000000000000120010db80000000000000000000000022a831388000928946d",
+      "compressed": "0740ff400000000000000000000000000000900086dc00000000000000000000000104e2006d"
+    },
+    {
+      "name": "mqtt_sn_traffic_class_nonmatch",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "A valid MQTT-SN packet with nonzero Traffic Class does not match Rule 7 and is preserved by Rule 255.",
+      "packet": "6010000000091140fe800000000000000000000000000001fe8000000000000000000000000000022a83138800094ccc78",
+      "compressed": "ff6010000000091140fe800000000000000000000000000001fe8000000000000000000000000000022a83138800094ccc78"
+    },
+    {
+      "name": "mqtt_sn_flow_label_nonmatch",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "A valid MQTT-SN packet with nonzero Flow Label does not match Rule 7 and is preserved by Rule 255.",
+      "packet": "6000000100091140fe800000000000000000000000000001fe8000000000000000000000000000022a83138800094ccc78",
+      "compressed": "ff6000000100091140fe800000000000000000000000000001fe8000000000000000000000000000022a83138800094ccc78"
+    },
+    {
+      "name": "coap_traffic_class_nonmatch",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "Rule 0 elides zero Traffic Class, so a valid nonzero value falls back unchanged.",
+      "packet": "60100000000d1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000d0c344001123478",
+      "compressed": "ff60100000000d1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000d0c344001123478"
+    },
+    {
+      "name": "coap_flow_label_nonmatch",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "Rule 0 elides zero Flow Label, so a valid nonzero value falls back unchanged.",
+      "packet": "60000001000d1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000d0c344001123478",
+      "compressed": "ff60000001000d1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000d0c344001123478"
+    },
+    {
+      "name": "coap_version_nonmatch",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "A UDP payload with CoAP Version 2 is not normalized to Version 1 by Rule 0.",
+      "packet": "60000000000d1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000dcc338001123478",
+      "compressed": "ff60000000000d1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000dcc338001123478"
+    },
+    {
+      "name": "coap_reserved_tkl_nonmatch",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "Reserved CoAP TKL 9 is not treated as a compressible Rule 0 header.",
+      "packet": "6000000000151140fe800000000000000000000000000001fe800000000000000000000000000002163316330015671449011234000102030405060708",
+      "compressed": "ff6000000000151140fe800000000000000000000000000001fe800000000000000000000000000002163316330015671449011234000102030405060708"
+    },
+    {
+      "name": "coap_truncated_token_nonmatch",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "A CoAP TKL 8 header with only two token octets is not compressed or repaired.",
+      "packet": "60000000000e1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000e03ba480112347878",
+      "compressed": "ff60000000000e1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000e03ba480112347878"
+    },
+    {
+      "name": "linklocal_noncanonical_slash64_fallback",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "fe80:0:0:1::/64 is within fe80::/10 but cannot use IID-only Rules 0/5 and round-trips unchanged via Rule 255.",
+      "packet": "60000000000d1140fe800000000000010000000000000001fe80000000000001000000000000000216331633000d0c324001123478",
+      "compressed": "ff60000000000d1140fe800000000000010000000000000001fe80000000000001000000000000000216331633000d0c324001123478"
+    },
+    {
+      "name": "coap_invalid_udp_checksum",
+      "category": "malformed_input",
+      "description": "A plaintext CoAP packet with a corrupted mandatory IPv6 UDP checksum is rejected rather than repaired.",
+      "packet": "60000000000d1140fe800000000000000000000000000001fe80000000000000000000000000000216331633000d0d344001123478",
+      "expect_error": "invalid_udp_checksum"
+    },
+    {
+      "name": "mqtt_sn_profile_size_exact_maximum",
+      "category": "size_boundary",
+      "rule_id": 7,
+      "description": "A canonical 21-byte link-local Rule 7 prefix plus 22533 payload octets is the exact 22554-byte encoded SCHC profile maximum; decompression reconstructs 22581 raw IPv6 bytes.",
+      "compressed_prefix": "07400000000000000000800000000000000104e200",
+      "tail_byte": 0,
+      "tail_length": 22533,
+      "expected_packet_size": 22581
+    },
+    {
+      "name": "mqtt_sn_profile_size_one_over",
+      "category": "size_boundary",
+      "rule_id": 7,
+      "description": "One additional Rule 7 payload octet produces a 22555-byte encoded SCHC packet and must be rejected before checksum or output allocation.",
+      "compressed_prefix": "07400000000000000000800000000000000104e200",
+      "tail_byte": 0,
+      "tail_length": 22534,
+      "expected_packet_size": 22582,
+      "expect_error": "profile_limit"
+    },
+    {
+      "name": "mqtt_sn_truncated_linklocal_residue",
+      "category": "malformed",
+      "rule_id": 7,
+      "compressed": "07400000000000000000800000000000000104e2",
+      "expect_error": "truncated_residue"
+    },
+    {
+      "name": "rule0_nonzero_padding",
+      "category": "malformed",
+      "rule_id": 0,
+      "compressed": "00400000000000000001000000000000000233000448d1ff737461747573",
+      "expect_error": "noncanonical_padding"
+    },
+    {
+      "name": "rule1_nonzero_padding",
+      "category": "malformed",
+      "rule_id": 1,
+      "compressed": "01407dd5cfc679ab637dd5cfc679ab6342f77a7baa1226b5f57a7baa1226b50c33000448d1ff737461747573",
+      "expect_error": "noncanonical_padding"
+    },
+    {
+      "name": "rule5_nonzero_padding",
+      "category": "malformed",
+      "rule_id": 5,
+      "compressed": "05400000000000000001000000000000000233080448d10001920900ffdeadbeef",
+      "expect_error": "noncanonical_padding"
+    },
+    {
+      "name": "rule6_nonzero_padding",
+      "category": "malformed",
+      "rule_id": 6,
+      "compressed": "06407dd5cfc679ab637dd5cfc679ab6342f77a7baa1226b5f57a7baa1226b50c33080448d10001920900ffdeadbeef",
+      "expect_error": "noncanonical_padding"
+    },
+    {
+      "name": "mqtt_sn_nonzero_padding",
+      "category": "malformed",
+      "rule_id": 7,
+      "compressed": "07400000000000000000800000000000000104e20174657374",
+      "expect_error": "noncanonical_padding"
+    },
+    {
+      "name": "mqtt_sn_noncanonical_both_port_direction",
+      "category": "malformed",
+      "rule_id": 7,
+      "compressed": "0740000000000000000080000000000000014aa0c078",
+      "expect_error": "noncanonical_direction"
+    },
+    {
+      "name": "mqtt_sn_noncanonical_full_linklocal_mode",
+      "category": "malformed",
+      "rule_id": 7,
+      "compressed": "0740ff400000000000000000000000000000ff40000000000000000000000000000104e20078",
+      "expect_error": "noncanonical_address_mode"
+    },
+    {
+      "name": "mqtt_sn_multicast_source",
+      "category": "malformed",
+      "rule_id": 7,
+      "compressed": "0740ff810000000000000000000000000000900086dc00000000000000000000000104e20078",
+      "expect_error": "invalid_source"
+    },
+    {
+      "name": "mqtt_sn_unspecified_destination",
+      "category": "malformed",
+      "rule_id": 7,
+      "compressed": "0740900086dc0000000000000000000000008000000000000000000000000000000004e20078",
+      "expect_error": "invalid_destination"
     }
   ]
 }

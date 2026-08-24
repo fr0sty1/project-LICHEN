@@ -5,15 +5,16 @@
   "vectors": [
     {
       "name": "tdma_slot_assignment_static_hash",
-      "description": "Static slot from EUI-64 hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) mod num_slots per TDMA spec (CCP-15.8.3). Independent external arithmetic oracle.",
+      "description": "Canonical slot at SFN zero from (FNV-1a32(EUI64) + u32(SFN)) mod num_slots. Independent external arithmetic oracle.",
       "eui64_hex": "0011223344556677",
+      "sfn": 0,
       "num_slots": 16,
       "expected_slot": 13
     },
     {
       "name": "guard_time_boundary_sf10",
-      "description": "50ms guard for 250ms slot tolerates 0.5% drift over 5s superframe.",
-      "slot_ms": 250,
+      "description": "The 2346ms SF10 maximum-frame slot retains its 50ms guard under 0.5% drift over a 5s superframe.",
+      "slot_ms": 2346,
       "guard_ms": 50,
       "drift_ppm": 5000,
       "superframe_ms": 5000

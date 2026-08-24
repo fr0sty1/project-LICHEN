@@ -2,9 +2,17 @@
   "$schema": "./schema.json",
   "format_version": 2,
   "name": "sos_signature",
-  "description": "SOS signature verification per spec Section 18.3. Unsigned/invalid silently dropped.",
-  "spec": "spec/12-apps.md Section 18.3",
+  "description": "SOS signature verification per spec Section 18.3/18.4.1. Covers link-layer signature (silent drop on invalid) and origin signature (domain separation, canonical CBOR, replay protection).",
+  "spec": "spec/12-apps.md Section 18.3, 18.4.1",
   "signature_algorithm": "schnorr48",
+  "origin_signature": {
+    "domain": "LICHEN-SOS-ORIGIN-v1",
+    "domain_hex": "4c494348454e2d534f532d4f524947494e2d7631",
+    "domain_length": 20,
+    "wire_format": "8-byte sequence (big-endian) + 48-byte Schnorr signature",
+    "total_length": 56,
+    "transcript": "SHA-512(domain || origin_ipv6 || seq || canonical_cbor_payload)"
+  },
   "vectors": [
     {
       "name": "sos_valid_signature_accept",
@@ -112,6 +120,79 @@
         "reason": "enumeration_prevention",
         "note": "Attacker cannot probe which IIDs have valid keys"
       }
+    },
+    {
+      "name": "origin_domain_separation",
+      "description": "Origin signature uses domain 'LICHEN-SOS-ORIGIN-v1' to prevent cross-protocol reuse.",
+      "domain": "LICHEN-SOS-ORIGIN-v1",
+      "domain_hex": "4c494348454e2d534f532d4f524947494e2d7631",
+      "domain_length": 20,
+      "different_from": "LICHEN-DAO-ORIGIN-v1",
+      "note": "Signature over SOS cannot be replayed as DAO origin signature"
+    },
+    {
+      "name": "origin_transcript_format",
+      "description": "Origin signature transcript: SHA-512(domain || ipv6 || seq || cbor)",
+      "origin_address": "0200:1234:5678:9abc:def0:1234:5678:9abc",
+      "origin_sequence": 1,
+      "payload": {"type": "sos", "node": "0200:1234:5678:9abc", "ts": 1716742800},
+      "transcript_inputs": {
+        "domain": "4c494348454e2d534f532d4f524947494e2d7631",
+        "ipv6_packed": "0200123456789abcdef0123456789abc",
+        "seq_big_endian": "0000000000000001",
+        "payload_cbor": "canonical CBOR of payload"
+      },
+      "transcript_algorithm": "SHA-512"
+    },
+    {
+      "name": "canonical_cbor_key_order",
+      "description": "CBOR canonical encoding sorts keys by length then lexicographically (RFC 8949 4.2.1).",
+      "payload": {"type": "sos", "node": "0200:1234", "ts": 1716742800, "lat": 37.7, "lon": -122.4},
+      "key_order_canonical": ["lat", "lon", "ts", "node", "type"],
+      "note": "3-char keys before 4-char keys; within same length, lexicographic"
+    },
+    {
+      "name": "canonical_cbor_medical",
+      "description": "Medical emergency payload canonical encoding",
+      "payload": {"type": "medical", "node": "0200:dead:beef", "ts": 1716742800, "msg": "Heart attack"},
+      "key_order_canonical": ["msg", "ts", "node", "type"]
+    },
+    {
+      "name": "canonical_cbor_cancel",
+      "description": "SOS cancellation payload canonical encoding",
+      "payload": {"type": "cancel", "node": "0200:1111:2222", "ts": 1716742900},
+      "key_order_canonical": ["ts", "node", "type"]
+    },
+    {
+      "name": "origin_wire_format",
+      "description": "Origin signature wire format: 8-byte big-endian seq + 48-byte Schnorr",
+      "origin_sequence": 42,
+      "sequence_hex": "000000000000002a",
+      "signature_length": 48,
+      "total_length": 56
+    },
+    {
+      "name": "origin_sequence_replay",
+      "description": "Same origin sequence from same sender is rejected as replay",
+      "origin_address": "0200:aaaa:bbbb:cccc",
+      "first_sequence": 5,
+      "replay_sequence": 5,
+      "expected": {"accept": false, "reason": "origin_replay"}
+    },
+    {
+      "name": "origin_sequence_rollback",
+      "description": "Origin sequence less than last seen is rejected",
+      "origin_address": "0200:aaaa:bbbb:cccc",
+      "last_seen": 10,
+      "received": 8,
+      "expected": {"accept": false, "reason": "origin_stale"}
+    },
+    {
+      "name": "wrong_domain_rejected",
+      "description": "Signature computed with wrong domain string is invalid",
+      "correct_domain": "LICHEN-SOS-ORIGIN-v1",
+      "used_domain": "LICHEN-DAO-ORIGIN-v1",
+      "expected": {"accept": false, "reason": "domain_mismatch"}
     }
   ]
 }

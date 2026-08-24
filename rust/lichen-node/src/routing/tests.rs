@@ -5,10 +5,10 @@ use super::router::{dao_parents_for_source, sign_dao};
 use super::*;
 use lichen_core::constants::RPL_INSTANCE_ID;
 use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
-use lichen_rpl::dodag::DodagState;
+use lichen_rpl::dodag::{DodagState, MIN_HOP_RANK_INCREASE};
 use lichen_rpl::message::{
     Dao, Dio, DodagConfig, OptionIter, TransitInfo, DODAG_CONFIG_DATA_LEN, OPT_DODAG_CONFIG,
-    OPT_TRANSIT_INFO,
+    OPT_DODAG_VERSION_AUTHORIZATION, OPT_TRANSIT_INFO,
 };
 use std::vec;
 use std::vec::Vec;
@@ -32,14 +32,11 @@ fn ula(iid: u8) -> [u8; 16] {
 
 fn test_origin(seed: u8) -> [u8; 16] {
     let identity = Identity::from_seed(Seed::new([seed; 32]));
-    let mut address = [0u8; 16];
-    address[..2].copy_from_slice(&[0xfe, 0x80]);
-    address[8..].copy_from_slice(&identity.iid);
-    address
+    lichen_core::addr::ygg_addr_from_pubkey(identity.pubkey.as_bytes())
 }
 
-fn dio_bytes(dio: &Dio) -> [u8; Dio::BASE_LEN] {
-    let mut bytes = [0u8; Dio::BASE_LEN];
+fn dio_bytes(dio: &Dio) -> [u8; Dio::SERIALIZED_LEN] {
+    let mut bytes = [0u8; Dio::SERIALIZED_LEN];
     dio.write_to(&mut bytes).unwrap();
     bytes
 }
@@ -220,10 +217,10 @@ fn dodag_config_literal_roundtrips_through_router() {
     assert_eq!(router.dodag.max_rank_increase, 1024);
     assert_eq!(router.dodag_config.lifetime_unit, 30);
 
-    let mut encoded = [0u8; 40];
+    let mut encoded = [0u8; Dio::SERIALIZED_LEN + 16];
     assert_eq!(router.build_dio(&mut encoded), encoded.len());
-    assert_eq!(&encoded[Dio::BASE_LEN..], &bytes[Dio::BASE_LEN..]);
-    assert_eq!(router.build_dio(&mut [0u8; 39]), 0);
+    assert_eq!(&encoded[Dio::SERIALIZED_LEN..], &bytes[Dio::BASE_LEN..]);
+    assert_eq!(router.build_dio(&mut [0u8; Dio::SERIALIZED_LEN + 15]), 0);
 }
 
 #[test]
@@ -242,13 +239,13 @@ fn malformed_dodag_config_does_not_mutate_router() {
         flags: 0,
         dodag_id,
     };
-    let mut bytes = [0u8; 40];
+    let mut bytes = [0u8; Dio::SERIALIZED_LEN + 16];
     dio.write_to(&mut bytes).unwrap();
     DodagConfig::default()
-        .write_to(&mut bytes[Dio::BASE_LEN..])
+        .write_to(&mut bytes[Dio::SERIALIZED_LEN..])
         .unwrap();
 
-    for offset in [32, 38] {
+    for offset in [Dio::SERIALIZED_LEN + 8, Dio::SERIALIZED_LEN + 14] {
         let mut malformed = bytes;
         malformed[offset] = 0;
         malformed[offset + 1] = 0;
@@ -261,13 +258,13 @@ fn malformed_dodag_config_does_not_mutate_router() {
         assert_eq!(router.dodag_config, DodagConfig::default());
     }
 
-    assert!(!router.process_dio(&dio, &bytes[..39], sender, -40, 1000));
+    assert!(!router.process_dio(&dio, &bytes[..bytes.len() - 1], sender, -40, 1000));
     assert_eq!(router.neighbors.count(), 0);
     assert!(!router.is_joined());
     assert_eq!(router.dodag_config, DodagConfig::default());
 
     let mut overlong = bytes.to_vec();
-    overlong[Dio::BASE_LEN + 1] = (DODAG_CONFIG_DATA_LEN + 1) as u8;
+    overlong[Dio::SERIALIZED_LEN + 1] = (DODAG_CONFIG_DATA_LEN + 1) as u8;
     overlong.push(0);
     assert!(!router.process_dio(&dio, &overlong, sender, -40, 1000));
     assert_eq!(router.neighbors.count(), 0);
@@ -287,9 +284,9 @@ fn malformed_dodag_config_does_not_mutate_router() {
 }
 
 fn dio_with_config(dio: &Dio, config: &DodagConfig) -> Vec<u8> {
-    let mut bytes = vec![0u8; Dio::BASE_LEN + 16];
+    let mut bytes = vec![0u8; Dio::SERIALIZED_LEN + 16];
     dio.write_to(&mut bytes).unwrap();
-    config.write_to(&mut bytes[Dio::BASE_LEN..]).unwrap();
+    config.write_to(&mut bytes[Dio::SERIALIZED_LEN..]).unwrap();
     bytes
 }
 
@@ -299,7 +296,7 @@ fn stale_dio_config_does_not_mutate_router() {
     let mut router = Router::new(link_local(3), dodag_id);
     let mut dio = Dio {
         rpl_instance_id: RPL_INSTANCE_ID,
-        version: 1,
+        version: 0,
         rank: ROOT_RANK,
         grounded: true,
         mode_of_operation: NON_STORING_MOP,
@@ -318,7 +315,7 @@ fn stale_dio_config_does_not_mutate_router() {
         router.trickle.interval_start,
     );
 
-    dio.version = 0;
+    dio.version = 255;
     let mut stale_config = original_config.clone();
     stale_config.min_hop_rank_increase = 128;
     let bytes = dio_with_config(&dio, &stale_config);
@@ -407,7 +404,7 @@ fn malformed_poison_does_not_remove_parent() {
 }
 
 #[test]
-fn newer_version_can_adopt_a_higher_rank_and_resets_trickle() {
+fn unauthorized_newer_version_cannot_adopt_a_higher_rank() {
     const WRAP: u64 = 0x1_0000_0000;
     let dodag_id = link_local(1);
     let parent = link_local(2);
@@ -431,16 +428,15 @@ fn newer_version_can_adopt_a_higher_rank_and_resets_trickle() {
 
     dio.version = 1;
     dio.rank = 1_400;
-    assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 50));
-    assert_eq!(router.dodag.version, 1);
+    assert!(!router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 50));
+    assert_eq!(router.dodag.version, 0);
     assert_eq!(router.preferred_parent(), Some(parent));
-    assert_eq!(router.rank(), 1_656);
-    assert_eq!(router.trickle.interval, router.trickle.imin);
-    assert_eq!(router.trickle.interval_start, WRAP + 108);
+    assert_eq!(router.rank(), ROOT_RANK + MIN_HOP_RANK_INCREASE);
+    assert_eq!(router.trickle.interval, 8192);
 }
 
 #[test]
-fn router_accepts_version_wrap_from_127_to_zero() {
+fn router_rejects_unauthorized_version_wrap_from_127_to_zero() {
     let dodag_id = link_local(1);
     let parent = link_local(2);
     let mut router = Router::new(link_local(3), dodag_id);
@@ -457,9 +453,88 @@ fn router_accepts_version_wrap_from_127_to_zero() {
         dodag_id,
     };
 
-    assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 100));
-    assert_eq!(router.dodag.version, 0);
-    assert_eq!(router.preferred_parent(), Some(parent));
+    assert!(!router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 100));
+    assert_eq!(router.dodag.version, 127);
+    assert_eq!(router.preferred_parent(), None);
+}
+
+#[test]
+fn root_authorized_version_propagates_across_two_hops_and_tampering_fails() {
+    let document: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../test/vectors/dodag_version_authorization.json"
+    ))
+    .unwrap();
+    let vector = &document["vectors"][0];
+    let root_seed: [u8; 32] = hex::decode(vector["seed"].as_str().unwrap())
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let root_identity = Identity::from_seed(Seed::new(root_seed));
+    let parent_identity = Identity::from_seed(Seed::new([0x62; 32]));
+    let leaf_identity = Identity::from_seed(Seed::new([0x63; 32]));
+    let root_addr = lichen_core::addr::ygg_addr_from_pubkey(root_identity.pubkey.as_bytes());
+    let parent_addr = lichen_core::addr::ygg_addr_from_pubkey(parent_identity.pubkey.as_bytes());
+    let leaf_addr = lichen_core::addr::ygg_addr_from_pubkey(leaf_identity.pubkey.as_bytes());
+    let root_link = LinkLayer::new(root_identity);
+    let parent_link = LinkLayer::new(parent_identity);
+
+    let mut root = Router::new_root(root_addr);
+    root.dodag.version = 1;
+    let mut root_wire = [0u8; 160];
+    let root_len = root.build_authenticated_dio(&mut root_wire, &root_link);
+    assert!(root_len > Dio::SERIALIZED_LEN + DODAG_CONFIG_DATA_LEN + 2);
+    assert_eq!(
+        root_link.local_public_key().as_bytes(),
+        &hex::decode(vector["root_pubkey"].as_str().unwrap()).unwrap()[..]
+    );
+    assert_eq!(
+        root_addr.as_slice(),
+        hex::decode(vector["dodag_id"].as_str().unwrap())
+            .unwrap()
+            .as_slice()
+    );
+    let root_dio = Dio::from_bytes(&root_wire[..root_len]).unwrap();
+
+    let mut parent = Router::new(parent_addr, root_addr);
+    assert!(parent.process_dio(&root_dio, &root_wire[..root_len], root_addr, -35, 100));
+    assert_eq!(parent.dodag.version, 1);
+
+    let mut relay_wire = [0u8; 160];
+    let relay_len = parent.build_authenticated_dio(&mut relay_wire, &parent_link);
+    let relay_dio = Dio::from_bytes(&relay_wire[..relay_len]).unwrap();
+    let root_authorization = OptionIter::new(Dio::options_tail(&root_wire[..root_len]))
+        .find_map(|option| {
+            let option = option.ok()?;
+            (option.opt_type == OPT_DODAG_VERSION_AUTHORIZATION).then(|| option.data.to_vec())
+        })
+        .unwrap();
+    assert_eq!(
+        root_authorization,
+        hex::decode(&vector["option"].as_str().unwrap()[4..]).unwrap()
+    );
+    let relayed_authorization = OptionIter::new(Dio::options_tail(&relay_wire[..relay_len]))
+        .find_map(|option| {
+            let option = option.ok()?;
+            (option.opt_type == OPT_DODAG_VERSION_AUTHORIZATION).then(|| option.data.to_vec())
+        })
+        .unwrap();
+    assert_eq!(relayed_authorization, root_authorization);
+
+    let mut leaf = Router::new(leaf_addr, root_addr);
+    assert!(leaf.process_dio(&relay_dio, &relay_wire[..relay_len], parent_addr, -40, 200));
+    assert_eq!(leaf.dodag.version, 1);
+
+    let mut tampered_wire = relay_wire;
+    tampered_wire[1] = 2;
+    let tampered_dio = Dio::from_bytes(&tampered_wire[..relay_len]).unwrap();
+    assert!(!leaf.process_dio(
+        &tampered_dio,
+        &tampered_wire[..relay_len],
+        parent_addr,
+        -40,
+        300
+    ));
+    assert_eq!(leaf.dodag.version, 1);
 }
 
 #[test]
@@ -568,9 +643,9 @@ fn accepted_config_applies_and_resets_trickle() {
 #[test]
 fn root_advertises_its_actual_trickle_config() {
     let root = Router::new_root(link_local(1));
-    let mut bytes = [0u8; Dio::BASE_LEN + 16];
+    let mut bytes = [0u8; Dio::SERIALIZED_LEN + 16];
     assert_eq!(root.build_dio(&mut bytes), bytes.len());
-    let advertised = DodagConfig::from_bytes(&bytes[Dio::BASE_LEN + 2..]).unwrap();
+    let advertised = DodagConfig::from_bytes(&bytes[Dio::SERIALIZED_LEN + 2..]).unwrap();
 
     assert_eq!(root.trickle.imin, 1 << advertised.dio_int_min);
     assert_eq!(
@@ -591,10 +666,10 @@ fn configured_root_advertises_its_rank_and_lifetime() {
     let root = Router::new_root_with_config(link_local(1), config.clone()).unwrap();
 
     assert_eq!(root.rank(), 128);
-    let mut bytes = [0u8; Dio::BASE_LEN + 16];
+    let mut bytes = [0u8; Dio::SERIALIZED_LEN + 16];
     assert_eq!(root.build_dio(&mut bytes), bytes.len());
     let dio = Dio::from_bytes(&bytes).unwrap();
-    let advertised = DodagConfig::from_bytes(&bytes[Dio::BASE_LEN + 2..]).unwrap();
+    let advertised = DodagConfig::from_bytes(&bytes[Dio::SERIALIZED_LEN + 2..]).unwrap();
     assert_eq!(dio.rank, 128);
     assert_eq!(advertised, config);
 
@@ -687,7 +762,7 @@ fn aggregated_dao_uses_parent_for_packet_source_group() {
     let mut second = DaoManager::new(packet_source, RPL_INSTANCE_ID, root_addr);
     let mut dao = first.build_dao(root_addr);
     let second_dao = second.build_dao(source_parent);
-    let parsed = Dao::from_bytes(&second_dao).unwrap();
+    let _parsed = Dao::from_bytes(&second_dao).unwrap();
     dao.extend_from_slice(Dao::options_tail(&second_dao));
 
     assert_eq!(
@@ -883,7 +958,7 @@ fn dao_uses_active_default_lifetime_and_zero_unit_is_rejected() {
     assert!(router.process_dio(&dio, &bytes, parent, -40, 0));
 
     let dao = router.build_dao();
-    let parsed = Dao::from_bytes(&dao).unwrap();
+    let _parsed = Dao::from_bytes(&dao).unwrap();
     let lifetime = OptionIter::new(Dao::options_tail(&dao))
         .filter_map(Result::ok)
         .find(|option| option.opt_type == OPT_TRANSIT_INFO)
@@ -1473,9 +1548,7 @@ fn signed_dao(
     dodag: [u8; 16],
     sequence: u64,
 ) -> ([u8; 16], Vec<u8>) {
-    let mut origin = [0u8; 16];
-    origin[0] = 0xfd;
-    origin[8..].copy_from_slice(&identity.iid);
+    let origin = lichen_core::addr::ygg_addr_from_pubkey(identity.pubkey.as_bytes());
     let mut manager = DaoManager::new(origin, RPL_INSTANCE_ID, dodag);
     let unsigned = manager.build_dao(parent);
     let link = LinkLayer::new(identity.clone());
@@ -1611,10 +1684,7 @@ fn tx_sequence_is_persisted_before_bytes_and_write_failure_returns_no_bytes() {
 }
 
 fn origin_for(identity: &Identity) -> [u8; 16] {
-    let mut origin = [0u8; 16];
-    origin[0] = 0xfd;
-    origin[8..].copy_from_slice(&identity.iid);
-    origin
+    lichen_core::addr::ygg_addr_from_pubkey(identity.pubkey.as_bytes())
 }
 
 #[test]

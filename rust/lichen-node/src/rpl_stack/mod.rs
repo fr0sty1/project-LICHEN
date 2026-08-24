@@ -73,6 +73,19 @@ pub enum RplReceiveOutcome {
     },
 }
 
+/// Result of admitting a frame at a border-router transport boundary.
+///
+/// Values of this type are produced only after the complete link signature,
+/// signer-identity, destination, and replay checks have succeeded.  The
+/// border router may forward an admitted non-RPL IPv6 packet upstream; RPL
+/// control never escapes as an untyped byte slice and is processed by this
+/// stack while the authenticated link-frame capability is still available.
+#[derive(Debug)]
+pub enum RplBorderIngressOutcome {
+    Ipv6(ReceivedIpv6),
+    Control(RplReceiveOutcome),
+}
+
 enum RplRole {
     Leaf(DaoTxState),
     Root(DaoRxState),
@@ -95,6 +108,7 @@ pub struct RplStack<R: Radio, S: NonVolatile> {
     storage: S,
     role: RplRole,
     local_rpl_addr: [u8; 16],
+    local_control_addr: [u8; 16],
     bootstrap_peers: VecDeque<[u8; 8]>,
     dao_admissions: Option<DaoAdmissionState>,
     routing_now_ms: u64,
@@ -103,10 +117,17 @@ pub struct RplStack<R: Radio, S: NonVolatile> {
 }
 
 impl<R: Radio, S: NonVolatile> RplStack<R, S> {
+    /// Install a link peer already authenticated by an external durable trust
+    /// owner (for example, a gateway federation proof-of-possession exchange).
+    pub fn install_verified_link_peer(&mut self, peer: PeerIdentity) {
+        self.stack.add_peer(peer);
+    }
+
     pub fn rpl_node(&self) -> &RplNode {
         &self.rpl
     }
 
+    #[cfg(feature = "raw-rpl-test-api")]
     pub fn rpl_node_mut(&mut self) -> &mut RplNode {
         &mut self.rpl
     }

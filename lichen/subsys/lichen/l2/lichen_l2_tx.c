@@ -35,6 +35,15 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	 */
 	ARG_UNUSED(iface);
 
+	/*
+	 * Defense-in-depth (project-LICHEN-q3iy.29): net_pkt_get_len() below
+	 * dereferences pkt; a NULL here would crash before any other guard.
+	 */
+	if (pkt == NULL) {
+		LOG_ERR("lichen_l2: TX rejected (NULL pkt)");
+		return -EINVAL;
+	}
+
 	/* SECURITY: Reject TX if interface initialization failed (project-LICHEN-1ojj.2) */
 	if (atomic_get(&iface_init_failed)) {
 		LOG_ERR("lichen_l2: TX rejected (init failed)");

@@ -66,10 +66,14 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 document are to be interpreted as described in RFC 2119.
 
 - **Frame:** The complete unit of data transmitted on the LoRa channel.
-- **Payload:** The SCHC-compressed IPv6 datagram carried in the frame body.
+- **Payload (PLD):** The authenticated dispatch octet followed by the body in
+  the selected namespace: `0x14` plus a SCHC Packet, or `0x15` plus a LICHEN
+  routing/control message.
 - **MIC:** Message Integrity Code — the cryptographic authentication tag.
-- **EUI-64:** An IEEE 64-bit extended unique identifier, typically derived
-  from the LoRa module's hardware address.
+- **EUI-64:** The canonical 64-bit link identifier in a peer record. For a
+  key-derived LICHEN signing identity, it is recovered from the key-derived
+  IPv6 IID by toggling the RFC 4291 universal/local bit exactly once. A radio
+  hardware identifier is not substituted for that signer EUI-64.
 - **Epoch:** The high-order octet of the finite 24-bit replay counter.
 
 ## 3. Frame Format
@@ -96,15 +100,16 @@ Octets: 1        1       1      2       var     8      var      var
   SEQ requires link-key rotation.
 
 - **SEQ** (2 octets, big-endian): Sequence number. Monotonically increasing
-  within an epoch. Receivers MUST maintain a replay window per (peer, epoch)
-  pair and MUST discard frames whose (EPO, SEQ) has already been accepted.
+  within an epoch. Receivers MUST maintain one replay window per authenticated
+  `(SignerPublicKey, KeyGeneration)` and MUST discard frames whose (EPO, SEQ)
+  has already been accepted in that signer-generation domain.
   After 0xFFFF, the next tuple uses the next EPO and SEQ zero. See Section 5.2.
 
 - **DST** (0, 2, or 8 octets): Destination address. Present and length
    determined by AddrMode in LLSec. See Section 3.3.
 
-- **SIID** (8 octets, conditional): Signer IID (Interface Identifier). Present
-   when the SI bit (LLSec bit 7) is set. Contains the EUI-64 of the signing
+- **SIID** (8 octets, conditional): Signer Identifier. Present when the SI bit
+   (LLSec bit 7) is set. Contains the canonical EUI-64 of the signing
    node. MUST be present when S=1. See Section 3.4.
 
 - **PLD** (variable): authenticated inner payload. The first octet is a
@@ -119,8 +124,9 @@ Octets: 1        1       1      2       var     8      var      var
    absent regardless of MicLength. When S=1, the MIC is the full 48-byte
    Schnorr signature and MicLength is ignored. See Section 4.
 
-   The `fixed_header_size` for deriving PLD length is 4 (LENGTH+LLSec+EPO+SEQ)
-   plus 8 when the SI bit is set.
+   Because LENGTH excludes its own octet, the fixed frame-body header used to
+   derive PLD length is 4 octets (LLSec + EPO + SEQ), plus 8 octets when SI is
+   set. Thus `PLD_LEN = LENGTH - 4 - DST_LEN - SIID_LEN - MIC_LEN`.
 
 ### 3.2. LLSec Byte
 
@@ -160,7 +166,8 @@ Octets: 1        1       1      2       var     8      var      var
   frames are unsupported in the current interoperable profile; senders MUST
   leave E clear and receivers MUST discard frames with E=1.
 
-- **Bit 7 (SI): Signer IID present.** When set, an 8-byte Signer IID (SIID)
+- **Bit 7 (SI): Signer Identifier present.** When set, an 8-byte Signer
+   Identifier (SIID)
    field containing the sender's EUI-64 follows the DST field. Signed frames
    (S=1) MUST also set SI=1. Unsigned frames MUST set SI=0. Frames with SI=1
    and S=0 are invalid and MUST be discarded. Frames with S=1 and SI=0 are
@@ -181,22 +188,33 @@ When AddrMode is Elided (0b11), the destination is recoverable from context
 (e.g. the first IPv6 destination address in the SCHC payload). No destination
 bytes are present on the wire in this mode.
 
-### 3.4. Signer IID
+### 3.4. Signer Identifier
 
-When the SI bit (LLSec bit 7) is set, an 8-byte Signer IID (SIID) field follows
-DST on the wire. The SIID carries the EUI-64 of the signing node and enables
-the receiver to look up the signing key directly, without having to trial-verify
-against all provisioned keys.
+When the SI bit (LLSec bit 7) is set, an 8-byte Signer Identifier (SIID) field
+follows DST on the wire. The SIID carries the canonical EUI-64 of the signing
+node and enables the receiver to select a bounded candidate set instead of
+trial-verifying every provisioned key.
 
-The frame format intentionally omits a general source address field. The
-sender's immediate link identity is established by the Signer IID (when
-present) and—for signed frames—by subsequent Schnorr signature verification
-with a provisioned trust-store key (Section 4). The selected trust-store record
-supplies the peer EUI-64. An IPv6 source address in the payload identifies the
-end-to-end network-layer origin and MUST NOT be used as the immediate signer
-identity.
+For a key-derived signer, derive the IID from the complete signing public key
+as specified by the LICHEN addressing profile, then toggle the IID's
+universal/local bit exactly once to obtain the SIID EUI-64. Implementations
+MUST NOT use a radio serial number or unrelated hardware address as that
+signer's SIID. Because an EUI-64 is only a truncated lookup namespace, the
+result remains an unauthenticated candidate-selection hint until verification
+under the complete public key succeeds.
 
-Signed frames (S=1) MUST set SI=1 and MUST carry a valid Signer IID. Unsigned
+The frame format intentionally omits a general source address field. SIID never
+establishes or authorizes any part of the sender identity; it only selects a
+bounded set of candidate trust records. The immediate link identity is
+established solely by successful Schnorr verification under one current full
+public key and opaque trust-store key generation (Section 4). SIID collisions
+MUST retain every current candidate, and a receiver that cannot retain the
+complete bounded collision set MUST fail closed. An IPv6 source address in the
+payload identifies the end-to-end network-layer origin and MUST NOT be used as
+the immediate signer identity. Replay, trust, routing, and fragmentation state
+MUST NOT be keyed or authorized by SIID.
+
+Signed frames (S=1) MUST set SI=1 and MUST carry a valid signer EUI-64. Unsigned
 frames MUST set SI=0. Receivers MUST treat any frame with S=1 and SI=0, or S=0
 and SI=1, as invalid and MUST discard it.
 
@@ -208,12 +226,21 @@ When S=1, the MIC field contains the full 48-byte Schnorr signature as defined i
 [draft-lichen-schnorr-00]. The signature is computed over:
 
 ```
-signed_data = LENGTH || LLSec || EPO || SEQ || DST_LEN(1) || DST || SIID(8) || PLD
+signed_data = "LICHEN-LINK-v1" || 0x00 || LENGTH || LLSec || EPO || SEQ
+              || DST_LEN(1) || DST || SIID(8) || PLD
 ```
 
-(DST_LEN provides domain separation for variable-length DST field; SIID is the
-8-byte Signer IID, present only when SI=1; all fields before the MIC, in wire
-order, excluding the MIC itself.)
+The fixed 15-octet domain is hexadecimal
+`4c494348454e2d4c494e4b2d763100`. It separates link signatures from all other
+Schnorr-48 application profiles. DST_LEN separately delimits the variable-length
+DST field; SIID is the 8-byte signer EUI-64, present only when SI=1; all wire
+fields before the MIC remain in wire order and MIC itself is excluded.
+
+Link Signature Domain Version 1 verifiers MUST reject legacy unprefixed link
+transcripts and every other application domain. Rule Set Version 3 deployments
+use this transcript. A different prefix requires a coordinated protocol-version
+upgrade; implementations MUST NOT enable dual legacy/version-1 acceptance as a
+fallback.
 
 The signing key is the sender's long-term Ed25519 private key. The
 corresponding public key is distributed via the LICHEN announce protocol or
@@ -233,26 +260,31 @@ Unsigned frames SHOULD be limited to:
 ### 4.3. Key Lookup
 
 Receivers MUST authenticate a frame before SCHC decompression or fragment
-reassembly. The key material is maintained in a local trust store indexed by
-peer EUI-64. A receiver identifies the signer by testing the provisioned
-candidate peer keys that are valid for the incoming radio/neighbor context;
-implementations MAY use authenticated neighbor metadata to narrow that set.
-Successful verification returns the trust-store peer identity used for replay
-state and SCHC fragmentation context lookup. Key selection MUST NOT depend on
-an IPv6 source address inside the protected payload.
+reassembly. SIID selects only a bounded candidate set from the local trust
+store; collisions MUST retain every current candidate in that set. A receiver
+identifies the signer by testing candidate complete public keys that are valid
+for the incoming radio/neighbor context. Implementations MAY use authenticated
+neighbor metadata to narrow that set. Successful verification returns both
+the complete signer public key and the opaque current key-generation token
+issued by the trust-store owner. Replay and SCHC fragmentation state use that
+tuple, never SIID, an EUI-64, or another address alias. Key selection MUST NOT
+depend on an IPv6 source address inside the protected payload.
 
 ## 5. Replay Protection
 
 ### 5.1. Replay Window
 
-Each node MUST maintain a per-peer replay window. For each known peer, the
+Each node MUST maintain a replay window per `(SignerPublicKey,
+KeyGeneration)`. For each current authenticated signer generation, the
 node tracks:
 
 - The highest accepted EPO value.
 - The highest accepted SEQ value within that EPO.
 - A bitmask of recently accepted SEQ values (sliding window).
 
-The replay window size is 32 frames.
+The replay window size is 32 frames. Retiring a key generation immediately
+makes its frames and replay state unusable; installing a replacement creates a
+distinct replay domain even if an address alias is unchanged.
 
 EPO and SEQ form the finite unsigned integer
 `counter = (EPO << 16) | SEQ`, ranging from 0x000000 through 0xFFFFFF.
@@ -262,7 +294,7 @@ the peer's authenticated link key.
 
 A frame MUST be discarded if:
 
-1. EPO < highest accepted EPO for this peer (old epoch).
+1. EPO < highest accepted EPO for this signer generation (old epoch).
 2. EPO == highest accepted EPO and SEQ falls outside the window or has
    already been accepted.
 
@@ -295,33 +327,40 @@ it cannot establish an unused greater tuple under the existing key.
 ### 6.1. Broadcast RPL DIO (Signed)
 
 ```
-  LENGTH = 0x4A  (74 bytes body: header + ~22B SCHC RPL DIO + 48B MIC)
+  LENGTH = 0x85  (133-byte body)
   LLSec  = 0xA0  (AddrMode=None, MicLength=0, S=1, E=0, SI=1)
   EPO    = 0x03
   SEQ    = 0x00, 0x2C
   DST    = (absent, AddrMode=None)
   SIID   = 8 bytes signer EUI-64
-  PLD    = <22 bytes of SCHC-compressed RPL DIO>
+  PLD    = 73 bytes: dispatch 0x14 + Rule ID 0xff + complete 71-byte
+           IPv6/ICMPv6/DIO packet ending in Rule-Version option 13 01 03
   MIC    = 48-byte Schnorr signature
 ```
 
-Total frame: 75 bytes. RPL control frames MUST use S=1 per section 4.2.
+Body arithmetic: 4 fixed + 8 SIID + 73 PLD + 48 MIC = 133 bytes.
+`LENGTH` is 0x85 and the total frame is 134 bytes. Rule 3 cannot represent the
+`ff02::1a` multicast destination; Rule Set Version 3 uses validated Rule 255 for
+this canonical DIO. RPL control frames MUST use S=1 per section 4.2.
 
 ### 6.2. Unicast CoAP Request (Extended Address, signed)
 
 ```
-  LENGTH = 0x3D  (61 bytes body)
+  LENGTH = 0x63  (99 bytes body)
   LLSec  = 0xA2  (AddrMode=Extended, S=1, E=0, SI=1; MIC is 48B)
             = 0b1010_0010
   EPO    = 0x01
   SEQ    = 0x00, 0x01
   DST    = 8 bytes EUI-64
   SIID   = 8 bytes signer EUI-64
-  PLD    = <1 byte SCHC-compressed CoAP>
+  PLD    = 31 bytes: dispatch 0x14 followed by the exact 30-byte
+           `coap_linklocal` SCHC Packet from test/vectors/schc_compression.json:
+           14 00400000000000000001000000000000000233000448d0ff737461747573
   MIC    = 48-byte Schnorr signature
 ```
 
-  The body LENGTH includes the 48-byte MIC.
+  Body arithmetic: 4 fixed + 8 DST + 8 SIID + 31 PLD + 48 MIC = 99 bytes.
+  The body LENGTH includes the 48-byte MIC; the complete frame is 100 bytes.
 
 ### 6.3. Encrypted Frame (Unsupported)
 

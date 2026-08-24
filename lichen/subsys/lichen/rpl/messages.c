@@ -440,6 +440,45 @@ int lichen_rpl_transit_info_write(const struct lichen_rpl_transit_info *ti,
 	return (int)needed;
 }
 
+/* ── DIO Time Option ───────────────────────────────────────────────────────── */
+
+int lichen_rpl_dio_time_parse(struct lichen_rpl_dio_time *dt,
+			      const uint8_t *data, size_t len)
+{
+	if (dt == NULL || data == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (len < LICHEN_RPL_DIO_TIME_DATA_LEN) {
+		return LICHEN_RPL_ERR_TOO_SHORT;
+	}
+
+	dt->stratum = data[0];
+	/* data[1] = reserved, ignored */
+	dt->timestamp = sys_get_be32(&data[2]);
+
+	return LICHEN_RPL_OK;
+}
+
+int lichen_rpl_dio_time_write(const struct lichen_rpl_dio_time *dt,
+			      uint8_t *buf, size_t len)
+{
+	size_t needed = 2 + LICHEN_RPL_DIO_TIME_DATA_LEN;
+	if (dt == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (len < needed) {
+		return LICHEN_RPL_ERR_BUF_SMALL;
+	}
+
+	buf[0] = LICHEN_RPL_OPT_DIO_TIME;
+	buf[1] = LICHEN_RPL_DIO_TIME_DATA_LEN;
+	buf[2] = dt->stratum;
+	buf[3] = 0;  /* reserved */
+	sys_put_be32(dt->timestamp, &buf[4]);
+
+	return (int)needed;
+}
+
 /* ── TLV option iterator ───────────────────────────────────────────────────── */
 
 void lichen_rpl_opt_iter_init(struct lichen_rpl_opt_iter *it,

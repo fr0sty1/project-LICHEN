@@ -1,0 +1,205 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "tx_queue_expiry",
+  "description": "B.2.2 Time-Based Expiry oracle for TX queue. Defines packet deadline behavior per spec/appendix-bufferbloat.md Section 2. Independent oracle: arithmetic computed outside LICHEN code. All implementations (Python, Rust, C) MUST match these vectors exactly.",
+  "spec": "spec/appendix-bufferbloat.md Section 2 (Time-Based Expiry)",
+  "constants": {
+    "DEADLINE_SOS_MS": 2000,
+    "DEADLINE_ROUTING_MS": 5000,
+    "DEADLINE_ACK_MS": 10000,
+    "DEADLINE_URGENT_MS": 30000,
+    "DEADLINE_NORMAL_MS": 60000,
+    "DEADLINE_BULK_MS": 120000,
+    "CAPACITY": 4
+  },
+  "vectors": [
+    {
+      "name": "default_deadline_sos",
+      "description": "SOS (P0) packets get 2s default deadline - transmit ASAP.",
+      "priority": 0,
+      "priority_name": "SOS",
+      "enqueue_time_ms": 0,
+      "expected_deadline_ms": 2000,
+      "test_times": [
+        {"now_ms": 1999, "expired": false, "reason": "before deadline"},
+        {"now_ms": 2000, "expired": true, "reason": "at deadline (now >= deadline)"},
+        {"now_ms": 2001, "expired": true, "reason": "after deadline"}
+      ]
+    },
+    {
+      "name": "default_deadline_routing",
+      "description": "Routing (P1) packets get 5s default deadline.",
+      "priority": 1,
+      "priority_name": "ROUTING",
+      "enqueue_time_ms": 0,
+      "expected_deadline_ms": 5000,
+      "test_times": [
+        {"now_ms": 4999, "expired": false},
+        {"now_ms": 5000, "expired": true},
+        {"now_ms": 5001, "expired": true}
+      ]
+    },
+    {
+      "name": "default_deadline_ack",
+      "description": "ACK spec deadline is 10s (DEADLINE_ACK_MS), but priority alias means default uses ROUTING's 5s.",
+      "priority": 1,
+      "priority_name": "ACK",
+      "enqueue_time_ms": 0,
+      "expected_deadline_ms": 5000,
+      "note": "Priority.ACK == Priority.ROUTING (alias), so _default_deadline_for() returns ROUTING's 5s. Callers must pass deadline_ms=DEADLINE_ACK_MS explicitly to get the spec's 10s ACK deadline."
+    },
+    {
+      "name": "default_deadline_urgent",
+      "description": "Urgent (P2) packets get 30s default deadline.",
+      "priority": 2,
+      "priority_name": "URGENT",
+      "enqueue_time_ms": 0,
+      "expected_deadline_ms": 30000,
+      "test_times": [
+        {"now_ms": 29999, "expired": false},
+        {"now_ms": 30000, "expired": true},
+        {"now_ms": 30001, "expired": true}
+      ]
+    },
+    {
+      "name": "default_deadline_normal",
+      "description": "Normal (P3) packets get 60s default deadline.",
+      "priority": 3,
+      "priority_name": "NORMAL",
+      "enqueue_time_ms": 0,
+      "expected_deadline_ms": 60000,
+      "test_times": [
+        {"now_ms": 59999, "expired": false},
+        {"now_ms": 60000, "expired": true}
+      ]
+    },
+    {
+      "name": "default_deadline_bulk",
+      "description": "Bulk (P4) packets get 120s default deadline - can wait.",
+      "priority": 4,
+      "priority_name": "BULK",
+      "enqueue_time_ms": 0,
+      "expected_deadline_ms": 120000,
+      "test_times": [
+        {"now_ms": 119999, "expired": false},
+        {"now_ms": 120000, "expired": true}
+      ]
+    },
+    {
+      "name": "boundary_condition_exact",
+      "description": "Expiry condition is now >= deadline_ms (equal time expires).",
+      "priority": 3,
+      "enqueue_time_ms": 100,
+      "custom_deadline_ms": 200,
+      "test_times": [
+        {"now_ms": 199, "expired": false, "reason": "one ms before"},
+        {"now_ms": 200, "expired": true, "reason": "exactly at deadline"},
+        {"now_ms": 201, "expired": true, "reason": "one ms after"}
+      ]
+    },
+    {
+      "name": "custom_deadline_overrides_default",
+      "description": "Explicit deadline_ms overrides priority default.",
+      "priority": 1,
+      "priority_name": "ROUTING",
+      "enqueue_time_ms": 0,
+      "custom_deadline_ms": 100,
+      "expected_deadline_ms": 100,
+      "test_times": [
+        {"now_ms": 50, "expired": false, "reason": "before custom deadline"},
+        {"now_ms": 100, "expired": true, "reason": "at custom deadline (not default 5000)"}
+      ],
+      "note": "Without custom, ROUTING would expire at 5000ms"
+    },
+    {
+      "name": "nonzero_enqueue_time",
+      "description": "Default deadline computed from enqueue_time, not zero.",
+      "priority": 0,
+      "priority_name": "SOS",
+      "enqueue_time_ms": 5000,
+      "expected_deadline_ms": 7000,
+      "test_times": [
+        {"now_ms": 6999, "expired": false},
+        {"now_ms": 7000, "expired": true}
+      ],
+      "note": "deadline = enqueue_time (5000) + DEADLINE_SOS_MS (2000) = 7000"
+    },
+    {
+      "name": "expiry_multiple_packets",
+      "description": "Multiple packets with different deadlines - only expired ones removed.",
+      "scenario": [
+        {"action": "push", "packet": "short", "enqueue_time_ms": 0, "deadline_ms": 100},
+        {"action": "push", "packet": "long", "enqueue_time_ms": 0, "deadline_ms": 1000},
+        {"action": "expire_stale", "now_ms": 500},
+        {"expected_expired_count": 1},
+        {"expected_remaining": ["long"]}
+      ]
+    },
+    {
+      "name": "expiry_makes_room_on_push",
+      "description": "Expired packets removed during push() to make room.",
+      "scenario": [
+        {"action": "push", "packet": "stale1", "enqueue_time_ms": 0, "deadline_ms": 100},
+        {"action": "push", "packet": "stale2", "enqueue_time_ms": 0, "deadline_ms": 100},
+        {"action": "push", "packet": "stale3", "enqueue_time_ms": 0, "deadline_ms": 100},
+        {"action": "push", "packet": "stale4", "enqueue_time_ms": 0, "deadline_ms": 100},
+        {"action": "verify_full", "expected": true},
+        {"action": "push", "packet": "fresh", "enqueue_time_ms": 200, "deadline_ms": 10000, "now_ms": 200},
+        {"expected_success": true, "reason": "expiry made room"},
+        {"expected_expired_count": 4}
+      ]
+    },
+    {
+      "name": "expiry_stats_tracking",
+      "description": "packets_dropped_deadline stat increments on expiry.",
+      "scenario": [
+        {"action": "push", "packet": "a", "deadline_ms": 100},
+        {"action": "push", "packet": "b", "deadline_ms": 100},
+        {"action": "push", "packet": "c", "deadline_ms": 1000},
+        {"action": "expire_stale", "now_ms": 500},
+        {"expected_stats": {"packets_dropped_deadline": 2}}
+      ]
+    },
+    {
+      "name": "peek_triggers_expiry",
+      "description": "peek() runs expire_stale() before returning.",
+      "scenario": [
+        {"action": "push", "packet": "stale", "deadline_ms": 100},
+        {"action": "peek", "now_ms": 200},
+        {"expected_peek_result": null, "reason": "packet expired before peek could return it"}
+      ]
+    },
+    {
+      "name": "pop_triggers_expiry",
+      "description": "pop() runs expire_stale() before returning.",
+      "scenario": [
+        {"action": "push", "packet": "stale", "deadline_ms": 100},
+        {"action": "pop", "now_ms": 200},
+        {"expected_pop_result": null, "reason": "packet expired before pop could return it"}
+      ]
+    },
+    {
+      "name": "reserve_triggers_expiry",
+      "description": "reserve() runs expire_stale() for Rust consistency.",
+      "scenario": [
+        {"action": "push", "packet": "stale", "deadline_ms": 100},
+        {"action": "reserve", "now_ms": 200},
+        {"expected_reserve_result": null, "reason": "packet expired before reserve could return it"}
+      ],
+      "note": "Python TxQueue.reserve() also runs expire_stale()"
+    },
+    {
+      "name": "requeue_preserves_original_deadline",
+      "description": "complete(success=False) preserves original deadline for retry.",
+      "scenario": [
+        {"action": "push", "packet": "retry_me", "enqueue_time_ms": 100, "deadline_ms": 500},
+        {"action": "reserve", "now_ms": 200},
+        {"action": "complete", "success": false, "now_ms": 300},
+        {"action": "expire_stale", "now_ms": 600},
+        {"expected_expired_count": 1, "reason": "original deadline 500 preserved, not extended to 300+deadline_default"}
+      ],
+      "note": "Bug fix: re-queued packets must NOT get fresh deadlines"
+    }
+  ]
+}

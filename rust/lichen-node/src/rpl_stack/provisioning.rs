@@ -31,6 +31,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let stack = stack.into();
         validate_origin(&stack, local_rpl_addr)
             .map_err(|()| RplStackProvisionError::InvalidOrigin)?;
+        let control_addr = canonical_link_local(&stack);
         let key = stack.local_public_key();
         let tx = DaoTxState::provision(
             &mut storage,
@@ -51,6 +52,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             storage,
             role: RplRole::Leaf(tx),
             local_rpl_addr,
+            local_control_addr: control_addr,
             bootstrap_peers: VecDeque::new(),
             dao_admissions: None,
             routing_now_ms: 0,
@@ -68,6 +70,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     ) -> Result<Self, RplStackOpenError<S::Error>> {
         let stack = stack.into();
         validate_origin(&stack, local_rpl_addr).map_err(|()| RplStackOpenError::InvalidOrigin)?;
+        let control_addr = canonical_link_local(&stack);
         let key = stack.local_public_key();
         let tx = DaoTxState::open(
             &storage,
@@ -88,6 +91,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             storage,
             role: RplRole::Leaf(tx),
             local_rpl_addr,
+            local_control_addr: control_addr,
             bootstrap_peers: VecDeque::new(),
             dao_admissions: None,
             routing_now_ms: 0,
@@ -105,6 +109,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     ) -> Result<Self, RplStackProvisionError<S::Error>> {
         let stack = stack.into();
         validate_origin(&stack, root_addr).map_err(|()| RplStackProvisionError::InvalidOrigin)?;
+        let control_addr = canonical_link_local(&stack);
         if root_addr != dodag_id {
             return Err(RplStackProvisionError::RootAddressMismatch);
         }
@@ -124,6 +129,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             storage,
             role: RplRole::Root(rx),
             local_rpl_addr: root_addr,
+            local_control_addr: control_addr,
             bootstrap_peers: VecDeque::new(),
             dao_admissions: Some(admissions),
             routing_now_ms: 0,
@@ -141,6 +147,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     ) -> Result<Self, RplStackOpenError<S::Error>> {
         let stack = stack.into();
         validate_origin(&stack, root_addr).map_err(|()| RplStackOpenError::InvalidOrigin)?;
+        let control_addr = canonical_link_local(&stack);
         if root_addr != dodag_id {
             return Err(RplStackOpenError::RootAddressMismatch);
         }
@@ -171,6 +178,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             storage,
             role: RplRole::Root(rx),
             local_rpl_addr: root_addr,
+            local_control_addr: control_addr,
             bootstrap_peers: VecDeque::new(),
             dao_admissions: Some(admissions),
             routing_now_ms: 0,
@@ -214,8 +222,15 @@ pub(crate) fn validate_origin<R: Radio>(
     stack: &SecureStack<R>,
     origin: [u8; 16],
 ) -> Result<(), ()> {
-    let expected = iid_from_pubkey(&stack.local_public_key());
-    (origin[8..] == expected).then_some(()).ok_or(())
+    let expected = lichen_link::ygg_addr_from_pubkey(stack.local_public_key().as_bytes());
+    (origin == expected).then_some(()).ok_or(())
+}
+
+fn canonical_link_local<R: Radio>(stack: &SecureStack<R>) -> [u8; 16] {
+    let mut address = [0u8; 16];
+    address[..8].copy_from_slice(&[0xfe, 0x80, 0, 0, 0, 0, 0, 0]);
+    address[8..].copy_from_slice(&iid_from_pubkey(&stack.local_public_key()));
+    address
 }
 
 pub(crate) fn provision_or_resume_root_state<S: NonVolatile>(

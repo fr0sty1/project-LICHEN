@@ -30,7 +30,7 @@ async def _setup(*, config_allow_writes: bool = False):
     mesh_net = InMemoryNetwork()
     local_net = InMemoryNetwork()
 
-    # Mesh node: serves /status, /neighbors, /config
+    # Mesh node: serves /status, /status/neighbors, /config
     node_info = _mesh_node_info()
     mesh_node = await create_lichen_context(
         mesh_net.channel("fd00::2"),
@@ -74,11 +74,11 @@ class TestProxyForwardGet:
             await _teardown(local_client, gateway, mesh_node, gw_mesh)
 
     async def test_proxy_get_neighbors_from_mesh_node(self) -> None:
-        """GET with Proxy-Uri retrieves the remote node's /neighbors."""
+        """GET with Proxy-Uri retrieves the remote node's /status/neighbors."""
         local_client, gateway, mesh_node, gw_mesh = await _setup()
         try:
             msg = Message(code=GET, uri="coap://gw/proxy")
-            msg.opt.proxy_uri = "coap://[fd00::2]/neighbors"
+            msg.opt.proxy_uri = "coap://[fd00::2]/status/neighbors"
             resp = await local_client.request(msg).response
 
             assert resp.code == aiocoap.CONTENT

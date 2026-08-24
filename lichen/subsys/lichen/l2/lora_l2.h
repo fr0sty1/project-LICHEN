@@ -266,7 +266,36 @@ bool lichen_lora_l2_needs_reinit(void);
  * @return 0 on success, -EINVAL if stats is NULL, -ENODEV if not initialized
  */
 int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats);
+
+/**
+ * @brief Adaptive duty cycle limit for a network density and region (CCP-13)
+ *
+ * Density thresholds per spec/02a-coordinated-capacity.md section 2a.9:
+ * density > 8 (dense) shrinks airtime, density < 3 (sparse) allows more.
+ *
+ * @param density Current neighbor count estimate
+ * @param region  Duty region from the operating class table
+ *                (0 = strictly limited: EU, AU/NZ; 1 = lenient: US/CA)
+ * @return Duty cycle budget in permille of the 1-hour window (1-1000)
+ */
 uint16_t adaptive_duty_permille(uint8_t density, uint8_t region);
+
+/**
+ * @brief Report current neighbor density used for duty cycle adaptation
+ *
+ * @param density New neighbor count estimate
+ */
+void lichen_lora_l2_set_density(uint8_t density);
+
+/**
+ * @brief Get the duty cycle budget currently in force (permille)
+ *
+ * Returns the adaptive duty cycle limit derived from the last reported
+ * density. Returns 0 when CONFIG_LICHEN_DUTY_CYCLE is disabled.
+ *
+ * @return Current duty cycle permille (0-1000)
+ */
+uint16_t lichen_lora_l2_current_duty_permille(void);
 
 /**
  * @brief Perform Clear Channel Assessment (CCA) on the LoRa radio

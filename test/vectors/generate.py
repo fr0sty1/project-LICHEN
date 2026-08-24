@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 """Generate cross-language test vectors with independent oracles.
 
-Run:  PYTHONPATH=python/src python3 test/vectors/generate.py
+Run (single file, e.g. after editing one generator):
+    PYTHONPATH=python/src python3 test/vectors/generate.py loadng_discovery.json
 
-Writes JSON vector files under this directory. These vectors serve as
-language-neutral oracles; Rust, C, and Python implementations validate against
-them (see README.md). Where possible, vector encodings are computed
-independently from the spec rather than using code-under-test.
+Regenerating a file overwrites it in place, so only ever name the families you
+actually changed: sibling workers keep locally-modified WIP vectors (ccp13,
+ccp15, edhoc, link_frame, schc_*, ...) in this same directory, and a bulk
+regeneration would silently clobber them (project-LICHEN-worker6-1lfx).
+``--all`` regenerates every vector file and requires the explicit
+``--yes-regenerate-all`` confirmation; running with no arguments prints usage
+and exits non-zero without writing anything.
+
+The JSON files written here serve as language-neutral oracles; Rust, C, and
+Python implementations validate against them (see README.md). Where possible,
+vector encodings are computed independently from the spec rather than using
+code-under-test.
 
 Test integrity: oracles derive expected values from spec-defined byte layouts
 and external crypto references. Functions prefixed with `_oracle_` are
@@ -17,20 +26,21 @@ independent encoders that do NOT call implementation code.
 
 from __future__ import annotations
 
-import json
+import argparse
+import sys
 from ipaddress import IPv6Address
 from pathlib import Path
+from typing import TypedDict
+
+from atomic_json import atomic_write_json
 
 from lichen.ipv6.icmpv6 import EchoRequest
 from lichen.ipv6.packet import IPv6Header, NextHeader
 from lichen.ipv6.udp import UdpDatagram
-from lichen.link.frame import AddrMode, MicLength
 from lichen.rpl.messages import DAO, DIO, to_icmpv6
+from lichen.rpl.multi_instance import generate_multi_instance_vectors
 from lichen.schc.fragment import FragmentSender, compute_mic
 from lichen.schc.headers import compress_packet
-
-from lichen.sim.tdma import hash_32
-
 
 # =============================================================================
 # Independent frame encoder (spec section 4, draft-lichen-link-01)
@@ -44,7 +54,7 @@ _ORACLE_MIC_LEN_SHIFT = 2
 _ORACLE_MIC_LEN_MASK = 0b0000_0111
 _ORACLE_SIGNATURE_BIT = 1 << 5
 _ORACLE_ENCRYPTED_BIT = 1 << 6
-_ORACLE_SIGNER_IID_BIT = 1 << 7
+_ORACLE_SIGNER_IDENTIFIER_BIT = 1 << 7
 
 # Address mode lengths (spec section 3.3)
 _ORACLE_ADDR_LEN = {0: 0, 1: 2, 2: 8, 3: 0}  # NONE, SHORT, EXTENDED, ELIDED
@@ -61,7 +71,7 @@ def _oracle_encode_frame(
     mic_length: int,
     signature_present: bool,
     encrypted: bool,
-    signer_iid: bytes = b"",
+    signer_eui64: bytes = b"",
 ) -> bytes:
     """Independent frame encoder based on spec section 4 (draft-lichen-link-01).
 
@@ -81,7 +91,8 @@ def _oracle_encode_frame(
         mic_length: MIC length selector (0 or 1, compatibility only)
         signature_present: Whether frame is signed (S bit)
         encrypted: Whether frame is encrypted (E bit, unsupported)
-        signer_iid: Signer IID (8 bytes when signature_present and SI bit set)
+        signer_eui64: Canonical signer EUI-64 (8 bytes when signature_present
+            and the SI bit is set). SIID means Signer Identifier, never IPv6 IID.
 
     Returns:
         Encoded frame bytes per spec wire layout
@@ -93,22 +104,28 @@ def _oracle_encode_frame(
         f"dst_addr len {len(dst_addr)} != expected {_ORACLE_ADDR_LEN[addr_mode]} for addr_mode {addr_mode}"
     )
     expected_mic_len = _ORACLE_SIGNATURE_LENGTH if signature_present else 0
-    assert len(mic) == expected_mic_len, f"mic len {len(mic)} != expected {expected_mic_len}"
+    assert len(mic) == expected_mic_len, (
+        f"mic len {len(mic)} != expected {expected_mic_len}"
+    )
+    assert bool(signer_eui64) == signature_present, "S and SI presence must match"
+    assert not signer_eui64 or len(signer_eui64) == 8, (
+        "signer EUI-64 must be exactly 8 bytes"
+    )
 
     # Build LLSec byte (spec section 3.2)
-    llsec = (addr_mode & _ORACLE_ADDR_MODE_MASK)
+    llsec = addr_mode & _ORACLE_ADDR_MODE_MASK
     llsec |= (mic_length & _ORACLE_MIC_LEN_MASK) << _ORACLE_MIC_LEN_SHIFT
     if signature_present:
         llsec |= _ORACLE_SIGNATURE_BIT
     if encrypted:
         llsec |= _ORACLE_ENCRYPTED_BIT
-    if signer_iid:
-        llsec |= _ORACLE_SIGNER_IID_BIT
+    if signer_eui64:
+        llsec |= _ORACLE_SIGNER_IDENTIFIER_BIT
 
     # Build body: LLSec + EPO + SEQ + DST + [SIID] + PLD + MIC
     body = bytes([llsec, epoch]) + seqnum.to_bytes(2, "big") + dst_addr
-    if signer_iid:
-        body += signer_iid
+    if signer_eui64:
+        body += signer_eui64
     body += payload + mic
 
     # Add length byte (spec section 3.1)
@@ -116,8 +133,16 @@ def _oracle_encode_frame(
     return bytes([len(body)]) + body
 
 
+def _oracle_hash_32(data: bytes) -> int:
+    """Literal FNV-1a32 oracle; deliberately independent of LICHEN code."""
+    value = 0x811C9DC5
+    for octet in data:
+        value = ((value ^ octet) * 0x01000193) & 0xFFFFFFFF
+    return value
+
+
 def _hop_hash(eui: bytes, epoch: int) -> int:
-    return hash_32(eui + epoch.to_bytes(4, "little"))
+    return _oracle_hash_32(eui + epoch.to_bytes(4, "little"))
 
 
 VECTORS_DIR = Path(__file__).resolve().parent
@@ -127,7 +152,7 @@ L2_DISPATCH_ROUTING = 0x15
 
 LL_SRC = IPv6Address("fe80::1")
 LL_DST = IPv6Address("fe80::2")
-# Global addresses use deterministic Yggdrasil 02xx::/7 derivation from known seeds:
+# Global addresses use deterministic LICHEN native 0200::/8 derivation from known seeds:
 #   G_SRC: seed=0x00*32 -> pubkey=3b6a27bc... -> yggdrasil_address(pubkey)
 #   G_DST: seed=0xff*32 -> pubkey=76a15920... -> yggdrasil_address(pubkey)
 # See test/vectors/yggdrasil-derivation.json for canonical derivation test vectors.
@@ -469,7 +494,7 @@ def schc_vectors() -> list[dict]:
         (
             "oscore_global",
             6,
-            "Global IPv6+UDP+OSCORE CoAP (Yggdrasil 02xx::/7)",
+            "Global IPv6+UDP+OSCORE CoAP (LICHEN native 0200::/8)",
             _udp_ipv6(G_SRC, G_DST, _coap_with_oscore()),
         ),
     ]
@@ -526,6 +551,20 @@ def l2_payload_vectors() -> list[dict]:
     ]
 
 
+class _UnsignedFrameCase(TypedDict):
+    name: str
+    description: str
+    epoch: int
+    seqnum: int
+    dst_addr: bytes
+    payload: bytes
+    mic: bytes
+    addr_mode: int
+    mic_length: int
+    signature_present: bool
+    encrypted: bool
+
+
 def frame_vectors() -> list[dict]:
     """Generate link frame test vectors using independent oracles.
 
@@ -535,15 +574,15 @@ def frame_vectors() -> list[dict]:
     For signed frames, signatures use the reference schnorr48 implementation
     with deterministic seeds for reproducibility.
     """
-    from lichen.crypto.identity import Identity
-    from lichen.crypto.schnorr48 import sign
+    from reference_schnorr48 import ReferenceIdentity, sign, signature_transcript
 
     # Use deterministic seed for reproducible signed vectors
     seed = bytes(32)  # all zeros
-    identity = Identity.from_seed(seed)
+    identity = ReferenceIdentity.from_seed(seed)
+    signer_eui64 = identity.eui64
 
     # Unsigned frame cases defined as dicts (not using LichenFrame objects)
-    unsigned_cases = [
+    unsigned_cases: list[_UnsignedFrameCase] = [
         {
             "name": "broadcast_min",
             "description": "Broadcast, no address, unsigned",
@@ -552,8 +591,8 @@ def frame_vectors() -> list[dict]:
             "dst_addr": b"",
             "payload": b"abc",
             "mic": b"",
-            "addr_mode": int(AddrMode.NONE),
-            "mic_length": int(MicLength.BITS32),
+            "addr_mode": 0,
+            "mic_length": 0,
             "signature_present": False,
             "encrypted": False,
         },
@@ -565,8 +604,8 @@ def frame_vectors() -> list[dict]:
             "dst_addr": bytes([0xAB, 0xCD]),
             "payload": b"hi",
             "mic": b"",
-            "addr_mode": int(AddrMode.SHORT),
-            "mic_length": int(MicLength.BITS32),
+            "addr_mode": 1,
+            "mic_length": 0,
             "signature_present": False,
             "encrypted": False,
         },
@@ -578,8 +617,8 @@ def frame_vectors() -> list[dict]:
             "dst_addr": bytes(range(8)),
             "payload": b"data",
             "mic": b"",
-            "addr_mode": int(AddrMode.EXTENDED),
-            "mic_length": int(MicLength.BITS64),
+            "addr_mode": 2,
+            "mic_length": 1,
             "signature_present": False,
             "encrypted": False,
         },
@@ -591,8 +630,8 @@ def frame_vectors() -> list[dict]:
             "dst_addr": b"",
             "payload": b"ctx",
             "mic": b"",
-            "addr_mode": int(AddrMode.ELIDED),
-            "mic_length": int(MicLength.BITS32),
+            "addr_mode": 3,
+            "mic_length": 0,
             "signature_present": False,
             "encrypted": False,
         },
@@ -606,8 +645,8 @@ def frame_vectors() -> list[dict]:
             "dst_addr": b"",
             "payload": b"min",
             "mic": b"",
-            "addr_mode": int(AddrMode.NONE),
-            "mic_length": int(MicLength.BITS32),
+            "addr_mode": 0,
+            "mic_length": 0,
             "signature_present": False,
             "encrypted": False,
         },
@@ -619,8 +658,8 @@ def frame_vectors() -> list[dict]:
             "dst_addr": bytes([0x12, 0x34]),
             "payload": b"bnd",
             "mic": b"",
-            "addr_mode": int(AddrMode.SHORT),
-            "mic_length": int(MicLength.BITS32),
+            "addr_mode": 1,
+            "mic_length": 0,
             "signature_present": False,
             "encrypted": False,
         },
@@ -633,8 +672,8 @@ def frame_vectors() -> list[dict]:
             "dst_addr": b"",
             "payload": b"",
             "mic": b"",
-            "addr_mode": int(AddrMode.NONE),
-            "mic_length": int(MicLength.BITS32),
+            "addr_mode": 0,
+            "mic_length": 0,
             "signature_present": False,
             "encrypted": False,
         },
@@ -649,8 +688,8 @@ def frame_vectors() -> list[dict]:
             "dst_addr": b"",
             "payload": bytes(range(256))[:250],  # 250 bytes: 0x00..0xf9
             "mic": b"",
-            "addr_mode": int(AddrMode.NONE),
-            "mic_length": int(MicLength.BITS32),
+            "addr_mode": 0,
+            "mic_length": 0,
             "signature_present": False,
             "encrypted": False,
         },
@@ -663,8 +702,8 @@ def frame_vectors() -> list[dict]:
             "dst_addr": bytes([0xDE, 0xAD]),
             "payload": bytes(range(256))[:248],  # 248 bytes: 0x00..0xf7
             "mic": b"",
-            "addr_mode": int(AddrMode.SHORT),
-            "mic_length": int(MicLength.BITS32),
+            "addr_mode": 1,
+            "mic_length": 0,
             "signature_present": False,
             "encrypted": False,
         },
@@ -684,180 +723,207 @@ def frame_vectors() -> list[dict]:
             signature_present=case["signature_present"],
             encrypted=case["encrypted"],
         )
-        out.append({
-            "name": case["name"],
-            "description": case["description"],
-            "fields": {
-                "epoch": case["epoch"],
-                "seqnum": case["seqnum"],
-                "dst_addr": case["dst_addr"].hex(),
-                "payload": case["payload"].hex(),
-                "mic": case["mic"].hex(),
-                "addr_mode": case["addr_mode"],
-                "mic_length": case["mic_length"],
-                "signature_present": case["signature_present"],
-                "encrypted": case["encrypted"],
-                "signer_iid": "",
-            },
-            "encoded": encoded.hex(),
-        })
+        out.append(
+            {
+                "name": case["name"],
+                "description": case["description"],
+                "fields": {
+                    "epoch": case["epoch"],
+                    "seqnum": case["seqnum"],
+                    "dst_addr": case["dst_addr"].hex(),
+                    "payload": case["payload"].hex(),
+                    "mic": case["mic"].hex(),
+                    "addr_mode": case["addr_mode"],
+                    "mic_length": case["mic_length"],
+                    "signature_present": case["signature_present"],
+                    "encrypted": case["encrypted"],
+                    "signer_eui64": "",
+                },
+                "encoded": encoded.hex(),
+            }
+        )
 
-    # Signed broadcast frame - build preimage using oracle encoding logic
-    # The preimage for signing is: LENGTH + LLSec + EPO + SEQ + DST + PLD
-    # where LENGTH accounts for the signature that will be appended.
+    # Signed broadcast frame.  DST_LEN is an intentional non-wire octet in the
+    # canonical signature transcript; every other transcript octet is copied
+    # from the exact wire prefix, whose LENGTH includes the signature.
     #
     # For broadcast_signed: epoch=1, seqnum=2, payload="abc"
-    # Body length = 1(LLSec) + 1(EPO) + 2(SEQ) + 0(DST) + 3(PLD) + 48(sig) = 55 = 0x37
-    # LLSec = 0x20 (S=1, E=0, addr=0, mic=0)
-    preimage_broadcast = bytes([0x37, 0x20, 0x01, 0x00, 0x02]) + b"abc"
-    sig_broadcast = sign(identity.privkey, identity.pubkey, preimage_broadcast)
-    encoded_broadcast_signed = preimage_broadcast + sig_broadcast
+    # Body length = 4 fixed + 8(SIID) + 3(PLD) + 48(sig) = 63 = 0x3f.
+    # LLSec = 0xa0 (SI=1, S=1, E=0, addr=0, mic=0).
+    wire_broadcast = bytes([0x3F, 0xA0, 0x01, 0x00, 0x02]) + signer_eui64 + b"abc"
+    preimage_broadcast = signature_transcript(wire_broadcast, 0)
+    sig_broadcast = sign(identity, preimage_broadcast)
+    encoded_broadcast_signed = wire_broadcast + sig_broadcast
 
-    out.append({
-        "name": "broadcast_signed",
-        "description": "Signed broadcast frame with known seed",
-        "fields": {
-            "epoch": 1,
-            "seqnum": 2,
-            "dst_addr": "",
-            "payload": b"abc".hex(),
-            "mic": sig_broadcast.hex(),
-            "addr_mode": 0,
-            "mic_length": 0,
-            "signature_present": True,
-            "encrypted": False,
-        },
-        "encoded": encoded_broadcast_signed.hex(),
-        "crypto": {
-            "seed": seed.hex(),
-            "private_key": identity.privkey.hex(),
-            "public_key": identity.pubkey.hex(),
-            "preimage": preimage_broadcast.hex(),
-            "signature": sig_broadcast.hex(),
-        },
-    })
+    out.append(
+        {
+            "name": "broadcast_signed",
+            "description": "Signed broadcast frame with known seed",
+            "fields": {
+                "epoch": 1,
+                "seqnum": 2,
+                "dst_addr": "",
+                "payload": b"abc".hex(),
+                "mic": sig_broadcast.hex(),
+                "addr_mode": 0,
+                "mic_length": 0,
+                "signature_present": True,
+                "encrypted": False,
+                "signer_eui64": signer_eui64.hex(),
+            },
+            "encoded": encoded_broadcast_signed.hex(),
+            "crypto": {
+                "seed": seed.hex(),
+                "private_key": identity.private_scalar.hex(),
+                "public_key": identity.pubkey.hex(),
+                "preimage": preimage_broadcast.hex(),
+                "wire_prefix": wire_broadcast.hex(),
+                "signature": sig_broadcast.hex(),
+                "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0.",
+            },
+        }
+    )
 
     # Signed frame with 16-bit destination
-    # For short_addr_signed in stored JSON:
-    # "preimage": "3c21010002abcd68656c6c6f21"
-    # 0x3c = 60 = length (12 + 48)
-    # 0x21 = FCF (signature=1, encrypted=0, addr_mode=1, mic_length=0)
+    # 0x44 = 68-byte body including the mandatory 8-byte SIID.
+    # 0xa1 = LLSec (SI=1, signature=1, encrypted=0, addr_mode=1, mic_length=0)
     # epoch = 1
     # seqnum = 2 (0x0002)
     # dst_addr = 0xabcd
     # payload = "hello!" (68656c6c6f21)
-    preimage_short = bytes([0x3c, 0x21, 0x01, 0x00, 0x02, 0xab, 0xcd]) + b"hello!"
-    sig_short = sign(identity.privkey, identity.pubkey, preimage_short)
-    encoded_short_signed = preimage_short + sig_short
+    wire_short = (
+        bytes([0x44, 0xA1, 0x01, 0x00, 0x02, 0xAB, 0xCD]) + signer_eui64 + b"hello!"
+    )
+    preimage_short = signature_transcript(wire_short, 2)
+    sig_short = sign(identity, preimage_short)
+    encoded_short_signed = wire_short + sig_short
 
-    out.append({
-        "name": "short_addr_signed",
-        "description": "Signed frame with 16-bit destination and known seed",
-        "fields": {
-            "epoch": 1,
-            "seqnum": 2,
-            "dst_addr": "abcd",
-            "payload": b"hello!".hex(),
-            "mic": sig_short.hex(),
-            "addr_mode": 1,
-            "mic_length": 0,
-            "signature_present": True,
-            "encrypted": False,
-        },
-        "encoded": encoded_short_signed.hex(),
-        "crypto": {
-            "seed": seed.hex(),
-            "private_key": identity.privkey.hex(),
-            "public_key": identity.pubkey.hex(),
-            "preimage": preimage_short.hex(),
-            "signature": sig_short.hex(),
-        },
-    })
+    out.append(
+        {
+            "name": "short_addr_signed",
+            "description": "Signed frame with 16-bit destination and known seed",
+            "fields": {
+                "epoch": 1,
+                "seqnum": 2,
+                "dst_addr": "abcd",
+                "payload": b"hello!".hex(),
+                "mic": sig_short.hex(),
+                "addr_mode": 1,
+                "mic_length": 0,
+                "signature_present": True,
+                "encrypted": False,
+                "signer_eui64": signer_eui64.hex(),
+            },
+            "encoded": encoded_short_signed.hex(),
+            "crypto": {
+                "seed": seed.hex(),
+                "private_key": identity.private_scalar.hex(),
+                "public_key": identity.pubkey.hex(),
+                "preimage": preimage_short.hex(),
+                "wire_prefix": wire_short.hex(),
+                "signature": sig_short.hex(),
+                "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=2.",
+            },
+        }
+    )
 
     # signed_encrypted (unsupported combination)
-    # From stored JSON, the encoded format is different due to signer_iid field
-    # "encoded": "3dE0030004aabbccddaabbccdd7800000000..."
-    # Hmm the stored uses uppercase 'E' which suggests it's malformed/manual.
-    # Let's use the correct format from the stored JSON.
-    signer_iid = bytes.fromhex("aabbccddaabbccdd")
-    # For signed+encrypted, the frame includes signer_iid after header
-    # FCF: sig=1, enc=1, addr=0, mic=0 = 0x30
-    # Length = 1(FCF) + 1(epoch) + 2(seqnum) + 8(signer_iid) + 1(payload) + 48(sig) = 61 = 0x3d
-    # But in stored JSON: "3dE0030004aabbccddaabbccdd78" + 48 zeros
-    # The 'E' looks wrong - let me just keep the manual encoding for this error case
-    out.append({
-        "name": "signed_encrypted",
-        "description": "Unsupported signature + encrypted combination",
-        "fields": {
-            "epoch": 3,
-            "seqnum": 4,
-            "dst_addr": "",
-            "payload": "78",
-            "mic": ("00" * 48),
-            "addr_mode": 0,
-            "mic_length": 0,
-            "signature_present": True,
-            "encrypted": True,
-            "signer_iid": signer_iid.hex(),
-        },
-        "encoded": ("3d" + "E0" + "03" + "0004" + signer_iid.hex() + "78" + "00" * 48),
-        "expect": {"error": "signed_encrypted_unsupported"},
-    })
+    signer_eui64_encrypted = bytes.fromhex("aabbccddaabbccdd")
+    # For signed+encrypted, the frame includes the signer EUI-64 after the header.
+    # LLSec: SI=1, sig=1, enc=1, addr=0, mic=0 = 0xe0.
+    # Length = 4 fixed + 8(signer EUI-64) + 1(payload) + 48(sig) = 61 = 0x3d.
+    out.append(
+        {
+            "name": "signed_encrypted",
+            "description": "Unsupported signature + encrypted combination",
+            "fields": {
+                "epoch": 3,
+                "seqnum": 4,
+                "dst_addr": "",
+                "payload": "78",
+                "mic": ("00" * 48),
+                "addr_mode": 0,
+                "mic_length": 0,
+                "signature_present": True,
+                "encrypted": True,
+                "signer_eui64": signer_eui64_encrypted.hex(),
+            },
+            "encoded": (
+                "3d"
+                + "E0"
+                + "03"
+                + "0004"
+                + signer_eui64_encrypted.hex()
+                + "78"
+                + "00" * 48
+            ),
+            "expect": {"error": "signed_encrypted_unsupported"},
+        }
+    )
 
-    # Maximum payload for signed broadcast: body = 4 + payload + 48 = 254, so payload = 202 bytes
-    # Body = LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0) + Payload(202) + MIC(48) = 254
-    max_signed_payload = bytes(range(256))[:202]  # 202 bytes: 0x00..0xc9
-    # Preimage: LENGTH(0xfe=254) + LLSec(0x20=sig) + EPO(0x00) + SEQ(0x0001) + payload
-    preimage_max_signed = bytes([0xfe, 0x20, 0x00, 0x00, 0x01]) + max_signed_payload
-    sig_max_signed = sign(identity.privkey, identity.pubkey, preimage_max_signed)
-    encoded_max_signed = preimage_max_signed + sig_max_signed
+    # Maximum payload for signed broadcast: 4 fixed + 8 SIID + payload + 48 MIC = 254,
+    # so payload = 194 bytes.
+    max_signed_payload = bytes(range(256))[:194]
+    wire_max_signed = (
+        bytes([0xFE, 0xA0, 0x00, 0x00, 0x01]) + signer_eui64 + max_signed_payload
+    )
+    preimage_max_signed = signature_transcript(wire_max_signed, 0)
+    sig_max_signed = sign(identity, preimage_max_signed)
+    encoded_max_signed = wire_max_signed + sig_max_signed
 
-    out.append({
-        "name": "signed_max_payload",
-        "description": "Maximum payload for signed broadcast: 202 bytes (body=254, spec limit)",
-        "fields": {
-            "epoch": 0,
-            "seqnum": 1,
-            "dst_addr": "",
-            "payload": max_signed_payload.hex(),
-            "mic": sig_max_signed.hex(),
-            "addr_mode": 0,
-            "mic_length": 0,
-            "signature_present": True,
-            "encrypted": False,
-        },
-        "encoded": encoded_max_signed.hex(),
-        "crypto": {
-            "seed": seed.hex(),
-            "private_key": identity.privkey.hex(),
-            "public_key": identity.pubkey.hex(),
-            "preimage": preimage_max_signed.hex(),
-            "signature": sig_max_signed.hex(),
-        },
-    })
+    out.append(
+        {
+            "name": "signed_max_payload",
+            "description": "Maximum payload for signed broadcast with mandatory SIID: 194 bytes (body=254, spec limit)",
+            "fields": {
+                "epoch": 0,
+                "seqnum": 1,
+                "dst_addr": "",
+                "payload": max_signed_payload.hex(),
+                "mic": sig_max_signed.hex(),
+                "addr_mode": 0,
+                "mic_length": 0,
+                "signature_present": True,
+                "encrypted": False,
+                "signer_eui64": signer_eui64.hex(),
+            },
+            "encoded": encoded_max_signed.hex(),
+            "crypto": {
+                "seed": seed.hex(),
+                "private_key": identity.private_scalar.hex(),
+                "public_key": identity.pubkey.hex(),
+                "preimage": preimage_max_signed.hex(),
+                "wire_prefix": wire_max_signed.hex(),
+                "signature": sig_max_signed.hex(),
+                "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0.",
+            },
+        }
+    )
 
     # Over-limit case: 251 bytes payload would give body = 255 bytes (exceeds 254 limit)
     # This tests that implementations correctly reject frames exceeding the spec limit
     over_limit_payload = bytes(range(256))[:251]  # 251 bytes: 0x00..0xfa
-    out.append({
-        "name": "unsigned_over_max_payload",
-        "description": "Over-limit payload: 251 bytes would require body=255 (exceeds 254 spec limit)",
-        "fields": {
-            "epoch": 0,
-            "seqnum": 1,
-            "dst_addr": "",
-            "payload": over_limit_payload.hex(),
-            "mic": "",
-            "addr_mode": 0,
-            "mic_length": 0,
-            "signature_present": False,
-            "encrypted": False,
-            "signer_iid": "",
-        },
-        # Manual encoding with LENGTH=0xff (255) which exceeds spec limit
-        "encoded": "ff" + "00" + "00" + "0001" + over_limit_payload.hex(),
-        "expect": {"error": "frame_body_exceeds_254"},
-    })
+    out.append(
+        {
+            "name": "unsigned_over_max_payload",
+            "description": "Over-limit payload: 251 bytes would require body=255 (exceeds 254 spec limit)",
+            "fields": {
+                "epoch": 0,
+                "seqnum": 1,
+                "dst_addr": "",
+                "payload": over_limit_payload.hex(),
+                "mic": "",
+                "addr_mode": 0,
+                "mic_length": 0,
+                "signature_present": False,
+                "encrypted": False,
+                "signer_eui64": "",
+            },
+            # Manual encoding with LENGTH=0xff (255) which exceeds spec limit
+            "encoded": "ff" + "00" + "00" + "0001" + over_limit_payload.hex(),
+            "expect": {"error": "frame_body_exceeds_254"},
+        }
+    )
 
     return out
 
@@ -1969,15 +2035,26 @@ def meshcore_app_compat_vectors() -> list[dict]:
     ]
 
 
-def _write(filename: str, description: str, vectors: list[dict]) -> None:
+def _write(
+    filename: str,
+    description: str,
+    vectors: list[dict],
+    *,
+    name: str | None = None,
+    spec: str | None = None,
+) -> None:
     path = VECTORS_DIR / filename
-    doc = {
+    doc: dict = {
         "$schema": "./schema.json",
         "format_version": FORMAT_VERSION,
-        "description": description,
-        "vectors": vectors,
     }
-    path.write_text(json.dumps(doc, indent=2) + "\n")
+    if name is not None:
+        doc["name"] = name
+    doc["description"] = description
+    if spec is not None:
+        doc["spec"] = spec
+    doc["vectors"] = vectors
+    atomic_write_json(path, doc)
     print(f"wrote {len(vectors)} vectors to {path.name}")
 
 
@@ -1998,7 +2075,9 @@ def schc_fragment_vectors() -> list[dict]:
         mic = compute_mic(packet).hex()
         return {
             "name": name,
-            "description": extra.pop("description", f"{name.replace('_', ' ').title()}."),
+            "description": extra.pop(
+                "description", f"{name.replace('_', ' ').title()}."
+            ),
             "rule_id": 0x78,
             "packet": packet_hex,
             "fragments": fragments,
@@ -2016,7 +2095,7 @@ def schc_fragment_vectors() -> list[dict]:
         {
             "name": "7tiles",
             "description": "7 tiles with tile_size=1, window_size=3, rule_id=0x2a, payload=bytes(range(7)).",
-            "rule_id": 0x2a,
+            "rule_id": 0x2A,
             "packet": "00010203040506",
             "mic": "16cefd3c",
         },
@@ -2061,15 +2140,16 @@ def ccp_load_balancing_vectors() -> list[dict]:
     return [
         {
             "name": "tdma_slot_assignment_static_hash",
-            "description": "Static slot from EUI-64 hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) mod num_slots per TDMA spec (CCP-15.8.3). Independent external arithmetic oracle.",
+            "description": "Canonical slot at SFN zero from (FNV-1a32(EUI64) + u32(SFN)) mod num_slots. Independent external arithmetic oracle.",
             "eui64_hex": "0011223344556677",
+            "sfn": 0,
             "num_slots": 16,
             "expected_slot": 13,
         },
         {
             "name": "guard_time_boundary_sf10",
-            "description": "50ms guard for 250ms slot tolerates 0.5% drift over 5s superframe.",
-            "slot_ms": 250,
+            "description": "The 2346ms SF10 maximum-frame slot retains its 50ms guard under 0.5% drift over a 5s superframe.",
+            "slot_ms": 2346,
             "guard_ms": 50,
             "drift_ppm": 5000,
             "superframe_ms": 5000,
@@ -2171,64 +2251,98 @@ def ccp16_vectors() -> list[dict]:
         _v(
             "synchronized_hop_channel_consistency",
             "synchronized_hop_channel yields expected per CCP-12 pseudocode and independent hash_32 oracle. sf=9: density<5 AND snr>8.",
-            1, 3, 12, 4660,
+            1,
+            3,
+            12,
+            4660,
         ),
         _v(
             "epoch_wrap_hop_change",
             "Epoch increment changes hop sequence. Tests desync recovery. sf=10: default branch (no thresholds triggered).",
-            0, 4, 5, 100,
+            0,
+            4,
+            5,
+            100,
         ),
         _v(
             "select_channel_timing_test",
             "density>8 triggers CH0 fallback with sf=11 (density>8) and now near u32 wrap.",
-            0, 9, -1, 0xfffffff0,
+            0,
+            9,
+            -1,
+            0xFFFFFFF0,
         ),
         _v(
             "select_channel_sf12_high_density",
             "density>20 triggers sf=12 (max SF). Channel forced to 0 by density>8.",
-            0, 25, 5, 0,
+            0,
+            25,
+            5,
+            0,
         ),
         _v(
             "select_channel_sf12_low_snr",
             "snr<-5 triggers sf=12. Channel computed via hash (density<=8 so non-zero).",
-            2, 4, -10, 500,
+            2,
+            4,
+            -10,
+            500,
         ),
         _v(
             "select_channel_sf11_snr_threshold",
             "snr<0 triggers sf=11. Channel via hash.",
-            3, 6, -3, 1000,
+            3,
+            6,
+            -3,
+            1000,
         ),
         _v(
             "select_channel_sf11_load_threshold",
             "load>0.8 triggers sf=11. density<=8 so channel via hash.",
-            4, 5, 5, 1500, load=0.9,
+            4,
+            5,
+            5,
+            1500,
+            load=0.9,
         ),
         _v(
             "select_channel_sf9_low_density_high_snr",
             "density<5 and snr>8 triggers sf=9 upgrade. Channel via hash.",
-            5, 2, 15, 2000,
+            5,
+            2,
+            15,
+            2000,
         ),
         _v(
             "select_channel_default_sf10",
             "sf=10 default: no thresholds triggered. Channel via hash.",
-            6, 7, 3, 2500,
+            6,
+            7,
+            3,
+            2500,
         ),
         _v(
             "select_channel_density_high_ch0",
             "density=10 forces channel 0, sf=11 (density>8).",
-            7, 10, 5, 3000,
+            7,
+            10,
+            5,
+            3000,
         ),
         _v(
             "select_channel_sfn_wrap_now",
             "now=0 (SFN base) with moderate density/snr. Tests edge of u32 domain.",
-            8, 5, 7, 0,
+            8,
+            5,
+            7,
+            0,
         ),
     ]
 
 
 def _sync_hop_hash(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
-    data = seed.to_bytes(4, "little") + ((sfn & 0xffffffff).to_bytes(4, "little"))
-    return hash_32(data)
+    data = seed.to_bytes(4, "little") + ((sfn & 0xFFFFFFFF).to_bytes(4, "little"))
+    return _oracle_hash_32(data)
 
 
 def _sync_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
@@ -2269,11 +2383,11 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
         },
         {
             "name": "sfn_wrap",
-            "sfn": 0xffffffff,
+            "sfn": 0xFFFFFFFF,
             "seed": 0,
             "num_channels": 8,
-            "expected_channel": _sync_hop_channel(0xffffffff, 0, 8),
-            "hash_32": _sync_hop_hash(0xffffffff, 0, 8),
+            "expected_channel": _sync_hop_channel(0xFFFFFFFF, 0, 8),
+            "hash_32": _sync_hop_hash(0xFFFFFFFF, 0, 8),
             "description": "SFN wraparound per spec Now() u32 mod and SelectChannel.",
         },
         {
@@ -2283,7 +2397,7 @@ def ccp12_synchronized_hop_vectors() -> list[dict]:
             "next_rendezvous_us": 1000000,
             "expected_channel": 3,
             "description": "Beacon/DIO rendezvous uses rx_channel preference (CCP-12 over pure hash for known peers).",
-        }
+        },
     ]
 
 
@@ -2331,6 +2445,7 @@ def ccp9_vectors() -> list[dict]:
         },
     ]
 
+
 def cc_density_high(sf: int = 10, density: int = 15, utilization: int = 100) -> int:
     return min(12, sf + 2) if density > 10 or utilization > 150 else sf
 
@@ -2344,35 +2459,47 @@ def cc_density_low(sf: int, density: int, snr_ema: float) -> int:
 def ccp15_vectors() -> list[dict]:
     v = []
     for seed in range(3):
-        h = (seed * 0x9e3779b9) & 0xffffffff
+        h = (seed * 0x9E3779B9) & 0xFFFFFFFF
         load_factor = h / 4294967295.0
         ema = 0.1 * load_factor + 0.9 * 0.4
         sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
-        v.append({"name": f"seed{seed}","sf":sf,"ema":round(ema,6),"load_factor":round(load_factor,6),"hash_32":f"{h:08x}"})
-    v.append({
-        "name": "density_estimate_high",
-        "description": "adaptive_sf_select with density > 10 forces SF bump to MIN(12, SF+2) per spec/02a-coordinated-capacity.md:2a.7. SF10+2→12 with density=15, utilization=100.",
-        "assigned_sf": 10,
-        "density": 15,
-        "utilization": 100,
-        "load_factor": 0.3,
-        "neighbor_snr_ema": 5,
-        "neighbor_loss": 0.05,
-        "expected_sf": cc_density_high(sf=10, density=15, utilization=100),
-        "tx_allowed": True,
-    })
-    v.append({
-        "name": "sf_selection_low_density_capacity",
-        "description": "adaptive_sf_select with density < 5 and SNR_EMA > 8 decreases SF to MAX(7, SF-1) per spec/02a-coordinated-capacity.md:2a.7. SF10-1→9 with density=3, SNR_EMA=10.",
-        "assigned_sf": 10,
-        "density": 3,
-        "utilization": 50,
-        "load_factor": 0.2,
-        "neighbor_snr_ema": 10,
-        "neighbor_loss": 0.02,
-        "expected_sf": cc_density_low(sf=10, density=3, snr_ema=10),
-        "tx_allowed": True,
-    })
+        v.append(
+            {
+                "name": f"seed{seed}",
+                "sf": sf,
+                "ema": round(ema, 6),
+                "load_factor": round(load_factor, 6),
+                "hash_32": f"{h:08x}",
+            }
+        )
+    v.append(
+        {
+            "name": "density_estimate_high",
+            "description": "adaptive_sf_select with density > 10 forces SF bump to MIN(12, SF+2) per spec/02a-coordinated-capacity.md:2a.7. SF10+2→12 with density=15, utilization=100.",
+            "assigned_sf": 10,
+            "density": 15,
+            "utilization": 100,
+            "load_factor": 0.3,
+            "neighbor_snr_ema": 5,
+            "neighbor_loss": 0.05,
+            "expected_sf": cc_density_high(sf=10, density=15, utilization=100),
+            "tx_allowed": True,
+        }
+    )
+    v.append(
+        {
+            "name": "sf_selection_low_density_capacity",
+            "description": "adaptive_sf_select with density < 5 and SNR_EMA > 8 decreases SF to MAX(7, SF-1) per spec/02a-coordinated-capacity.md:2a.7. SF10-1→9 with density=3, SNR_EMA=10.",
+            "assigned_sf": 10,
+            "density": 3,
+            "utilization": 50,
+            "load_factor": 0.2,
+            "neighbor_snr_ema": 10,
+            "neighbor_loss": 0.02,
+            "expected_sf": cc_density_low(sf=10, density=3, snr_ema=10),
+            "tx_allowed": True,
+        }
+    )
     return v
 
 
@@ -2452,21 +2579,153 @@ def ccp13_vectors() -> list[dict]:
     ]
 
 
+def rpl_multi_instance_vectors() -> list[dict]:
+    """RPL Multi-Instance Coordination vectors (GCP-5).
+
+    Delegates to the Python oracle's vector assembler, which returns pure
+    spec-derived literals (expected values hand-computed from
+    spec/08-gateway-coordination.md GCP-5/GCP-6/GCP-9 and RFC 6550, not from
+    running implementation code). Shared with Rust via
+    rust/lichen-rpl/tests/multi_instance_vectors.rs.
+    """
+    return generate_multi_instance_vectors()
+
+
 def rpl_messages_vectors() -> list[dict]:
     return [
         {
             "name": "dio_base",
             "type": "dio",
-            "description": "Base RPL DIO (RFC 6550). Hardcoded wire format from spec.",
-            "encoded": "0001010091000000fd000000000000000000000000000001",
-            "fields": {"rpl_instance_id": 0, "version": 1, "rank": 256, "grounded": True, "mode_of_operation": 2, "preference": 1, "dtsn": 0, "flags": 0, "dodag_id": "fd00::1"},
+            "description": "LICHEN root RPL DIO whose DODAGID is AddrForKey for the deterministic all-zero identity seed, with the mandatory current SCHC Rule Version option.",
+            "schc_version_mode": "insert_current",
+            "options_hex": "",
+            "encoded": "0001010091000000027dd5cfc679ab637dd5cfc679ab6342130103",
+            "fields": {
+                "rpl_instance_id": 0,
+                "version": 1,
+                "rank": 256,
+                "grounded": True,
+                "mode_of_operation": 2,
+                "preference": 1,
+                "dtsn": 0,
+                "flags": 0,
+                "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342",
+            },
+        },
+        {
+            "name": "dio_non_root",
+            "type": "dio",
+            "description": "LICHEN non-root parent DIO propagates the root's AddrForKey DODAGID and mandatory current SCHC Rule Version unchanged.",
+            "schc_version_mode": "propagate_root",
+            "root_originated_schc_version": 3,
+            "options_hex": "130103",
+            "encoded": "0001020091000000027dd5cfc679ab637dd5cfc679ab6342130103",
+            "fields": {
+                "rpl_instance_id": 0,
+                "version": 1,
+                "rank": 512,
+                "grounded": True,
+                "mode_of_operation": 2,
+                "preference": 1,
+                "dtsn": 0,
+                "flags": 0,
+                "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342",
+            },
+        },
+        {
+            "name": "dio_explicit_version_2",
+            "type": "dio",
+            "description": "An explicit single canonical version option is preserved byte-for-byte so admission can reject a genuine remote mismatch.",
+            "schc_version_mode": "explicit",
+            "advertised_schc_version": 2,
+            "options_hex": "130102",
+            "encoded": "0001020091000000027dd5cfc679ab637dd5cfc679ab6342130102",
+            "fields": {
+                "rpl_instance_id": 0,
+                "version": 1,
+                "rank": 512,
+                "grounded": True,
+                "mode_of_operation": 2,
+                "preference": 1,
+                "dtsn": 0,
+                "flags": 0,
+                "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342",
+            },
+        },
+        {
+            "name": "dio_malformed_version_length_zero",
+            "type": "dio",
+            "description": "A Type 0x13 option with Length zero is not canonical and cannot be serialized.",
+            "schc_version_mode": "malformed",
+            "options_hex": "1300",
+            "expect_error": "invalid_schc_version_option",
+            "fields": {
+                "rpl_instance_id": 0,
+                "version": 1,
+                "rank": 512,
+                "grounded": True,
+                "mode_of_operation": 2,
+                "preference": 1,
+                "dtsn": 0,
+                "flags": 0,
+                "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342",
+            },
+        },
+        {
+            "name": "dio_malformed_version_length_two",
+            "type": "dio",
+            "description": "A Type 0x13 option with Length two is not canonical and cannot be serialized.",
+            "schc_version_mode": "malformed",
+            "options_hex": "13020203",
+            "expect_error": "invalid_schc_version_option",
+            "fields": {
+                "rpl_instance_id": 0,
+                "version": 1,
+                "rank": 512,
+                "grounded": True,
+                "mode_of_operation": 2,
+                "preference": 1,
+                "dtsn": 0,
+                "flags": 0,
+                "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342",
+            },
+        },
+        {
+            "name": "dio_duplicate_version_option",
+            "type": "dio",
+            "description": "Two otherwise canonical Type 0x13 options are rejected rather than collapsed or rewritten.",
+            "schc_version_mode": "duplicate",
+            "options_hex": "130103130103",
+            "expect_error": "invalid_schc_version_option",
+            "fields": {
+                "rpl_instance_id": 0,
+                "version": 1,
+                "rank": 512,
+                "grounded": True,
+                "mode_of_operation": 2,
+                "preference": 1,
+                "dtsn": 0,
+                "flags": 0,
+                "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342",
+            },
         },
         {
             "name": "dao_base",
             "type": "dao",
-            "description": "Base RPL DAO with DODAGID (RFC 6550).",
+            "description": (
+                "Base RPL DAO without DODAGID: D flag is clear, so Rule 4 does "
+                "not match and the packet uses uncompressed fallback."
+            ),
             "encoded": "00000005",
-            "fields": {"rpl_instance_id": 0, "dao_sequence": 5, "ack_requested": False, "flags": 0, "dodag_id": None},
+            "matches_rule_4": False,
+            "schc_expected_rule_id": 255,
+            "fields": {
+                "rpl_instance_id": 0,
+                "dao_sequence": 5,
+                "ack_requested": False,
+                "flags": 0,
+                "dodag_id": None,
+            },
         },
     ]
 
@@ -3082,7 +3341,7 @@ def loadng_discovery_vectors() -> list[dict]:
         {
             "name": "rrep_gradient_stale_no_update",
             "type": "rrep",
-            "description": "RREP with stale sequence number does not update existing gradient (RFC 1982: newer seq wins). Still delivered if destination.",
+            "description": "RREP with stale sequence number does not update existing gradient (RFC 1982: newer seq wins) and never installs into the cache either: when the cache holds no entry for the originator, the unified verdict consults the surviving gradient as authority, so the gradient retains its seq=200 entry toward node5 and nothing is written anywhere (project-LICHEN-worker6-3ae7). Still delivered if destination.",
             "initial_state": {
                 "node_address": node1,
                 "cache_entries": [],
@@ -3112,14 +3371,130 @@ def loadng_discovery_vectors() -> list[dict]:
                 "action": "delivered",
                 "forward": None,
                 "dropped": False,
+                "cache_added": False,
+                "gradient_added": False,
+                "gradient_unchanged": True,
+            },
+        },
+        # Unified-verdict / hop-boundary vectors (project-LICHEN-worker6-3ae7,
+        # -uosr, -1leg): the RREP verdict covers every local store, and
+        # unserializable install costs are dropped before any mutation.
+        {
+            "name": "rrep_hop_boundary_dropped",
+            "type": "rrep",
+            "description": "RREP at MAX_HOP_LIMIT (hop_count=15): installing costs one more hop (16), which no wire-legal RREP can carry (spec B2.1); drop cleanly with no state change instead of storing an unserializable route cost.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node1,
+                    "seq_num": 200,
+                    "hop_count": 15,
+                    "flags": 0,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "dropped_rrep",
+                "forward": None,
+                "forward_next_hop": None,
+                "dropped": True,
+                "cache_added": False,
+                "gradient_added": False,
+            },
+        },
+        {
+            "name": "rrep_stale_rejected_by_fresh_cache",
+            "type": "rrep",
+            "description": "Cache holds fresher knowledge (seq=300) while the gradient table has no entry: a stale RREP (seq=200) is rejected by the unified verdict, so neither store is written even though the reply reaches its requester.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [
+                    {
+                        "destination": node3,
+                        "next_hop": node4,
+                        "hop_count": 2,
+                        "metric": 2,
+                        "seq_num": 300,
+                        "valid_until_ms": 301000,
+                    }
+                ],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node1,
+                    "seq_num": 200,
+                    "hop_count": 1,
+                    "flags": 0,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "delivered",
+                "forward": None,
+                "dropped": False,
+                "cache_added": False,
+                "cache_unchanged": True,
+                "gradient_added": False,
+            },
+        },
+        {
+            "name": "rrep_equal_seq_fewer_hops_updates",
+            "type": "rrep",
+            "description": "Equal sequence number with strictly fewer hops is superior (RFC 3561 section 6.2): replaces the cached route and installs the forward gradient.",
+            "initial_state": {
+                "node_address": node1,
+                "cache_entries": [
+                    {
+                        "destination": node3,
+                        "next_hop": node4,
+                        "hop_count": 4,
+                        "metric": 4,
+                        "seq_num": 200,
+                        "valid_until_ms": 301000,
+                    }
+                ],
+                "gradient_entries": [],
+                "seen_entries": [],
+            },
+            "input": {
+                "rrep": {
+                    "originator": node3,
+                    "destination": node1,
+                    "seq_num": 200,
+                    "hop_count": 2,
+                    "flags": 0,
+                },
+                "from_neighbor": node2,
+                "now_ms": 1000,
+            },
+            "expected": {
+                "action": "delivered",
+                "forward": None,
+                "dropped": False,
                 "cache_added": True,
                 "cache_entry": {
                     "destination": node3,
                     "next_hop": node2,
-                    "hop_count": 2,
+                    "hop_count": 3,
                 },
-                "gradient_added": False,
-                "gradient_unchanged": True,
+                "gradient_added": True,
+                "gradient_entry": {
+                    "destination": node3,
+                    "next_hop": node2,
+                    "hop_count": 3,
+                    "seq_num": 200,
+                },
             },
         },
         # Expiration vectors
@@ -3323,7 +3698,7 @@ def loadng_discovery_vectors() -> list[dict]:
 def ipv6_malformed_vectors() -> list[dict]:
     good = _icmpv6_ipv6(LL_SRC, LL_DST, EchoRequest(0x1234, 1, b"test").to_message())
     bad_csum = bytearray(good)
-    bad_csum[42] ^= 0xff
+    bad_csum[42] ^= 0xFF
     bad_ver = bytearray(good)
     bad_ver[0] = 0x40
     short = good[:30]
@@ -3338,7 +3713,13 @@ def ipv6_malformed_vectors() -> list[dict]:
         ("invalid_checksum", bytes(bad_csum), "invalid_checksum"),
         ("bad_type", bytes(bad_t), "bad_type"),
         ("bad_udp_length", bytes(bad_u), "bad_udp_length"),
-        ("invalid_source", _icmpv6_ipv6(IPv6Address("::"), LL_DST, EchoRequest(0, 0, b"").to_message()), "invalid_source"),
+        (
+            "invalid_source",
+            _icmpv6_ipv6(
+                IPv6Address("::"), LL_DST, EchoRequest(0, 0, b"").to_message()
+            ),
+            "invalid_source",
+        ),
     ]
     return [
         {
@@ -3351,112 +3732,388 @@ def ipv6_malformed_vectors() -> list[dict]:
     ]
 
 
-def main() -> None:
-    _write(
-        "schc_compression.json",
-        "SCHC whole-packet compression vectors (RFC 8724). 'packet' is the full "
-        "uncompressed IPv6 datagram; 'compressed' is compress_packet(packet). "
-        "Round-trip: compress(packet) == compressed and decompress(compressed) "
-        "== packet.",
-        schc_vectors(),
+def root_authorization_vectors() -> list[dict]:
+    """Generate root authorization validation vectors (spec 8.2, 8.4).
+
+    These vectors test the cryptographic binding between root pubkey and DODAGID,
+    plus Schnorr48 signature verification. Per the spec:
+    - DODAGID == AddrForKey(root_pubkey) (section 8.4)
+    - RPL messages MUST be signed with Schnorr48 (section 8.2)
+
+    Fixture construction uses deterministic production primitives. The committed
+    results are independently checked by test_protocol_vector_security.py using
+    reference_schnorr48.py and direct SHA-512 address derivation.
+    """
+    from lichen.crypto.identity import Identity, yggdrasil_address
+    from lichen.crypto.schnorr48 import sign
+
+    vectors = []
+
+    # Vector 1: Valid signature with correct DODAGID binding
+    seed_valid = bytes(range(32))
+    identity_valid = Identity.from_seed(seed_valid)
+    message_valid = b"DIO: DODAG config, RPLInstanceID=0x01, Version=42"
+    sig_valid = sign(identity_valid.privkey, identity_valid.pubkey, message_valid)
+    dodagid_valid = yggdrasil_address(identity_valid.pubkey)
+
+    vectors.append(
+        {
+            "name": "valid_signature_and_dodagid",
+            "description": "Valid Schnorr48 signature with correct DODAGID == AddrForKey(pubkey) binding. Both checks pass.",
+            "seed_hex": seed_valid.hex(),
+            "pubkey_hex": identity_valid.pubkey.hex(),
+            "message_hex": message_valid.hex(),
+            "signature_hex": sig_valid.hex(),
+            "dodagid_hex": dodagid_valid.packed.hex(),
+            "dodagid_str": str(dodagid_valid),
+            "expected_valid": True,
+            "expected_error": None,
+        }
     )
-    _write(
+
+    # Vector 2: Invalid signature (zeroed) with correct DODAGID binding
+    vectors.append(
+        {
+            "name": "invalid_signature_zeroed",
+            "description": "All-zero signature fails Schnorr48 verification, but DODAGID binding is correct.",
+            "seed_hex": seed_valid.hex(),
+            "pubkey_hex": identity_valid.pubkey.hex(),
+            "message_hex": message_valid.hex(),
+            "signature_hex": bytes(48).hex(),
+            "dodagid_hex": dodagid_valid.packed.hex(),
+            "dodagid_str": str(dodagid_valid),
+            "expected_valid": False,
+            "expected_error": "signature_invalid",
+        }
+    )
+
+    # Vector 3: Valid signature but wrong DODAGID (attacker impersonation)
+    attacker_seed = bytes([x ^ 0xFF for x in range(32)])
+    attacker = Identity.from_seed(attacker_seed)
+    attacker_dodagid = yggdrasil_address(attacker.pubkey)
+    # Attacker signs correctly but claims victim's DODAGID
+    attacker_sig = sign(attacker.privkey, attacker.pubkey, message_valid)
+
+    vectors.append(
+        {
+            "name": "dodagid_mismatch_impersonation",
+            "description": "Attacker has valid signature for their own pubkey but claims victim's DODAGID. DODAGID binding check fails.",
+            "seed_hex": attacker_seed.hex(),
+            "pubkey_hex": attacker.pubkey.hex(),
+            "message_hex": message_valid.hex(),
+            "signature_hex": attacker_sig.hex(),
+            "dodagid_hex": dodagid_valid.packed.hex(),  # Victim's DODAGID
+            "dodagid_str": str(dodagid_valid),
+            "attacker_real_dodagid_hex": attacker_dodagid.packed.hex(),
+            "expected_valid": False,
+            "expected_error": "dodagid_mismatch",
+        }
+    )
+
+    # Vector 4: Tampered message (signature was over different data)
+    tampered_message = b"DIO: DODAG config, RPLInstanceID=0xFF, Version=99"
+
+    vectors.append(
+        {
+            "name": "signature_message_mismatch",
+            "description": "Signature was computed over different message bytes. Schnorr48 verification fails.",
+            "seed_hex": seed_valid.hex(),
+            "pubkey_hex": identity_valid.pubkey.hex(),
+            "signed_message_hex": message_valid.hex(),  # Original message that was signed
+            "message_hex": tampered_message.hex(),  # Message to verify (tampered)
+            "signature_hex": sig_valid.hex(),
+            "dodagid_hex": dodagid_valid.packed.hex(),
+            "dodagid_str": str(dodagid_valid),
+            "expected_valid": False,
+            "expected_error": "signature_invalid",
+        }
+    )
+
+    # Vector 5: Invalid pubkey length (too short)
+    vectors.append(
+        {
+            "name": "pubkey_too_short",
+            "description": "Pubkey is only 16 bytes (should be 32). Validation fails before signature check.",
+            "pubkey_hex": bytes(16).hex(),
+            "message_hex": message_valid.hex(),
+            "signature_hex": sig_valid.hex(),
+            "dodagid_hex": dodagid_valid.packed.hex(),
+            "expected_valid": False,
+            "expected_error": "pubkey_invalid",
+        }
+    )
+
+    # Vector 6: Valid root with different seed (deterministic cross-validation)
+    seed_alt = bytes([0xAB] * 32)
+    identity_alt = Identity.from_seed(seed_alt)
+    message_alt = b"DIO: instance=1, version=1, rank=256"
+    sig_alt = sign(identity_alt.privkey, identity_alt.pubkey, message_alt)
+    dodagid_alt = yggdrasil_address(identity_alt.pubkey)
+
+    vectors.append(
+        {
+            "name": "valid_alternate_seed",
+            "description": "Second valid vector with different seed for cross-implementation determinism check.",
+            "seed_hex": seed_alt.hex(),
+            "pubkey_hex": identity_alt.pubkey.hex(),
+            "message_hex": message_alt.hex(),
+            "signature_hex": sig_alt.hex(),
+            "dodagid_hex": dodagid_alt.packed.hex(),
+            "dodagid_str": str(dodagid_alt),
+            "expected_valid": True,
+            "expected_error": None,
+        }
+    )
+
+    # Vector 7: Wrong pubkey for signature (valid sig, valid DODAGID binding for a different identity)
+    # The pubkey and DODAGID match (identity_alt), but signature was made by identity_valid
+    vectors.append(
+        {
+            "name": "signature_wrong_key",
+            "description": "Signature was made by identity A but verified against identity B's pubkey. Fails signature check.",
+            "pubkey_hex": identity_alt.pubkey.hex(),  # Alt identity
+            "message_hex": message_valid.hex(),
+            "signature_hex": sig_valid.hex(),  # Signed by valid identity
+            "dodagid_hex": dodagid_alt.packed.hex(),  # Alt identity's DODAGID (binding passes)
+            "expected_valid": False,
+            "expected_error": "signature_invalid",
+        }
+    )
+
+    return vectors
+
+
+class _VectorFile:
+    """One regenerable vector file: its writer inputs and metadata.
+
+    ``builder`` is the NAME of a module-level vector-builder function,
+    resolved lazily in main(): some builders (e.g. edhoc_vectors) are defined
+    later in this file than this registry, so eager callables would raise
+    NameError at import time.
+    """
+
+    def __init__(
+        self,
+        filename: str,
+        description: str,
+        builder: str,
+        *,
+        name: str | None = None,
+        spec: str | None = None,
+    ) -> None:
+        self.filename = filename
+        self.description = description
+        self.builder = builder
+        self.name = name
+        self.spec = spec
+
+
+# Registry of every vector file main() can write, in canonical write order.
+VECTOR_FILES: tuple[_VectorFile, ...] = (
+    _VectorFile(
         "link_frame.json",
         "LICHEN link-layer frame vectors (spec section 4, draft-lichen-link-01). "
         "Complete frames are at most 255 bytes (LENGTH at most 254). 'fields' are "
         "frame inputs; 'encoded' is from _oracle_encode_frame() - an independent "
-        "encoder based on the spec wire layout, NOT from LichenFrame.to_bytes().",
-        frame_vectors(),
-    )
-    _write(
+        "encoder based on the spec wire layout, NOT from LichenFrame.to_bytes(). "
+        "Signed cases use reference_schnorr48.py, fixed Link Signature Domain Version 1, "
+        "and the normative non-wire DST_LEN field-delimiting octet.",
+        builder="frame_vectors",
+    ),
+    _VectorFile(
         "l2_payload.json",
         "Authenticated L2 inner-payload dispatch vectors. 'wrapped' is the "
         "link inner payload; byte 0 is the dispatch namespace and 'body' is "
         "the SCHC packet or routing/control message after that byte.",
-        l2_payload_vectors(),
-    )
-    _write(
+        builder="l2_payload_vectors",
+    ),
+    _VectorFile(
         "announce_coords.json",
         "Announce app_data Type=0x01 geographic coordinate encoding: signed "
         "big-endian e7 latitude and longitude. Coordinates are peer-owned "
         "announce metadata; receivers do not treat them as local position "
         "without explicit NETWORK-source approximation policy.",
-        announce_coords_vectors(),
-    )
-    _write(
+        builder="announce_coords_vectors",
+    ),
+    _VectorFile(
         "schc_fragment.json",
         "SCHC fragmentation vectors (RFC 8724 §8) with independent CRC32 oracle from zlib matching FragmentSender implementation. Updated for 6-bit FCN, real MICs, tile/window params.",
-        schc_fragment_vectors(),
-    )
-    _write(
+        builder="schc_fragment_vectors",
+    ),
+    _VectorFile(
         "ccp_load_balancing.json",
         "CCP load balancing and TDMA vectors with independent math oracles (hash_32, drift calc from spec).",
-        ccp_load_balancing_vectors(),
-    )
-    _write(
+        builder="ccp_load_balancing_vectors",
+    ),
+    _VectorFile(
         "ccp16.json",
         "CCP-16 synchronized hopping and desync vectors with now_ts and select_channel_timing test. Uses hash_32(FNV-1a32, basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) with independent external arithmetic oracle (no LICHEN code). Matches input/output ccp_vector schema.",
-        ccp16_vectors(),
-    )
-    _write(
+        builder="ccp16_vectors",
+    ),
+    _VectorFile(
         "ccp16-hop.json",
         "CCP-12 synchronized hop vectors matching spec/02a:120 SelectChannel pseudocode using shared hash_32(FNV). Independent oracle per test integrity rules. Includes SFN wrap, multi-channel (8/16), rendezvous, density fallback. Covers ccp16-hop.json.",
-        ccp12_synchronized_hop_vectors(),
-    )
-    _write(
+        builder="ccp12_synchronized_hop_vectors",
+    ),
+    _VectorFile(
         "ccp9.json",
         "CCP-9 rendezvous vectors using independent _l2_announce_with_channel oracle (exact wire format, no AnnounceMessage dep) and math from spec.",
-        ccp9_vectors(),
-    )
-    _write(
+        builder="ccp9_vectors",
+    ),
+    _VectorFile(
         "ccp15.json",
         "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test). Includes density_estimate_high (Density>8 triggers CH0 fallback) and sf_selection_low_density_capacity (adaptive SF with low density, good SNR) vectors.",
-        ccp15_vectors(),
-    )
-    _write(
+        builder="ccp15_vectors",
+    ),
+    _VectorFile(
         "ccp13.json",
         "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Matches Rust, C, Python sim exactly. No code-under-test dependency.",
-        ccp13_vectors(),
-    )
-    _write(
+        builder="ccp13_vectors",
+    ),
+    _VectorFile(
         "rpl_messages.json",
         "RPL messages (DIO/DAO per RFC 6550) with hardcoded independent vectors from spec.",
-        rpl_messages_vectors(),
-    )
-    _write(
+        builder="rpl_messages_vectors",
+    ),
+    _VectorFile(
+        "rpl_multi_instance.json",
+        "RPL Multi-Instance Coordination test vectors per spec/08-gateway-coordination.md "
+        "GCP-5. Covers shared RPLInstanceID management, multi-DODAG-root simulation, DAO "
+        "backbone propagation, and gateway role election. Expected values are hand-derived "
+        "from spec rules (lowest-IID election GCP-6.1, slot-conflict resolution GCP-6.3, "
+        "instance-ID sharing GCP-5, lollipop wrap RFC 6550 7.2); shared with the Rust "
+        "implementation via rust/lichen-rpl/tests/multi_instance_vectors.rs.",
+        builder="rpl_multi_instance_vectors",
+        name="rpl_multi_instance",
+        spec="spec/08-gateway-coordination.md#GCP-5",
+    ),
+    _VectorFile(
         "ipv6_malformed.json",
         "Malformed IPv6 ICMPv6 UDP vectors per RFC 8200 RFC 4443 RFC 768.",
-        ipv6_malformed_vectors(),
-    )
-    _write(
+        builder="ipv6_malformed_vectors",
+    ),
+    _VectorFile(
         "meshtastic_app_compat.json",
         "Meshtastic app-compat BLE protobuf exchange vectors. 'encoded' is one raw GATT value unless the vector explicitly expects rejection. Matches protobufs baseline (ToRadio/FromRadio tolerance).",
-        meshtastic_app_compat_vectors(),
-    )
-    _write(
+        builder="meshtastic_app_compat_vectors",
+    ),
+    _VectorFile(
         "meshcore_app_compat.json",
         "MeshCore app-compat byte-command vectors. 'encoded' is one raw MeshCore inner frame for BLE unless transport.framing states serial 0x3c/0x3e length framing. Matches firmware/python baselines.",
-        meshcore_app_compat_vectors(),
-    )
-    _write(
+        builder="meshcore_app_compat_vectors",
+    ),
+    _VectorFile(
         "edhoc.json",
         "EDHOC interop vectors (updated/expanded). Python EdhocInitiator/Responder + fixed seeds as reference oracle (no code-under-test). Records PRK states, exported OscoreContext, TH values, messages, keys. Matches Rust byte-for-byte. Follows oscore/schnorr48 patterns and test integrity rules.",
-        edhoc_vectors(),
-    )
-    _write(
+        builder="edhoc_vectors",
+    ),
+    _VectorFile(
+        "root_authorization.json",
+        "Root authorization validation vectors (spec 8.2, 8.4). Tests DODAGID == AddrForKey(root_pubkey) binding and Schnorr48 signature verification. Covers valid root, invalid signature, DODAGID mismatch (impersonation), and pubkey validation. Fixed literals are independently checked with reference_schnorr48.py and direct SHA-512 address derivation.",
+        builder="root_authorization_vectors",
+    ),
+    _VectorFile(
         "loadng_discovery.json",
         "LOADng discovery state transition vectors (spec sections 10.3-10.5, B2.6). "
         "Each vector specifies initial state, input message, and expected action with "
         "cache/gradient mutations. Independent oracle from spec rules.",
-        loadng_discovery_vectors(),
+        builder="loadng_discovery_vectors",
+    ),
+)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="generate.py",
+        description="Regenerate LICHEN cross-language test-vector JSON files.",
+        epilog=(
+            "Regeneration overwrites files in place; sibling workers keep WIP "
+            "edits in this directory, so select only the files you changed."
+        ),
     )
+    parser.add_argument(
+        "files",
+        nargs="*",
+        metavar="FILE",
+        help=(
+            "vector file(s) to regenerate, e.g. loadng_discovery.json; one of: "
+            + ", ".join(vf.filename for vf in VECTOR_FILES)
+        ),
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="regenerate every vector file (requires --yes-regenerate-all)",
+    )
+    parser.add_argument(
+        "--yes-regenerate-all",
+        action="store_true",
+        dest="yes_regenerate_all",
+        help="loud confirmation that overwriting ALL vector files is intended",
+    )
+    args = parser.parse_args(argv)
+
+    if not args.files and not args.all:
+        # Default behavior regenerates nothing: a bare run used to rewrite all
+        # ~19 sibling JSONs unconditionally, clobbering WIP edits
+        # (project-LICHEN-worker6-1lfx).
+        parser.print_usage(sys.stderr)
+        print(
+            "\nerror: select vector file(s) to regenerate, or pass --all "
+            "--yes-regenerate-all to overwrite every file deliberately.\n"
+            "Files: " + ", ".join(vf.filename for vf in VECTOR_FILES),
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.all:
+        if not args.yes_regenerate_all:
+            print(
+                "refusing to regenerate all vector files without explicit "
+                "--yes-regenerate-all (bulk writes clobber locally-modified WIP "
+                "vectors); name individual files instead",
+                file=sys.stderr,
+            )
+            return 2
+        print(
+            "WARNING: regenerating ALL vector files in place; any uncommitted "
+            "local edits inside them will be overwritten.",
+            file=sys.stderr,
+        )
+        selected = list(VECTOR_FILES)
+    else:
+        known = {vf.filename: vf for vf in VECTOR_FILES}
+        unknown = [f for f in args.files if f not in known]
+        if unknown:
+            print(
+                "error: unknown vector file(s): "
+                + ", ".join(unknown)
+                + "; valid files: "
+                + ", ".join(vf.filename for vf in VECTOR_FILES),
+                file=sys.stderr,
+            )
+            return 2
+        selected = [known[f] for f in args.files]
+
+    for vf in selected:
+        builder = globals()[vf.builder]
+        _write(vf.filename, vf.description, builder(), name=vf.name, spec=vf.spec)
+    return 0
 
 
 def edhoc_vectors() -> list[dict]:
-    """EDHOC interop vectors. Uses Python EdhocInitiator/Responder with fixed seeds, records PRK, OscoreContext, TH, messages, keys (oscore/schnorr48 pattern). Python reference oracle only."""
+    """EDHOC interop vectors with signature verification cases.
+
+    Uses Python EdhocInitiator/Responder with fixed seeds, records PRK,
+    OscoreContext, TH, messages, keys. Includes signature verification
+    failure cases for Message 3 processing (oscore/schnorr48 pattern).
+    Python reference oracle only.
+    """
     import os
-    from lichen.crypto.identity import Identity
+
     from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
+    from lichen.crypto.identity import Identity
+
     old = os.urandom
     os.urandom = lambda n: bytes([0x42] * n)
     try:
@@ -3480,31 +4137,105 @@ def edhoc_vectors() -> list[dict]:
         r_th_4 = resp._th_4.hex()
         ctx_i = init.export_oscore()
         ctx_r = resp.export_oscore()
-        return [{
-            "name": "fixed_seed_sign_sign",
-            "seed_i": bytes(range(32)).hex(),
-            "seed_r": bytes(range(32, 64)).hex(),
-            "msg1": m1.hex(),
-            "msg2": m2.hex(),
-            "msg3": m3.hex(),
-            "prk_2e": prk_2e,
-            "prk_3e2m": prk_3e2m,
-            "prk_4e3m": prk_4e3m,
-            "th_2": th_2,
-            "th_3": th_3,
-            "th_4": th_4,
-            "responder_th_2": r_th_2,
-            "responder_th_3": r_th_3,
-            "responder_th_4": r_th_4,
-            "oscore_master_secret": ctx_i.master_secret.hex(),
-            "oscore_master_salt": ctx_i.master_salt.hex(),
-            "oscore_sender_id": ctx_i.sender_id.hex(),
-            "oscore_recipient_id": ctx_r.sender_id.hex(),
-        }]
+
+        # Generate signature verification failure cases
+        # These use the same valid handshake but with tampered msg3 or wrong keys
+        wrong_key = Identity.from_seed(bytes([0xAA] * 32))
+
+        # Tampered signature: flip one bit in the ciphertext
+        m3_tampered_sig_mutable = bytearray(m3)
+        m3_tampered_sig_mutable[-10] ^= 0x01  # Flip bit in signature region
+        m3_tampered_sig = bytes(m3_tampered_sig_mutable)
+
+        # Tampered ciphertext: flip bit in ID_CRED region
+        m3_tampered_cred_mutable = bytearray(m3)
+        m3_tampered_cred_mutable[1] ^= 0x01  # Flip bit early in ciphertext
+        m3_tampered_cred = bytes(m3_tampered_cred_mutable)
+
+        # Truncated message
+        m3_truncated = m3[:8]
+
+        # All-zero (invalid) ciphertext
+        m3_zero = bytes(len(m3))
+
+        return [
+            {
+                "name": "fixed_seed_sign_sign",
+                "description": "Valid EDHOC handshake with SIGN_SIGN method",
+                "seed_i": bytes(range(32)).hex(),
+                "seed_r": bytes(range(32, 64)).hex(),
+                "msg1": m1.hex(),
+                "msg2": m2.hex(),
+                "msg3": m3.hex(),
+                "prk_2e": prk_2e,
+                "prk_3e2m": prk_3e2m,
+                "prk_4e3m": prk_4e3m,
+                "th_2": th_2,
+                "th_3": th_3,
+                "th_4": th_4,
+                "responder_th_2": r_th_2,
+                "responder_th_3": r_th_3,
+                "responder_th_4": r_th_4,
+                "oscore_master_secret": ctx_i.master_secret.hex(),
+                "oscore_master_salt": ctx_i.master_salt.hex(),
+                "oscore_sender_id": ctx_i.sender_id.hex(),
+                "oscore_recipient_id": ctx_r.sender_id.hex(),
+                "valid": True,
+            },
+            {
+                "name": "msg3_tampered_signature",
+                "description": "Message 3 with tampered signature byte must be rejected",
+                "seed_r": bytes(range(32, 64)).hex(),
+                "peer_pubkey": i.pubkey.hex(),
+                "msg3": m3_tampered_sig.hex(),
+                "th_3": r_th_3,
+                "valid": False,
+                "expected_error": "signature_verification_failed",
+            },
+            {
+                "name": "msg3_wrong_peer_key",
+                "description": "Message 3 verified against wrong public key must be rejected",
+                "seed_r": bytes(range(32, 64)).hex(),
+                "peer_pubkey": wrong_key.pubkey.hex(),
+                "msg3": m3.hex(),
+                "th_3": r_th_3,
+                "valid": False,
+                "expected_error": "id_cred_mismatch",
+            },
+            {
+                "name": "msg3_tampered_id_cred",
+                "description": "Message 3 with tampered ID_CRED_I region must be rejected",
+                "seed_r": bytes(range(32, 64)).hex(),
+                "peer_pubkey": i.pubkey.hex(),
+                "msg3": m3_tampered_cred.hex(),
+                "th_3": r_th_3,
+                "valid": False,
+                "expected_error": "decryption_or_id_cred_failed",
+            },
+            {
+                "name": "msg3_truncated",
+                "description": "Truncated Message 3 (< minimum size) must be rejected",
+                "seed_r": bytes(range(32, 64)).hex(),
+                "peer_pubkey": i.pubkey.hex(),
+                "msg3": m3_truncated.hex(),
+                "th_3": r_th_3,
+                "valid": False,
+                "expected_error": "message_too_short",
+            },
+            {
+                "name": "msg3_all_zero",
+                "description": "All-zero Message 3 ciphertext must be rejected",
+                "seed_r": bytes(range(32, 64)).hex(),
+                "peer_pubkey": i.pubkey.hex(),
+                "msg3": m3_zero.hex(),
+                "th_3": r_th_3,
+                "valid": False,
+                "expected_error": "decryption_failed",
+            },
+        ]
     finally:
         os.urandom = old
 
 
 if __name__ == "__main__":
-    main()
-
+    sys.exit(main())

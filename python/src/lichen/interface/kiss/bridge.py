@@ -19,6 +19,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from ...link.link_layer import ReceiveError
 from .aprs import (
     AprsAck,
     AprsMessage,
@@ -45,7 +46,7 @@ KISS_MSG_PREFIX = b"\x02"
 
 if TYPE_CHECKING:
     from ...crypto.identity import Identity, PeerIdentity
-    from ...link.link_layer import LinkLayer, ReceiveError, RxFrame
+    from ...link.link_layer import LinkLayer, RxFrame
 
 log = logging.getLogger(__name__)
 
@@ -228,7 +229,7 @@ class KissBridge:
         """Handle frame from radio → TNC app."""
         sender_call = iid_to_callsign(rx.sender.iid)
         own_call = self.own_callsign
-        payload = rx.frame.payload
+        payload = rx.payload
 
         # Add sender to peer table for future lookups
         self._peer_table.add(rx.sender.iid)
@@ -359,7 +360,7 @@ class KissBridge:
         """
         sender_call = iid_to_callsign(rx.sender.iid)
         own_call = self.own_callsign
-        payload = rx.frame.payload
+        payload = rx.payload
 
         # Add sender to peer table
         self._peer_table.add(rx.sender.iid)

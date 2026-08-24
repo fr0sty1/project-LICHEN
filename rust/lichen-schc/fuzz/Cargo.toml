@@ -13,6 +13,7 @@ arbitrary = { version = "1", features = ["derive"] }
 
 [dependencies.lichen-schc]
 path = ".."
+features = ["raw-fragment-codec"]
 
 [[bin]]
 name = "fuzz_decompress"

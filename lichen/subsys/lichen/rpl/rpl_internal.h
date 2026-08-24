@@ -142,8 +142,8 @@ bool finish_group(struct lichen_rpl_dao_stage *staged,
 /**
  * @brief Increment a lollipop sequence counter (RFC 6550 Section 7.2).
  *
- * Linear region: 0-127 (increment normally, wrap 127->0)
- * Circular region: 128-255 (increment with wrap 255->0)
+ * Circular region [0..127]: wraps 127->0 (RFC 1982 serial space).
+ * Linear region [128..255]: wraps 255->0 (restart/bootstrap).
  */
 static inline uint8_t increment_lollipop(uint8_t sequence)
 {

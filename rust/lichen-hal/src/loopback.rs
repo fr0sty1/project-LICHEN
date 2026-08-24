@@ -6,7 +6,7 @@
 //! Provides a pair of connected radios for host-side integration tests.
 //! TX on one side appears as RX on the other.
 
-use crate::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
+use crate::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket, TxResult};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
@@ -81,10 +81,12 @@ impl LoopbackRadio {
 impl Radio for LoopbackRadio {
     type Error = RadioError<std::convert::Infallible>;
 
-    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<TxResult, Self::Error> {
         let mut guard = self.tx_chan.lock().unwrap_or_else(|e| e.into_inner());
         guard.send(payload);
-        Ok(())
+        // Estimate airtime: ~66us/byte at SF10/125kHz + 12ms preamble
+        let airtime_us = 12_000 + (payload.len() as u32) * 66;
+        Ok(TxResult { airtime_us })
     }
 
     async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {

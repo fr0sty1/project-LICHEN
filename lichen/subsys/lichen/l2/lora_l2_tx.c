@@ -191,6 +191,13 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         return ret;
     }
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    /*
+     * CCP-13: the budget ceiling tracks the current density adaptively so
+     * the remaining-time check below always evaluates against the policy in
+     * force now, not a stale boot-time value.
+     */
+    lora_data.duty.duty_permille =
+        adaptive_duty_permille(lora_data.density, lora_l2_duty_region());
     uint32_t dur = 80U + (uint32_t)pop_len * 6U;
     if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), dur)) {
         k_mutex_unlock(&tx_buf_mutex);
@@ -264,6 +271,14 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
     return 0;
 }
 
+uint8_t lora_l2_duty_region(void)
+{
+    const struct lichen_op_class_params *oc =
+        lichen_op_class_lookup(CONFIG_LICHEN_OP_CLASS_ID);
+
+    return (oc != NULL) ? oc->duty_region : 0;
+}
+
 uint16_t adaptive_duty_permille(uint8_t density, uint8_t region)
 {
     if (density > 8) {
@@ -273,6 +288,26 @@ uint16_t adaptive_duty_permille(uint8_t density, uint8_t region)
         return (region == 0) ? 20 : 50;
     }
     return (region == 0) ? 10 : 20;
+}
+
+void lichen_lora_l2_set_density(uint8_t density)
+{
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    lora_data.density = density;
+    lora_data.duty.duty_permille =
+        adaptive_duty_permille(density, lora_l2_duty_region());
+#else
+    ARG_UNUSED(density);
+#endif
+}
+
+uint16_t lichen_lora_l2_current_duty_permille(void)
+{
+#if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
+    return lora_data.duty.duty_permille;
+#else
+    return 0;
+#endif
 }
 
 int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats)

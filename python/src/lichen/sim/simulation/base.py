@@ -8,6 +8,7 @@ and exposes properties. Mixins in other modules add behavior.
 
 from __future__ import annotations
 
+import math
 import random
 import time
 from enum import Enum, auto
@@ -157,9 +158,10 @@ class SimulationBase:
         self._pending_rx_timeouts: dict[str, int] = {}  # node_id -> timeout_time_us
         self._active_transmissions: dict[str, str] = {}  # node_id -> transmission_id
         self._chaos_engine = chaos_engine
-        self._metrics = Metrics()
         self._seed = seed
         self._rng = random.Random(seed)
+        # Independent RNG copy so reservoir sampling cannot perturb jitter.
+        self._metrics = Metrics(rng=random.Random(seed))
         self._observers = ObserverRegistry()
         self._debug_enabled = DEBUG_ENABLED
         if jitter_min_us < 0 or jitter_max_us < 0:
@@ -250,6 +252,7 @@ class SimulationBase:
         """Reset the RNG to a new seed, restoring reproducible state."""
         self._seed = seed
         self._rng = random.Random(seed)
+        self._metrics.set_rng(random.Random(seed))
 
     @property
     def jitter_min_us(self) -> int:
@@ -291,8 +294,10 @@ class SimulationBase:
         """
         if not node.started:
             heard = len(node.heard_set)
-            delay = self._rng.uniform(0, self._density_scale_factor * (1.0 + heard))
-            return int(delay)
+            scale = self._density_scale_factor * math.log1p(heard)
+            if scale <= 0.0:
+                return 0
+            return int(self._rng.uniform(0, scale))
         return 0
 
     def mark_node_started(self, node_id: str) -> None:

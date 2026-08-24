@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
 
+import threading
+import weakref
 from dataclasses import dataclass, field
 from enum import IntEnum
 from ipaddress import IPv6Address
@@ -23,7 +25,7 @@ LICHEN uses RPLInstanceID 0 and Non-Storing mode (MOP=1) per spec B.2.
 """
 
 RPL_ICMPV6_TYPE = 155
-DIO_BASE_LENGTH = 20
+DIO_BASE_LENGTH = 24
 DODAGID_LENGTH = 16
 
 
@@ -90,6 +92,42 @@ class RplOption:
 
 def _options_to_bytes(options: list[RplOption]) -> bytes:
     return b"".join(opt.to_bytes() for opt in options)
+
+
+def _snapshot_dio_options(options: object) -> tuple[tuple[int, bytes], ...]:
+    """Copy DIO option primitives once without invoking caller-owned methods."""
+    if type(options) is not list:
+        raise RplError("DIO options must be an exact list")
+    snapshots: list[tuple[int, bytes]] = []
+    for option in options.copy():
+        if type(option) is not RplOption:
+            raise RplError("DIO options must contain exact RplOption values")
+        state = object.__getattribute__(option, "__dict__").copy()
+        try:
+            option_type = state["type"]
+            data = state["data"]
+        except KeyError as exc:
+            raise RplError("DIO option is missing required state") from exc
+        if isinstance(option_type, bool) or not isinstance(option_type, int):
+            raise RplError(f"option type out of range: {option_type}")
+        option_type = int(option_type)
+        if not 0 <= option_type <= 0xFF:
+            raise RplError(f"option type out of range: {option_type}")
+        if type(data) is not bytes:
+            raise RplError("option data must be exact bytes")
+        if option_type == RplOptionType.PAD1 and data:
+            raise RplError("Pad1 option carries no data")
+        if len(data) > 0xFF:
+            raise RplError(f"option data too long: {len(data)} bytes")
+        snapshots.append((option_type, bytes(data)))
+    return tuple(snapshots)
+
+
+def _dio_options_snapshot_to_bytes(options: tuple[tuple[int, bytes], ...]) -> bytes:
+    return b"".join(
+        b"\x00" if option_type == RplOptionType.PAD1 else bytes((option_type, len(data))) + data
+        for option_type, data in options
+    )
 
 
 def _parse_options(data: bytes) -> list[RplOption]:
@@ -163,29 +201,71 @@ class DIO:
         return bool(self.flags & DIO_FLAG_GATEWAY_CENTRIC)
 
     def to_bytes(self) -> bytes:
-        if not 0 <= self.rpl_instance_id <= 0xFF:
-            raise RplError(f"rpl_instance_id out of range: {self.rpl_instance_id}")
-        if not 0 <= self.version <= 0xFF:
-            raise RplError(f"version out of range: {self.version}")
-        if not 0 <= self.rank <= 0xFFFF:
-            raise RplError(f"rank out of range: {self.rank}")
-        if not 0 <= self.dtsn <= 0xFF:
-            raise RplError(f"dtsn out of range: {self.dtsn}")
-        if not 0 <= self.mode_of_operation <= 7:
-            raise RplError(f"mode_of_operation out of range: {self.mode_of_operation}")
-        if not 0 <= self.preference <= 7:
-            raise RplError(f"preference out of range: {self.preference}")
-        if not 0 <= self.flags <= 0xFF:
-            raise RplError(f"flags out of range: {self.flags}")
-        if not 0 <= self.reserved <= 0xFF:
-            raise RplError(f"reserved out of range: {self.reserved}")
-        gmop_prf = (int(self.grounded) << 7) | (self.mode_of_operation << 3) | self.preference
+        if type(self) is not DIO:
+            raise RplError("DIO serializer requires an exact DIO")
+        state = object.__getattribute__(self, "__dict__").copy()
+        try:
+            rpl_instance_id = state["rpl_instance_id"]
+            version = state["version"]
+            rank = state["rank"]
+            dtsn = state["dtsn"]
+            dodag_id = state["dodag_id"]
+            grounded = state["grounded"]
+            mode_of_operation = state["mode_of_operation"]
+            preference = state["preference"]
+            flags = state["flags"]
+            reserved = state["reserved"]
+            options = _snapshot_dio_options(state["options"])
+        except KeyError as exc:
+            raise RplError("DIO is missing required state") from exc
+
+        scalar_ranges = (
+            ("rpl_instance_id", rpl_instance_id, 0xFF),
+            ("version", version, 0xFF),
+            ("rank", rank, 0xFFFF),
+            ("dtsn", dtsn, 0xFF),
+            ("mode_of_operation", mode_of_operation, 7),
+            ("preference", preference, 7),
+            ("flags", flags, 0xFF),
+            ("reserved", reserved, 0xFF),
+        )
+        frozen_scalars: dict[str, int] = {}
+        for name, value, maximum in scalar_ranges:
+            if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= maximum:
+                raise RplError(f"{name} out of range: {value}")
+            frozen_scalars[name] = int(value)
+        if type(grounded) is not bool:
+            raise RplError("grounded must be a bool")
+        if type(dodag_id) is not IPv6Address:
+            raise RplError("dodag_id must be an IPv6Address")
+
+        rpl_instance_id = frozen_scalars["rpl_instance_id"]
+        version = frozen_scalars["version"]
+        rank = frozen_scalars["rank"]
+        dtsn = frozen_scalars["dtsn"]
+        mode_of_operation = frozen_scalars["mode_of_operation"]
+        preference = frozen_scalars["preference"]
+        flags = frozen_scalars["flags"]
+        reserved = frozen_scalars["reserved"]
+        dodag_id_packed = dodag_id.packed
+        gmop_prf = (int(grounded) << 7) | (mode_of_operation << 3) | preference
+        from lichen.schc.rules import RULE_SET_VERSION, SCHC_RULE_VERSION_TYPE
+
+        version_options = [
+            data for option_type, data in options if option_type == SCHC_RULE_VERSION_TYPE
+        ]
+        if len(version_options) > 1:
+            raise RplError("DIO must contain at most one SCHC Rule Version option")
+        if version_options and len(version_options[0]) != 1:
+            raise RplError("SCHC Rule Version option must contain exactly one version byte")
+        if not version_options:
+            options = (*options, (SCHC_RULE_VERSION_TYPE, bytes([RULE_SET_VERSION])))
         return (
-            bytes([self.rpl_instance_id, self.version])
-            + self.rank.to_bytes(2, "big")
-            + bytes([gmop_prf, self.dtsn, self.flags, self.reserved])
-            + self.dodag_id.packed
-            + _options_to_bytes(self.options)
+            bytes([rpl_instance_id, version])
+            + rank.to_bytes(2, "big")
+            + bytes([gmop_prf, dtsn, flags, reserved])
+            + dodag_id_packed
+            + _dio_options_snapshot_to_bytes(options)
         )
 
     @classmethod
@@ -195,9 +275,9 @@ class DIO:
         if data[7] != 0:
             raise RplError(f"DIO reserved field must be zero per RFC 6550 §6.3, got {data[7]}")
         gmop_prf = data[4]
+        if gmop_prf & 0x40:
+            raise RplError("DIO G/MOP/Prf reserved bit must be zero per RFC 6550 §6.3")
         dodag_bytes = data[8:24]
-        if len(dodag_bytes) < DODAGID_LENGTH:
-            dodag_bytes = dodag_bytes + b"\x00" * (DODAGID_LENGTH - len(dodag_bytes))
         options_start = 8 + DODAGID_LENGTH
         return cls(
             rpl_instance_id=data[0],
@@ -251,6 +331,7 @@ class DAO:
 
     @classmethod
     def from_bytes(cls, data: bytes) -> DAO:
+        data = bytes(data)
         if len(data) < 4:
             raise RplError(f"DAO too short: {len(data)} bytes")
         kd = data[1]
@@ -263,7 +344,7 @@ class DAO:
                 raise RplError("DAO D flag set but DODAGID missing")
             dodag_id = IPv6Address(data[4:20])
             offset = 20
-        return cls(
+        parsed = cls(
             rpl_instance_id=data[0],
             ack_requested=bool(kd & 0x80),
             flags=kd & 0x3F,
@@ -272,6 +353,113 @@ class DAO:
             dodag_id=dodag_id,
             options=_parse_options(data[offset:]),
         )
+        _bind_received_dao_wire(parsed, data, offset)
+        return parsed
+
+
+@dataclass(frozen=True)
+class _ReceivedDaoWire:
+    reference: weakref.ReferenceType[DAO]
+    raw: bytes
+    structural_state: tuple[object, ...]
+    option_spans: tuple[tuple[int, int], ...]
+
+
+_RECEIVED_DAO_WIRE_LOCK = threading.RLock()
+_RECEIVED_DAO_WIRE: dict[int, _ReceivedDaoWire] = {}
+
+
+def _dao_structural_state(dao: DAO) -> tuple[object, ...]:
+    """Snapshot exact parsed DAO primitives without caller-owned methods."""
+    if type(dao) is not DAO:
+        raise RplError("received DAO must be an exact DAO")
+    state = object.__getattribute__(dao, "__dict__").copy()
+    try:
+        options = state["options"]
+        dodag_id = state["dodag_id"]
+        scalars = tuple(
+            state[name]
+            for name in (
+                "rpl_instance_id",
+                "dao_sequence",
+                "ack_requested",
+                "flags",
+                "reserved",
+            )
+        )
+    except KeyError as exc:
+        raise RplError("DAO is missing required parsed state") from exc
+    if type(options) is not list:
+        raise RplError("DAO options must remain an exact list")
+    option_state: list[tuple[int, bytes]] = []
+    for option in options.copy():
+        if type(option) is not RplOption:
+            raise RplError("DAO options must contain exact RplOption values")
+        option_fields = object.__getattribute__(option, "__dict__").copy()
+        option_type = option_fields.get("type")
+        option_data = option_fields.get("data")
+        if type(option_type) is not int or type(option_data) is not bytes:
+            raise RplError("DAO option primitive types changed after parsing")
+        option_state.append((option_type, option_data))
+    if (
+        type(scalars[0]) is not int
+        or type(scalars[1]) is not int
+        or type(scalars[2]) is not bool
+        or type(scalars[3]) is not int
+        or type(scalars[4]) is not int
+        or (dodag_id is not None and type(dodag_id) is not IPv6Address)
+    ):
+        raise RplError("DAO primitive types changed after parsing")
+    return (*scalars, None if dodag_id is None else dodag_id.packed, tuple(option_state))
+
+
+def _bind_received_dao_wire(dao: DAO, raw: bytes, options_offset: int) -> None:
+    spans: list[tuple[int, int]] = []
+    cursor = options_offset
+    while cursor < len(raw):
+        start = cursor
+        if raw[cursor] == int(RplOptionType.PAD1):
+            cursor += 1
+        else:
+            length = raw[cursor + 1]
+            cursor += 2 + length
+        spans.append((start, cursor))
+    dao_id = id(dao)
+
+    def cleanup(reference: weakref.ReferenceType[DAO]) -> None:
+        with _RECEIVED_DAO_WIRE_LOCK:
+            current = _RECEIVED_DAO_WIRE.get(dao_id)
+            if current is not None and current.reference is reference:
+                _RECEIVED_DAO_WIRE.pop(dao_id, None)
+
+    reference = weakref.ref(dao, cleanup)
+    provenance = _ReceivedDaoWire(
+        reference=reference,
+        raw=raw,
+        structural_state=_dao_structural_state(dao),
+        option_spans=tuple(spans),
+    )
+    with _RECEIVED_DAO_WIRE_LOCK:
+        _RECEIVED_DAO_WIRE[dao_id] = provenance
+
+
+def _exact_received_dao_wire(
+    dao: DAO,
+) -> tuple[bytes, tuple[tuple[int, int], ...]] | None:
+    """Return immutable raw provenance only while parsed semantics are unchanged."""
+    if type(dao) is not DAO:
+        return None
+    with _RECEIVED_DAO_WIRE_LOCK:
+        provenance = _RECEIVED_DAO_WIRE.get(id(dao))
+    if provenance is None or provenance.reference() is not dao:
+        return None
+    try:
+        current = _dao_structural_state(dao)
+    except RplError:
+        return None
+    if current != provenance.structural_state:
+        return None
+    return provenance.raw, provenance.option_spans
 
 
 @dataclass

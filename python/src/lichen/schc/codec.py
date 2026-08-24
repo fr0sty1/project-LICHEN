@@ -70,6 +70,14 @@ class BitReader:
             self._pos += 1
         return value
 
+    def padding_is_zero(self) -> bool:
+        """Whether every unused bit in the final residue octet is zero."""
+        used = self._pos % 8
+        if used == 0:
+            return True
+        padding_bits = 8 - used
+        return self._data[self._pos // 8] & ((1 << padding_bits) - 1) == 0
+
 
 def _check_msb(fd: FieldDescriptor, value: int) -> None:
     if fd.mo_arg is None:
@@ -122,6 +130,11 @@ def decompress(data: bytes, rule: Rule | None = None) -> tuple[int, dict[str, in
             raise SchcError(f"unknown rule ID {rule_id}")
     elif rule.rule_id != rule_id:
         raise SchcError(f"rule ID mismatch: packet has {rule_id}, rule is {rule.rule_id}")
+    expected_length = 1 + residue_byte_length(rule)
+    if len(data) != expected_length:
+        raise SchcError(
+            f"rule {rule_id} residue must be exactly {expected_length} bytes, got {len(data)}"
+        )
     reader = BitReader(data[1:])
     out: dict[str, int | None] = {}
     for fd in rule.fields:
@@ -143,4 +156,6 @@ def decompress(data: bytes, rule: Rule | None = None) -> tuple[int, dict[str, in
             if index >= len(fd.mapping):
                 raise SchcError(f"{fd.field_id}: mapping index {index} out of range")
             out[fd.field_id] = fd.mapping[index]
+    if not reader.padding_is_zero():
+        raise SchcError(f"rule {rule_id} residue has nonzero padding")
     return rule_id, out

@@ -19,7 +19,7 @@
 | Type | Prefix | Availability | Purpose |
 |------|--------|--------------|---------|
 | Link-local | fe80::/10 | After `lichen_link_init()` | Control traffic only (NDP, RPL control, neighbor discovery) |
-| Primary (Yggdrasil) | 0200::/7 | Always (self-derived from Ed25519 pubkey) | All routable traffic (mesh, inter-mesh, BR forwarding). Cryptographically bound to key per 06-security.md §8.5 |
+| Primary (native) | 0200::/8 | Always (self-derived from Ed25519 pubkey) | All routable traffic (mesh, inter-mesh, BR forwarding). Cryptographically bound to key per 06-security.md §8.5 |
 
 All addresses use stable IID derived from Ed25519 public key (unified derivation in 06-security.md §8.5, test/vectors/yggdrasil-derivation.json, 03-addressing.md). This provides cryptographic identity binding with no additional secrets. Link-local restricted to post-`lichen_link_init()` per AGENTS.md initialization graph. Single-primary model eliminates ULA/GUA layering, scope selection bugs, and prefix advertisement complexity while preserving isolated-mesh and multi-BR behavior via Yggdrasil.
 
@@ -59,14 +59,14 @@ IID and primary 02xx address are derived from Ed25519 public key via the unified
 
 ```
 // IID (8 bytes, link-local and lower half of primary address)
-hash256 = SHA-256(pubkey)
-IID = hash256[0:8]
+hash512 = SHA-512(pubkey)
+IID = hash512[0:8]
 IID[0] &= 0b11111101                      // clear U/L bit (RFC 4291)
 
 // Primary 02xx address (16 bytes, all routable traffic)
 hash512 = SHA-512(pubkey)
-addr[0] = 0x02                             // Yggdrasil 0200::/7 prefix
-addr[1..8] = hash512[0:7]                 // upper 7 bytes for /7 dispersion
+addr[0] = 0x02                             // native 0200::/8 prefix
+addr[1..8] = hash512[0:7]                 // remaining upper-address bytes
 addr[8..16] = IID                         // lower 64 bits == IID (key binding)
 ```
 

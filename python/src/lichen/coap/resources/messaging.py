@@ -23,7 +23,7 @@ from aiocoap import (
 from lichen.coap.resources.base import CBOR, _cbor_response
 from lichen.coap.resources.cbor_validation import _decode_single_cbor
 
-_MESSAGES_MAX = 100  # maximum inbox depth
+_MESSAGES_MAX = 100  # maximum inbox and receipts depth
 _MESSAGE_ID_MAX = (1 << 64) - 1  # u64 bound for LCI message IDs (spec 17.5.7)
 
 
@@ -149,13 +149,16 @@ class MessagesResource(resource.ObservableResource):
         self._sent[msg_id] = copy.deepcopy(body)
         if msg_id not in self._sent_order:
             self._sent_order.append(msg_id)
-        if len(self._sent_order) > _MESSAGES_MAX:
-            oldest = self._sent_order[: len(self._sent_order) - _MESSAGES_MAX]
-            self._sent_order = self._sent_order[-_MESSAGES_MAX:]
+        if len(self._sent_order) > self._max_messages:
+            oldest = self._sent_order[: len(self._sent_order) - self._max_messages]
+            self._sent_order = self._sent_order[-self._max_messages:]
             for old_id in oldest:
                 self._sent.pop(old_id, None)
         if self._sent_detail_registrar is not None:
             self._sent_detail_registrar(msg_id, body)
+        self._next_id = candidate_next_id
+        # Deliver to inbox and notify observers (per docstring contract).
+        self.deliver(body)
         msg = Message(code=aiocoap.CREATED)
         msg.opt.location_path = ("msg", "sent", msg_id)
         return msg
@@ -204,7 +207,10 @@ class SentMessageDetailsResource(resource.Resource, resource.PathCapable):
 
 
 class MessageReceiptsResource(resource.Resource):
-    """``/msg/ack`` collection for delivery/read/failure receipts."""
+    """``/msg/ack`` collection for delivery/read/failure receipts.
+
+    Stored receipts are capped at :data:`_MESSAGES_MAX` entries (oldest dropped).
+    """
 
     VALID_STATUSES = frozenset({"delivered", "read", "failed"})
 
@@ -212,9 +218,13 @@ class MessageReceiptsResource(resource.Resource):
         self,
         *,
         handler: Callable[[dict[str, Any]], None] | None = None,
+        max_receipts: int = _MESSAGES_MAX,
     ) -> None:
         super().__init__()
+        if isinstance(max_receipts, bool) or not isinstance(max_receipts, int) or max_receipts <= 0:
+            raise ValueError("max_receipts must be a positive integer")
         self._handler = handler
+        self._max_receipts = max_receipts
         self._receipts: list[dict[str, Any]] = []
 
     def get_link_description(self) -> dict[str, Any]:
@@ -242,6 +252,8 @@ class MessageReceiptsResource(resource.Resource):
             except Exception:
                 return Message(code=INTERNAL_SERVER_ERROR)
         self._receipts.append(receipt)
+        if len(self._receipts) > self._max_receipts:
+            self._receipts = self._receipts[-self._max_receipts:]
         return Message(code=CHANGED)
 
     @classmethod

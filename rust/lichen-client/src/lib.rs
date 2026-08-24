@@ -14,10 +14,18 @@
 //! these types with a CoAP transport such as `lichen-coap`.
 
 pub mod keys;
+pub mod keystore;
 pub mod msg;
 pub mod paths;
 pub mod pos;
+pub mod presence;
 pub mod status;
+pub mod waypoint;
 
 mod error;
 pub use error::Error;
+
+// Re-export key types for convenience
+#[cfg(feature = "tokio")]
+pub use keystore::KeyStoreClient;
+pub use keystore::{validate_iid, IidError, KeyStoreError};

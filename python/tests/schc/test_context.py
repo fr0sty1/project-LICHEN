@@ -8,6 +8,7 @@ import pytest
 
 from lichen.schc import (
     CDA,
+    ICMPV6_ECHO_RULE,
     MO,
     RULE_SET_VERSION,
     SCHC_RULE_VERSION_TYPE,
@@ -22,6 +23,7 @@ from lichen.schc import (
     rule_matches,
     versions_compatible,
 )
+from lichen.schc.context import AuthenticatedPeerSchcContext
 
 # A small two-rule context with disjoint EQUAL matches for deterministic tests.
 RULE_A = Rule(
@@ -71,8 +73,10 @@ def test_rule_matches_msb() -> None:
 
 def test_select_rule_picks_matching() -> None:
     ctx = _ctx()
-    assert ctx.select_rule({"F.kind": 1, "F.val": 7}).rule_id == 10
-    assert ctx.select_rule({"F.kind": 2, "F.val": 7}).rule_id == 11
+    first = ctx.select_rule({"F.kind": 1, "F.val": 7})
+    second = ctx.select_rule({"F.kind": 2, "F.val": 7})
+    assert first is not None and first.rule_id == 10
+    assert second is not None and second.rule_id == 11
     assert ctx.select_rule({"F.kind": 9, "F.val": 7}) is None
 
 
@@ -81,7 +85,8 @@ def test_select_rule_is_deterministic_by_ascending_id() -> None:
     r_lo = Rule(5, (FieldDescriptor("X", 8, MO.IGNORE, CDA.VALUE_SENT),))
     r_hi = Rule(6, (FieldDescriptor("X", 8, MO.IGNORE, CDA.VALUE_SENT),))
     ctx = SchcContext({6: r_hi, 5: r_lo})
-    assert ctx.select_rule({"X": 1}).rule_id == 5
+    selected = ctx.select_rule({"X": 1})
+    assert selected is not None and selected.rule_id == 5
 
 
 def test_context_uses_dict_keys_not_rule_id() -> None:
@@ -142,23 +147,13 @@ def test_decompress_unknown_rule_id() -> None:
 
 def test_default_context_has_registry_rules() -> None:
     ctx = SchcContext()
-    assert len(ctx) >= 3
-    # The ICMPv6 Echo header building block (id 66) is present and selectable
-    # for an ICMPv6-only field set (rule 2 is the whole-packet variant).
-    assert ctx.get(66) is not None
-    fields = {
-        "ICMPv6.type": 128,
-        "ICMPv6.code": 0,
-        "ICMPv6.checksum": 0,
-        "ICMPv6.identifier": 0xABCD,
-        "ICMPv6.sequence": 7,
-    }
-    rule = ctx.select_rule(fields)
-    assert rule is not None and rule.rule_id == 66
+    assert tuple(rule.rule_id for rule in ctx.rules) == (5, 6, 0, 1, 2, 3, 4, 255)
+    # IDs 64-66 name local descriptor building blocks, not wire rules.
+    assert all(ctx.get(rule_id) is None for rule_id in (64, 65, 66))
 
 
 def test_icmpv6_echo_round_trip() -> None:
-    ctx = SchcContext()
+    ctx = SchcContext({ICMPV6_ECHO_RULE.rule_id: ICMPV6_ECHO_RULE})
     fields = {
         "ICMPv6.type": 129,
         "ICMPv6.code": 0,
@@ -180,16 +175,16 @@ def test_icmpv6_echo_round_trip() -> None:
 # --- Rule Set Versioning (spec section 5.7) ---
 
 
-def test_rule_set_version_constant_is_2() -> None:
-    """Spec section 5.7: version 2 is current RFC 8724 profile."""
-    assert RULE_SET_VERSION == 2
+def test_rule_set_version_constant_is_3() -> None:
+    """Spec section 5.7: version 3 is the current LICHEN SCHC profile."""
+    assert RULE_SET_VERSION == 3
 
 
 def test_default_context_has_current_version() -> None:
     """Default context uses RULE_SET_VERSION."""
     ctx = SchcContext()
     assert ctx.version == RULE_SET_VERSION
-    assert ctx.version == 2
+    assert ctx.version == 3
 
 
 def test_context_accepts_custom_version() -> None:
@@ -199,24 +194,24 @@ def test_context_accepts_custom_version() -> None:
 
 
 def test_context_version_zero_reserved() -> None:
-    """Version 0 is reserved but can still be set (for testing/edge cases)."""
-    ctx = SchcContext(version=0)
-    assert ctx.version == 0
+    """Reserved version 0 cannot claim the current immutable registry."""
+    with pytest.raises(ValueError, match="unsupported local SCHC rule set version"):
+        SchcContext(version=0)
 
 
 def test_context_rejects_invalid_version() -> None:
     """Context rejects version outside 0-255 (spec section 5.7: 8-bit unsigned)."""
-    with pytest.raises(ValueError, match="version must be 0-255"):
+    with pytest.raises(ValueError, match="unsupported local SCHC rule set version"):
         SchcContext(version=-1)
-    with pytest.raises(ValueError, match="version must be 0-255"):
+    with pytest.raises(ValueError, match="unsupported local SCHC rule set version"):
         SchcContext(version=256)
 
 
 def test_context_rejects_non_integer_version() -> None:
     """Context rejects non-integer version values."""
-    with pytest.raises(ValueError, match="version must be 0-255"):
+    with pytest.raises(ValueError, match="unsupported local SCHC rule set version"):
         SchcContext(version=2.0)  # type: ignore[arg-type]
-    with pytest.raises(ValueError, match="version must be 0-255"):
+    with pytest.raises(ValueError, match="unsupported local SCHC rule set version"):
         SchcContext(version="2")  # type: ignore[arg-type]
 
 
@@ -254,7 +249,7 @@ def test_rule_version_option_current() -> None:
     """current() factory uses RULE_SET_VERSION."""
     opt = SchcRuleVersionOption.current()
     assert opt.version == RULE_SET_VERSION
-    assert opt.version == 2
+    assert opt.version == 3
 
 
 def test_rule_version_option_rejects_invalid_version() -> None:
@@ -267,7 +262,7 @@ def test_rule_version_option_rejects_invalid_version() -> None:
 
 def test_rule_version_option_from_bytes_rejects_short() -> None:
     """from_bytes rejects data shorter than 3 bytes."""
-    with pytest.raises(ValueError, match="too short"):
+    with pytest.raises(ValueError, match="exactly 3 bytes"):
         SchcRuleVersionOption.from_bytes(bytes([0x13, 0x01]))
 
 
@@ -279,18 +274,24 @@ def test_rule_version_option_from_bytes_rejects_wrong_type() -> None:
 
 def test_rule_version_option_from_bytes_rejects_wrong_length() -> None:
     """from_bytes rejects unexpected length field."""
-    with pytest.raises(ValueError, match="unexpected length"):
+    with pytest.raises(ValueError, match="exactly 3 bytes"):
         SchcRuleVersionOption.from_bytes(bytes([0x13, 0x02, 0x02, 0x00]))
+
+
+def test_rule_version_option_rejects_trailing_bytes() -> None:
+    with pytest.raises(ValueError, match="exactly 3 bytes"):
+        SchcRuleVersionOption.from_bytes(bytes([0x13, 0x01, 0x03, 0xFF]))
 
 
 # --- Version Compatibility (spec section 5.7) ---
 
 
 def test_versions_compatible_same() -> None:
-    """Same versions are compatible."""
-    assert versions_compatible(2, 2) is True
-    assert versions_compatible(0, 0) is True
+    """Only equal, implemented Version 3 is operationally compatible."""
+    assert versions_compatible(2, 2) is False
+    assert versions_compatible(0, 0) is False
     assert versions_compatible(3, 3) is True
+    assert versions_compatible(255, 255) is False
 
 
 def test_versions_compatible_different() -> None:
@@ -302,7 +303,7 @@ def test_versions_compatible_different() -> None:
 
 def test_check_version_compatibility_returns_true() -> None:
     """check_version_compatibility returns True for matching versions."""
-    assert check_version_compatibility(2, 2) is True
+    assert check_version_compatibility(3, 3) is True
 
 
 def test_check_version_compatibility_raises_on_mismatch() -> None:
@@ -327,6 +328,19 @@ def test_create_rule_version_option_default() -> None:
 
 
 def test_create_rule_version_option_custom() -> None:
-    """create_rule_version_option accepts custom version."""
+    """create_rule_version_option accepts the implemented version."""
     opt = create_rule_version_option(version=3)
     assert opt.version == 3
+    with pytest.raises(ValueError, match="unsupported local"):
+        create_rule_version_option(version=2)
+
+
+def test_authenticated_peer_context_fails_closed_on_mismatch() -> None:
+    with pytest.raises(TypeError, match="LinkLayer replay-accepted DIO"):
+        AuthenticatedPeerSchcContext()
+
+
+@pytest.mark.parametrize("rule_id", [5, 6])
+def test_standardized_generic_context_rejects_unproven_oscore_rules(rule_id: int) -> None:
+    with pytest.raises(NoMatchingRuleError, match="whole-packet"):
+        SchcContext().decompress(bytes((rule_id,)))

@@ -1,13 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Test vectors for CCP beacon format and TDMA slot assignment divergence.
-
-These vectors expose implementation differences between Python and Rust:
-- Python slot_for: (hash_32(eui64) + sfn) % num_slots
-- Rust TdmaScheduler::slot_for: lichen_hash_32(eui) % 16 (ignores SFN, hardcodes 16)
-
-Cross-language oracle: vectors include expected values from both implementations.
-"""
+"""Test canonical CCP beacon and TDMA slot vectors."""
 
 from __future__ import annotations
 
@@ -16,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from lichen.ccp import ema_update, ema_update_integer
 from lichen.timing.sfn import hash_32, slot_for
 
 VECTORS_PATH = Path(__file__).resolve().parents[3] / "test" / "vectors" / "ccp_beacon_format.json"
@@ -65,9 +59,7 @@ def test_vectors_format_version() -> None:
 def test_slot_selection_vector(name: str, vector: dict) -> None:
     """Validate Python slot_for against expected values.
 
-    Note: These vectors document known divergence between Python and Rust.
-    The 'slot_python' value is what Python produces; 'slot_rust_expected' is
-    what Rust produces (or would produce with its current implementation).
+    The expected slot is a language-neutral wire-profile oracle.
     """
     inp = vector["input"]
     out = vector["output"]
@@ -76,12 +68,11 @@ def test_slot_selection_vector(name: str, vector: dict) -> None:
     sfn = inp["sfn"]
     num_slots = inp["num_slots"]
 
-    # Compute Python slot
     computed = slot_for(eui64, sfn, num_slots)
-    expected_python = out["slot_python"]
+    expected = out["slot"]
 
-    assert computed == expected_python, (
-        f"{name}: Python slot mismatch: got {computed}, expected {expected_python}"
+    assert computed == expected, (
+        f"{name}: slot mismatch: got {computed}, expected {expected}"
     )
 
     # Verify hash_32 if present
@@ -89,26 +80,6 @@ def test_slot_selection_vector(name: str, vector: dict) -> None:
         h = hash_32(eui64)
         assert h == out["hash_32"], (
             f"{name}: hash_32 mismatch: got {h}, expected {out['hash_32']}"
-        )
-
-
-@pytest.mark.parametrize("name,vector", _slot_selection_cases())
-def test_slot_selection_divergence_documented(name: str, vector: dict) -> None:
-    """Verify that divergence between Python and Rust is correctly documented."""
-    out = vector["output"]
-
-    slot_python = out["slot_python"]
-    slot_rust = out["slot_rust_expected"]
-    diverges = out.get("diverges", False)
-
-    if diverges:
-        assert slot_python != slot_rust, (
-            f"{name}: marked as diverging but slots match: {slot_python}"
-        )
-    else:
-        assert slot_python == slot_rust, (
-            f"{name}: not marked as diverging but slots differ: "
-            f"Python={slot_python}, Rust={slot_rust}"
         )
 
 
@@ -143,8 +114,7 @@ def test_hash_32_fnv1a_properties() -> None:
 def test_slot_for_sfn_rotation() -> None:
     """Verify that Python slot_for rotates with SFN as per spec.
 
-    This is the expected behavior per spec section 14.7. The Rust
-    implementation currently does not rotate with SFN, which is a bug.
+    This is the expected behavior per spec section 14.7.
     """
     eui = bytes.fromhex("0011223344556677")
     num_slots = 16
@@ -164,10 +134,7 @@ def test_slot_for_sfn_rotation() -> None:
 
 
 def test_slot_for_num_slots_respected() -> None:
-    """Verify that Python slot_for respects the num_slots parameter.
-
-    The Rust implementation hardcodes num_slots=16, which is a bug.
-    """
+    """Verify that Python slot_for respects the num_slots parameter."""
     eui = bytes.fromhex("aabbccddeeff0011")
 
     # With different num_slots, slots should be in correct range
@@ -196,3 +163,71 @@ def test_slot_for_num_slots_validation() -> None:
 
     with pytest.raises(ValueError, match="num_slots must be positive"):
         slot_for(eui, 0, -1)
+
+
+def test_beacon_header_layout_and_example_are_exact() -> None:
+    vectors = {vector["name"]: vector for vector in _load_vectors()["vectors"]}
+    layout = vectors["beacon_header_layout"]["expected_format"]
+    assert layout == {
+        "epoch_offset": 0,
+        "epoch_size": 4,
+        "num_slots_offset": 4,
+        "num_slots_size": 1,
+        "sfn_offset": 5,
+        "sfn_size": 4,
+        "timestamp_offset": 9,
+        "timestamp_size": 4,
+        "flags_offset": 13,
+        "flags_size": 1,
+        "rx_chains_offset": 14,
+        "rx_chains_size": 1,
+        "setup_window_offset": 15,
+        "setup_window_size": 2,
+        "occupied_time_offset": 17,
+        "occupied_time_size": 2,
+        "guard_offset": 19,
+        "guard_size": 1,
+        "channel_mask_offset": 20,
+        "channel_mask_size": 4,
+        "total_size": 24,
+    }
+
+    case = vectors["beacon_wire_example"]
+    wire = bytes.fromhex(case["output"]["header_hex"])
+    values = case["input"]
+    assert len(wire) == layout["total_size"]
+    assert int.from_bytes(wire[0:4], "big") == values["epoch"]
+    assert wire[4] == values["num_slots"]
+    assert int.from_bytes(wire[5:9], "big") == values["sfn"]
+    assert int.from_bytes(wire[9:13], "big") == values["timestamp"]
+    assert wire[13] == values["flags"]
+    assert wire[14] == values["rx_chains"]
+    assert int.from_bytes(wire[15:17], "big") == values["setup_window"]
+    assert int.from_bytes(wire[17:19], "big") == values["occupied_time"]
+    assert wire[19] == values["guard"] == 50
+    assert int.from_bytes(wire[20:24], "big") == values["channel_mask"]
+
+
+@pytest.mark.parametrize("name,vector", _ema_cases())
+def test_ema_vectors_are_exact_and_match_production(name: str, vector: dict) -> None:
+    """Check literal Q16.16 steps independently, then check both Python APIs."""
+    inputs = vector["input"]
+    expected = vector["output"]
+    shift = inputs["alpha_shift"]
+
+    oracle_avg = inputs["initial_avg_q16"]
+    observed_steps: list[int] = []
+    for sample in inputs["samples"]:
+        sample_q16 = sample * 65536
+        oracle_avg += (sample_q16 - oracle_avg) >> shift
+        observed_steps.append(oracle_avg)
+    assert observed_steps == expected["step_results_q16"], name
+    assert oracle_avg == expected["final_result_q16"], name
+
+    production_q16 = inputs["initial_avg_q16"]
+    production_float = inputs["initial_avg_q16"] / 65536
+    for sample in inputs["samples"]:
+        production_q16 = ema_update_integer(production_q16, sample * 65536)
+        production_float = ema_update(production_float, sample)
+    assert production_q16 == expected["final_result_q16"], name
+    assert production_float == expected["final_result_decimal"], name

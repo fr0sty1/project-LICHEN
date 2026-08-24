@@ -29,7 +29,7 @@ async def bind_coap_udp(
     port: int = 5683,
     bind: str = "::1",
     *,
-    allow_config_write: bool = False,
+    config_allow_writes: bool = False,
     sos_resource: SosResource | None = None,
 ) -> aiocoap.Context:
     """Bind a Node's CoAP resources to a real UDP port.
@@ -38,14 +38,14 @@ async def bind_coap_udp(
         node: A Node instance implementing get_status/get_neighbors/get_config.
         port: UDP port to bind (default 5683).
         bind: Address to bind (default "::1" for localhost).
-        allow_config_write: Explicitly permit PUT requests to /config.
+        config_allow_writes: Explicitly permit PUT requests to /config.
         sos_resource: Optional :class:`SosResource` held by caller for
             programmatic control (activate, cancel, retrigger).
 
     Returns:
         An aiocoap.Context that must be shutdown() when done.
     """
-    site = build_site(node, allow_config_write=allow_config_write, sos_resource=sos_resource)
+    site = build_site(node, config_allow_writes=config_allow_writes, sos_resource=sos_resource)
     # ponytail: aiocoap wants explicit address, not "::"
     context = await aiocoap.Context.create_server_context(site, bind=(bind, port))
     return context

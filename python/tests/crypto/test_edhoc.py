@@ -570,6 +570,51 @@ class TestRfc9528KdfStructure:
             "63a205b591749e7dd98ca4f20c45f91f3cc8"
         )
 
+    def test_message_2_format(self) -> None:
+        """Message 2 wire format matches RFC 9528 Section 5.3.2.
+
+        message_2 = (G_Y_CIPHERTEXT_2 : bstr, C_R : bstr / -24..23)
+        G_Y_CIPHERTEXT_2 = G_Y || CIPHERTEXT_2
+        CIPHERTEXT_2 = PLAINTEXT_2 XOR KEYSTREAM_2
+        """
+        # RFC 9528 Appendix A test vectors
+        g_y = bytes.fromhex(
+            "dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c"
+        )
+        plaintext_2 = bytes.fromhex(
+            "4118a11822822e4879f2a41b510c1f9b"
+            "5840c3b5bd44d1e44a085c03d3aede4e1e6c11c572a1968cc3629b505f98c681"
+            "608d3d1de793d1c40eb5dd5d89acf1966aea07022b48cdc99870ebc40374e8fa"
+            "6e09"
+        )
+        keystream_2 = bytes.fromhex(
+            "0ebee7570d2ca677673156c07e6adabe3eeae3caa4861d237638bdd1eb93e8db"
+            "4da4b8c003018a87c00901fbae1f4c673a6a8ac51137b2693d78f2c6e88499cd"
+            "63a205b591749e7dd98ca4f20c45f91f3cc8"
+        )
+        c_r = 24  # RFC 9528 Appendix A.1
+
+        # CIPHERTEXT_2 = PLAINTEXT_2 XOR KEYSTREAM_2
+        ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
+        assert ciphertext_2 == bytes.fromhex(
+            "4fa6464f2fae883f1ec3f2db2f66c52566aa207f19c2ccc73c30e1d2383d3695"
+            "53c8a90571a01c0b036b9aabf1878ae65ae7b7d8f6a463ad33cd2f9b6128685b"
+            "094802b7ba3c53b441fc4f360f3111e552c1"
+        )
+
+        # G_Y_CIPHERTEXT_2 = G_Y || CIPHERTEXT_2
+        g_y_ciphertext_2 = g_y + ciphertext_2
+        assert len(g_y_ciphertext_2) == 32 + 82  # 32-byte G_Y + 82-byte CIPHERTEXT_2
+
+        # message_2 = CBOR(G_Y_CIPHERTEXT_2) || CBOR(C_R)
+        msg2 = cbor2.dumps(g_y_ciphertext_2) + cbor2.dumps(c_r)
+        assert msg2 == bytes.fromhex(
+            "5872dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b2"
+            "9d1c4fa6464f2fae883f1ec3f2db2f66c52566aa207f19c2ccc73c30e1d2383d"
+            "369553c8a90571a01c0b036b9aabf1878ae65ae7b7d8f6a463ad33cd2f9b6128"
+            "685b094802b7ba3c53b441fc4f360f3111e552c11818"
+        )
+
     def test_th3_computation(self) -> None:
         """TH_3 = H(TH_2 || PLAINTEXT_2 || CRED_R) is computed correctly."""
         from lichen.crypto.edhoc import _compute_th

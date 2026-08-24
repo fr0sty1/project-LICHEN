@@ -96,6 +96,19 @@ impl SentMessage {
     }
 }
 
+/// The `GET /msg/sent` response envelope: `{messages: [...]}`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Sent {
+    pub messages: Vec<SentMessage>,
+}
+
+impl Sent {
+    /// Decode a `GET /msg/sent` CBOR response.
+    pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
+        ciborium::from_reader(bytes).map_err(|e| Error::Decode(e.to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -206,6 +219,42 @@ mod tests {
                 timestamp: 1_716_742_801,
                 status: "queued".into(),
             }
+        );
+    }
+
+    /// Oracle: firmware `GET /msg/sent` response envelope
+    /// (`messages: [{id, to, body, timestamp, status}]`).
+    #[test]
+    fn sent_list_decodes_firmware_envelope() {
+        let wire = Value::Map(vec![(
+            Value::Text("messages".into()),
+            Value::Array(vec![Value::Map(vec![
+                (Value::Text("id".into()), Value::Integer(42u64.into())),
+                (Value::Text("to".into()), Value::Text("fd00::9".into())),
+                (Value::Text("body".into()), Value::Text("ping".into())),
+                (
+                    Value::Text("timestamp".into()),
+                    Value::Integer(1_716_742_801u64.into()),
+                ),
+                (
+                    Value::Text("status".into()),
+                    Value::Text("delivered".into()),
+                ),
+            ])]),
+        )]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&wire, &mut bytes).unwrap();
+
+        let sent = Sent::from_cbor(&bytes).unwrap();
+        assert_eq!(
+            sent.messages,
+            vec![SentMessage {
+                id: 42,
+                to: "fd00::9".into(),
+                body: "ping".into(),
+                timestamp: 1_716_742_801,
+                status: "delivered".into(),
+            }]
         );
     }
 }

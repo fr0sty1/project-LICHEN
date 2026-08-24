@@ -61,16 +61,27 @@ def scheduler(identity: Identity, transmitter: MockTransmitter) -> AnnounceSched
 class TestSchedulerConfig:
     @pytest.mark.parametrize("interval_ms", [0, -1])
     def test_rejects_nonpositive_interval(self, interval_ms: int):
-        with pytest.raises(ValueError, match="interval_ms must be > 0"):
+        with pytest.raises(ValueError, match="interval_ms must be an integer"):
             SchedulerConfig(interval_ms=interval_ms)
 
     def test_rejects_negative_jitter(self):
-        with pytest.raises(ValueError, match="jitter_ms must be >= 0"):
+        with pytest.raises(ValueError, match="jitter_ms must be an integer"):
             SchedulerConfig(jitter_ms=-1)
 
     def test_rejects_negative_initial_delay(self):
-        with pytest.raises(ValueError, match="initial_delay_ms must be >= 0"):
+        with pytest.raises(ValueError, match="initial_delay_ms must be an integer"):
             SchedulerConfig(initial_delay_ms=-1)
+
+    @pytest.mark.parametrize("value", [True, 1.5, "1", None, 86_400_001])
+    @pytest.mark.parametrize("field", ["interval_ms", "jitter_ms", "initial_delay_ms"])
+    def test_rejects_non_exact_or_excessive_delays(self, field: str, value: object):
+        with pytest.raises(ValueError, match=f"{field} must be an integer"):
+            SchedulerConfig(**{field: value})  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("channel", [True, 1.0, "1", -1, 8])
+    def test_rejects_invalid_channel(self, channel: object):
+        with pytest.raises(ValueError, match="rx_channel must be 0-7"):
+            SchedulerConfig(rx_channel=channel)  # type: ignore[arg-type]
 
 
 class TestSchedulerLifecycle:
@@ -84,7 +95,7 @@ class TestSchedulerLifecycle:
     async def test_start_revalidates_runtime_config(self, scheduler: AnnounceScheduler):
         scheduler.config.interval_ms = 0
 
-        with pytest.raises(ValueError, match="interval_ms must be > 0"):
+        with pytest.raises(ValueError, match="interval_ms must be an integer"):
             await scheduler.start()
 
         assert scheduler.is_running is False
@@ -160,6 +171,9 @@ class TestSequenceNumber:
 
         with pytest.raises(ValueError, match="out of range"):
             scheduler.set_seq_num(0x10000)
+
+        with pytest.raises(ValueError, match="out of range"):
+            scheduler.set_seq_num(True)
 
     def test_build_announce_increments_seq(self, scheduler: AnnounceScheduler):
         """Each build_announce() increments seq_num."""
@@ -343,6 +357,41 @@ class TestTiming:
         await scheduler.stop()
 
         assert len(transmitter.transmitted) >= 2
+
+    @pytest.mark.asyncio
+    async def test_runtime_interval_update_wakes_current_wait(
+        self, identity: Identity, transmitter: MockTransmitter
+    ):
+        scheduler = AnnounceScheduler(
+            identity=identity,
+            transmitter=transmitter,
+            config=SchedulerConfig(interval_ms=60_000, jitter_ms=0, initial_delay_ms=1),
+        )
+        await scheduler.start()
+        try:
+            for _ in range(100):
+                if transmitter.transmitted:
+                    break
+                await asyncio.sleep(0.001)
+            assert len(transmitter.transmitted) == 1
+
+            scheduler.set_interval_ms(5)
+            await asyncio.sleep(0.025)
+            assert len(transmitter.transmitted) >= 2
+        finally:
+            await scheduler.stop()
+
+
+class TestRxChannelCompatibility:
+    def test_accessors_share_signed_config(self, scheduler: AnnounceScheduler):
+        scheduler.set_rx_channel(6)
+        assert scheduler.get_rx_channel() == 6
+        assert scheduler.build_announce().rx_channel == 6
+
+    @pytest.mark.parametrize("channel", [True, 1.0, -1, 8])
+    def test_set_rx_channel_rejects_invalid(self, scheduler: AnnounceScheduler, channel: object):
+        with pytest.raises(ValueError, match="channel must be 0-7"):
+            scheduler.set_rx_channel(channel)  # type: ignore[arg-type]
 
 
 class TestPersistence:

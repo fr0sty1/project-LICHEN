@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "ICMPv6 Echo Request/Reply and error vectors (RFC 4443, spec 6.4) with IPv6 pseudo-header checksum. Includes link-local and 0200::/7 primary addresses.",
+  "description": "ICMPv6 Echo Request/Reply and error vectors (RFC 4443, spec 6.4) with IPv6 pseudo-header checksum. Includes link-local and 0200::/8 primary addresses.",
   "vectors": [
     {
       "name": "echo_request_basic",
@@ -29,7 +29,7 @@
     },
     {
       "name": "echo_request_yggdrasil",
-      "description": "Echo Request over primary 0200::/7 addresses",
+      "description": "Echo Request over primary 0200::/8 addresses",
       "src": "200:389e:777a:ce07:c7d6:ca08:166e:cd20",
       "dst": "200:514a:cffc:fa9d:ea90:5568:258:6d37",
       "src_packed": "0200389e777ace07c7d6ca08166ecd20",

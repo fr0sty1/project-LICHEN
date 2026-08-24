@@ -37,6 +37,16 @@ pub fn is_rpl_multicast(addr: &[u8; 16]) -> bool {
     *addr == ALL_RPL_NODES
 }
 
+/// Lollipop sequence-counter comparison (RFC 6550 Section 7.2,
+/// SEQUENCE_WINDOW = 16).
+///
+/// Returns `None` only when both counters sit in the same region and their
+/// absolute difference exceeds SEQUENCE_WINDOW (desynchronization); otherwise
+/// the ordering of `a` versus `b`. Boundaries are inclusive by RFC MUST:
+/// a same-region difference of exactly 16 is comparable (rule 3.2.1), and a
+/// cross-region wrap distance `(256 + B - A)` of exactly 16 means the
+/// freshly wrapped counter is newer (rule 3.1.1). Cross-region counters are
+/// always comparable.
 #[cfg(feature = "std")]
 fn lollipop_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
     if a == b {
@@ -88,6 +98,14 @@ fn version_is_older_or_incomparable(new_ver: u8, old_ver: u8) -> bool {
     !version_is_newer(new_ver, old_ver) && !version_is_equal(new_ver, old_ver)
 }
 
+/// MRHOF candidate admissibility (RFC 6719 Section 3.3, spec B.1).
+///
+/// Every rank-versus-rank comparison below is made on DAGRank values, not
+/// raw Rank: `DAGRank(R) = floor(R / min_hop_rank_increase)` per RFC 6550
+/// Section 3.5.1. Integer division implements the floor, so truncation is
+/// intentional: e.g. with MinHopRankIncrease 256, a candidate at rank 256
+/// (DAGRank 1) offering a path cost of 511 (DAGRank 1) is refused because
+/// the DAGRanks compare equal, while a cost of 512 (DAGRank 2) passes.
 #[cfg(feature = "std")]
 fn candidate_admissible(
     candidate: &ParentCandidate,
@@ -100,12 +118,16 @@ fn candidate_admissible(
         return false;
     }
     let cost = candidate.path_cost(min_hop_rank_increase);
+    // DAGRank comparisons (floor division), per RFC 6550 Section 3.5.1:
+    // refuse ranks below the root floor and candidates whose path cost does
+    // not strictly exceed their own advertised DAGRank.
     if candidate.rank < min_hop_rank_increase
         || cost == INFINITE_RANK
         || cost / min_hop_rank_increase <= candidate.rank / min_hop_rank_increase
     {
         return false;
     }
+    // Candidate must sit strictly below our own DAGRank to avoid loops.
     if node_rank != INFINITE_RANK
         && candidate.rank / min_hop_rank_increase >= node_rank / min_hop_rank_increase
     {
@@ -321,6 +343,18 @@ impl DodagState {
 
     /// Process a received DIO from `neighbor_addr` with `link_etx` quality.
     pub fn process_dio(&mut self, dio: &Dio, neighbor_addr: [u8; 16], link_etx: f32) -> DioOutcome {
+        self.process_dio_with_version_authorization(dio, neighbor_addr, link_etx, false)
+    }
+
+    /// Process a DIO after the caller has independently authenticated any
+    /// root-owned DODAG version transition.
+    pub fn process_dio_with_version_authorization(
+        &mut self,
+        dio: &Dio,
+        neighbor_addr: [u8; 16],
+        link_etx: f32,
+        version_authorized: bool,
+    ) -> DioOutcome {
         if !link_etx.is_finite() || link_etx < 1.0 {
             return DioOutcome::Rejected;
         }
@@ -336,25 +370,32 @@ impl DodagState {
         if !newer_version && version_is_older_or_incomparable(dio.version, self.version) {
             return DioOutcome::Rejected;
         }
+        if newer_version && !version_authorized {
+            return DioOutcome::Rejected;
+        }
 
         let candidate = ParentCandidate {
             addr: neighbor_addr,
             rank: dio.rank,
             link_etx,
         };
-        if newer_version
-            && !candidate_admissible(
+        if newer_version {
+            // Judge the candidate before adopting so an unusable advertiser
+            // is rejected without becoming a parent, but do not gate the
+            // version itself on it: RFC 6550 Section 8.2.2.4 makes a later
+            // DODAGVersionNumber supersede the local one outright, and
+            // waiting for an admissible advertiser strands this node on a
+            // stale version while the rest of the network moves forward.
+            let usable = candidate_admissible(
                 &candidate,
                 INFINITE_RANK,
                 INFINITE_RANK,
                 self.min_hop_rank_increase,
                 self.max_rank_increase,
-            )
-        {
-            return DioOutcome::Rejected;
-        }
-        if newer_version {
-            self.adopt_version(dio.version);
+            );
+            if self.adopt_version(dio.version).is_err() || !usable {
+                return DioOutcome::Rejected;
+            }
         }
 
         if dio.rank == INFINITE_RANK {
@@ -386,9 +427,22 @@ impl DodagState {
             rank: dio.rank,
             link_etx,
         };
-        if candidate.path_cost(self.min_hop_rank_increase) == INFINITE_RANK {
-            self.parents.remove(&neighbor_addr);
-        } else if self.parents.contains_key(&neighbor_addr) {
+        if !candidate_admissible(
+            &candidate,
+            self.rank,
+            self.lowest_rank,
+            self.min_hop_rank_increase,
+            self.max_rank_increase,
+        ) {
+            let removed = self.parents.remove(&neighbor_addr).is_some();
+            self.select_parent();
+            return if removed {
+                DioOutcome::Removed
+            } else {
+                DioOutcome::Rejected
+            };
+        }
+        if self.parents.contains_key(&neighbor_addr) {
             // Update existing parent
             self.parents.insert(neighbor_addr, candidate);
         } else if self.parents.len() < MAX_PARENT_CANDIDATES {
@@ -400,25 +454,117 @@ impl DodagState {
         DioOutcome::Accepted
     }
 
-    fn adopt_version(&mut self, version: u8) {
+    /// Admit a DIO only from the capability returned after link signature and
+    /// replay validation, and only when its sole SCHC version option is v3.
+    pub fn process_authenticated_dio(
+        &mut self,
+        link: &lichen_link::link_layer::LinkLayer,
+        frame: lichen_link::link_layer::AuthenticatedFrame,
+        link_etx: f32,
+    ) -> DioOutcome {
+        let signer_iid = frame.sender().iid;
+        let expected_role =
+            if lichen_core::addr::ygg_addr_from_pubkey(frame.sender().pubkey.as_bytes())
+                == self.dodag_id
+            {
+                lichen_schc::ExpectedDioRole::Root
+            } else {
+                lichen_schc::ExpectedDioRole::Peer
+            };
+        let Ok(peer) = lichen_schc::AuthenticatedPeerSchcContext::from_authenticated_dio_frame(
+            frame,
+            self.rpl_instance_id,
+            &self.dodag_id,
+            1,
+            expected_role,
+        ) else {
+            self.remove_parents_with_iid(&signer_iid);
+            return DioOutcome::Rejected;
+        };
+        if !peer.allows_dodag_join() {
+            self.remove_parents_with_iid(&signer_iid);
+            return DioOutcome::Rejected;
+        }
+        let Some(frame) = peer.authenticated_frame() else {
+            self.remove_parents_with_iid(&signer_iid);
+            return DioOutcome::Rejected;
+        };
+        if !link.accepts_authenticated_frame(frame) {
+            self.remove_parents_with_iid(&signer_iid);
+            return DioOutcome::Rejected;
+        }
+        if frame.payload().first().copied() != Some(lichen_core::constants::L2_DISPATCH_SCHC) {
+            return DioOutcome::Rejected;
+        }
+        let mut ipv6 = [0u8; 512];
+        let Ok(ipv6_len) = lichen_schc::decompress(&frame.payload()[1..], &mut ipv6) else {
+            self.remove_parents_with_iid(&signer_iid);
+            return DioOutcome::Rejected;
+        };
+        if ipv6_len < 68 {
+            return DioOutcome::Rejected;
+        }
+        let Ok(dio) = Dio::from_bytes(&ipv6[44..ipv6_len]) else {
+            self.remove_parents_with_iid(&signer_iid);
+            return DioOutcome::Rejected;
+        };
+        if dio.version != self.version
+            && !matches!(expected_role, lichen_schc::ExpectedDioRole::Root)
+        {
+            self.remove_parents_with_iid(&signer_iid);
+            return DioOutcome::Rejected;
+        }
+        let neighbor_addr = ipv6[8..24]
+            .try_into()
+            .expect("validated IPv6 header has a complete source address");
+        self.process_dio(&dio, neighbor_addr, link_etx)
+    }
+
+    pub fn remove_parents_with_iid(&mut self, signer_iid: &[u8; 8]) -> bool {
+        let addresses: Vec<[u8; 16]> = self
+            .parents
+            .keys()
+            .filter(|address| address[8..] == *signer_iid)
+            .copied()
+            .collect();
+        let removed = !addresses.is_empty();
+        self.remove_parents(&addresses);
+        removed
+    }
+
+    /// Adopt a newer DODAG version: record it and reset all membership
+    /// state, leaving the node unjoined pending re-selection.
+    ///
+    /// Returns an error without mutating anything when called on a root.
+    /// Roots are the DODAG authorities: they mint new versions themselves
+    /// and never adopt one from a received DIO (`process_dio()` rejects all
+    /// DIOs aimed at a root before reaching this point). Unlike a
+    /// `debug_assert`, this invariant holds in release builds too.
+    fn adopt_version(&mut self, version: u8) -> Result<(), InvalidDodagTransition> {
+        if self.role == DodagRole::Root {
+            return Err(InvalidDodagTransition {
+                from: self.role,
+                to: DodagRole::Unjoined,
+            });
+        }
         self.version = version;
         self.parents.clear();
         self.preferred_parent = None;
         self.rank = INFINITE_RANK;
         self.lowest_rank = INFINITE_RANK;
-        let r = self.set_role(DodagRole::Unjoined);
-        debug_assert!(r.is_ok(), "DODAG version adoption cannot demote a root");
+        // Unjoined->Unjoined and Joined->Unjoined are both legal transitions,
+        // so this cannot fail for a non-root node.
+        self.set_role(DodagRole::Unjoined)
     }
 
     fn admissible(&self, candidate: &ParentCandidate) -> bool {
-        let cost = candidate.path_cost(self.min_hop_rank_increase);
-        if cost == INFINITE_RANK {
-            return false;
-        }
-        if self.lowest_rank == INFINITE_RANK {
-            return true;
-        }
-        cost <= self.lowest_rank.saturating_add(self.max_rank_increase)
+        candidate_admissible(
+            candidate,
+            self.rank,
+            self.lowest_rank,
+            self.min_hop_rank_increase,
+            self.max_rank_increase,
+        )
     }
 
     fn prune_inadmissible_parents(&mut self) {
@@ -435,6 +581,14 @@ impl DodagState {
 
     /// MRHOF parent selection with hysteresis.
     pub fn select_parent(&mut self) {
+        // A root never selects parents: process_dio() rejects every DIO
+        // aimed at a root, so a root's candidate set stays empty. Checking
+        // here keeps that invariant runtime-enforced in release builds too,
+        // guarantees the set_role(DodagRole::Joined) below can never fire
+        // for a root, and prevents any partial mutation of root state.
+        if self.role == DodagRole::Root {
+            return;
+        }
         self.prune_inadmissible_parents();
         let mhri = self.min_hop_rank_increase;
         let threshold = self.parent_switch_threshold;
@@ -446,9 +600,12 @@ impl DodagState {
             .min_by_key(|c| c.path_cost(mhri));
 
         let Some(best) = best else {
-            if self.role != DodagRole::Root {
-                let r = self.set_role(DodagRole::Unjoined);
-                debug_assert!(r.is_ok(), "joined DODAG can return to unjoined");
+            // No admissible candidate remains: leave the DODAG.
+            // Unjoined->Unjoined and Joined->Unjoined are legal transitions,
+            // so this cannot fail; membership state is only reset once the
+            // transition succeeds so a failure cannot strand a half-demoted
+            // node (checked at runtime in all build profiles).
+            if self.set_role(DodagRole::Unjoined).is_ok() {
                 self.preferred_parent = None;
                 self.rank = INFINITE_RANK;
             }
@@ -472,16 +629,26 @@ impl DodagState {
             _ => (best_addr, best_cost),
         };
 
+        let previous_parent = self.preferred_parent;
+        let previous_rank = self.rank;
         self.preferred_parent = Some(chosen_addr);
         self.rank = chosen_cost;
-        let r = self.set_role(DodagRole::Joined);
-        debug_assert!(
-            r.is_ok(),
-            "non-root DODAG can join through a selected parent"
-        );
+        // Unjoined->Joined and Joined->Joined are legal for a non-root node,
+        // so this cannot fail; on an unexpected failure roll the mutation
+        // back instead of silently keeping corrupted state (release builds
+        // included).
+        if self.set_role(DodagRole::Joined).is_err() {
+            self.preferred_parent = previous_parent;
+            self.rank = previous_rank;
+            return;
+        }
         if chosen_cost < self.lowest_rank {
             self.lowest_rank = chosen_cost;
         }
+        // Re-prune: choosing a better parent may have lowered lowest_rank
+        // above, which tightens the MaxRankIncrease bound; parents still
+        // admissible under the previous lowest_rank may now exceed
+        // cost <= lowest_rank + max_rank_increase and must be dropped.
         self.prune_inadmissible_parents();
     }
 
@@ -746,6 +913,7 @@ mod tests {
         };
         let outcome = root.process_dio(&newer_dio, ll(99), 1.0);
         assert_eq!(outcome, DioOutcome::Rejected);
+        assert!(root.is_root()); // never adopts a version
         assert_eq!(root.version, 0); // version unchanged
         assert_eq!(root.rank, ROOT_RANK);
         assert_eq!(root.parent_count(), 0);
@@ -773,29 +941,67 @@ mod tests {
             version: 1,
             ..dio(ROOT_RANK)
         };
-        node.process_dio(&new_dio, ll(1), 1.0);
+        assert_eq!(node.process_dio(&new_dio, ll(1), 1.0), DioOutcome::Rejected);
+        assert_eq!(node.version, 0);
+        node.process_dio_with_version_authorization(&new_dio, ll(1), 1.0, true);
         assert_eq!(node.version, 1);
         assert_eq!(node.rank, 512);
     }
 
     #[test]
-    fn invalid_newer_version_dio_preserves_parent_state() {
+    fn inadmissible_newer_version_still_adopts_and_resets_membership() {
         let mut node = DodagState::new(0, dodag_id(), 0);
         node.process_dio(&dio(ROOT_RANK), ll(1), 1.0);
 
-        for (rank, link_etx) in [(ROOT_RANK - 1, 1.0), (ROOT_RANK, f32::MAX)] {
+        for (version, rank, link_etx) in [(1u8, ROOT_RANK - 1, 1.0), (2u8, ROOT_RANK, f32::MAX)] {
             let invalid = Dio {
-                version: 1,
+                version,
                 rank,
                 ..dio(ROOT_RANK)
             };
-            node.process_dio(&invalid, ll(2), link_etx);
+            node.process_dio_with_version_authorization(&invalid, ll(2), link_etx, true);
 
-            assert_eq!(node.version, 0);
-            assert_eq!(node.preferred_parent, Some(ll(1)));
-            assert_eq!(node.rank, ROOT_RANK + MIN_HOP_RANK_INCREASE);
-            assert_eq!(node.parent_count(), 1);
+            // RFC 6550 Section 8.2.2.4: a later DODAGVersionNumber
+            // supersedes the local one even when this particular advertiser
+            // cannot become a parent; membership resets and the node waits
+            // for an admissible advertiser of the new version.
+            assert_eq!(node.version, version);
+            assert!(!node.is_joined());
+            assert_eq!(node.preferred_parent, None);
+            assert_eq!(node.rank, INFINITE_RANK);
+            assert_eq!(node.parent_count(), 0);
         }
+    }
+
+    #[test]
+    fn admissible_newer_version_dio_restores_connectivity_after_bad_ones() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        node.process_dio(&dio(ROOT_RANK), ll(1), 1.0);
+        assert!(node.is_joined());
+
+        // A saturated-cost advertiser of version 1 cannot become a parent
+        // but still moves the node to version 1.
+        let bad = Dio {
+            version: 1,
+            ..dio(ROOT_RANK)
+        };
+        assert_eq!(
+            node.process_dio_with_version_authorization(&bad, ll(2), f32::MAX, true),
+            DioOutcome::Rejected
+        );
+        assert_eq!(node.version, 1);
+        assert!(!node.is_joined());
+
+        // An admissible advertiser of the same new version rejoins the node,
+        // so a network-wide version bump cannot strand it on the old one.
+        let good = Dio {
+            version: 1,
+            ..dio(ROOT_RANK)
+        };
+        assert_eq!(node.process_dio(&good, ll(3), 1.0), DioOutcome::Accepted);
+        assert!(node.is_joined());
+        assert_eq!(node.preferred_parent, Some(ll(3)));
+        assert_eq!(node.rank, ROOT_RANK + MIN_HOP_RANK_INCREASE);
     }
 
     #[test]
@@ -809,7 +1015,7 @@ mod tests {
             version: 1,
             ..dio(128)
         };
-        node.process_dio(&newer, ll(2), 1.0);
+        node.process_dio_with_version_authorization(&newer, ll(2), 1.0, true);
         assert_eq!(node.version, 1);
         assert_eq!(node.rank, 256);
     }
@@ -864,7 +1070,7 @@ mod tests {
             version: 0,
             ..dio(ROOT_RANK)
         };
-        node.process_dio(&restart_dio, ll(2), 1.0);
+        node.process_dio_with_version_authorization(&restart_dio, ll(2), 1.0, true);
         assert_eq!(
             node.version, 0,
             "lollipop: version 0 should be accepted as newer than 255"
@@ -987,6 +1193,19 @@ mod tests {
     }
 
     #[test]
+    fn fresh_node_rejects_below_root_dio_without_transient_membership() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        assert_eq!(
+            node.process_dio(&dio(100), ll(1), 1.0),
+            DioOutcome::Rejected
+        );
+        assert_eq!(node.role, DodagRole::Unjoined);
+        assert_eq!(node.rank, INFINITE_RANK);
+        assert_eq!(node.parent_count(), 0);
+        assert!(node.preferred_parent.is_none());
+    }
+
+    #[test]
     fn admissibility_derives_root_rank_from_min_hop_rank_increase() {
         let below_root = ParentCandidate {
             addr: ll(1),
@@ -1052,5 +1271,100 @@ mod tests {
         node.process_dio(&dio(ROOT_RANK), ll(1), 1.25);
         assert_eq!(node.parent_count(), MAX_PARENT_CANDIDATES);
         assert_eq!(node.parents[&ll(1)].link_etx, 1.25);
+    }
+
+    #[test]
+    fn lollipop_sequence_window_boundaries_are_inclusive_per_rfc_6550_7_2() {
+        use core::cmp::Ordering::{Greater, Less};
+
+        // Same-region rule 3.2: |diff| <= SEQUENCE_WINDOW (16) is comparable
+        // via RFC 1982 ordering; > 16 means desynchronization (None).
+        assert_eq!(super::lollipop_cmp(16, 0), Some(Greater)); // diff exactly 16
+        assert_eq!(super::lollipop_cmp(15, 0), Some(Greater)); // just below
+        assert_eq!(super::lollipop_cmp(17, 0), None); // just above
+        assert_eq!(super::lollipop_cmp(255, 239), Some(Greater)); // diff exactly 16
+        assert_eq!(super::lollipop_cmp(255, 240), Some(Greater)); // just below
+        assert_eq!(super::lollipop_cmp(255, 238), None); // just above
+
+        // Cross-region rule 3.1: wrap distance (256 + B - A) <= SEQUENCE_WINDOW
+        // makes the wrapped counter newer; a larger distance makes the
+        // unwrapped counter newer. Never incomparable.
+        assert_eq!(super::lollipop_cmp(0, 240), Some(Greater)); // wrap exactly 16
+        assert_eq!(super::lollipop_cmp(0, 241), Some(Greater)); // wrap 15
+        assert_eq!(super::lollipop_cmp(0, 239), Some(Less)); // wrap 17
+        assert_eq!(super::lollipop_cmp(250, 10), Some(Less)); // wrap exactly 16
+        assert_eq!(super::lollipop_cmp(250, 9), Some(Less)); // wrap 15
+        assert_eq!(super::lollipop_cmp(250, 11), Some(Greater)); // wrap 17
+    }
+
+    #[test]
+    fn dagrank_truncation_boundary_is_floor_semantics() {
+        // RFC 6550 Section 3.5.1: DAGRank(R) = floor(R / MinHopRankIncrease).
+        // Candidate rank 256 with link cost 255 gives path cost 511:
+        // DAGRank(cost) == DAGRank(rank) == 1, so it is refused even though
+        // the raw ranks differ by 255.
+        let truncated = ParentCandidate {
+            addr: ll(1),
+            rank: 256,
+            link_etx: 255.0 / 256.0,
+        };
+        assert_eq!(truncated.path_cost(256), 511);
+        assert!(!candidate_admissible(
+            &truncated,
+            INFINITE_RANK,
+            INFINITE_RANK,
+            256,
+            2048
+        ));
+
+        // One step higher, path cost 512 -> DAGRank 2 > 1 -> admissible.
+        let exact = ParentCandidate {
+            addr: ll(1),
+            rank: 256,
+            link_etx: 1.0,
+        };
+        assert_eq!(exact.path_cost(256), 512);
+        assert!(candidate_admissible(
+            &exact,
+            INFINITE_RANK,
+            INFINITE_RANK,
+            256,
+            2048
+        ));
+    }
+
+    #[test]
+    fn selecting_better_parent_reprunes_against_new_max_rank_bound() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        // lowest_rank starts at 1024; backup parent B at cost 1792 fits the
+        // initial bound (1024 + MaxRankIncrease 1024).
+        node.process_dio(&dio(768), ll(1), 1.0); // A: cost 1024
+        node.process_dio(&dio(768), ll(2), 4.0); // B: cost 1792
+        assert_eq!(node.parent_count(), 2);
+
+        // Switching to C drops rank to 512 and lowest_rank with it,
+        // tightening the bound to 512 + 1024 = 1536. The re-prune pass also
+        // removes A because its advertised DAGRank is no longer below ours.
+        node.process_dio(&dio(256), ll(3), 1.0); // C: cost 512
+
+        assert_eq!(node.preferred_parent, Some(ll(3)));
+        assert_eq!(node.rank, 512);
+        assert!(!node.has_parent(&ll(2)));
+        assert!(!node.has_parent(&ll(1)));
+        assert_eq!(node.parent_count(), 1); // Only C remains loop-safe.
+    }
+
+    #[test]
+    fn select_parent_and_remove_parents_leave_root_state_untouched() {
+        let mut root = DodagState::as_root(0, dodag_id(), 0);
+
+        root.select_parent();
+        root.remove_parent(&ll(1));
+        root.remove_parents(&[ll(1), ll(2)]);
+
+        assert!(root.is_root());
+        assert_eq!(root.rank, ROOT_RANK);
+        assert_eq!(root.preferred_parent, None);
+        assert_eq!(root.parent_count(), 0);
     }
 }

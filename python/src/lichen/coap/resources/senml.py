@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from aiocoap import CONTENT, Message, resource
@@ -84,6 +85,163 @@ class SenMLLocationResource(resource.ObservableResource):
         msg = Message(code=CONTENT, payload=self._payload)
         msg.opt.content_format = SENML_CBOR
         return msg
+
+
+class PositionBeaconResource(resource.ObservableResource):
+    """Writable ``/pos`` — position beacon receiver (SenML+CBOR).
+
+    Remote nodes PUT their position to this resource. The coordinator stores
+    positions keyed by sender identity (extracted from SenML base name ``bn``
+    or CoAP source address) and notifies observers.
+
+    Example::
+
+        pos = PositionBeaconResource(on_position=my_callback)
+        site = build_site(info, position_beacon_resource=pos)
+        # Remote node PUTs position -> on_position callback fires
+
+    On GET, returns all stored positions as a CBOR map:
+    ``{sender_id: {lat, lon, alt?, speed?, heading?, ts}, ...}``
+    """
+
+    # Required position fields
+    _REQUIRED = frozenset({"lat", "lon"})
+    # All valid position fields from profiles.location
+    _VALID_FIELDS = frozenset({"lat", "lon", "alt", "speed", "heading", "hacc", "vacc"})
+
+    def __init__(
+        self,
+        *,
+        on_position: Callable[[str, dict[str, Any]], None] | None = None,
+    ) -> None:
+        """Create a position beacon resource.
+
+        Args:
+            on_position: Optional callback invoked on each valid position update.
+                Called with (sender_id, position_dict) where position_dict
+                contains lat, lon, and optional alt, speed, heading, hacc, vacc, ts.
+        """
+        super().__init__()
+        self._positions: dict[str, dict[str, Any]] = {}
+        self._on_position = on_position
+
+    def _extract_position(
+        self, records: list[Any]
+    ) -> tuple[str | None, dict[str, Any]]:
+        """Extract sender ID and position from SenML records.
+
+        Returns:
+            Tuple of (sender_id_or_None, position_dict). sender_id is None if
+            no base name was provided. position_dict has lat, lon, and optional
+            fields.
+
+        Raises:
+            ValueError: If required fields (lat, lon) are missing.
+        """
+        sender_id: str | None = None
+        position: dict[str, Any] = {}
+
+        for rec in records:
+            # Extract base name as sender ID
+            if rec.bn is not None:
+                sender_id = rec.bn
+            # Extract position fields
+            if rec.n in self._VALID_FIELDS and rec.v is not None:
+                position[rec.n] = rec.v
+
+        missing = self._REQUIRED - set(position.keys())
+        if missing:
+            raise ValueError(f"Missing required position fields: {sorted(missing)}")
+
+        return sender_id, position
+
+    async def render_put(self, request: Message) -> Message:
+        """Handle PUT /pos — receive position beacon from remote node."""
+        import time
+
+        from aiocoap import BAD_REQUEST, CHANGED
+
+        from lichen.senml.codec import unpack
+
+        if not request.payload:
+            return Message(code=BAD_REQUEST)
+
+        # Validate content format
+        if request.opt.content_format is not None and request.opt.content_format != SENML_CBOR:
+            return Message(code=BAD_REQUEST)
+
+        try:
+            records = unpack(request.payload)
+        except ValueError:
+            return Message(code=BAD_REQUEST)
+
+        try:
+            sender_id, position = self._extract_position(records)
+        except ValueError:
+            return Message(code=BAD_REQUEST)
+
+        # Use sender_id from bn, or fall back to remote address
+        if sender_id is None:
+            remote = getattr(request, "remote", None)
+            sender_id = str(remote.hostinfo) if remote is not None else "unknown"
+
+        # Add timestamp
+        position["ts"] = time.time()
+
+        # Store position
+        self._positions[sender_id] = position
+        self.updated_state()
+
+        # Invoke callback if provided
+        if self._on_position is not None:
+            self._on_position(sender_id, position)
+
+        return Message(code=CHANGED)
+
+    async def render_get(self, request: Message) -> Message:
+        """Handle GET /pos — return all stored positions."""
+        import cbor2
+
+        from lichen.coap.resources.base import CBOR
+
+        msg = Message(code=CONTENT, payload=cbor2.dumps(self._positions))
+        msg.opt.content_format = CBOR
+        return msg
+
+    def get_position(self, sender_id: str) -> dict[str, Any] | None:
+        """Get the last known position for a sender.
+
+        Args:
+            sender_id: The sender's base name or address.
+
+        Returns:
+            Position dict or None if not found.
+        """
+        return self._positions.get(sender_id)
+
+    def get_all_positions(self) -> dict[str, dict[str, Any]]:
+        """Get all stored positions.
+
+        Returns:
+            Dict mapping sender_id to position dict.
+        """
+        return dict(self._positions)
+
+    def clear(self) -> None:
+        """Clear all stored positions."""
+        self._positions.clear()
+        self.updated_state()
+
+    def get_link_description(self) -> dict[str, Any]:
+        """Link description for .well-known/core and RD."""
+        from lichen.coap.resources.base import CBOR
+
+        return {
+            "rt": "position",
+            "if": "sensor",
+            "ct": str(int(CBOR)),
+            "obs": None,
+        }
 
 
 class SenMLMetricsResource(resource.ObservableResource):

@@ -29,7 +29,7 @@ from dataclasses import dataclass, field, replace
 from enum import IntEnum
 from ipaddress import IPv6Address
 from types import MappingProxyType
-from typing import Protocol
+from typing import Protocol, cast
 
 from .identity import PeerIdentity, _pubkey_to_iid, yggdrasil_address
 from .schnorr48 import verify as schnorr_verify
@@ -83,6 +83,24 @@ class TrustPersistence(Protocol):
     def save(self, store: TrustStore) -> None: ...
 
 
+def _validated_timestamp(value: object, name: str) -> int | float:
+    """Return one finite non-negative timestamp without leaking float overflow."""
+    if type(value) not in (int, float):
+        raise ValueError(f"{name} must be a finite non-negative number")
+    if type(value) is int:
+        integer = cast(int, value)
+        if not 0 <= integer <= (1 << 64) - 1:
+            raise ValueError(f"{name} must be a finite non-negative number")
+        return integer
+    try:
+        timestamp = float(cast(float, value))
+    except (OverflowError, ValueError) as exc:
+        raise ValueError(f"{name} must be a finite non-negative number") from exc
+    if not math.isfinite(timestamp) or timestamp < 0:
+        raise ValueError(f"{name} must be a finite non-negative number")
+    return timestamp
+
+
 @dataclass(frozen=True)
 class TrustEntry:
     """A pinned peer in the trust store.
@@ -103,8 +121,8 @@ class TrustEntry:
     iid: bytes
     ygg_addr: bytes
     trust_level: TrustLevel
-    first_seen: float
-    last_seen: float
+    first_seen: int | float
+    last_seen: int | float
     revoked: bool = False
     metadata: Mapping[str, str] = field(default_factory=dict)
     rotation_sequence: int = 0
@@ -133,12 +151,11 @@ class TrustEntry:
             ("first_seen", self.first_seen),
             ("last_seen", self.last_seen),
         ):
-            if (
-                type(timestamp_value) not in (int, float)
-                or not math.isfinite(timestamp_value)
-                or timestamp_value < 0
-            ):
-                raise ValueError(f"{timestamp_name} must be a finite non-negative number")
+            object.__setattr__(
+                self,
+                timestamp_name,
+                _validated_timestamp(timestamp_value, timestamp_name),
+            )
         if self.last_seen < self.first_seen:
             raise ValueError("last_seen must not precede first_seen")
         if type(self.revoked) is not bool:
@@ -327,8 +344,39 @@ class TrustStore:
         # Persistence backends use compare-and-swap revisions to prevent
         # stale concurrent snapshots from silently replacing newer pins.
         self._persistence_revision = 0
+        self._persistence_terminal_error: BaseException | None = None
         # Key by IID (8 bytes) for O(1) lookup
         self._entries: dict[bytes, TrustEntry] = {}
+
+    def _ensure_persistence_usable(self) -> None:
+        if self._persistence_terminal_error is not None:
+            raise TrustError(
+                "trust persistence is in a terminal state"
+            ) from self._persistence_terminal_error
+
+    def _commit_security_mutation(
+        self,
+        previous_entries: dict[bytes, TrustEntry],
+        previous_revision: int,
+        *,
+        require_persistence: bool = False,
+    ) -> None:
+        persistence = self._persistence
+        if persistence is None:
+            if require_persistence:
+                self._entries = previous_entries
+                self._persistence_revision = previous_revision
+                raise TrustError("crash-safe trust persistence required")
+            return
+        try:
+            persistence.save(self)
+        except BaseException as exc:
+            if getattr(exc, "durable_state_may_have_advanced", False):
+                self._persistence_terminal_error = exc
+                raise
+            self._entries = previous_entries
+            self._persistence_revision = previous_revision
+            raise
 
     def __len__(self) -> int:
         return len(self._entries)
@@ -374,6 +422,7 @@ class TrustStore:
             UnknownPeerError: Peer not in store and auto_pin disabled.
             RevokedPeerError: Peer has been revoked.
         """
+        self._ensure_persistence_usable()
         if len(pubkey) != 32:
             raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
         if len(iid) != 8:
@@ -394,7 +443,10 @@ class TrustStore:
                 raise UnknownPeerError(f"unknown peer IID {iid.hex()}")
 
             entry = TrustEntry.from_pubkey(pubkey, TrustLevel.TOFU)
+            previous_entries = dict(self._entries)
+            previous_revision = self._persistence_revision
             self._entries[iid] = entry
+            self._commit_security_mutation(previous_entries, previous_revision)
             return replace(entry)
 
         # Existing entry - verify key matches
@@ -410,8 +462,11 @@ class TrustStore:
             )
 
         # Update last_seen timestamp
-        existing = replace(existing, last_seen=time.time())
+        previous_entries = dict(self._entries)
+        previous_revision = self._persistence_revision
+        existing = replace(existing, last_seen=max(existing.last_seen, time.time()))
         self._entries[iid] = existing
+        self._commit_security_mutation(previous_entries, previous_revision)
         return replace(existing)
 
     def verify_peer(self, pubkey: bytes, iid: bytes) -> TrustEntry:
@@ -432,6 +487,7 @@ class TrustStore:
             UnknownPeerError: Peer not in trust store.
             RevokedPeerError: Peer has been revoked.
         """
+        self._ensure_persistence_usable()
         if len(pubkey) != 32:
             raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
         if len(iid) != 8:
@@ -451,8 +507,11 @@ class TrustStore:
         if not hmac.compare_digest(existing.pubkey, pubkey):
             raise KeyMismatchError(f"pubkey mismatch for IID {iid.hex()}")
 
-        existing = replace(existing, last_seen=time.time())
+        previous_entries = dict(self._entries)
+        previous_revision = self._persistence_revision
+        existing = replace(existing, last_seen=max(existing.last_seen, time.time()))
         self._entries[iid] = existing
+        self._commit_security_mutation(previous_entries, previous_revision)
         return replace(existing)
 
     def add_trust_anchor(
@@ -478,8 +537,11 @@ class TrustStore:
         Raises:
             ValueError: Invalid pubkey length.
         """
+        self._ensure_persistence_usable()
         entry = TrustEntry.from_pubkey(pubkey, trust_level, metadata)
         iid = entry.iid
+        previous_entries = dict(self._entries)
+        previous_revision = self._persistence_revision
 
         existing = self._entries.get(iid)
         if existing is not None:
@@ -491,17 +553,20 @@ class TrustStore:
                 existing = replace(
                     existing,
                     trust_level=trust_level,
-                    last_seen=time.time(),
+                    last_seen=max(existing.last_seen, time.time()),
                     metadata=merged_metadata,
                 )
                 self._entries[iid] = existing
+                self._commit_security_mutation(previous_entries, previous_revision)
                 return replace(existing)
             # Same or lower level - just update timestamp
-            existing = replace(existing, last_seen=time.time())
+            existing = replace(existing, last_seen=max(existing.last_seen, time.time()))
             self._entries[iid] = existing
+            self._commit_security_mutation(previous_entries, previous_revision)
             return replace(existing)
 
         self._entries[iid] = entry
+        self._commit_security_mutation(previous_entries, previous_revision)
         return replace(entry)
 
     def rotate_key(
@@ -570,12 +635,15 @@ class TrustStore:
             RevokedPeerError: Peer has been revoked.
             TrustError: Signature verification failed or sequence replay.
         """
+        self._ensure_persistence_usable()
         if type(old_pubkey) is not bytes or type(new_pubkey) is not bytes:
             raise TypeError("pubkeys must be immutable bytes")
         if type(rotation_signature) is not bytes:
             raise TypeError("rotation_signature must be immutable bytes")
         if len(old_pubkey) != 32 or len(new_pubkey) != 32:
             raise ValueError("pubkeys must be 32 bytes")
+        if old_pubkey == new_pubkey:
+            raise TrustError("key rotation must change the public key")
         if (
             type(rotation_sequence) is not int
             or not 0 <= rotation_sequence <= _MAX_ROTATION_SEQUENCE
@@ -625,18 +693,16 @@ class TrustStore:
         # Remove old entry, add new. Public rotation commits this complete
         # snapshot before exposing success so the anti-replay sequence cannot
         # roll back across a crash.
+        previous_entries = dict(self._entries)
         previous_revision = self._persistence_revision
         del self._entries[old_iid]
         self._entries[new_iid] = new_entry
         if require_persistence:
-            assert self._persistence is not None
-            try:
-                self._persistence.save(self)
-            except BaseException:
-                del self._entries[new_iid]
-                self._entries[old_iid] = existing
-                self._persistence_revision = previous_revision
-                raise
+            self._commit_security_mutation(
+                previous_entries,
+                previous_revision,
+                require_persistence=True,
+            )
 
         return replace(new_entry)
 
@@ -652,10 +718,14 @@ class TrustStore:
         Returns:
             True if peer was found and revoked, False if not found.
         """
+        self._ensure_persistence_usable()
         entry = self._entries.get(iid)
         if entry is None:
             return False
+        previous_entries = dict(self._entries)
+        previous_revision = self._persistence_revision
         self._entries[iid] = replace(entry, revoked=True)
+        self._commit_security_mutation(previous_entries, previous_revision)
         return True
 
     def remove(self, iid: bytes) -> bool:
@@ -670,8 +740,12 @@ class TrustStore:
         Returns:
             True if peer was found and removed, False if not found.
         """
+        self._ensure_persistence_usable()
         if iid in self._entries:
+            previous_entries = dict(self._entries)
+            previous_revision = self._persistence_revision
             del self._entries[iid]
+            self._commit_security_mutation(previous_entries, previous_revision)
             return True
         return False
 
@@ -701,7 +775,13 @@ class TrustStore:
 
     def clear(self) -> None:
         """Remove all entries from the trust store."""
+        self._ensure_persistence_usable()
+        if not self._entries:
+            return
+        previous_entries = dict(self._entries)
+        previous_revision = self._persistence_revision
         self._entries.clear()
+        self._commit_security_mutation(previous_entries, previous_revision)
 
 
 # Oracle functions for test vector generation

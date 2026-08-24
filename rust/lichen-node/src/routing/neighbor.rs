@@ -128,7 +128,7 @@ impl NeighborTable {
             .iter()
             .enumerate()
             .filter_map(|(i, e)| e.as_ref().map(|n| (i, n)))
-            .filter(|(_, n)| protected.map_or(true, |p| n.addr != p))
+            .filter(|(_, n)| protected != Some(n.addr))
             .max_by_key(|(i, n)| (now_ms.wrapping_sub(n.last_seen_ms), MAX_NEIGHBORS - *i))
             .map(|(i, _)| i);
         let Some(oldest) = oldest else {
@@ -153,6 +153,36 @@ impl NeighborTable {
             .flatten()
             .find(|n| n.addr == *addr)
             .map(|n| n.etx)
+    }
+
+    /// Remove an exact neighbor, returning whether it was present.
+    pub fn remove(&mut self, addr: &[u8; 16]) -> bool {
+        for entry in &mut self.entries {
+            if entry
+                .as_ref()
+                .is_some_and(|neighbor| neighbor.addr == *addr)
+            {
+                *entry = None;
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Remove every address alias for one authenticated signer IID.
+    #[allow(dead_code)]
+    pub(crate) fn remove_with_iid(&mut self, signer_iid: &[u8; 8]) -> bool {
+        let mut removed = false;
+        for entry in &mut self.entries {
+            if entry
+                .as_ref()
+                .is_some_and(|neighbor| neighbor.addr[8..] == *signer_iid)
+            {
+                *entry = None;
+                removed = true;
+            }
+        }
+        removed
     }
 
     /// Get neighbor coordinates, or None if unknown or not advertised.

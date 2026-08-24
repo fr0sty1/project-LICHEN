@@ -13,7 +13,7 @@ use lora_phy::mod_traits::InterfaceVariant;
 use lora_phy::sx126x::{self, Sx1262, Sx126x, TcxoCtrlVoltage};
 use lora_phy::{LoRa, RxMode};
 
-use lichen_hal::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
+use lichen_hal::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket, TxResult};
 
 /// SX1262 Radio wrapper implementing lichen_hal::Radio.
 ///
@@ -111,7 +111,7 @@ where
 {
     type Error = Sx1262Error<SPI::Error>;
 
-    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<TxResult, Self::Error> {
         let mdltn = self
             .lora
             .create_modulation_params(
@@ -143,7 +143,11 @@ where
 
         self.lora.tx().await.map_err(|_| RadioError::Hardware)?;
 
-        Ok(())
+        // Estimate airtime based on SF and payload size
+        // SF10/125kHz: ~66us/byte + preamble (~12ms)
+        let sf_factor = 1u32 << (self.config.spreading_factor.saturating_sub(7));
+        let airtime_us = 12_000 * sf_factor / 8 + (payload.len() as u32) * 66 * sf_factor / 8;
+        Ok(TxResult { airtime_us })
     }
 
     async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {

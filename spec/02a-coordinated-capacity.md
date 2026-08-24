@@ -24,8 +24,9 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 7. 2a.6. Desync Recovery State Machine
 8. 2a.7. Regional Channel Plans and CH0 Rules
 9. 2a.8. Adaptive Spreading Factor Selection (adaptive_sf_select)
-10. Implementation Status
-11. References
+10. 2a.9. Adaptive Duty Cycle (adaptive_duty_permille)
+11. Implementation Status
+12. References
 
 ## Overview
 
@@ -43,7 +44,7 @@ Multi-byte integers unsigned big-endian (network order). Full byte layout:
 
 | Offset | Bytes | Field          | Description |
 |--------|-------|----------------|-------------|
-| 0      | 4     | epoch          | u32 BE for slot hash and SFN base |
+| 0      | 4     | epoch          | u32 BE schedule generation and SFN base |
 | 4      | 1     | num_slots      | u8 (default 8); hash modulus |
 | 5      | 4     | sfn            | u32 BE superframe number |
 | 9      | 4     | timestamp      | u32 BE for epoch_floor validation |
@@ -51,7 +52,7 @@ Multi-byte integers unsigned big-endian (network order). Full byte layout:
 | 14     | 1     | rx_chains      | u8 (1 for single-radio) |
 | 15     | 2     | setup_window   | u16 ms (retune/CAD) |
 | 17     | 2     | occupied_time  | u16 ms (data+ACK) |
-| 19     | 1     | guard          | u8 ms (default 100) |
+| 19     | 1     | guard          | u8 ms (MUST be 50 for this revision) |
 | 20     | 4     | channel_mask   | u32 (bit 0=CH0); local intersection computed |
 | 24+    | var   | cbor_options   | density, slot_map, etc. |
 | E-48   | 48    | beacon_sig     | Schnorr48 signature over bytes 0..(E-48) per draft-lichen-schnorr-00 |
@@ -75,26 +76,22 @@ tdma-beacon = {
 }
 ```
 
-Slot ID = fnv1a32(EUI64 XOR SFN) % num_slots (lichen_hash_32, basis 0x811c9dc5; see lichen-core/src/lib.rs, appendix-design-rationale.md). All impls MUST match `test/vectors/ccp_tdma.json`, `ccp16.json`, `link_frame.json`, `l2_payload.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
+Slot ID = `(fnv1a32(EUI64) + u32(SFN)) mod num_slots`, where FNV-1a32 uses basis `0x811c9dc5`, EUI64 is the exact eight-byte wire value, and addition wraps modulo 2^32 before the positive `num_slots` modulus. All implementations MUST match `test/vectors/ccp_sfn_wrap_slot_hash.json`, `ccp_tdma.json`, `ccp16.json`, `link_frame.json`, and `l2_payload.json` exactly. Integrates with `lichen_rpl_dodag_init()`, `lichen_link_set_slot()`, `tdma_tx_allowed()`.
 
 slot_map (CBOR array of u8): A sorted list of slot indices assigned to this node for the current superframe; an empty array indicates no transmit slots. Receivers MUST validate that each entry is less than num_slots. The root MUST set slot_map on each beacon; joiners MUST adopt the assigned slot_map and MUST NOT transmit outside it. See ccp_tdma.json for edge-case vectors (wraparound, slot_map order, num_slots change).
 
 **Test Vector Example — Slot Hash Computation:**
 
 ```
-EUI64 = 0x1122334455667788 (big-endian)
-SFN   = 0x00000005 (u32 big-endian)
+EUI64 = 0x1122334455667788 (exact eight wire bytes)
+SFN   = 0x00000005 (unsigned u32)
 
-XOR input: EUI64[0..3] XOR SFN_bytes[0..3] || EUI64[4..7] XOR SFN_bytes[4..7]
-          = (0x11223344 XOR 0x00000005) || 0x55667788
-          = 0x11223341 || 0x55667788
-          = 0x1122334155667788 (64-bit FE)
-
-fnv1a32(0x1122334155667788, basis=0x811c9dc5) = 0x8f3a2b1c
+fnv1a32(0x1122334455667788, basis=0x811c9dc5) = 0x912fa46d
+(0x912fa46d + 0x00000005) mod 2^32 = 0x912fa472
 num_slots = 8
-Slot ID = 0x8f3a2b1c % 8 = 4
+Slot ID = 0x912fa472 % 8 = 2
 
-This is the one true slot_master calculation; changing the XOR field size or endianness breaks interop. A second vector at SFN wraparound (SFN=0xFFFFFFFF with EUI64 0x8877665544332211) MUST match ccp_tdma.json.
+This is the one true slot calculation; hashing a concatenation or XOR-mutated EUI64 breaks interop. SFN values normalize as unsigned 32-bit counters. The fixed cases at SFN 0, 1, 0xFFFFFFFF, and wrap MUST match `test/vectors/ccp_sfn_wrap_slot_hash.json`.
 ```
 
 Beacons MUST be signed with a Schnorr48 signature per [draft-lichen-schnorr-00]. The signature covers bytes 0 through (E-48) of the beacon (all fixed fields and CBOR options, excluding the signature itself). Receivers MUST verify the signature against the sender's public key before accepting slot assignments or time updates. The root's public key MUST be distributed out-of-band (TOFU on first beacon or pre-provisioned); nodes MUST NOT relay beacons whose Schnorr48 signature fails verification.
@@ -114,7 +111,7 @@ delta = current_sfn - last_sfn;  /* = 3 in unsigned 32-bit arithmetic */
 
 This MUST be treated as advancement of 3 slots. Signed arithmetic would yield a large negative value, breaking desync detection and slot scheduling. Test vectors in ccp16.json and ccp_tdma.json MUST cover this and similar boundaries.
 
-A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
+A node MUST only transmit in its assigned slot. At each configured schedule profile, slot duration MUST be at least `ceil(maximum permitted PHY-payload airtime in milliseconds) + 50 ms`; it MUST NOT be derived from a typical frame. The data window begins at the slot start and ends before the single trailing 50 ms guard; nodes MUST NOT transmit during that guard. For profile `0x01` and the 255-byte maximum, airtime is 2,295.808 ms and the minimum slot duration is 2,346 ms. The link layer MUST enforce the schedule via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link implementation). This integrates with TDMA and SCHC compressed control traffic on CH0.
 
 ## 2a.5. Multi-Root Beacon Conflict Resolution
 
@@ -225,6 +222,38 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 
 (The state machine from prior section remains; JOINED uses SelectChannel and AdaptiveSFSelect per schedule.)
 
+## 2a.9. Adaptive Duty Cycle (adaptive_duty_permille)
+
+Each node SHALL enforce a transmit-airtime budget over a rolling 1-hour window (3600000 ms) as specified here (CCP-13). The budget is expressed in permille of the window: duty_permille of 10 corresponds to 36000 ms of airtime per hour.
+
+Nodes MUST estimate neighbor density from the number of distinct link-layer peers heard within the current window and MUST report that estimate to the L2 layer whenever it changes. Implementations SHOULD re-evaluate the effective budget before every transmission so the ceiling always reflects the currently reported density.
+
+### 2a.9.1. Density-to-Budget Mapping
+
+The duty region is the `duty_region` value of the node's configured operating class (CCP-4, section 2a.7): region 0 covers strictly duty-cycle-limited regulatory domains (EU, AU/NZ); region 1 covers lenient domains (US/CA).
+
+| Density | Condition | Region 0 (EU, AU/NZ) | Region 1 (US/CA) |
+|---------|-----------|----------------------|------------------|
+| Dense   | density > 8  | 5 permille (0.5%)  | 10 permille (1%) |
+| Moderate| 3 <= density <= 8 | 10 permille (1%) | 20 permille (2%) |
+| Sparse  | density < 3  | 20 permille (2%)   | 50 permille (5%) |
+
+A node MUST NOT exceed the budget in force for its reported density, and MUST use the most conservative (lowest) applicable value when the operating class is unknown.
+
+### 2a.9.2. Pure Pseudocode Definitions (IETF-style, language agnostic)
+
+Procedure AdaptiveDutyPermille(Density, Region):
+   1. IF Density > 8 THEN
+         RETURN Region == 0 ? 5 : 10
+   2. IF Density < 3 THEN
+         RETURN Region == 0 ? 20 : 50
+   3. RETURN Region == 0 ? 10 : 20
+
+Procedure MaxTxMs(DutyPermille):
+   1. RETURN (3600000 / 1000) * DutyPermille
+
+The maximum transmit time MaxTxMs(DutyPermille) MUST be computed from the current adaptive DutyPermille; hardcoding a default constant is non-conformant. The per-transmission airtime check, window accounting, and next-available-time computation are those of the CCP-13 DutyCycleTracker and MUST match test/vectors/ccp13.json exactly (independent oracle). Adaptive mapping vectors in ccp13.json carry a crc32 integrity tag over their inputs.
+
 ## Regional Channel Plans and CH0 Rules
 
 - Python simulator, Rust gateway, Zephyr `lichen/subsys/lichen` validate against `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json`.
@@ -238,7 +267,7 @@ EMA_Update(Avg, Sample) = Avg + ((Sample - Avg) right-shift 2). Update per-neigh
 
 - [RFC 2119] Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119, March 1997, <https://www.rfc-editor.org/info/rfc2119>.
 
-- `test/vectors/ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json` (authoritative for TDMA beacon format, CDDL, byte layout, slot/hash, join flows, SFN wrap; MUST match exactly)
+- `test/vectors/ccp_sfn_wrap_slot_hash.json`, `ccp16.json`, `ccp_tdma.json`, `link_frame.json`, `l2_payload.json` (authoritative for TDMA beacon format, CDDL, byte layout, slot/hash, join flows, SFN wrap; MUST match exactly)
 
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
 - `spec/drafts/draft-lichen-schc-lora-00.md`

@@ -57,6 +57,11 @@ class MockRxFrame:
     rssi_dbm: int = -50
     snr_db: int = 10
 
+    @property
+    def payload(self) -> bytes:
+        """Mirror the immutable payload view exposed by production RxFrame."""
+        return self.frame.payload
+
 
 @dataclass
 class MockLinkLayer:

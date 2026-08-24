@@ -62,6 +62,28 @@ impl ReplayWindow {
         self.state
     }
 
+    #[cfg(all(feature = "schnorr", feature = "std"))]
+    pub(crate) const fn persistent_parts(&self) -> Option<(u16, u32)> {
+        if self.initialised {
+            Some((self.last_seq.get(), self.window))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(all(feature = "schnorr", feature = "std"))]
+    pub(crate) fn from_persistent_parts(last_seq: u16, window: u32) -> Option<Self> {
+        if window == 0 || window & 1 == 0 {
+            return None;
+        }
+        Some(Self {
+            last_seq: LinkSeqNum::new(last_seq),
+            window,
+            initialised: true,
+            state: ReplayWindowState::Tracking,
+        })
+    }
+
     fn transition_to(
         &mut self,
         next: ReplayWindowState,

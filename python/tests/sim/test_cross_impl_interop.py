@@ -33,7 +33,7 @@ import pytest
 from lichen.announce.messages import AnnounceMessage
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
-from lichen.link.frame import AddrMode, LichenFrame, MicLength
+from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.radio.sim_client import SimRadio
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
@@ -51,6 +51,7 @@ class MockTransmitter:
 
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+RUST_ROOT = PROJECT_ROOT / "rust"
 RUN_CROSS_IMPL = os.environ.get("LICHEN_RUN_CROSS_IMPL") == "1"
 
 
@@ -58,6 +59,66 @@ def _has_rust_test_binary() -> bool:
     """Check if the Rust interop test binary is available."""
     binary = PROJECT_ROOT / "rust/target/release/cross-impl-receiver"
     return binary.exists()
+
+
+def _cargo_target_dir() -> Path:
+    configured = os.environ.get("CARGO_TARGET_DIR")
+    if configured is None:
+        return RUST_ROOT / "target"
+    target = Path(configured)
+    return target if target.is_absolute() else RUST_ROOT / target
+
+
+def _frame_parser_sources() -> list[Path]:
+    sources = [
+        RUST_ROOT / "Cargo.toml",
+        RUST_ROOT / "Cargo.lock",
+        RUST_ROOT / "lichen-apps" / "Cargo.toml",
+        RUST_ROOT / "lichen-link" / "Cargo.toml",
+    ]
+    sources.extend((RUST_ROOT / "lichen-apps" / "src").rglob("*.rs"))
+    sources.extend((RUST_ROOT / "lichen-link" / "src").rglob("*.rs"))
+    return [source for source in sources if source.exists()]
+
+
+def _current_frame_parser() -> Path:
+    """Return a current locked parser, building only for an explicit interop run."""
+    binary = _cargo_target_dir() / "release" / "frame-parser"
+    newest_source = max(source.stat().st_mtime_ns for source in _frame_parser_sources())
+    current = binary.exists() and binary.stat().st_mtime_ns >= newest_source
+    if not current and RUN_CROSS_IMPL:
+        result = subprocess.run(
+            [
+                "cargo",
+                "build",
+                "--locked",
+                "--release",
+                "-p",
+                "lichen-apps",
+                "--bin",
+                "frame-parser",
+            ],
+            cwd=RUST_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=600,
+            check=False,
+        )
+        if result.returncode != 0:
+            pytest.fail(
+                "locked Rust frame-parser build failed:\n"
+                f"{result.stdout}\n{result.stderr}"
+            )
+        current = binary.exists() and binary.stat().st_mtime_ns >= newest_source
+        if not current:
+            pytest.fail(f"cargo did not produce a current frame-parser at {binary}")
+    if not current:
+        state = "stale" if binary.exists() else "missing"
+        pytest.skip(
+            f"Rust frame-parser is {state} at {binary}; "
+            "set LICHEN_RUN_CROSS_IMPL=1 to build the locked current workspace binary"
+        )
+    return binary
 
 
 @pytest.fixture
@@ -153,19 +214,39 @@ class TestPythonToPythonBaseline:
 class TestPythonToRust:
     """Python transmit, Rust receive and parse."""
 
+    # Canonical rejection category contract for link_frame.json
+    # `expect.error` values: (Python FrameError message or None,
+    # Rust FrameError Debug token). A None message means Python asserts
+    # rejection without pinning the message text.
+    FRAME_ERROR_CATEGORIES = {
+        "signed_encrypted_unsupported": (
+            "encrypted frames are unsupported",
+            "EncryptedUnsupported",
+        ),
+        "encryption_unsupported": (
+            "encrypted frames are unsupported",
+            "EncryptedUnsupported",
+        ),
+        "frame_too_large": (None, "FrameTooLarge"),
+        "frame_body_exceeds_254": (None, "FrameTooLarge"),
+        "reserved_bit_set": (None, "ReservedBitSet"),
+        "reserved_mic_length": (None, "ReservedMicLength"),
+        "length_mismatch": (None, "TooShort"),
+        "frame_too_short": (None, "TooShort"),
+        "empty_frame": (None, "Empty"),
+        "trailing_bytes": (None, "TrailingBytes"),
+    }
+
     def test_link_frame_interop_via_vectors(self) -> None:
         """Python-encoded frames parsed by Rust frame-parser.
 
         Uses test vectors from test/vectors/link_frame.json.
-        Verifies Python encoding matches Rust parsing.
+        Positive vectors require byte-exact Python encoding and full field
+        agreement from the Rust parser; negative vectors require both
+        implementations to reject with the intended canonical category.
         """
-        rust_binary = PROJECT_ROOT / "rust/target/release/frame-parser"
+        rust_binary = _current_frame_parser()
         vectors_path = PROJECT_ROOT / "test/vectors/link_frame.json"
-
-        if not rust_binary.exists():
-            if RUN_CROSS_IMPL:
-                pytest.fail("Rust frame-parser binary not built")
-            pytest.skip("Rust frame-parser binary not built (cargo build --release -p lichen-apps)")
 
         if not vectors_path.exists():
             if RUN_CROSS_IMPL:
@@ -176,30 +257,43 @@ class TestPythonToRust:
             vectors = json.load(f)
 
         for vector in vectors["vectors"]:
+            name = vector["name"]
             fields = vector["fields"]
+            expected_error = vector.get("expect", {}).get("error")
+
             dst_addr = bytes.fromhex(fields["dst_addr"])
             payload = bytes.fromhex(fields["payload"])
             mic = bytes.fromhex(fields["mic"])
+            signer_eui64 = bytes.fromhex(fields["signer_eui64"])
             assert len(dst_addr) == (0, 2, 8, 0)[fields["addr_mode"]]
             assert len(mic) == (48 if fields["signature_present"] else 0)
+            assert len(signer_eui64) == (8 if fields["signature_present"] else 0)
             llsec = (
                 fields["addr_mode"]
                 | (fields["mic_length"] << 2)
                 | (int(fields["signature_present"]) << 5)
                 | (int(fields["encrypted"]) << 6)
+                | (int(bool(signer_eui64)) << 7)
             )
             body = (
                 bytes([llsec, fields["epoch"]])
                 + fields["seqnum"].to_bytes(2, "big")
                 + dst_addr
+                + signer_eui64
                 + payload
                 + mic
             )
             encoded = bytes.fromhex(vector["encoded"])
-            expected_error = vector.get("expect", {}).get("error")
-            if expected_error == "frame_too_large":
-                assert len(encoded) == 256
-                assert encoded[0] == 255
+
+            # Independently reconstruct the LENGTH accounting boundary.
+            if expected_error == "frame_body_exceeds_254":
+                assert len(body) == 255, f"{name}: over-limit body must be 255 bytes"
+                assert len(encoded) == 256, f"{name}: encoded frame must be 256 bytes"
+                assert encoded[0] == 255, f"{name}: LENGTH byte must saturate at 255"
+            elif expected_error is not None:
+                # Other negative vectors carry malformed wire data that need
+                # not be reproducible from the declared fields.
+                pass
             else:
                 assert len(body) <= 254
                 assert len(encoded) <= 255
@@ -216,17 +310,25 @@ class TestPythonToRust:
                 mic_length=MicLength(fields["mic_length"]),
                 signature_present=fields["signature_present"],
                 encrypted=fields["encrypted"],
+                signer_eui64=signer_eui64,
             )
-            if expected_error == "encryption_unsupported":
-                python_error = {
-                    "encryption_unsupported": "encrypted frames are unsupported",
-                }[expected_error]
+
+            python_message, rust_token = self.FRAME_ERROR_CATEGORIES.get(
+                expected_error, (None, None)
+            )
+            if expected_error is not None:
+                # Python must reject serialization of a malformed frame...
                 with pytest.raises(FrameError) as exc_info:
                     frame.to_bytes()
-                assert str(exc_info.value) == python_error
+                if python_message is not None:
+                    assert str(exc_info.value) == python_message, (
+                        f"Vector '{name}': expected category "
+                        f"'{python_message}', got '{exc_info.value}'"
+                    )
             else:
-                if expected_error is None:
-                    assert frame.to_bytes().hex() == vector["encoded"]
+                assert frame.to_bytes().hex() == vector["encoded"], (
+                    f"Vector '{name}': Python encoding mismatch"
+                )
 
             # Parse with Rust
             result = subprocess.run(
@@ -234,30 +336,27 @@ class TestPythonToRust:
                 capture_output=True,
                 timeout=5,
             )
-            if vector.get("expect", {}).get("error"):
-                assert result.returncode != 0, f"Vector '{vector['name']}' should be rejected"
+            if expected_error is not None:
+                assert result.returncode != 0, (
+                    f"Vector '{name}' should be rejected"
+                )
+                if rust_token is not None:
+                    rust_error = json.loads(result.stdout).get("error", "")
+                    assert rust_token in rust_error, (
+                        f"Vector '{name}': expected Rust category "
+                        f"'{rust_token}', got '{rust_error}'"
+                    )
                 continue
+
             assert result.returncode == 0, (
-                f"Vector '{vector['name']}' parse failed: {result.stderr.decode()}"
+                f"Vector '{name}' parse failed: {result.stderr.decode()}"
             )
 
             parsed = json.loads(result.stdout)
-            fields = vector["fields"]
-            name = vector["name"]
 
-            python_frame = LichenFrame(
-                epoch=fields["epoch"],
-                seqnum=fields["seqnum"],
-                dst_addr=bytes.fromhex(fields["dst_addr"]),
-                payload=bytes.fromhex(fields["payload"]),
-                mic=bytes.fromhex(fields["mic"]),
-                addr_mode=AddrMode(fields["addr_mode"]),
-                mic_length=MicLength(fields["mic_length"]),
-                signature_present=fields["signature_present"],
-                encrypted=fields["encrypted"],
-            )
-            assert python_frame.to_bytes() == bytes.fromhex(vector["encoded"]), (
-                f"Vector '{vector['name']}': Python encoding mismatch"
+            # Python must reproduce the exact wire bytes from the fields.
+            assert frame.to_bytes() == encoded, (
+                f"Vector '{name}': Python encoding mismatch"
             )
 
             # Verify fields match
@@ -295,14 +394,10 @@ class TestPythonToRust:
         node_port = server.get_node_server_port("cross-impl-test")
         assert node_port is not None
 
-        rust_binary = PROJECT_ROOT / "rust/target/release/frame-parser"
-        if not rust_binary.exists():
-            if RUN_CROSS_IMPL:
-                pytest.fail("Rust frame-parser binary not built")
-            pytest.skip("Rust frame-parser binary not built")
+        rust_binary = _current_frame_parser()
 
         # Build frame using test vector data
-        frame_hex = "0700010002616263"  # broadcast_min, unsigned with no MIC
+        frame_bytes = bytes.fromhex("0700010002616263")  # broadcast_min, unsigned with no MIC
 
         async with (
             SimRadio(

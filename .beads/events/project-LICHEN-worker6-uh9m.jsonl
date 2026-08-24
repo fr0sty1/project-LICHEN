@@ -1,3 +1,5 @@
 {"id":"01a03503-367c-7586-8fd8-a29c575385c2","issue_id":"project-LICHEN-worker6-uh9m","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-24T18:23:18.140363Z"}
 {"id":"01a03503-36d9-7138-8ed4-a936acdcdf4e","issue_id":"project-LICHEN-worker6-uh9m","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: cleanup","created_at":"2026-08-24T18:23:18.23308Z"}
 {"id":"01a03503-36ee-7dde-9c80-ffdbd07b6529","issue_id":"project-LICHEN-worker6-uh9m","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: rust","created_at":"2026-08-24T18:23:18.255288Z"}
+{"id":"01a03506-5f7d-7daf-9808-b2ac64dd528a","issue_id":"project-LICHEN-worker6-uh9m","event_type":"label_removed","actor":"Mark Atwood","comment":"Removed label: rust","created_at":"2026-08-24T18:26:45.245899Z"}
+{"id":"01a03506-7205-7795-806d-4e6aec764ec9","issue_id":"project-LICHEN-worker6-uh9m","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: c","created_at":"2026-08-24T18:26:49.989499Z"}

@@ -64,11 +64,38 @@ class RxTimeoutEvent(Event):
     node_id: str
 
 
+@dataclass(frozen=True)
+class DelayedRxReadyEvent(Event):
+    """A delayed-RX candidate becomes eligible for delivery.
+
+    Queued at expire_us so BARRIER_SYNC lands on the exact microsecond.
+    The event handler delivers callback RX and captures a polling RX
+    result when the node is in RX_WAIT without callbacks, so a same-tick
+    RxTimeoutEvent cannot consume the only eligible microsecond.
+    """
+
+    node_id: str
+
+
+def _same_tick_priority(event: Event) -> int:
+    """Heap tie-break after time_us: lower runs first.
+
+    Delayed RX eligibility must beat RxTimeout at the same tick.
+    Same event types keep FIFO via insertion_order.
+    """
+    if isinstance(event, DelayedRxReadyEvent):
+        return 0
+    if isinstance(event, RxTimeoutEvent):
+        return 2
+    return 1
+
+
 @dataclass(order=True)
 class _PrioritizedEvent:
-    """Wrapper for heap ordering: (time_us, insertion_order, event)."""
+    """Wrapper for heap ordering: (time_us, priority, insertion_order, event)."""
 
     time_us: int
+    priority: int
     insertion_order: int
     event: Event = field(compare=False)
 
@@ -76,8 +103,9 @@ class _PrioritizedEvent:
 class EventQueue:
     """Priority queue of simulation events ordered by time.
 
-    Events are sorted by time_us, with ties broken by insertion order
-    (FIFO for events at the same time). Uses a heap for O(log n) push/pop.
+    Events are sorted by time_us. At equal time, DelayedRxReadyEvent
+    precedes other events and RxTimeoutEvent is last; remaining ties
+    break by insertion order (FIFO). Uses a heap for O(log n) push/pop.
     """
 
     def __init__(self) -> None:
@@ -88,6 +116,7 @@ class EventQueue:
         """Add an event to the queue."""
         entry = _PrioritizedEvent(
             time_us=event.time_us,
+            priority=_same_tick_priority(event),
             insertion_order=self._counter,
             event=event,
         )
@@ -155,6 +184,31 @@ class EventQueue:
             entry
             for entry in self._heap
             if not (hasattr(entry.event, "node_id") and entry.event.node_id == node_id)
+        ]
+        heapq.heapify(self._heap)
+        return original_len - len(self._heap)
+
+    def remove_events_for_node_of_type(self, node_id: str, event_type: type[Event]) -> int:
+        """Remove one event class for a node, leaving other events intact.
+
+        RX teardown must cancel ``RxTimeoutEvent`` without deleting
+        ``TxEndEvent`` or ``TxStartDelayedEvent`` for the same node.
+
+        Args:
+            node_id: ID of the node whose matching events should be removed.
+            event_type: Event class to remove (compared with ``isinstance``).
+
+        Returns:
+            Number of events removed.
+        """
+        original_len = len(self._heap)
+        self._heap = [
+            entry
+            for entry in self._heap
+            if not (
+                isinstance(entry.event, event_type)
+                and getattr(entry.event, "node_id", None) == node_id
+            )
         ]
         heapq.heapify(self._heap)
         return original_len - len(self._heap)

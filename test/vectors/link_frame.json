@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "LICHEN link-layer frame vectors (spec section 4, draft-lichen-link-01). Complete frames are at most 255 bytes (LENGTH at most 254). 'fields' are frame inputs; 'encoded' is from _oracle_encode_frame() - an independent encoder based on the spec wire layout, NOT from LichenFrame.to_bytes().",
+  "description": "LICHEN link-layer frame vectors (spec section 4, draft-lichen-link-01). Complete frames are at most 255 bytes (LENGTH at most 254). 'fields' are frame inputs; 'encoded' is from _oracle_encode_frame() - an independent encoder based on the spec wire layout, NOT from LichenFrame.to_bytes(). Signed cases use reference_schnorr48.py, fixed Link Signature Domain Version 1, and the normative non-wire DST_LEN field-delimiting octet.",
   "vectors": [
     {
       "name": "broadcast_min",
@@ -15,7 +15,9 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "0700010002616263"
     },
     {
@@ -30,7 +32,9 @@
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "0801102030abcd6869"
     },
     {
@@ -45,7 +49,9 @@
         "addr_mode": 2,
         "mic_length": 1,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "1006ffffff000102030405060764617461"
     },
     {
@@ -60,7 +66,9 @@
         "addr_mode": 3,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "0703051234637478"
     },
     {
@@ -75,7 +83,9 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "07000000006d696e"
     },
     {
@@ -90,7 +100,9 @@
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "090100ffff1234626e64"
     },
     {
@@ -105,7 +117,9 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "0400010001"
     },
     {
@@ -120,7 +134,9 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "fe00000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9"
     },
     {
@@ -135,7 +151,9 @@
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "fe01ffffffdead000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7"
     },
     {
@@ -146,19 +164,22 @@
         "seqnum": 2,
         "dst_addr": "",
         "payload": "616263",
-        "mic": "98f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102",
+        "mic": "1d8efcec77d664081e6f0bdcfe1e444688aab91502ebe4680d67a4e0d1b158ea47cac9c1b0417489a603751692869508",
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": true,
-        "encrypted": false
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342"
       },
-      "encoded": "372001000261626398f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102",
+      "encoded": "3fa00100027fd5cfc679ab63426162631d8efcec77d664081e6f0bdcfe1e444688aab91502ebe4680d67a4e0d1b158ea47cac9c1b0417489a603751692869508",
       "crypto": {
         "seed": "0000000000000000000000000000000000000000000000000000000000000000",
         "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
         "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
-        "preimage": "3720010002616263",
-        "signature": "98f74ca1c3d151205e73d61e69917f4f1fe019c59958df6b6d2538ae4df85177655c86cf4df58ceaef691dfb4a76d102"
+        "preimage": "4c494348454e2d4c494e4b2d7631003fa0010002007fd5cfc679ab6342616263",
+        "wire_prefix": "3fa00100027fd5cfc679ab6342616263",
+        "signature": "1d8efcec77d664081e6f0bdcfe1e444688aab91502ebe4680d67a4e0d1b158ea47cac9c1b0417489a603751692869508",
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0."
       }
     },
     {
@@ -169,62 +190,27 @@
         "seqnum": 2,
         "dst_addr": "abcd",
         "payload": "68656c6c6f21",
-        "mic": "6324ca2dccf490aac8d9fcea6a0b5601edc567d475bbd6e15d653c21bff1517325722832f9727b53bc86544c55f41a0a",
+        "mic": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": true,
-        "encrypted": false
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342"
       },
-      "encoded": "3c21010002abcd68656c6c6f216324ca2dccf490aac8d9fcea6a0b5601edc567d475bbd6e15d653c21bff1517325722832f9727b53bc86544c55f41a0a",
+      "encoded": "44a1010002abcd7fd5cfc679ab634268656c6c6f21c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
       "crypto": {
         "seed": "0000000000000000000000000000000000000000000000000000000000000000",
         "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
         "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
-        "preimage": "3c21010002abcd68656c6c6f21",
-        "signature": "6324ca2dccf490aac8d9fcea6a0b5601edc567d475bbd6e15d653c21bff1517325722832f9727b53bc86544c55f41a0a"
-      }
-    },
-    {
-      "name": "encrypted_only_reject",
-      "description": "Encrypted frame without signature MUST be rejected (spec 4.2 bit 6)",
-      "fields": {
-        "epoch": 0,
-        "seqnum": 0,
-        "dst_addr": "",
-        "payload": "",
-        "mic": "",
-        "addr_mode": 0,
-        "mic_length": 0,
-        "signature_present": false,
-        "encrypted": true
-      },
-      "encoded": "0440000000",
-      "expect": {
-        "error": "encrypted_unsupported"
-      }
-    },
-    {
-      "name": "reserved_bit7_reject",
-      "description": "LLSec bit 7 is reserved and MUST be 0 (spec 4.2)",
-      "fields": {
-        "epoch": 1,
-        "seqnum": 4660,
-        "dst_addr": "aabbccdd",
-        "payload": "aabbccdddeadbeef",
-        "mic": "",
-        "addr_mode": 1,
-        "mic_length": 0,
-        "signature_present": false,
-        "encrypted": false
-      },
-      "encoded": "1080011234aabbccddaabbccdddeadbeef",
-      "expect": {
-        "error": "reserved_bit_set"
+        "preimage": "4c494348454e2d4c494e4b2d76310044a101000202abcd7fd5cfc679ab634268656c6c6f21",
+        "wire_prefix": "44a1010002abcd7fd5cfc679ab634268656c6c6f21",
+        "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=2."
       }
     },
     {
       "name": "signed_encrypted",
-      "description": "Signature + encryption flags: encrypted check fires first",
+      "description": "Unsupported signature + encrypted combination",
       "fields": {
         "epoch": 3,
         "seqnum": 4,
@@ -234,34 +220,38 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": true,
-        "encrypted": true
+        "encrypted": true,
+        "signer_eui64": "aabbccddaabbccdd"
       },
-      "encoded": "35600300047800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "encoded": "3dE0030004aabbccddaabbccdd78000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "expect": {
-        "error": "encrypted_unsupported"
+        "error": "signed_encrypted_unsupported"
       }
     },
     {
       "name": "signed_max_payload",
-      "description": "Maximum payload for signed broadcast: 202 bytes (body=254, spec limit)",
+      "description": "Maximum payload for signed broadcast with mandatory SIID: 194 bytes (body=254, spec limit)",
       "fields": {
         "epoch": 0,
         "seqnum": 1,
         "dst_addr": "",
-        "payload": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9",
-        "mic": "f55e4fcee930cf7f270f75b295cfa6c2f0cb8ee4a7e97a14fff05f8857514bb5f2d6ab2e218370cfbb886b7a617a3201",
+        "payload": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1",
+        "mic": "cf1b6d2f2cab19b9a3498a4ed248bb49d3271af78b8cf1e9b540ddc638b2fe05d13519891561914c1e7a3e4ea3c9560c",
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": true,
-        "encrypted": false
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342"
       },
-      "encoded": "fe20000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9f55e4fcee930cf7f270f75b295cfa6c2f0cb8ee4a7e97a14fff05f8857514bb5f2d6ab2e218370cfbb886b7a617a3201",
+      "encoded": "fea00000017fd5cfc679ab6342000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1cf1b6d2f2cab19b9a3498a4ed248bb49d3271af78b8cf1e9b540ddc638b2fe05d13519891561914c1e7a3e4ea3c9560c",
       "crypto": {
         "seed": "0000000000000000000000000000000000000000000000000000000000000000",
         "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
         "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
-        "preimage": "fe20000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9",
-        "signature": "f55e4fcee930cf7f270f75b295cfa6c2f0cb8ee4a7e97a14fff05f8857514bb5f2d6ab2e218370cfbb886b7a617a3201"
+        "preimage": "4c494348454e2d4c494e4b2d763100fea0000001007fd5cfc679ab6342000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1",
+        "wire_prefix": "fea00000017fd5cfc679ab6342000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1",
+        "signature": "cf1b6d2f2cab19b9a3498a4ed248bb49d3271af78b8cf1e9b540ddc638b2fe05d13519891561914c1e7a3e4ea3c9560c",
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0."
       }
     },
     {
@@ -276,7 +266,9 @@
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
-        "encrypted": false      },
+        "encrypted": false,
+        "signer_eui64": ""
+      },
       "encoded": "ff00000001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fa",
       "expect": {
         "error": "frame_body_exceeds_254"

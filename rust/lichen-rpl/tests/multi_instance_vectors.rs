@@ -3,11 +3,11 @@
 //! Validates the Rust implementation against `test/vectors/rpl_multi_instance.json`
 //! for cross-validation with the Python oracle.
 
+use lichen_rpl::message::Dio;
 use lichen_rpl::multi_instance::{
     iid_compare_int, resolve_slot_conflict, validate_rpl_instance_id, DaoBackboneBridge, DaoTarget,
     DaoTransit, GatewayInfo, MultiRootCoordinator,
 };
-use lichen_rpl::message::Dio;
 use serde_json::Value;
 use std::net::Ipv6Addr;
 use std::str::FromStr;

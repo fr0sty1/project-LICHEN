@@ -1,7 +1,7 @@
 //! Vector tests for TDMA beacon header and slot selection.
 
-use lichen_core::tdma_beacon::{TdmaBeaconHeader, HEADER_SIZE, MIN_BEACON_SIZE, flags};
 use lichen_core::lichen_hash_32;
+use lichen_core::tdma_beacon::{flags, TdmaBeaconHeader, HEADER_SIZE, MIN_BEACON_SIZE};
 
 /// Compute slot matching Python: (hash_32(eui64) + sfn) % num_slots
 fn slot_for(eui: &[u8; 8], sfn: u32, num_slots: u16) -> u16 {
@@ -57,8 +57,16 @@ fn test_beacon_header_roundtrip_canonical() {
     assert_eq!(&buf[0..4], &1000u32.to_be_bytes(), "epoch at offset 0");
     assert_eq!(buf[4], 16, "num_slots at offset 4");
     assert_eq!(&buf[5..9], &42u32.to_be_bytes(), "sfn at offset 5");
-    assert_eq!(&buf[9..13], &1234567890u32.to_be_bytes(), "timestamp at offset 9");
-    assert_eq!(buf[13], flags::SCHEDULED | flags::GNSS_PPS, "flags at offset 13");
+    assert_eq!(
+        &buf[9..13],
+        &1234567890u32.to_be_bytes(),
+        "timestamp at offset 9"
+    );
+    assert_eq!(
+        buf[13],
+        flags::SCHEDULED | flags::GNSS_PPS,
+        "flags at offset 13"
+    );
 
     let parsed = TdmaBeaconHeader::parse(&buf).unwrap();
     assert_eq!(hdr, parsed);

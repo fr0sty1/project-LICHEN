@@ -1,0 +1,234 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "gcp3_trust_models",
+  "description": "GCP-3 Trust Models test vectors per spec/08-gateway-coordination.md. Covers key derivation (pubkey->IID->02xx), TOFU verification, key rotation with Schnorr signatures, open/closed federation, PSK derivation, and binding invariants. Python oracle: lichen.crypto.trust.",
+  "spec": "spec/08-gateway-coordination.md Section 3",
+  "vectors": [
+    {
+      "name": "derivation_zero",
+      "description": "Key derivation vector (zero seed): pubkey -> IID -> 02xx address.",
+      "category": "derivation",
+      "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+      "pubkey": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+      "iid": "7dd5cfc679ab6342",
+      "ygg_addr": "027dd5cfc679ab637dd5cfc679ab6342",
+      "ygg_addr_str": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342",
+      "derivation_valid": true,
+      "ul_bit_test": {
+        "raw_sha512_byte0": "7d",
+        "final_iid_byte0": "7d",
+        "ul_bit_cleared": false
+      }
+    },
+    {
+      "name": "derivation_alice",
+      "description": "Key derivation vector (alice seed): pubkey -> IID -> 02xx address.",
+      "category": "derivation",
+      "seed": "0000000000000000000000000000000000000000000000000000000000000001",
+      "pubkey": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "iid": "fd6b265c8585369b",
+      "ygg_addr": "02fd6b265c858536fd6b265c8585369b",
+      "ygg_addr_str": "2fd:6b26:5c85:8536:fd6b:265c:8585:369b",
+      "derivation_valid": true,
+      "ul_bit_test": {
+        "raw_sha512_byte0": "fd",
+        "final_iid_byte0": "fd",
+        "ul_bit_cleared": false
+      }
+    },
+    {
+      "name": "derivation_bob",
+      "description": "Key derivation vector (bob seed): pubkey -> IID -> 02xx address.",
+      "category": "derivation",
+      "seed": "0000000000000000000000000000000000000000000000000000000000000002",
+      "pubkey": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "iid": "888bcf64cfefa304",
+      "ygg_addr": "02888bcf64cfefa3888bcf64cfefa304",
+      "ygg_addr_str": "288:8bcf:64cf:efa3:888b:cf64:cfef:a304",
+      "derivation_valid": true,
+      "ul_bit_test": {
+        "raw_sha512_byte0": "88",
+        "final_iid_byte0": "88",
+        "ul_bit_cleared": false
+      }
+    },
+    {
+      "name": "derivation_all_ff",
+      "description": "Key derivation vector (all_ff seed): pubkey -> IID -> 02xx address.",
+      "category": "derivation",
+      "seed": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "pubkey": "76a1592044a6e4f511265bca73a604d90b0529d1df602be30a19a9257660d1f5",
+      "iid": "f57a7baa1226b50c",
+      "ygg_addr": "02f77a7baa1226b5f57a7baa1226b50c",
+      "ygg_addr_str": "2f7:7a7b:aa12:26b5:f57a:7baa:1226:b50c",
+      "derivation_valid": true,
+      "ul_bit_test": {
+        "raw_sha512_byte0": "f7",
+        "final_iid_byte0": "f5",
+        "ul_bit_cleared": true
+      }
+    },
+    {
+      "name": "tofu_valid_first_contact",
+      "description": "TOFU: Valid first contact, pubkey correctly derives to IID.",
+      "category": "tofu",
+      "pubkey": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "claimed_iid": "fd6b265c8585369b",
+      "expected_result": "pin_and_accept",
+      "trust_level": "TOFU",
+      "derivation_valid": true
+    },
+    {
+      "name": "tofu_derivation_mismatch_attack",
+      "description": "Attack detection: Attacker claims victim IID with different pubkey.",
+      "category": "tofu",
+      "attacker_pubkey": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "claimed_iid": "fd6b265c8585369b",
+      "attacker_actual_iid": "888bcf64cfefa304",
+      "expected_result": "reject_derivation_mismatch",
+      "derivation_valid": false,
+      "attack_type": "iid_substitution"
+    },
+    {
+      "name": "tofu_key_mismatch_detection",
+      "description": "Key mismatch: Different pubkey presented for pinned IID fails derivation first.",
+      "category": "tofu",
+      "pinned_pubkey": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "pinned_iid": "fd6b265c8585369b",
+      "presented_pubkey": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "presented_iid": "fd6b265c8585369b",
+      "expected_result": "reject_derivation_mismatch",
+      "note": "Derivation check catches substitution before key comparison needed"
+    },
+    {
+      "name": "key_rotation_valid_signature",
+      "description": "Key rotation: Old key signs the domain-separated identities and monotonic sequence authorizing the new key.",
+      "category": "rotation",
+      "old_pubkey": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "old_iid": "fd6b265c8585369b",
+      "new_pubkey": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "new_iid": "888bcf64cfefa304",
+      "rotation_sequence": 1,
+      "rotation_message": "4c494348454e2d4b45592d524f544154494f4e2d7631004cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29fd6b265c8585369b7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe26740000000000000001",
+      "rotation_signature": "9fff678a30a746114e67a4ce444cbbf883db290dce9c55c74801c03ac1993f2cd1681a17a27475f43feafe465223ca0d",
+      "signature_valid": true,
+      "expected_result": "accept_rotation"
+    },
+    {
+      "name": "key_rotation_invalid_signature",
+      "description": "Key rotation rejected: Signature from wrong key (Charlie, not Alice).",
+      "category": "rotation",
+      "old_pubkey": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "old_iid": "fd6b265c8585369b",
+      "new_pubkey": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "attacker_pubkey": "f381626e41e7027ea431bfe3009e94bdd25a746beec468948d6c3c7c5dc9a54b",
+      "rotation_sequence": 1,
+      "rotation_message": "4c494348454e2d4b45592d524f544154494f4e2d7631004cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29fd6b265c8585369b7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe26740000000000000001",
+      "rotation_signature": "7b676951cc6de2c0519255696606e063d1a3c3177221dd25cdf630e99386f171806a99b249462c31d1f150529a336a0b",
+      "signature_valid": false,
+      "expected_result": "reject_invalid_signature"
+    },
+    {
+      "name": "trust_level_ordering",
+      "description": "Trust levels ordered by verification strength (TOFU < BR_PROVISIONED < DANE < PKIX).",
+      "category": "trust_level",
+      "levels": [
+        {
+          "name": "TOFU",
+          "value": 1
+        },
+        {
+          "name": "BR_PROVISIONED",
+          "value": 2
+        },
+        {
+          "name": "DANE",
+          "value": 3
+        },
+        {
+          "name": "PKIX",
+          "value": 4
+        }
+      ],
+      "ordering_invariant": "TOFU < BR_PROVISIONED < DANE < PKIX"
+    },
+    {
+      "name": "open_federation_slot_claim_valid",
+      "description": "Open federation: GCP slot claim message signed with gateway Ed25519 key.",
+      "category": "open_federation",
+      "gateway_pubkey": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "gateway_iid": "fd6b265c8585369b",
+      "message": "534c4f545f434c41494d3a30313a676174657761795f6969643afd6b265c8585369b",
+      "message_ascii": "SLOT_CLAIM:01:gateway_iid:fd6b265c8585369b",
+      "signature": "45a4b53c65e11c450493d699f84c8e7585cfc4bafec86149d830b6eec7ba8eedeca2b33edcdcd7845a29e76e24844608",
+      "signature_valid": true,
+      "expected_result": "accept_claim"
+    },
+    {
+      "name": "open_federation_tampered_message",
+      "description": "Open federation: Tampered message detected via signature verification failure.",
+      "category": "open_federation",
+      "gateway_pubkey": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "original_message": "534c4f545f434c41494d3a30313a676174657761795f6969643afd6b265c8585369b",
+      "tampered_message": "534c4f545f434c41494d3a30323a676174657761795f6969643afd6b265c8585369b",
+      "signature": "45a4b53c65e11c450493d699f84c8e7585cfc4bafec86149d830b6eec7ba8eedeca2b33edcdcd7845a29e76e24844608",
+      "signature_valid_for_tampered": false,
+      "expected_result": "reject_signature_invalid"
+    },
+    {
+      "name": "binding_invariant_alice",
+      "description": "Binding invariant: ygg_addr[8:16] == IID for alice.",
+      "category": "binding",
+      "pubkey": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "ygg_addr": "02fd6b265c858536fd6b265c8585369b",
+      "ygg_lower64": "fd6b265c8585369b",
+      "iid": "fd6b265c8585369b",
+      "binding_valid": true
+    },
+    {
+      "name": "binding_invariant_bob",
+      "description": "Binding invariant: ygg_addr[8:16] == IID for bob.",
+      "category": "binding",
+      "pubkey": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "ygg_addr": "02888bcf64cfefa3888bcf64cfefa304",
+      "ygg_lower64": "888bcf64cfefa304",
+      "iid": "888bcf64cfefa304",
+      "binding_valid": true
+    },
+    {
+      "name": "closed_federation_psk_derivation",
+      "description": "Closed federation: Complete PSK -> OSCORE context derivation with all intermediates.",
+      "category": "closed_federation",
+      "psk": "6c696368656e2d66656465726174696f6e2d746573742d70736b2d33326279",
+      "psk_ascii": "lichen-federation-test-psk-32by",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "00",
+      "recipient_id": "01",
+      "algorithm": 10,
+      "algorithm_name": "AES-CCM-16-64-128",
+      "derived": {
+        "prk": "f81d5616c8bb24ac9837b8ffa5f86df2a7c2874cc48df3284b3377c4fbf04a59",
+        "sender_key_info_cbor": "854100400a634b657910",
+        "sender_key": "488441ace3bfa028fe17b490828521f5",
+        "recipient_key_info_cbor": "854101400a634b657910",
+        "recipient_key": "cbadb0eae1229a39f59ac73af60c77c3",
+        "common_iv_info_cbor": "8540400a6249560d",
+        "common_iv": "284ef7a53065ca8a66b52abd7f"
+      },
+      "reference": "RFC 8613 Section 3.2, HKDF-SHA256"
+    },
+    {
+      "name": "closed_federation_context_isolation",
+      "description": "Federation isolation: Same PSK with different id_context produces different keys.",
+      "category": "closed_federation",
+      "psk": "6c696368656e2d66656465726174696f6e2d746573742d70736b2d33326279",
+      "id_context": "6c696368656e",
+      "id_context_ascii": "lichen",
+      "sender_key_without_context": "488441ace3bfa028fe17b490828521f5",
+      "sender_key_with_context": "384fddd5cef1342111dd0ebea5ccd96f",
+      "keys_different": true,
+      "note": "id_context enables running multiple isolated federations with same PSK"
+    }
+  ]
+}

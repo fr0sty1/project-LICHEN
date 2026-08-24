@@ -109,7 +109,7 @@ pub use lichen_link::link_layer::LinkRxError;
 #[cfg(feature = "std")]
 pub use scheduler::{AnnounceScheduler, AnnounceTransmitter, SchedulerConfig, SchedulerError};
 #[cfg(feature = "std")]
-pub use tdma_scheduler::TdmaScheduler;
+pub use tdma_scheduler::{TdmaScheduler, TdmaSchedulerError};
 
 #[cfg(feature = "std")]
 extern crate std;

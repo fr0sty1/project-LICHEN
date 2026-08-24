@@ -7,7 +7,6 @@
 use std::fs;
 use std::path::Path;
 
-use lichen_schc;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -27,6 +26,16 @@ struct SchcVector {
     compressed: Option<String>,
     #[serde(default)]
     category: Option<String>,
+    #[serde(default)]
+    expect_error: Option<String>,
+    #[serde(default)]
+    compressed_prefix: Option<String>,
+    #[serde(default)]
+    tail_byte: Option<u8>,
+    #[serde(default)]
+    tail_length: Option<usize>,
+    #[serde(default)]
+    expected_packet_size: Option<usize>,
 }
 
 fn hex_decode(s: &str) -> Vec<u8> {
@@ -57,9 +66,50 @@ fn test_schc_compression_vectors() {
     let mut failures = Vec::new();
 
     for vector in &vectors.vectors {
-        // Skip malformed/error test vectors
+        if vector.category.as_deref() == Some("malformed_input") {
+            let packet = hex_decode(vector.packet.as_deref().unwrap_or(""));
+            let mut out = vec![0u8; packet.len() + 1];
+            if lichen_schc::compress(&packet, &mut out).is_ok() {
+                failures.push(format!(
+                    "Vector '{}': expected malformed input rejection ({:?})",
+                    vector.name, vector.expect_error
+                ));
+            }
+            continue;
+        }
+        if vector.category.as_deref() == Some("size_boundary") {
+            let mut compressed = hex_decode(vector.compressed_prefix.as_deref().unwrap_or(""));
+            compressed.resize(
+                compressed.len() + vector.tail_length.unwrap_or(0),
+                vector.tail_byte.unwrap_or(0),
+            );
+            let expected_size = vector.expected_packet_size.unwrap_or(0);
+            let mut out = vec![0u8; expected_size];
+            let result = lichen_schc::decompress(&compressed, &mut out);
+            if vector.expect_error.is_some() {
+                if result.is_ok() {
+                    failures.push(format!(
+                        "Vector '{}': expected profile-limit rejection",
+                        vector.name
+                    ));
+                }
+            } else if result != Ok(expected_size) {
+                failures.push(format!(
+                    "Vector '{}': expected {} reconstructed bytes, got {:?}",
+                    vector.name, expected_size, result
+                ));
+            }
+            continue;
+        }
         if vector.category.as_deref() == Some("malformed") {
-            println!("Vector '{}': skipped (malformed test case)", vector.name);
+            let compressed = hex_decode(vector.compressed.as_deref().unwrap_or(""));
+            let mut out = [0u8; 1500];
+            if lichen_schc::decompress(&compressed, &mut out).is_ok() {
+                failures.push(format!(
+                    "Vector '{}': expected malformed rejection ({:?})",
+                    vector.name, vector.expect_error
+                ));
+            }
             continue;
         }
 
@@ -122,7 +172,7 @@ fn test_schc_compression_vectors() {
             ));
         }
 
-        if compressed.len() >= packet.len() {
+        if rule_id != 255 && compressed.len() >= packet.len() {
             failures.push(format!(
                 "Vector '{}': compression did not reduce size ({} -> {})",
                 vector.name,
@@ -174,13 +224,14 @@ fn test_schc_compression_vectors() {
             ));
         }
 
+        let reduction = 100isize - (compressed.len() * 100 / packet.len()) as isize;
         println!(
             "Vector '{}' (rule {}): {} -> {} bytes ({}% reduction)",
             vector.name,
             rule_id,
             packet.len(),
             compressed.len(),
-            100 - (compressed.len() * 100 / packet.len())
+            reduction
         );
     }
 
@@ -219,11 +270,13 @@ fn test_schc_rule_coverage() {
 
     println!("SCHC rules with vectors: {:?}", rules_seen);
 
-    // Expect at least rules 0-6 (CoAP, global, ICMPv6, RPL, OSCORE 5/6)
-    for expected in 0..7 {
-        if !rules_seen.contains(&expected) {
-            eprintln!("WARNING: No vector for rule_id {}", expected);
-        }
+    // Every canonical compression rule, including specialized Rule 7, needs a vector.
+    for expected in 0..=7 {
+        assert!(
+            rules_seen.contains(&expected),
+            "No vector for rule_id {}",
+            expected
+        );
     }
 }
 

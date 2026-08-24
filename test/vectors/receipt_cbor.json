@@ -1,0 +1,215 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "receipt_cbor",
+  "description": "Delivery receipt CBOR encoding test vectors per spec Section 18.1.2. Fields: id, status, ts.",
+  "spec": "spec/12-apps.md Section 18.1.2",
+  "vectors": [
+    {
+      "name": "receipt_delivered",
+      "description": "Standard delivery receipt with status 'delivered'.",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "delivered",
+        "ts": 1716742900
+      },
+      "cbor_hex": "a3626964193039667374617475736964656c6976657265646274731a66536af4",
+      "cbor_length": 32,
+      "expected": {
+        "decode_success": true,
+        "fields_present": ["id", "status", "ts"]
+      }
+    },
+    {
+      "name": "receipt_read",
+      "description": "Read receipt with status 'read'.",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "read",
+        "ts": 1716742901
+      },
+      "cbor_hex": "a36269641930396673746174757364726561646274731a66536af5",
+      "cbor_length": 27,
+      "expected": {
+        "decode_success": true,
+        "status_value": "read"
+      }
+    },
+    {
+      "name": "receipt_failed",
+      "description": "Failure receipt with status 'failed'.",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "failed",
+        "ts": 1716742902
+      },
+      "cbor_hex": "a362696419303966737461747573666661696c65646274731a66536af6",
+      "cbor_length": 29,
+      "expected": {
+        "decode_success": true,
+        "status_value": "failed"
+      }
+    },
+    {
+      "name": "receipt_min_values",
+      "description": "Receipt with minimum valid field values.",
+      "cbor_payload": {
+        "id": 0,
+        "status": "delivered",
+        "ts": 0
+      },
+      "cbor_hex": "a362696400667374617475736964656c69766572656462747300",
+      "cbor_length": 26,
+      "expected": {
+        "decode_success": true,
+        "note": "id=0 and ts=0 are valid edge cases"
+      }
+    },
+    {
+      "name": "receipt_max_u64_id",
+      "description": "Receipt with maximum uint64 message ID.",
+      "cbor_payload": {
+        "id": 18446744073709551615,
+        "status": "delivered",
+        "ts": 4294967295
+      },
+      "cbor_hex": "a36269641bffffffffffffffff667374617475736964656c6976657265646274731affffffff",
+      "cbor_length": 38,
+      "expected": {
+        "decode_success": true,
+        "note": "Max uint64 id, max uint32 ts"
+      }
+    },
+    {
+      "name": "receipt_status_validation",
+      "description": "Valid status values per spec Section 18.1.2.",
+      "valid_statuses": ["delivered", "read", "failed"],
+      "expected": {
+        "unknown_status_handling": "reject_with_4.00",
+        "note": "Only these three status values are defined"
+      }
+    },
+    {
+      "name": "receipt_missing_id",
+      "description": "Receipt missing required 'id' field.",
+      "cbor_payload": {
+        "status": "delivered",
+        "ts": 1716742900
+      },
+      "expected": {
+        "decode_success": false,
+        "error": "missing_required_field",
+        "response_code": "4.00"
+      }
+    },
+    {
+      "name": "receipt_missing_status",
+      "description": "Receipt missing required 'status' field.",
+      "cbor_payload": {
+        "id": 12345,
+        "ts": 1716742900
+      },
+      "expected": {
+        "decode_success": false,
+        "error": "missing_required_field",
+        "response_code": "4.00"
+      }
+    },
+    {
+      "name": "receipt_missing_ts",
+      "description": "Receipt missing required 'ts' field.",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "delivered"
+      },
+      "expected": {
+        "decode_success": false,
+        "error": "missing_required_field",
+        "response_code": "4.00"
+      }
+    },
+    {
+      "name": "receipt_invalid_status",
+      "description": "Receipt with invalid status value.",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "unknown",
+        "ts": 1716742900
+      },
+      "expected": {
+        "decode_success": false,
+        "error": "invalid_status",
+        "response_code": "4.00"
+      }
+    },
+    {
+      "name": "receipt_negative_id",
+      "description": "Receipt with negative message ID (invalid).",
+      "cbor_payload": {
+        "id": -1,
+        "status": "delivered",
+        "ts": 1716742900
+      },
+      "expected": {
+        "decode_success": false,
+        "error": "invalid_id_type",
+        "response_code": "4.00"
+      }
+    },
+    {
+      "name": "receipt_negative_ts",
+      "description": "Receipt with negative timestamp (invalid).",
+      "cbor_payload": {
+        "id": 12345,
+        "status": "delivered",
+        "ts": -1
+      },
+      "expected": {
+        "decode_success": false,
+        "error": "invalid_ts_type",
+        "response_code": "4.00"
+      }
+    },
+    {
+      "name": "receipt_string_id",
+      "description": "Receipt with string ID instead of integer (invalid).",
+      "cbor_payload": {
+        "id": "12345",
+        "status": "delivered",
+        "ts": 1716742900
+      },
+      "expected": {
+        "decode_success": false,
+        "error": "invalid_id_type",
+        "response_code": "4.00"
+      }
+    },
+    {
+      "name": "receipt_empty_payload",
+      "description": "Empty CBOR map payload.",
+      "cbor_payload": {},
+      "expected": {
+        "decode_success": false,
+        "error": "missing_required_field",
+        "response_code": "4.00"
+      }
+    },
+    {
+      "name": "receipt_id_semantics",
+      "description": "The 'id' field references the original message's id from /msg/inbox.",
+      "expected": {
+        "id_type": "uint64",
+        "note": "Must match the id assigned when message was posted to /msg/inbox"
+      }
+    },
+    {
+      "name": "receipt_ts_semantics",
+      "description": "Timestamp is Unix epoch seconds when receipt was generated.",
+      "ts_example": 1716742900,
+      "expected": {
+        "ts_type": "uint",
+        "note": "Senders should use current wall clock; receivers may validate recency"
+      }
+    }
+  ]
+}

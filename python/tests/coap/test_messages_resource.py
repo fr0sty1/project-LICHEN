@@ -457,6 +457,32 @@ class TestMessageReceipts:
             await client.shutdown()
             await server.shutdown()
 
+    def test_max_receipts_must_be_positive(self) -> None:
+        for value in (0, -1, True):
+            with pytest.raises(ValueError, match="positive integer"):
+                MessageReceiptsResource(max_receipts=value)
+
+    async def test_receipts_capped_at_max(self) -> None:
+        from lichen.coap.resources import _MESSAGES_MAX
+
+        receipts = MessageReceiptsResource()
+        for i in range(_MESSAGES_MAX + 10):
+            payload = {"id": i, "status": "delivered", "ts": i}
+            resp = await receipts.render_post(
+                Message(code=POST, payload=cbor2.dumps(payload))
+            )
+            assert resp.code == aiocoap.CHANGED
+
+        stored = receipts.receipts()
+        assert len(stored) == _MESSAGES_MAX
+        # oldest receipts were dropped; newest survive
+        assert stored[0] == {"id": 10, "status": "delivered", "ts": 10}
+        assert stored[-1] == {
+            "id": _MESSAGES_MAX + 9,
+            "status": "delivered",
+            "ts": _MESSAGES_MAX + 9,
+        }
+
 
 # ---------------------------------------------------------------------------
 # POST

@@ -16,7 +16,7 @@
 #define LLSEC_MIC_LEN_MASK    0x1c
 #define LLSEC_SIG_PRESENT     0x20
 #define LLSEC_ENCRYPTED       0x40
-#define LLSEC_SIGNER_IID      0x80
+#define LLSEC_RESERVED        0x80
 
 /* Address lengths by mode (index = enum lichen_addr_mode value) */
 static const uint8_t addr_lens[] = { 0, 2, 8, 0 };
@@ -59,36 +59,39 @@ int lichen_frame_parse(struct lichen_frame *frame,
 
 	frame->addr_mode = llsec & LLSEC_ADDR_MODE_MASK;
 
-	/* Only 0b000 (32-bit) and 0b001 (64-bit) MIC lengths are defined. */
-	uint8_t mic_length = (llsec & LLSEC_MIC_LEN_MASK) >> LLSEC_MIC_LEN_SHIFT;
-	if (mic_length > LICHEN_MIC_64) {
-		return -EINVAL;
-	}
-
-	frame->mic_length = (enum lichen_mic_len)mic_length;
-	frame->signature_present = (llsec & LLSEC_SIG_PRESENT) != 0;
-	frame->signer_iid_present = (llsec & LLSEC_SIGNER_IID) != 0;
+	/* SECURITY: Reject encrypted frames before any other LLSec policy so
+	 * E=1 is always reported as unsupported encryption (spec 4.2). */
 	frame->encrypted = (llsec & LLSEC_ENCRYPTED) != 0;
 	if (frame->encrypted) {
 		return -EPROTONOSUPPORT;
 	}
 
-	/* Validate SI/S coupling: SI=1 requires S=1, S=1 requires SI=1 */
-	if (frame->signer_iid_present && !frame->signature_present) {
-		return -EINVAL;
-	}
-	if (frame->signature_present && !frame->signer_iid_present) {
+	/* Only selectors 0b000 and 0b001 are defined; both mean no MIC on an
+	 * unsigned frame. Selectors 0b010-0b111 are reserved. */
+	uint8_t mic_length = (llsec & LLSEC_MIC_LEN_MASK) >> LLSEC_MIC_LEN_SHIFT;
+	if (mic_length > LICHEN_MIC_64) {
 		return -EINVAL;
 	}
 
-	/* Now that we know MIC length, verify frame is long enough */
+	/* LLSec bit 7 is reserved and MUST be zero (spec/02-physical-link.md
+	 * section 4.2); frames with bit 7 set MUST be discarded. */
+	if ((llsec & LLSEC_RESERVED) != 0U) {
+		return -EINVAL;
+	}
+
+	frame->mic_length = (enum lichen_mic_len)mic_length;
+	frame->signature_present = (llsec & LLSEC_SIG_PRESENT) != 0;
+	frame->signer_iid_present = false;
+	frame->signer_iid_len = 0U;
+
+	/* Signed frames carry the full 48-byte Schnorr signature in the MIC
+	 * field; unsigned frames have no MIC bytes regardless of selector. */
 	frame->mic_len = frame->signature_present ? LICHEN_SIG_LEN : 0U;
 	uint8_t addr_len = addr_lens[frame->addr_mode];
-	frame->signer_iid_len = frame->signer_iid_present ? 8U : 0U;
 
-	/* Check total required length: fixed header + address + signer IID + MIC */
+	/* Check total required length: fixed header + address + MIC */
 	if (len < LICHEN_FRAME_FIXED_HEADER_LEN + (size_t)addr_len +
-		   (size_t)frame->signer_iid_len + frame->mic_len) {
+		   frame->mic_len) {
 		return -EINVAL;
 	}
 
@@ -100,12 +103,6 @@ int lichen_frame_parse(struct lichen_frame *frame,
 	frame->dst_addr_len = addr_len;
 	memcpy(frame->dst_addr, &data[off], frame->dst_addr_len);
 	off += frame->dst_addr_len;
-
-	/* Signer IID (present only when SI=1) */
-	if (frame->signer_iid_present) {
-		memcpy(frame->signer_iid, &data[off], 8);
-		off += 8;
-	}
 
 	/* MIC at the end */
 	memcpy(frame->mic, &data[len - frame->mic_len], frame->mic_len);
@@ -134,16 +131,19 @@ int lichen_frame_write(const struct lichen_frame *frame,
 		return -EINVAL;
 	}
 
-	if (frame->encrypted) {
-		return -EPROTONOSUPPORT;
+	/* The MIC-length selector must be a defined value (0 or 1). */
+	if ((unsigned int)frame->mic_length > LICHEN_MIC_64) {
+		return -EINVAL;
 	}
 
-	/* Validate SI/S coupling: SI requires S, S requires SI */
-	if (frame->signer_iid_present && !frame->signature_present) {
+	/* LLSec bit 7 is reserved; the current wire profile carries no
+	 * Signer IID field. */
+	if (frame->signer_iid_present || frame->signer_iid_len != 0U) {
 		return -EINVAL;
 	}
-	if (frame->signature_present && !frame->signer_iid_present) {
-		return -EINVAL;
+
+	if (frame->encrypted) {
+		return -EPROTONOSUPPORT;
 	}
 
 	/*
@@ -158,10 +158,14 @@ int lichen_frame_write(const struct lichen_frame *frame,
 		return -EINVAL;
 	}
 
+	/* Subtraction-first sizing: non_payload_len counts every byte of the
+	 * serialized frame except the payload (including LENGTH), and the
+	 * payload must fit in what remains of the 255-byte total. */
 	size_t non_payload_len = LICHEN_FRAME_FIXED_HEADER_LEN + (size_t)addr_len +
-				 (size_t)frame->signer_iid_len + mic_len;
+				 mic_len;
 
-	if (frame->payload_len > LICHEN_MAX_FRAME_LEN - non_payload_len) {
+	if (LICHEN_MAX_FRAME_LEN < non_payload_len ||
+	    frame->payload_len > LICHEN_MAX_FRAME_LEN - non_payload_len) {
 		return -EMSGSIZE;
 	}
 
@@ -176,16 +180,12 @@ int lichen_frame_write(const struct lichen_frame *frame,
 	/* Length byte (excludes itself) */
 	buf[off++] = (uint8_t)(frame_len - 1);
 
-	/* LLSec byte — MIC length field derived solely from signature_present */
+	/* LLSec byte — selector encoded from mic_length; bit 7 stays clear. */
 	uint8_t llsec = frame->addr_mode & LLSEC_ADDR_MODE_MASK;
+	llsec |= ((uint8_t)frame->mic_length << LLSEC_MIC_LEN_SHIFT) &
+		 LLSEC_MIC_LEN_MASK;
 	if (frame->signature_present) {
-		llsec |= (uint8_t)(LICHEN_MIC_64 << LLSEC_MIC_LEN_SHIFT) | LLSEC_SIG_PRESENT;
-	}
-	if (frame->signer_iid_present) {
-		llsec |= LLSEC_SIGNER_IID;
-	}
-	if (frame->encrypted) {
-		llsec |= LLSEC_ENCRYPTED;
+		llsec |= LLSEC_SIG_PRESENT;
 	}
 	buf[off++] = llsec;
 
@@ -201,12 +201,6 @@ int lichen_frame_write(const struct lichen_frame *frame,
 		memcpy(&buf[off], frame->dst_addr, addr_len);
 	}
 	off += addr_len;
-
-	/* Signer IID */
-	if (frame->signer_iid_present) {
-		memcpy(&buf[off], frame->signer_iid, 8);
-		off += 8;
-	}
 
 	/* Payload */
 	if (frame->payload_len > 0) {

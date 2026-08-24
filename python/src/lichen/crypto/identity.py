@@ -35,7 +35,7 @@ class Identity:
         privkey: 32-byte Ed25519 private scalar (derived from seed).
         pubkey: 32-byte Ed25519 public point (can be shared).
         iid: 8-byte Interface Identifier derived from pubkey.
-        ygg_addr: 16-byte Yggdrasil-derived primary IPv6 address (02xx::/7).
+        ygg_addr: 16-byte key-derived primary IPv6 address (0200::/8).
     """
 
     seed: bytes
@@ -67,7 +67,7 @@ class Identity:
             A new Identity with derived keys.
         """
         # SECURITY: Seed length validation is critical. Per spec 8.7, all
-        # cryptographic material (Schnorr48, X25519, IID, 02xx address) derives
+        # cryptographic material (Schnorr48, X25519, IID, 0200::/8 address) derives
         # from this single 32-byte seed. An incorrect length could produce weak
         # or undefined key material.
         if len(seed) != 32:
@@ -123,7 +123,7 @@ def _pubkey_to_iid(pubkey: bytes) -> bytes:
     """Derive IID from Ed25519 public key.
 
     MUST use SHA-512, not SHA-256. This matches Yggdrasil's AddrForKey
-    (yggdrasil-go/src/address/address.go) for 0200::/7 address interop.
+    (yggdrasil-go/src/address/address.go) for key-derivation interop.
     """
     if len(pubkey) != 32:
         raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
@@ -169,7 +169,7 @@ class PeerIdentity:
 
 
 def iid_to_human_address(iid: bytes) -> str:
-    """Convert 8-byte IID (from SHA256 of Ed25519 pubkey) to 13-char
+    """Convert 8-byte IID (from SHA-512 of Ed25519 pubkey) to 13-char
     human-readable Crockford Base32 address with dashes (XXXX-XXXX-XXXXX).
 
     Matches spec/03-addressing.md. Collision-resistant at planetary scale.
@@ -187,7 +187,7 @@ def iid_to_human_address(iid: bytes) -> str:
 
 
 def yggdrasil_address(pubkey: bytes) -> IPv6Address:
-    """Derive Yggdrasil 02xx::/7 address from Ed25519 pubkey.
+    """Derive the native 0200::/8 address from an Ed25519 public key.
 
     Implements the exact `AddrForKey` algorithm from yggdrasil-go
     (`src/address/address.go`), matching the official Yggdrasil daemon
@@ -197,8 +197,8 @@ def yggdrasil_address(pubkey: bytes) -> IPv6Address:
       2. `addr = [0x02] || h[0:7] || h[0:8]`
       3. Clear U/L bit in IID byte: `addr[8] &= 0xfd`
 
-    The 0200::/7 prefix byte (`0x02`) is the Yggdrasil global routing prefix.
-    Bytes 1-7 (from `h[0:7]`) provide /7 dispersion across the Yggdrasil DHT.
+    The fixed `0x02` first byte selects the LICHEN native 0200::/8 profile.
+    Bytes 1-7 (from `h[0:7]`) distribute identities within that prefix.
     Bytes 8-15 (from `h[0:8]`) form the IID, binding the address to the pubkey.
 
     Matches Rust `ygg_addr_from_pubkey` and test/vectors/yggdrasil-derivation.json.

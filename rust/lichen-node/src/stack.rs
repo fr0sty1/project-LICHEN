@@ -12,13 +12,14 @@ use std::vec::Vec;
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::{L2_DISPATCH_SCHC, PORT_COAP};
-use lichen_core::l2_payload::{
-    body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
-};
+use lichen_core::l2_payload::{classify as classify_l2_payload, L2PayloadKind};
 use lichen_hal::Radio;
 use lichen_ipv6::{next_header, Addr, Ipv6Header, UdpHeader, IPV6_HEADER_LEN, UDP_HEADER_LEN};
 use lichen_link::seqnum::LinkSeqNum;
-use lichen_link::{frame::FrameError, link_layer::LinkRxError};
+use lichen_link::{
+    frame::{AddrMode, FrameError, LichenFrame},
+    link_layer::LinkRxError,
+};
 #[cfg(feature = "std")]
 use lichen_rpl::routing::SourceRoutingHeader;
 use lichen_schc::codec;
@@ -62,9 +63,11 @@ impl From<Priority> for u8 {
         p.as_u8()
     }
 }
-// 254-byte frame body minus fixed header, EUI-64 destination, 48-byte signature,
-// and the L2 SCHC dispatch byte.
-const MAX_EXTENDED_SCHC_SIZE: usize = 193;
+// 254-byte frame body minus fixed header, EUI-64 destination, signer EUI-64,
+// 48-byte signature, and the L2 SCHC dispatch byte.
+const MAX_EXTENDED_SCHC_SIZE: usize = 185;
+// Broadcast/elided frames omit the destination but still carry the signer EUI-64.
+const MAX_ELIDED_SCHC_SIZE: usize = 193;
 
 /// TX path error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -206,6 +209,8 @@ pub struct Stack<R: Radio> {
     forward_buffer: ForwardBuffer,
     /// CCP-15: Operating channel for TX/RX.
     channel: u8,
+    schc_failure_tracker: lichen_schc::RuleVersionFailureTracker<64>,
+    schc_failure_notifications: u64,
 }
 
 #[cfg(feature = "std")]
@@ -239,6 +244,9 @@ impl<R: Radio> Stack<R> {
             sequence_exhausted: false,
             message_id: 0,
             forward_buffer: ForwardBuffer::new(),
+            schc_failure_tracker: lichen_schc::RuleVersionFailureTracker::new(3)
+                .expect("fixed SCHC failure threshold and capacity are nonzero"),
+            schc_failure_notifications: 0,
         }
     }
 
@@ -246,7 +254,7 @@ impl<R: Radio> Stack<R> {
     ///
     /// This is a convenience constructor for tests; production code should use
     /// [`Stack::new`] with a persisted or random epoch per spec section 4.4.
-    #[cfg(any(test, feature = "test-support"))]
+    #[cfg(test)]
     pub fn new_default_epoch(radio: R, identity: lichen_link::identity::Identity) -> Self {
         Self::new(radio, identity, 128, 0)
     }
@@ -270,9 +278,43 @@ impl<R: Radio> Stack<R> {
         self.channel
     }
 
+    /// Number of exact-once threshold notifications emitted by SCHC ingress.
+    pub fn schc_failure_notifications(&self) -> u64 {
+        self.schc_failure_notifications
+    }
+
+    pub(crate) fn decompress_authenticated_frame(
+        &mut self,
+        frame: &lichen_link::link_layer::AuthenticatedFrame,
+        out: &mut [u8],
+    ) -> Result<usize, lichen_schc::SchcError> {
+        let mut notifications = 0u64;
+        let result = lichen_schc::decompress_authenticated_frame_tracked(
+            &self.link,
+            frame,
+            out,
+            &mut self.schc_failure_tracker,
+            |_| notifications = notifications.saturating_add(1),
+        );
+        self.schc_failure_notifications = self
+            .schc_failure_notifications
+            .saturating_add(notifications);
+        result
+    }
+
     /// Add a peer for signature verification.
     pub fn add_peer(&mut self, peer: lichen_link::identity::PeerIdentity) {
-        self.link.add_peer(peer);
+        if let Some(retired) = self.link.add_peer(peer) {
+            self.schc_failure_tracker.retire(retired.pubkey.as_bytes());
+        }
+    }
+
+    /// Retire a peer and every upper-layer bounded state keyed by its signer.
+    pub fn forget_peer(&mut self, iid: &[u8; 8]) {
+        if let Some(key) = self.link.pinned_pubkey_for(iid).copied() {
+            self.schc_failure_tracker.retire(key.as_bytes());
+        }
+        self.link.forget_peer(iid);
     }
 
     /// Get the next message ID.
@@ -317,7 +359,8 @@ impl<R: Radio> Stack<R> {
         priority: Priority,
     ) -> Result<(), TxError> {
         let src = self.local_addr();
-        self.send_coap_raw_to(&src, dst, coap, &[], &[], priority).await
+        self.send_coap_raw_to(&src, dst, coap, &[], &[], priority)
+            .await
     }
 
     pub(crate) async fn send_coap_raw_to(
@@ -330,7 +373,7 @@ impl<R: Radio> Stack<R> {
         priority: Priority,
     ) -> Result<(), TxError> {
         let _ = priority; // Reserved for future congestion checking
-        // Build IPv6 + UDP + CoAP packet
+                          // Build IPv6 + UDP + CoAP packet
         let udp_total = UDP_HEADER_LEN + coap.len();
         let mut ipv6 = [0u8; 256];
 
@@ -403,11 +446,7 @@ impl<R: Radio> Stack<R> {
     ///
     /// * `ipv6` - Complete IPv6 packet
     /// * `priority` - Transmission priority (default: Normal)
-    pub async fn send_ipv6_raw(
-        &mut self,
-        ipv6: &[u8],
-        priority: Priority,
-    ) -> Result<(), TxError> {
+    pub async fn send_ipv6_raw(&mut self, ipv6: &[u8], priority: Priority) -> Result<(), TxError> {
         self.send_ipv6_to(ipv6, &[], priority).await
     }
 
@@ -438,7 +477,8 @@ impl<R: Radio> Stack<R> {
         }
         let mut routed = [0u8; 512];
         let routed_len = add_rpl_source_route(ipv6, source_route, &mut routed)?;
-        self.send_ipv6_to(&routed[..routed_len], dst_addr, priority).await
+        self.send_ipv6_to(&routed[..routed_len], dst_addr, priority)
+            .await
     }
 
     pub(crate) async fn send_l2_payload_to(
@@ -449,7 +489,7 @@ impl<R: Radio> Stack<R> {
         let max_payload = if dst_addr.len() == 8 {
             MAX_EXTENDED_SCHC_SIZE + 1
         } else {
-            202
+            MAX_ELIDED_SCHC_SIZE + 1
         };
         if l2_payload.len() > max_payload {
             return Err(TxError::FrameEncode);
@@ -500,20 +540,34 @@ impl<R: Radio> Stack<R> {
         }
 
         let wire = &buf[..pkt.len];
+        if !wire_is_for_local_stack(wire, self.node.node_id.0)? {
+            return Ok(None);
+        }
         let l2 = self.link.receive_frame(wire)?;
 
-        if classify_l2_payload(&l2.payload) != L2PayloadKind::Schc {
+        if classify_l2_payload(l2.payload()) != L2PayloadKind::Schc {
             return Err(RxError::SchcDecompress);
         }
 
         let mut ipv6 = vec![0u8; 256];
-        let n = codec::decompress(l2_payload_body(&l2.payload), &mut ipv6)
+        let n = self
+            .decompress_authenticated_frame(&l2, &mut ipv6)
             .map_err(|_| RxError::SchcDecompress)?;
         ipv6.truncate(n);
 
+        // SECURITY: L2 broadcast/elision authorizes reception of the frame,
+        // not delivery of an arbitrary IPv6 unicast.  Bind the decompressed
+        // destination to this stack (or IPv6 multicast) before exposing it to
+        // upper layers.
+        let local_link = self.local_addr().0;
+        let local_native = lichen_link::ygg_addr_from_pubkey(self.local_public_key().as_bytes());
+        if !ipv6_destination_is_local_or_multicast(&ipv6, &local_link, &local_native) {
+            return Ok(None);
+        }
+
         Ok(Some(ReceivedIpv6 {
             ipv6,
-            sender_iid: l2.sender.iid,
+            sender_iid: l2.sender().iid,
             rssi: pkt.rssi,
             snr: pkt.snr,
         }))
@@ -528,7 +582,8 @@ impl<R: Radio> Stack<R> {
 
         if reply_len > 0 {
             // ICMPv6 replies use Normal priority (P3)
-            self.send_ipv6_raw(&reply_ipv6[..reply_len], Priority::Normal).await?;
+            self.send_ipv6_raw(&reply_ipv6[..reply_len], Priority::Normal)
+                .await?;
             Ok(true)
         } else {
             Ok(false)
@@ -568,6 +623,10 @@ impl<R: Radio> Stack<R> {
     /// Internal authenticated-link access for the production RPL owner.
     pub(crate) fn link(&mut self) -> &mut lichen_link::link_layer::LinkLayer {
         &mut self.link
+    }
+
+    pub(crate) fn link_ref(&self) -> &lichen_link::link_layer::LinkLayer {
+        &self.link
     }
 
     /// Access the node state.
@@ -651,6 +710,49 @@ impl<R: Radio> Stack<R> {
     pub fn forward_buffer(&mut self) -> &mut ForwardBuffer {
         &mut self.forward_buffer
     }
+}
+
+fn wire_is_for_local_stack(wire: &[u8], local_eui64: [u8; 8]) -> Result<bool, RxError> {
+    let frame = LichenFrame::from_bytes(wire).map_err(LinkRxError::from)?;
+    Ok(match frame.addr_mode {
+        AddrMode::None => true,
+        // This stack has no coordinator-assigned short-address state.
+        AddrMode::Short => false,
+        AddrMode::Extended => frame.dst_addr == local_eui64,
+        AddrMode::Elided => {
+            if classify_l2_payload(frame.payload) != L2PayloadKind::Schc {
+                false
+            } else {
+                let mut ipv6 = [0u8; 256];
+                codec::decompress(&frame.payload[1..], &mut ipv6)
+                    .ok()
+                    .and_then(|length| (length >= IPV6_HEADER_LEN).then_some(&ipv6[..length]))
+                    .is_some_and(|packet| {
+                        let destination: [u8; 16] = packet[24..40].try_into().unwrap();
+                        if destination[0] == 0xff {
+                            true
+                        } else {
+                            let mut eui64: [u8; 8] = destination[8..].try_into().unwrap();
+                            eui64[0] ^= 0x02;
+                            eui64 == local_eui64
+                        }
+                    })
+            }
+        }
+    })
+}
+
+fn ipv6_destination_is_local_or_multicast(
+    packet: &[u8],
+    local_link: &[u8; 16],
+    local_native: &[u8; 16],
+) -> bool {
+    let Some(destination) = packet.get(24..40) else {
+        return false;
+    };
+    destination.first() == Some(&0xff)
+        || destination == local_link.as_slice()
+        || destination == local_native.as_slice()
 }
 
 pub fn add_rpl_source_route(
@@ -758,6 +860,121 @@ mod tests {
         assert_eq!(stack.try_next_link_tuple(), Err(TxError::SequenceExhausted));
     }
 
+    #[test]
+    fn broadcast_link_admission_does_not_authorize_foreign_ipv6_unicast() {
+        let local_link = [0x11; 16];
+        let local_native = [0x22; 16];
+        let mut packet = [0u8; IPV6_HEADER_LEN];
+        packet[0] = 0x60;
+
+        packet[24..40].copy_from_slice(&[0x33; 16]);
+        assert!(!ipv6_destination_is_local_or_multicast(
+            &packet,
+            &local_link,
+            &local_native
+        ));
+
+        packet[24..40].copy_from_slice(&local_link);
+        assert!(ipv6_destination_is_local_or_multicast(
+            &packet,
+            &local_link,
+            &local_native
+        ));
+        packet[24..40].copy_from_slice(&local_native);
+        assert!(ipv6_destination_is_local_or_multicast(
+            &packet,
+            &local_link,
+            &local_native
+        ));
+        packet[24] = 0xff;
+        assert!(ipv6_destination_is_local_or_multicast(
+            &packet,
+            &local_link,
+            &local_native
+        ));
+        assert!(!ipv6_destination_is_local_or_multicast(
+            &packet[..39],
+            &local_link,
+            &local_native
+        ));
+    }
+
+    #[test]
+    fn production_authenticated_ingress_tracks_failures_and_excludes_capacity_errors() {
+        let sender_identity = Identity::from_seed(Seed::new([0x31; 32]));
+        let sender = lichen_link::link_layer::LinkLayer::new(sender_identity.clone());
+        let mut receiver = test_stack(128, 0);
+        receiver.add_peer(PeerIdentity::from_pubkey(sender_identity.pubkey));
+        let mut wire = [0u8; MAX_FRAME_SIZE];
+        let mut out = [0u8; 128];
+
+        for seqnum in 1..=3 {
+            let length = sender
+                .build_frame(
+                    1,
+                    LinkSeqNum::new(seqnum),
+                    &[],
+                    &[L2_DISPATCH_SCHC, 8],
+                    &mut wire,
+                )
+                .unwrap();
+            let frame = receiver.link.receive_frame(&wire[..length]).unwrap();
+            assert!(matches!(
+                receiver.decompress_authenticated_frame(&frame, &mut out),
+                Err(lichen_schc::SchcError::UnknownRuleId(8))
+            ));
+        }
+        assert_eq!(receiver.schc_failure_notifications(), 1);
+
+        let mut ipv6 = [0u8; IPV6_HEADER_LEN];
+        ipv6[0] = 0x60;
+        ipv6[6] = 59;
+        ipv6[7] = 64;
+        ipv6[8] = 0xfe;
+        ipv6[9] = 0x80;
+        ipv6[23] = 1;
+        ipv6[24] = 0xfe;
+        ipv6[25] = 0x80;
+        ipv6[39] = 2;
+        let mut compressed = [0u8; 64];
+        let compressed_len = codec::compress(&ipv6, &mut compressed).unwrap();
+        let mut payload = [0u8; 65];
+        payload[0] = L2_DISPATCH_SCHC;
+        payload[1..1 + compressed_len].copy_from_slice(&compressed[..compressed_len]);
+
+        let length = sender
+            .build_frame(
+                1,
+                LinkSeqNum::new(4),
+                &[],
+                &payload[..1 + compressed_len],
+                &mut wire,
+            )
+            .unwrap();
+        let frame = receiver.link.receive_frame(&wire[..length]).unwrap();
+        assert!(matches!(
+            receiver.decompress_authenticated_frame(&frame, &mut [0u8; 1]),
+            Err(lichen_schc::SchcError::BufferTooSmall(_))
+        ));
+        assert_eq!(receiver.schc_failure_notifications(), 1);
+
+        let length = sender
+            .build_frame(
+                1,
+                LinkSeqNum::new(5),
+                &[],
+                &payload[..1 + compressed_len],
+                &mut wire,
+            )
+            .unwrap();
+        let frame = receiver.link.receive_frame(&wire[..length]).unwrap();
+        assert_eq!(
+            receiver.decompress_authenticated_frame(&frame, &mut out),
+            Ok(IPV6_HEADER_LEN)
+        );
+        assert_eq!(receiver.schc_failure_notifications(), 1);
+    }
+
     /// ICMPv6 ping-pong test using plaintext Stack.
     ///
     /// SECURITY: This uses plaintext Stack because OSCORE (RFC 8613) is CoAP-specific.
@@ -815,7 +1032,9 @@ mod tests {
         let coap = [0u8; 209];
 
         assert_ne!(
-            stack.send_coap_raw(&dst, &coap[..208], Priority::Normal).await,
+            stack
+                .send_coap_raw(&dst, &coap[..208], Priority::Normal)
+                .await,
             Err(TxError::BufferTooSmall)
         );
         let tuple_state = (stack.epoch, stack.seqnum, stack.sequence_exhausted);

@@ -73,11 +73,11 @@ def is_off_mesh(dst):
 | Address Type | Classification | Routing |
 |--------------|----------------|---------|
 | Link-local (fe80::/10) | Direct neighbor | Send to neighbor |
-| Primary (02xx::/7 Yggdrasil-derived per 06-security) | Local mesh peer | Gradient or LOADng |
-| Primary (02xx::/7) off-mesh | Yggdrasil-routable | RPL to border router |
+| Primary (0200::/8 key-derived per 06-security) | Local mesh peer | Gradient or LOADng |
+| Primary (0200::/8) off-mesh | Identity-preserving global profile | RPL to border router |
 | Other/Unknown | Off-mesh | RPL to border router |
 
-Addresses are primary 02xx::/7 derived from Ed25519 pubkey (see 06-security.md §8.5 and 04-network.md §6.1). No ULA or GUA.
+Addresses are primary 0200::/8 addresses derived from an Ed25519 public key (see 06-security.md §8.5 and 04-network.md §6.1). No ULA or GUA.
 
 ### 7.3. Conformance Requirements
 
@@ -165,11 +165,46 @@ See Appendix B for full RPL configuration.
 | DAO | Route advertisement to root |
 | DAO-ACK | Confirm DAO receipt |
 
+#### 8.4.1. Root DODAG Version Authorization
+
+A DODAGVersionNumber change is owned by the DODAG root, but each RPL router
+re-originates its own link-authenticated DIO. To let a version change traverse
+more than one hop, every root DIO MUST carry one DODAG Version Authorization
+Option and every non-root router MUST propagate the latest verified option
+unchanged while advertising that version. The project-local provisional option
+type is `0x16`; its Data Length is 81 octets:
+
+```
++------------+-----------+---------+----------------+------------------+
+| Type=0x16  | Length=81 | Version | Root Pubkey    | Schnorr48        |
+| 1 octet    | 1 octet   | 1 octet | 32 octets      | 48 octets        |
++------------+-----------+---------+----------------+------------------+
+```
+
+Schnorr48 is made by the root key over the exact transcript:
+
+```
+"LICHEN-RPL-DODAG-VERSION-v1" || RPLInstanceID(1) ||
+DODAGID(16) || DODAGVersionNumber(1)
+```
+
+The domain is the exact ASCII string shown with no separator or terminating
+NUL. Before accepting a changed version, a receiver MUST require exactly one
+well-formed option, derive the advertised DODAGID from Root Pubkey using the
+canonical 0200::/8 address derivation, and verify the signature and every
+transcript binding. This verification is independent of the immediate DIO link
+signer. Missing, duplicate, malformed, mismatched, or invalid authorization
+MUST reject the version change without changing DODAG, neighbor, or Trickle
+state. A valid authorization MAY be retained only after the containing DIO is
+accepted and MUST be relayed byte-for-byte. Lollipop comparison still decides
+whether an authenticated version is newer; authorization does not make stale
+or incomparable values acceptable.
+
 ### 8.5. Downward Routing
 
 Non-storing mode: the root source-routes downward packets to a mesh node's
 primary 02xx address (or future authorized egress). All nodes self-derive their
-primary 02xx::/7 address per 04-network.md and 06-security.md; no ULA prefix is
+primary 0200::/8 address per 04-network.md and 06-security.md; no ULA prefix is
 advertised by the root.
 
 Full multi-hop downward routing uses the end-to-end DAO Origin Signature
@@ -356,12 +391,21 @@ that origin. Prefix-authorization policy is specified separately in Section
 
 ### 8.8. Grouping and Route State
 
-One or more Target options, each optionally followed by an RPL Target
-Descriptor, followed by one or more consecutive Transit Information options
-form a group. Every Transit applies to every Target in that group. This profile
-assigns no semantics to Target Descriptors, but receivers MUST allow and ignore
-them while preserving their bytes for provenance verification. A Target after
-a Transit starts a new group. Malformed ordering, duplicate Targets,
+In the current `.44.7` profile, a DAO contains exactly one self `/128` Target,
+no Target Descriptor, and one or more consecutive Transit Information options.
+Every Transit applies to that Target. A Target Descriptor or any other option
+except the permitted Target/Transit options and required final DAO Origin
+Signature Option MUST reject the DAO during structural processing. A second
+Target MUST reject during semantic parsing after authenticated replay
+classification.
+
+The generalized grouping rules in this paragraph are reserved for the future
+profile described in Section 8.7.1 and are not `.44.7` conformance: one or more
+Target options, each optionally followed by an RPL Target Descriptor, followed
+by one or more consecutive Transit Information options form a group; every
+Transit applies to every Target in that group; receivers that implement that
+future profile ignore Target Descriptors while preserving their authenticated
+bytes; and a Target after a Transit starts a new group. Malformed ordering, duplicate Targets,
 inconsistent Path Sequence, Path Lifetime, or `E` flag among a group's Transit
 options, failed authorization, cycles, or any capacity failure MUST reject the
 complete DAO without mutation.
@@ -459,7 +503,7 @@ beginning with `0x01` as an announce because SCHC global CoAP also uses rule ID
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Fixed announce size: 93 bytes (type(1)+flags/rx_channel(1)+hop(1)+seq(2)+IID(8)+pubkey(32)+sig(48)); total L2 payload ~94 bytes minimum. `rx_channel` (0-7) packed in flags byte at announce offset 1 (per `_l2_announce_with_channel` oracle in `test/vectors/generate.py` and `ccp9.json`).
+Fixed announce size: 93 bytes (type(1)+flags/rx_channel(1)+hop(1)+seq(2)+IID(8)+pubkey(32)+sig(48)); total L2 payload is 94 bytes minimum including the routing dispatch.  Because the signed link-frame body is limited to 254 bytes and also carries the 4-byte link header, 8-byte signer identifier, and 48-byte link signature, the announce MUST NOT exceed 193 bytes and App Data MUST NOT exceed 100 bytes. `rx_channel` (0-7) packed in flags byte at announce offset 1 (per `_l2_announce_with_channel` oracle in `test/vectors/generate.py` and `ccp9.json`).
 
 **Fields:**
 - **Type:** `0x01` – Announce identifier (inside L2 routing dispatch `0x15`).
@@ -471,7 +515,21 @@ Fixed announce size: 93 bytes (type(1)+flags/rx_channel(1)+hop(1)+seq(2)+IID(8)+
 - **Signature:** 48-byte Schnorr signature (draft-lichen-schnorr-00.md).
 - **App Data:** Optional variable-length authenticated application data (node name, capabilities, coordinates per §9.7).
 
-**signed_data (Schnorr profile-specific transcript):** originator_iid(8) || pubkey(32) || seq_num(2) || rx_channel(1) || app_data (see rust/lichen-core/src/announce.rs:90 and lichen/subsys/lichen/routing/announce.c:129). Hop excluded (relays increment it). rx_channel signed per CCP-9.
+**signed_data (Schnorr profile-specific transcript):**
+
+```
+"LICHEN-ANNOUNCE-v1" || 0x00 ||
+originator_iid(8) || pubkey(32) || seq_num(2, network byte order) ||
+rx_channel(1) || app_data_length(2, network byte order) || app_data
+```
+
+The domain is the 18 ASCII octets shown followed by one NUL octet. The explicit
+application-data length makes the transcript unambiguous for future extensions.
+Hop Count is excluded so relays can increment it; every other identity,
+freshness, rendezvous, and application-data field is signed. A signature made
+over a link-frame, DAO, key-rotation, or pre-versioned Announce transcript MUST
+NOT verify as an Announce signature. Exact vectors are in
+`test/vectors/announce_signed_data.json`.
 
 > "For different profiles the signed message (`msg` in §4.2) is defined by the using specification" (draft-lichen-schnorr-00.md:5.5 on profile-specific transcripts; here CCP-9 + announce per rust/lichen-core/src/announce.rs:142 and ccp9.json).
 
@@ -506,6 +564,16 @@ def process_announce(announce, from_neighbor):
         announce.hop_count += 1
         broadcast(announce)
 ```
+
+Before a newly authenticated origin can become a DAO authorization pin or
+install a gradient, receivers with durable node state MUST atomically persist
+the verified `(originator_iid, pubkey, seq_num)` binding. The persisted state is
+locally authenticated, bounded, stored in an owned private file, serialized
+across processes, and paired with an independent monotonic revision anchor.
+Missing, deleted, rolled-back, corrupt, or unverifiable state fails closed.
+Restart restores pins and per-origin sequence floors before any packet is
+admitted. A commit failure MUST leave the pin, replay floor, and gradient
+unchanged in memory.
 
 `now()` returns current TDMA slot/ASN per Slot struct (see spec/02a-coordinated-capacity.md §2a.2 for SFN interaction and hash-based assignment).
 

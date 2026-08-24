@@ -103,9 +103,10 @@ fn slot_map_field(object: &str) -> Vec<u8> {
 
 /// Iterator over vector objects in the JSON file
 fn vectors() -> impl Iterator<Item = &'static str> {
-    JSON.split("    {\n      \"name\": \"")
-        .skip(1)
-        .map(|tail| tail.split_once("\n    }").map_or(tail, |(vector, _)| vector))
+    JSON.split("    {\n      \"name\": \"").skip(1).map(|tail| {
+        tail.split_once("\n    }")
+            .map_or(tail, |(vector, _)| vector)
+    })
 }
 
 #[test]
@@ -137,10 +138,7 @@ fn test_slot_map_validation_all_vectors() {
             }
             Err(ref err) => {
                 if expected_valid {
-                    failures.push(format!(
-                        "{}: expected valid but got error {:?}",
-                        name, err
-                    ));
+                    failures.push(format!("{}: expected valid but got error {:?}", name, err));
                 } else if let Some(expected) = expected_error {
                     let actual = error_to_string(err);
                     if actual != expected {

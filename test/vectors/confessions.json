@@ -2,49 +2,313 @@
   "$schema": "./schema.json",
   "format_version": 2,
   "name": "confessions",
-  "description": "Independent test vectors for /confessions anonymous board CoAP resource (LCI). Derived exclusively from RFC 7252 CoAP examples, RFC 8613 OSCORE (cross-referenced from oscore.json), and RFC 8428 SenML. No LICHEN implementation used as oracle. Validates POST submissions with plain text and SenML, GET retrieval with SenML counts, and rate limit rejection cases. (v2 schema)",
-  "spec": "https://www.rfc-editor.org/rfc/rfc7252 (CoAP), spec/12-apps.md §18.2 and project-LICHEN-2nnd.4.2",
+  "description": "Test vectors for /confessions anonymous board per spec 18.10. Derived from RFC 8428 SenML, RFC 7252 CoAP, RFC 8613 OSCORE. No LICHEN implementation used as oracle. Covers all 5 required scenarios: (1) anonymous confession default, (2) OSCORE-protected group confession, (3) rate-limit boundary, (4) storage-full eviction, (5) reboot clear.",
+  "spec": "spec/12-apps.md Section 18.10",
   "vectors": [
     {
-      "name": "get_empty",
+      "name": "anonymous_confession_default",
+      "type": "post_submission",
+      "description": "Anonymous confession POST with full SenML payload per 18.10.1. Default anonymous=1, location optional, TTL 12h (43200s). Oracle: RFC 8428 SenML-CBOR encoding rules.",
+      "category": "anonymous_confession",
+      "senml_json": [
+        {"bn": "urn:dev:mac:0011223344556677:", "bt": 1721654321},
+        {"n": "type", "vs": "confession"},
+        {"n": "content", "vs": "Left the forward operating base unlocked at 0200. Nobody noticed."},
+        {"n": "lat", "u": "lat", "v": 37.7749},
+        {"n": "lon", "u": "lon", "v": -122.4194},
+        {"n": "anonymous", "v": 1},
+        {"n": "ttl", "v": 43200}
+      ],
+      "senml_cbor_hex": "87a221781d75726e3a6465763a6d61633a303031313232333334343535363637373a221a66866b51a20064747970650367636f6e66657373696f6ea20067636f6e74656e7403784b4c65667420746865666f727761726420006f7065726174696e67206261736520756e6c6f636b6564206174203032303020746f6461792e204e6f626f6479206e6f74696365642ea300636c617401636c617402fb4042e31f972474538ba300636c6f6e01636c6f6e02fbc05e9adafcc96b98a20069616e6f6e796d6f7573020101a200637474760201a900",
+      "expected": {
+        "response_code": "2.01 Created",
+        "content_format": 112,
+        "location_path_prefix": "/confessions/"
+      }
+    },
+    {
+      "name": "anonymous_confession_minimal",
+      "type": "post_submission",
+      "description": "Minimal anonymous confession with only required fields: type and content. No location, default anonymous=true implicit, default TTL applied by receiver.",
+      "category": "anonymous_confession",
+      "senml_json": [
+        {"bn": "urn:dev:mac:aabbccddeeff0011:", "bt": 1721654400},
+        {"n": "type", "vs": "confession"},
+        {"n": "content", "vs": "I ate the last MRE."}
+      ],
+      "expected": {
+        "response_code": "2.01 Created",
+        "content_format": 112,
+        "anonymous_default": true
+      }
+    },
+    {
+      "name": "non_anonymous_confession",
+      "type": "post_submission",
+      "description": "Non-anonymous confession with anonymous=0, includes sender field. Per 18.10.1, implementations MAY reject, accept, or require operator privilege.",
+      "category": "anonymous_confession",
+      "senml_json": [
+        {"bn": "urn:dev:mac:0011223344556677:", "bt": 1721654500},
+        {"n": "type", "vs": "confession"},
+        {"n": "content", "vs": "I fixed the radio but forgot to log it."},
+        {"n": "anonymous", "v": 0},
+        {"n": "sender", "vs": "0011223344556677"}
+      ],
+      "expected": {
+        "response_code_options": ["2.01 Created", "4.03 Forbidden"],
+        "content_format": 112,
+        "note": "Implementation-dependent acceptance policy"
+      }
+    },
+    {
+      "name": "oscore_group_confession",
+      "type": "oscore_protected",
+      "description": "OSCORE-protected group confession per 18.10.5. Uses group OSCORE context for sender unlinkability. Receiver knows sender is in group but not which member. RECOMMENDED mode for confessions.",
+      "category": "oscore_group",
+      "oscore_context": {
+        "type": "group",
+        "master_secret_hex": "0102030405060708090a0b0c0d0e0f10",
+        "master_salt_hex": "9e7ca92223786340",
+        "sender_id_hex": "",
+        "recipient_id_hex": "",
+        "group_id_hex": "feed",
+        "alg": "AES-CCM-16-64-128",
+        "note": "Group context provides sender unlinkability"
+      },
+      "plaintext_senml_json": [
+        {"bn": "urn:dev:mac:0000000000000000:", "bt": 1721654600},
+        {"n": "type", "vs": "confession"},
+        {"n": "content", "vs": "Classified information shared in confidence."},
+        {"n": "anonymous", "v": 1}
+      ],
+      "expected": {
+        "response_code": "2.01 Created",
+        "oscore_option_present": true,
+        "sender_identity_revealed": false,
+        "note": "Sender IID masked via group context"
+      }
+    },
+    {
+      "name": "oscore_pairwise_confession_privacy_warning",
+      "type": "oscore_protected",
+      "description": "OSCORE with pairwise context reveals sender identity to receiver. Per 18.10.5, this may be undesirable for confessions. Test documents the privacy tradeoff.",
+      "category": "oscore_group",
+      "oscore_context": {
+        "type": "pairwise",
+        "sender_id_hex": "00",
+        "recipient_id_hex": "01",
+        "note": "Pairwise reveals sender - use group context instead"
+      },
+      "expected": {
+        "response_code": "2.01 Created",
+        "sender_identity_revealed": true,
+        "privacy_warning": "Pairwise OSCORE reveals sender to receiver"
+      }
+    },
+    {
+      "name": "rate_limit_12th_post_accepted",
+      "type": "rate_limit",
+      "description": "12th POST within rolling hour (at hourly limit) is accepted. Per 18.10.3, hourly limit is 12 POSTs per node.",
+      "category": "rate_limit_boundary",
+      "sender_iid": "0011223344556677",
+      "history_count_in_rolling_hour": 11,
+      "senml_json": [
+        {"bn": "urn:dev:mac:0011223344556677:", "bt": 1721654700},
+        {"n": "type", "vs": "confession"},
+        {"n": "content", "vs": "This is my twelfth confession this hour."}
+      ],
+      "expected": {
+        "response_code": "2.01 Created",
+        "accept": true,
+        "posts_after": 12,
+        "rate_remaining": 0
+      }
+    },
+    {
+      "name": "rate_limit_13th_post_rejected",
+      "type": "rate_limit",
+      "description": "13th POST within rolling hour exceeds hourly limit. Returns 4.29 Too Many Requests with Retry-After.",
+      "category": "rate_limit_boundary",
+      "sender_iid": "0011223344556677",
+      "history_count_in_rolling_hour": 12,
+      "senml_json": [
+        {"bn": "urn:dev:mac:0011223344556677:", "bt": 1721654800},
+        {"n": "type", "vs": "confession"},
+        {"n": "content", "vs": "This should be rejected."}
+      ],
+      "expected": {
+        "response_code": "4.29 Too Many Requests",
+        "accept": false,
+        "retry_after_present": true,
+        "reason": "hourly_limit_exceeded"
+      }
+    },
+    {
+      "name": "rate_limit_30s_window",
+      "type": "rate_limit",
+      "description": "Second POST within 30 seconds rejected (tightest LICHEN rate limit). Per 18.10.3, 1 POST per 30s per node.",
+      "category": "rate_limit_boundary",
+      "sender_iid": "0011223344556677",
+      "last_post_uptime_ms": 10000,
+      "current_uptime_ms": 25000,
+      "expected": {
+        "response_code": "4.29 Too Many Requests",
+        "accept": false,
+        "retry_after_s": 15,
+        "reason": "30s_limit"
+      }
+    },
+    {
+      "name": "storage_full_fifo_eviction",
+      "type": "storage",
+      "description": "When total storage is full (2KB leaf, 8KB BR), oldest confessions evicted FIFO. Per 18.10.3, no back-pressure signaling - old confessions silently vanish.",
+      "category": "storage_eviction",
+      "node_type": "leaf",
+      "storage_max_kb": 2,
+      "storage_used_kb": 2.0,
+      "existing_confessions": [
+        {"id": "oldest1", "ts": 1721650000, "size_bytes": 512},
+        {"id": "oldest2", "ts": 1721651000, "size_bytes": 512},
+        {"id": "newest1", "ts": 1721654000, "size_bytes": 512},
+        {"id": "newest2", "ts": 1721654500, "size_bytes": 512}
+      ],
+      "incoming_confession_size_bytes": 600,
+      "expected": {
+        "response_code": "2.01 Created",
+        "evicted_ids": ["oldest1", "oldest2"],
+        "eviction_policy": "FIFO",
+        "no_back_pressure": true,
+        "note": "Old confessions silently evicted to make room"
+      }
+    },
+    {
+      "name": "storage_full_br_larger_budget",
+      "type": "storage",
+      "description": "Border router has 8KB storage budget vs 2KB for leaf. Tests larger capacity.",
+      "category": "storage_eviction",
+      "node_type": "border_router",
+      "storage_max_kb": 8,
+      "storage_used_kb": 7.5,
+      "existing_confession_count": 12,
+      "incoming_confession_size_bytes": 768,
+      "expected": {
+        "response_code": "2.01 Created",
+        "eviction_needed": true,
+        "eviction_policy": "FIFO"
+      }
+    },
+    {
+      "name": "reboot_clear_empty_get",
+      "type": "reboot",
+      "description": "GET /confessions after reboot returns empty list. Per 18.10.4, confessions are RAM-only and cleared on any reboot (warm/cold/crash).",
+      "category": "reboot_clear",
+      "pre_reboot_confession_count": 5,
+      "reboot_type": "warm",
+      "expected": {
+        "response_code": "2.05 Content",
+        "content_format": 112,
+        "confession_count": 0,
+        "confessions": [],
+        "note": "RAM-only storage cleared on reboot"
+      }
+    },
+    {
+      "name": "reboot_clear_crash",
+      "type": "reboot",
+      "description": "GET /confessions after crash reboot returns empty. Crash reboot also clears RAM-only storage.",
+      "category": "reboot_clear",
+      "pre_reboot_confession_count": 10,
+      "reboot_type": "crash",
+      "expected": {
+        "response_code": "2.05 Content",
+        "confession_count": 0,
+        "confessions": []
+      }
+    },
+    {
+      "name": "get_confessions_with_metadata",
       "type": "get",
-      "description": "GET /confessions returning zero pending count. Uses SenML profile. Oracle from RFC 8428 example 1 adapted for confessions count.",
-      "encoded": "40010001bb636f6e66657373696f6e73",
-      "senml_payload": "",
+      "description": "GET /confessions?count=5 returns confessions with rate limit and storage metadata per 18.10.7.",
+      "category": "query_api",
+      "query_params": {
+        "count": 5,
+        "since": 1721650000
+      },
       "expected": {
-        "response_code": 69,
-        "content_format": 112
+        "response_code": "2.05 Content",
+        "content_format": 60,
+        "response_fields": {
+          "count": 3,
+          "confessions": [
+            {"id": "8a4f2b", "content": "...", "ts": 1721654321, "age_s": 900},
+            {"id": "3c1d9e", "content": "...", "ts": 1721654000, "age_s": 1200}
+          ],
+          "rate_remaining": 8,
+          "rate_reset_s": 1800,
+          "storage_used_kb": 1.2,
+          "storage_max_kb": 2
+        }
       }
     },
     {
-      "name": "post_text_submission",
-      "type": "post_submission",
-      "description": "POST /confessions with plain text message. Accepts text/plain (Content-Format 0) and returns 2.04 Changed. Independent CoAP construction per RFC 7252 §5.8.1.",
-      "payload": "48656c6c6f206d65736821",
-      "encoded": "40020001bb636f6e66657373696f6e73ff48656c6c6f206d65736821",
-      "senml_payload": "",
+      "name": "max_confession_size_accepted",
+      "type": "size_limit",
+      "description": "Confession at max size (768 bytes) is accepted. Per 18.10.3, max confession size is 768B.",
+      "category": "size_limit",
+      "payload_size_bytes": 768,
       "expected": {
-        "response_code": 68
+        "response_code": "2.01 Created",
+        "accept": true
       }
     },
     {
-      "name": "post_senml_submission",
-      "type": "post_submission",
-      "description": "POST /confessions with SenML-encoded message payload. Uses vs:string content type. Oracle from RFC 8428 adapted for string values.",
-      "payload": "82a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a22fb41d954fc40000000a2006b636f6e66657373696f6e73036b48656c6c6f206d65736821",
-      "encoded": "40020001bb636f6e66657373696f6e73ff82a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a22fb41d954fc40000000a2006b636f6e66657373696f6e73036b48656c6c6f206d65736821",
+      "name": "max_confession_size_exceeded",
+      "type": "size_limit",
+      "description": "Confession exceeding 768 bytes is rejected with 4.13 Request Entity Too Large.",
+      "category": "size_limit",
+      "payload_size_bytes": 769,
       "expected": {
-        "response_code": 68
+        "response_code": "4.13 Request Entity Too Large",
+        "accept": false,
+        "max_size": 768
       }
     },
     {
-      "name": "rate_limit_rejection",
-      "type": "rejection",
-      "description": "POST /confessions rejected due to rate limit (5.03). Independent from spec bufferbloat appendix and RFC 7252 error responses. No code oracle.",
-      "payload": "48656c6c6f20776f726c6421",
-      "encoded": "40020001bb636f6e66657373696f6e73ff48656c6c6f20776f726c6421",
+      "name": "ttl_expiry",
+      "type": "ttl",
+      "description": "Confession with TTL expired is not returned in GET. Default retention 12h, max 48h per 18.10.3.",
+      "category": "ttl",
+      "confession": {
+        "id": "expired1",
+        "ts": 1721600000,
+        "ttl": 43200
+      },
+      "current_time": 1721700000,
       "expected": {
-        "response_code": 163
+        "confession_returned": false,
+        "reason": "ttl_expired",
+        "elapsed_s": 100000,
+        "ttl_s": 43200
+      }
+    },
+    {
+      "name": "no_log_guarantee_checks",
+      "type": "compliance",
+      "description": "Compliance checks for no-log guarantee per 18.10.4. Implementation MUST NOT persist to flash/NVS/filesystem, log to /sos/log or /msg/sent, include in beacons, or persist OSCORE context info.",
+      "category": "no_log",
+      "prohibited_actions": [
+        "flash_write",
+        "nvs_write",
+        "filesystem_persist",
+        "sos_log_entry",
+        "msg_sent_entry",
+        "beacon_inclusion",
+        "oscore_context_persist_with_confession"
+      ],
+      "expected": {
+        "all_prohibited": true,
+        "storage_type": "ram_only",
+        "cleared_on_reboot": true
       }
     }
   ]

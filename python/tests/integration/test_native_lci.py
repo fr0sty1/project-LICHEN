@@ -19,7 +19,8 @@ This test exercises LCI resources defined in spec/11-lci.md:
 - /.well-known/core (resource discovery)
 - /status (node status)
 - /config (GET/PUT)
-- /neighbors (neighbor table)
+- /status/neighbors (neighbor table)
+- /status/routes (routing table)
 - /key (public key, if available)
 """
 
@@ -384,7 +385,8 @@ async def test_well_known_core_discovery(
     Expected resources per spec/11-lci.md:
     - /status
     - /config
-    - /neighbors
+    - /status/neighbors
+    - /status/routes
     """
     if coap_client is None:
         pytest.skip("native_sim not available")
@@ -447,7 +449,7 @@ async def test_config_resource_put(
 async def test_neighbors_resource(
     coap_client: SlipCoapClient | None,
 ) -> None:
-    """Test GET /neighbors returns CBOR neighbor table.
+    """Test GET /status/neighbors returns CBOR neighbor table.
 
     In a freshly started node with no peers, this should return an empty list.
     """

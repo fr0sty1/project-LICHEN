@@ -1199,7 +1199,7 @@ class TestTDMASlots:
         data = response.json()
         assert "superframe" in data
         assert data["superframe"]["num_slots"] == 8
-        assert data["superframe"]["slot_duration_ms"] == 250
+        assert data["superframe"]["slot_duration_ms"] == 2346
         assert data["superframe"]["guard_ms"] == 50
         assert data["slots"] == [{"slot": i, "nodes": []} for i in range(8)]
         assert data["conflicts"] == []
@@ -1253,7 +1253,7 @@ class TestTDMASlots:
         superframe = data["superframe"]
         assert "sfn" in superframe
         assert superframe["num_slots"] == 8
-        assert superframe["slot_duration_ms"] == 250
+        assert superframe["slot_duration_ms"] == 2346
         assert superframe["guard_ms"] == 50
 
     @pytest.mark.asyncio

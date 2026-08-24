@@ -35,7 +35,9 @@ use core::cmp::Ordering;
 
 #[cfg(feature = "std")]
 use crate::dodag::DodagState;
+#[cfg(feature = "std")]
 use crate::dodag::ROOT_RANK;
+#[cfg(feature = "std")]
 use crate::message::Dio;
 
 /// Maximum RPLInstanceID value per RFC 6550.
@@ -155,13 +157,23 @@ pub enum MultiInstanceError {
     SelfOrigin,
     /// DAO backbone message has stale timestamp.
     /// SECURITY: Reject old messages to prevent replay attacks.
-    StaleTimestamp { message_time: f64, current_time: f64 },
+    StaleTimestamp {
+        message_time: f64,
+        current_time: f64,
+    },
     /// DAO backbone message origin does not match OSCORE-authenticated sender.
     /// SECURITY: The transport-authenticated identity must match the claimed origin.
-    OriginAuthMismatch { claimed: [u8; 16], authenticated: [u8; 16] },
+    OriginAuthMismatch {
+        claimed: [u8; 16],
+        authenticated: [u8; 16],
+    },
     /// DAO backbone message contains too many routes.
     /// SECURITY: Prevents memory exhaustion from malicious messages.
-    TooManyRoutes { targets: usize, transit: usize, limit: usize },
+    TooManyRoutes {
+        targets: usize,
+        transit: usize,
+        limit: usize,
+    },
 }
 
 impl core::fmt::Display for MultiInstanceError {
@@ -199,7 +211,11 @@ impl core::fmt::Display for MultiInstanceError {
             Self::OriginAuthMismatch { .. } => {
                 write!(f, "DAO origin does not match OSCORE-authenticated sender")
             }
-            Self::TooManyRoutes { targets, transit, limit } => {
+            Self::TooManyRoutes {
+                targets,
+                transit,
+                limit,
+            } => {
                 write!(
                     f,
                     "DAO message exceeds route limit: {} targets, {} transits (max {})",
@@ -533,6 +549,10 @@ impl Default for MultiRootCoordinator {
     }
 }
 
+/// Routes received from peer gateways, keyed by advertising gateway IID.
+#[cfg(feature = "std")]
+type DaoReceivedRoutes = HashMap<[u8; 16], Vec<(DaoTarget, DaoTransit)>>;
+
 /// Bridge for propagating DAO messages between gateways over backbone.
 ///
 /// Per GCP-5, DAO messages propagate across backbone as needed for route
@@ -554,7 +574,7 @@ pub struct DaoBackboneBridge {
     /// Pending messages for propagation.
     pending: Mutex<Vec<DaoBackboneMessage>>,
     /// Routes received from peer gateways.
-    received_routes: Mutex<HashMap<[u8; 16], Vec<(DaoTarget, DaoTransit)>>>,
+    received_routes: Mutex<DaoReceivedRoutes>,
 }
 
 #[cfg(feature = "std")]
@@ -678,7 +698,8 @@ impl DaoBackboneBridge {
         // SECURITY: Validate timestamp freshness to prevent replay attacks
         // NaN check required: NaN comparisons return false, bypassing both > and < guards
         let age = current_time - message.timestamp;
-        if age.is_nan() || age > DAO_TIMESTAMP_FRESHNESS_SECONDS || age < 0.0 {
+        let fresh = (0.0..=DAO_TIMESTAMP_FRESHNESS_SECONDS).contains(&age);
+        if age.is_nan() || !fresh {
             return Err(MultiInstanceError::StaleTimestamp {
                 message_time: message.timestamp,
                 current_time,
@@ -705,7 +726,8 @@ impl DaoBackboneBridge {
         }
 
         // Reconstruct routes from message by pairing targets with transits by index.
-        // If transit[i] exists, use it; otherwise fall back to default transit.
+        // If transit[i] exists, use it; otherwise fall back to default transit per RFC 6550.
+        // Note: targets.len() > transit.len() is valid; extra targets use default path_lifetime=60.
         let default_transit = DaoTransit {
             path_sequence: message.dao_sequence,
             path_lifetime: 60,
@@ -1088,7 +1110,7 @@ impl MultiRootState {
             return false;
         }
 
-        self.holdoff_counter -= 1;
+        self.holdoff_counter = self.holdoff_counter.saturating_sub(1);
         if self.holdoff_counter == 0 {
             // Holdoff complete - transition to new root
             if let Some(selected) = self.holdoff_selected.take() {
@@ -1415,10 +1437,7 @@ mod tests {
             .create_backbone_message(42, targets, transit, 1234567890.0)
             .expect("should create message");
 
-        assert_eq!(
-            message.origin_gateway,
-            ipv6("fe80::1234:5678:9abc:def0")
-        );
+        assert_eq!(message.origin_gateway, ipv6("fe80::1234:5678:9abc:def0"));
         assert_eq!(message.dao_sequence, 42);
         assert_eq!(message.targets.len(), 1);
         assert_eq!(message.targets[0].prefix_length, 64);
@@ -1636,7 +1655,10 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(MultiInstanceError::InstanceIdMismatch { expected: 0, got: 42 })
+            Err(MultiInstanceError::InstanceIdMismatch {
+                expected: 0,
+                got: 42
+            })
         ));
     }
 
@@ -1979,8 +2001,12 @@ mod tests {
     #[test]
     fn multi_root_state_process_beacon_window_selects_best() {
         let mut state = MultiRootState::new();
-        let best = RootCandidate::new(eui64(1)).with_dodag_preference(200).with_signature_valid(true);
-        let worse = RootCandidate::new(eui64(2)).with_dodag_preference(100).with_signature_valid(true);
+        let best = RootCandidate::new(eui64(1))
+            .with_dodag_preference(200)
+            .with_signature_valid(true);
+        let worse = RootCandidate::new(eui64(2))
+            .with_dodag_preference(100)
+            .with_signature_valid(true);
 
         state.add_candidate(worse);
         state.add_candidate(best.clone());
@@ -1995,13 +2021,17 @@ mod tests {
     fn multi_root_state_holdoff_initiated_on_root_change() {
         // Per 2a.5.3: Defer transition for 3 superframes
         let mut state = MultiRootState::new();
-        let first = RootCandidate::new(eui64(1)).with_dodag_preference(100).with_signature_valid(true);
+        let first = RootCandidate::new(eui64(1))
+            .with_dodag_preference(100)
+            .with_signature_valid(true);
         state.add_candidate(first);
         state.process_beacon_window();
         state.clear_candidates();
 
         // Now a better root appears
-        let second = RootCandidate::new(eui64(2)).with_dodag_preference(200).with_signature_valid(true);
+        let second = RootCandidate::new(eui64(2))
+            .with_dodag_preference(200)
+            .with_signature_valid(true);
         state.add_candidate(second);
         state.process_beacon_window();
 
@@ -2015,12 +2045,16 @@ mod tests {
     fn multi_root_state_holdoff_completes_after_3_superframes() {
         // Per 2a.5.3: Transition after 3-superframe holdoff
         let mut state = MultiRootState::new();
-        let first = RootCandidate::new(eui64(1)).with_dodag_preference(100).with_signature_valid(true);
+        let first = RootCandidate::new(eui64(1))
+            .with_dodag_preference(100)
+            .with_signature_valid(true);
         state.add_candidate(first);
         state.process_beacon_window();
         state.clear_candidates();
 
-        let second = RootCandidate::new(eui64(2)).with_dodag_preference(200).with_signature_valid(true);
+        let second = RootCandidate::new(eui64(2))
+            .with_dodag_preference(200)
+            .with_signature_valid(true);
         state.add_candidate(second);
         state.process_beacon_window();
         state.clear_candidates();
@@ -2028,7 +2062,7 @@ mod tests {
         // Advance through holdoff
         assert!(!state.advance_holdoff()); // 2 remaining
         assert!(!state.advance_holdoff()); // 1 remaining
-        assert!(state.advance_holdoff());  // Complete
+        assert!(state.advance_holdoff()); // Complete
 
         assert!(!state.is_in_holdoff());
         assert_eq!(state.current_root.as_ref().unwrap().eui64, eui64(2));
@@ -2065,12 +2099,16 @@ mod tests {
     fn multi_root_state_version_change_during_holdoff_resets_counter() {
         // Per 2a.5.4: Version change resets holdoff counter to zero and restarts
         let mut state = MultiRootState::new();
-        let first = RootCandidate::new(eui64(1)).with_dodag_preference(100).with_signature_valid(true);
+        let first = RootCandidate::new(eui64(1))
+            .with_dodag_preference(100)
+            .with_signature_valid(true);
         state.add_candidate(first);
         state.process_beacon_window();
         state.clear_candidates();
 
-        let second = RootCandidate::new(eui64(2)).with_dodag_preference(200).with_signature_valid(true);
+        let second = RootCandidate::new(eui64(2))
+            .with_dodag_preference(200)
+            .with_signature_valid(true);
         state.add_candidate(second);
         state.process_beacon_window();
         state.current_version = 1;
@@ -2108,12 +2146,16 @@ mod tests {
     fn multi_root_state_version_change_sig_fail_during_holdoff_cancels() {
         // Per 2a.5.4: Sig fail during holdoff -> immediately evaluate candidates
         let mut state = MultiRootState::new();
-        let first = RootCandidate::new(eui64(1)).with_dodag_preference(100).with_signature_valid(true);
+        let first = RootCandidate::new(eui64(1))
+            .with_dodag_preference(100)
+            .with_signature_valid(true);
         state.add_candidate(first);
         state.process_beacon_window();
         state.clear_candidates();
 
-        let second = RootCandidate::new(eui64(2)).with_dodag_preference(200).with_signature_valid(true);
+        let second = RootCandidate::new(eui64(2))
+            .with_dodag_preference(200)
+            .with_signature_valid(true);
         state.add_candidate(second);
         state.process_beacon_window();
         state.current_version = 1;
@@ -2146,12 +2188,16 @@ mod tests {
     #[test]
     fn multi_root_state_cancel_holdoff() {
         let mut state = MultiRootState::new();
-        let first = RootCandidate::new(eui64(1)).with_dodag_preference(100).with_signature_valid(true);
+        let first = RootCandidate::new(eui64(1))
+            .with_dodag_preference(100)
+            .with_signature_valid(true);
         state.add_candidate(first);
         state.process_beacon_window();
         state.clear_candidates();
 
-        let second = RootCandidate::new(eui64(2)).with_dodag_preference(200).with_signature_valid(true);
+        let second = RootCandidate::new(eui64(2))
+            .with_dodag_preference(200)
+            .with_signature_valid(true);
         state.add_candidate(second);
         state.process_beacon_window();
 
@@ -2190,8 +2236,12 @@ mod tests {
         assert!(high_pref < low_pref);
 
         // Same preference, lower stratum wins
-        let gnss = RootCandidate::new(eui64(0xff)).with_dodag_preference(128).with_stratum(0);
-        let ntp = RootCandidate::new(eui64(0x00)).with_dodag_preference(128).with_stratum(1);
+        let gnss = RootCandidate::new(eui64(0xff))
+            .with_dodag_preference(128)
+            .with_stratum(0);
+        let ntp = RootCandidate::new(eui64(0x00))
+            .with_dodag_preference(128)
+            .with_stratum(1);
         assert!(gnss < ntp);
 
         // Same preference and stratum, higher RSSI+SNR wins
@@ -2252,7 +2302,9 @@ mod tests {
     #[test]
     fn select_root_filters_invalid_signatures() {
         // Per 2a.5.1: Only candidates with valid signatures considered
-        let valid = RootCandidate::new(eui64(0xff)).with_dodag_preference(100).with_signature_valid(true);
+        let valid = RootCandidate::new(eui64(0xff))
+            .with_dodag_preference(100)
+            .with_signature_valid(true);
         let invalid = RootCandidate::new(eui64(0x00))
             .with_dodag_preference(200)
             .with_signature_valid(false);
@@ -2290,11 +2342,11 @@ mod tests {
         // Two candidates with same eui64 but different RF metrics
         // We bypass add_candidate (which dedupes) by accessing candidates directly
         let worse = RootCandidate::new(eui64(1))
-            .with_rssi_ema(-110.0)  // Worse RSSI
+            .with_rssi_ema(-110.0) // Worse RSSI
             .with_snr_ema(-15.0)
             .with_signature_valid(true);
         let better = RootCandidate::new(eui64(1))
-            .with_rssi_ema(-70.0)  // Better RSSI
+            .with_rssi_ema(-70.0) // Better RSSI
             .with_snr_ema(10.0)
             .with_signature_valid(true);
 

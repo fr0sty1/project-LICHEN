@@ -1,0 +1,520 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "ccp4_regional_channel_plans",
+  "description": "CCP-4 Regional Channel Plans test vectors per spec/02a-coordinated-capacity.md:167-182. Validates plan definitions, lookups, regulatory rules, channel mask validation, power validation, and CH0 fallback logic. All implementations MUST match Python oracle lichen.channel_plan.",
+  "spec": "spec/02a-coordinated-capacity.md#CCP-4",
+  "oracle": {
+    "python": "lichen.channel_plan"
+  },
+  "plans": [
+    {
+      "name": "EU868",
+      "plan_id": 1,
+      "plan_id_hex": "0x01",
+      "version": 1,
+      "num_channels": 8,
+      "ch0_frequency_hz": 868100000,
+      "ch0_max_power_dbm": 14,
+      "regulatory_mode": "duty_cycle",
+      "duty_cycle_percent": 1.0
+    },
+    {
+      "name": "US915",
+      "plan_id": 2,
+      "plan_id_hex": "0x02",
+      "version": 1,
+      "num_channels": 64,
+      "ch0_frequency_hz": 902300000,
+      "ch0_max_power_dbm": 22,
+      "regulatory_mode": "dwell_time",
+      "dwell_time_ms": 400
+    },
+    {
+      "name": "AU915",
+      "plan_id": 3,
+      "plan_id_hex": "0x03",
+      "version": 1,
+      "num_channels": 64,
+      "ch0_frequency_hz": 915200000,
+      "ch0_max_power_dbm": 30,
+      "regulatory_mode": "dwell_time",
+      "dwell_time_ms": 400
+    },
+    {
+      "name": "CN470",
+      "plan_id": 4,
+      "plan_id_hex": "0x04",
+      "version": 1,
+      "num_channels": 8,
+      "ch0_frequency_hz": 470300000,
+      "ch0_max_power_dbm": 19,
+      "regulatory_mode": "duty_cycle",
+      "duty_cycle_percent": 1.0
+    },
+    {
+      "name": "AS923",
+      "plan_id": 5,
+      "plan_id_hex": "0x05",
+      "version": 1,
+      "num_channels": 8,
+      "ch0_frequency_hz": 920125000,
+      "ch0_max_power_dbm": 16,
+      "regulatory_mode": "lbt",
+      "lbt_threshold_dbm": -80
+    },
+    {
+      "name": "IN865",
+      "plan_id": 6,
+      "plan_id_hex": "0x06",
+      "version": 1,
+      "num_channels": 8,
+      "ch0_frequency_hz": 865062500,
+      "ch0_max_power_dbm": 30,
+      "regulatory_mode": "duty_cycle",
+      "duty_cycle_percent": 1.0
+    },
+    {
+      "name": "KR920",
+      "plan_id": 7,
+      "plan_id_hex": "0x07",
+      "version": 1,
+      "num_channels": 8,
+      "ch0_frequency_hz": 920900000,
+      "ch0_max_power_dbm": 14,
+      "regulatory_mode": "lbt",
+      "lbt_threshold_dbm": -80
+    }
+  ],
+  "vectors": [
+    {
+      "name": "validate_plan_id_eu868",
+      "description": "EU868 plan_id 0x01 is valid.",
+      "type": "validate_plan_id",
+      "input": {
+        "plan_id": 1
+      },
+      "output": {
+        "valid": true
+      }
+    },
+    {
+      "name": "validate_plan_id_us915",
+      "description": "US915 plan_id 0x02 is valid.",
+      "type": "validate_plan_id",
+      "input": {
+        "plan_id": 2
+      },
+      "output": {
+        "valid": true
+      }
+    },
+    {
+      "name": "validate_plan_id_kr920",
+      "description": "KR920 plan_id 0x07 is valid.",
+      "type": "validate_plan_id",
+      "input": {
+        "plan_id": 7
+      },
+      "output": {
+        "valid": true
+      }
+    },
+    {
+      "name": "validate_plan_id_zero_invalid",
+      "description": "Plan ID 0x00 is not defined.",
+      "type": "validate_plan_id",
+      "input": {
+        "plan_id": 0
+      },
+      "output": {
+        "valid": false
+      }
+    },
+    {
+      "name": "validate_plan_id_0xff_invalid",
+      "description": "Plan ID 0xFF is not defined.",
+      "type": "validate_plan_id",
+      "input": {
+        "plan_id": 255
+      },
+      "output": {
+        "valid": false
+      }
+    },
+    {
+      "name": "ch0_fallback_unknown_plan",
+      "description": "Unknown plan_id 0xFF MUST cause CH0 fallback per CCP-4.",
+      "type": "ch0_fallback_required",
+      "input": {
+        "plan_id": 255,
+        "version": 1
+      },
+      "output": {
+        "fallback_required": true
+      },
+      "notes": "CCP-4: Unknown plan identifiers MUST cause CH0 fallback."
+    },
+    {
+      "name": "ch0_fallback_unknown_version",
+      "description": "Known plan with unknown version MUST cause CH0 fallback.",
+      "type": "ch0_fallback_required",
+      "input": {
+        "plan_id": 1,
+        "version": 999
+      },
+      "output": {
+        "fallback_required": true
+      },
+      "notes": "CCP-4: Unknown versions MUST cause CH0 fallback."
+    },
+    {
+      "name": "ch0_fallback_known_plan_version",
+      "description": "EU868 v1 does not require CH0 fallback.",
+      "type": "ch0_fallback_required",
+      "input": {
+        "plan_id": 1,
+        "version": 1
+      },
+      "output": {
+        "fallback_required": false
+      }
+    },
+    {
+      "name": "ch0_fallback_us915_known",
+      "description": "US915 v1 does not require CH0 fallback.",
+      "type": "ch0_fallback_required",
+      "input": {
+        "plan_id": 2,
+        "version": 1
+      },
+      "output": {
+        "fallback_required": false
+      }
+    },
+    {
+      "name": "ch0_fallback_us915_version_mismatch",
+      "description": "US915 with wrong version (v2) requires CH0 fallback.",
+      "type": "ch0_fallback_required",
+      "input": {
+        "plan_id": 2,
+        "version": 2
+      },
+      "output": {
+        "fallback_required": true
+      }
+    },
+    {
+      "name": "validate_channel_mask_eu868_full",
+      "description": "EU868 (8 channels) with full mask 0xFF.",
+      "type": "validate_channel_mask",
+      "input": {
+        "plan_name": "EU868",
+        "mask": 255
+      },
+      "output": {
+        "valid_mask": 255,
+        "valid_mask_hex": "0xff"
+      },
+      "notes": "8 channels: bits 0-7 valid, mask unchanged."
+    },
+    {
+      "name": "validate_channel_mask_eu868_excess_bits",
+      "description": "EU868 with excess mask bits 0xFFFF are cleared.",
+      "type": "validate_channel_mask",
+      "input": {
+        "plan_name": "EU868",
+        "mask": 65535
+      },
+      "output": {
+        "valid_mask": 255,
+        "valid_mask_hex": "0xff"
+      },
+      "notes": "Bits 8-15 are invalid for EU868 (8 channels), cleared."
+    },
+    {
+      "name": "validate_channel_mask_eu868_subset",
+      "description": "EU868 with partial mask 0x03.",
+      "type": "validate_channel_mask",
+      "input": {
+        "plan_name": "EU868",
+        "mask": 3
+      },
+      "output": {
+        "valid_mask": 3,
+        "valid_mask_hex": "0x03"
+      },
+      "notes": "Only channels 0 and 1 selected."
+    },
+    {
+      "name": "validate_channel_mask_us915_full",
+      "description": "US915 (64 channels) with full 64-bit mask.",
+      "type": "validate_channel_mask",
+      "input": {
+        "plan_name": "US915",
+        "mask": 18446744073709551615
+      },
+      "output": {
+        "valid_mask": 18446744073709551615,
+        "valid_mask_hex": "0xffffffffffffffff"
+      },
+      "notes": "64 channels: all 64 bits valid."
+    },
+    {
+      "name": "is_valid_power_eu868_at_limit",
+      "description": "EU868 CH0 at max power 14 dBm is valid.",
+      "type": "is_valid_power",
+      "input": {
+        "plan_name": "EU868",
+        "channel_index": 0,
+        "power_dbm": 14
+      },
+      "output": {
+        "valid": true
+      }
+    },
+    {
+      "name": "is_valid_power_eu868_above_limit",
+      "description": "EU868 CH0 at 15 dBm exceeds max (14 dBm).",
+      "type": "is_valid_power",
+      "input": {
+        "plan_name": "EU868",
+        "channel_index": 0,
+        "power_dbm": 15
+      },
+      "output": {
+        "valid": false
+      },
+      "notes": "CCP-4: OTA message MUST NOT increase transmit power."
+    },
+    {
+      "name": "is_valid_power_eu868_below_limit",
+      "description": "EU868 CH0 at 10 dBm (below max) is valid.",
+      "type": "is_valid_power",
+      "input": {
+        "plan_name": "EU868",
+        "channel_index": 0,
+        "power_dbm": 10
+      },
+      "output": {
+        "valid": true
+      }
+    },
+    {
+      "name": "is_valid_power_us915_at_limit",
+      "description": "US915 CH0 at max power 22 dBm is valid.",
+      "type": "is_valid_power",
+      "input": {
+        "plan_name": "US915",
+        "channel_index": 0,
+        "power_dbm": 22
+      },
+      "output": {
+        "valid": true
+      }
+    },
+    {
+      "name": "is_valid_power_us915_above_limit",
+      "description": "US915 CH0 at 23 dBm exceeds max (22 dBm).",
+      "type": "is_valid_power",
+      "input": {
+        "plan_name": "US915",
+        "channel_index": 0,
+        "power_dbm": 23
+      },
+      "output": {
+        "valid": false
+      }
+    },
+    {
+      "name": "is_valid_power_au915_at_limit",
+      "description": "AU915 CH0 at max power 30 dBm is valid.",
+      "type": "is_valid_power",
+      "input": {
+        "plan_name": "AU915",
+        "channel_index": 0,
+        "power_dbm": 30
+      },
+      "output": {
+        "valid": true
+      }
+    },
+    {
+      "name": "is_valid_power_au915_above_limit",
+      "description": "AU915 CH0 at 31 dBm exceeds max (30 dBm).",
+      "type": "is_valid_power",
+      "input": {
+        "plan_name": "AU915",
+        "channel_index": 0,
+        "power_dbm": 31
+      },
+      "output": {
+        "valid": false
+      }
+    },
+    {
+      "name": "is_valid_power_invalid_channel_negative",
+      "description": "Negative channel index is invalid.",
+      "type": "is_valid_power",
+      "input": {
+        "plan_name": "EU868",
+        "channel_index": -1,
+        "power_dbm": 10
+      },
+      "output": {
+        "valid": false
+      }
+    },
+    {
+      "name": "is_valid_power_invalid_channel_beyond_range",
+      "description": "Channel index 100 exceeds EU868 range (0-7).",
+      "type": "is_valid_power",
+      "input": {
+        "plan_name": "EU868",
+        "channel_index": 100,
+        "power_dbm": 10
+      },
+      "output": {
+        "valid": false
+      }
+    },
+    {
+      "name": "get_plan_unknown_fallback",
+      "description": "Unknown plan_id returns EU868 as fallback.",
+      "type": "get_plan",
+      "input": {
+        "plan_id": 255
+      },
+      "output": {
+        "plan_name": "EU868",
+        "plan_id": 1
+      }
+    },
+    {
+      "name": "get_plan_by_name_unknown_fallback",
+      "description": "Unknown plan name returns EU868 as fallback.",
+      "type": "get_plan_by_name",
+      "input": {
+        "plan_name": "UNKNOWN"
+      },
+      "output": {
+        "plan_name": "EU868",
+        "plan_id": 1
+      }
+    },
+    {
+      "name": "channel_frequency_eu868_ch0",
+      "description": "EU868 CH0 frequency lookup.",
+      "type": "channel_frequency",
+      "input": {
+        "plan_name": "EU868",
+        "channel_index": 0
+      },
+      "output": {
+        "frequency_hz": 868100000
+      }
+    },
+    {
+      "name": "channel_frequency_eu868_ch1",
+      "description": "EU868 CH1 frequency lookup.",
+      "type": "channel_frequency",
+      "input": {
+        "plan_name": "EU868",
+        "channel_index": 1
+      },
+      "output": {
+        "frequency_hz": 868300000
+      }
+    },
+    {
+      "name": "channel_frequency_us915_ch0",
+      "description": "US915 CH0 frequency lookup.",
+      "type": "channel_frequency",
+      "input": {
+        "plan_name": "US915",
+        "channel_index": 0
+      },
+      "output": {
+        "frequency_hz": 902300000
+      }
+    },
+    {
+      "name": "channel_frequency_us915_ch63",
+      "description": "US915 CH63 (last channel) frequency lookup.",
+      "type": "channel_frequency",
+      "input": {
+        "plan_name": "US915",
+        "channel_index": 63
+      },
+      "output": {
+        "frequency_hz": 914900000
+      },
+      "notes": "902300000 + 63 * 200000 = 914900000"
+    },
+    {
+      "name": "regulatory_mode_eu868",
+      "description": "EU868 uses duty_cycle regulatory mode.",
+      "type": "regulatory_rules",
+      "input": {
+        "plan_name": "EU868"
+      },
+      "output": {
+        "mode": "duty_cycle",
+        "duty_cycle_percent": 1.0
+      },
+      "notes": "ETSI EN 300.220: 1% duty cycle."
+    },
+    {
+      "name": "regulatory_mode_us915",
+      "description": "US915 uses dwell_time regulatory mode.",
+      "type": "regulatory_rules",
+      "input": {
+        "plan_name": "US915"
+      },
+      "output": {
+        "mode": "dwell_time",
+        "dwell_time_ms": 400
+      },
+      "notes": "FCC Part 15.247: 400ms max dwell time."
+    },
+    {
+      "name": "regulatory_mode_as923",
+      "description": "AS923 uses LBT regulatory mode.",
+      "type": "regulatory_rules",
+      "input": {
+        "plan_name": "AS923"
+      },
+      "output": {
+        "mode": "lbt",
+        "lbt_threshold_dbm": -80
+      },
+      "notes": "Japan ARIB: Listen-Before-Talk with -80 dBm threshold."
+    },
+    {
+      "name": "us915_fhss_compliance",
+      "description": "US915 MUST have 50+ channels for FCC FHSS compliance.",
+      "type": "plan_compliance",
+      "input": {
+        "plan_name": "US915"
+      },
+      "output": {
+        "num_channels": 64,
+        "min_required": 50,
+        "compliant": true
+      },
+      "notes": "FCC Part 15.247 requires 50+ hopping channels for FHSS."
+    },
+    {
+      "name": "us915_channel_spacing",
+      "description": "US915 channels are 200kHz apart.",
+      "type": "channel_spacing",
+      "input": {
+        "plan_name": "US915"
+      },
+      "output": {
+        "spacing_hz": 200000
+      },
+      "notes": "902.3-914.9 MHz with 200kHz channel spacing."
+    }
+  ]
+}

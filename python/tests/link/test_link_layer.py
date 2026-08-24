@@ -93,7 +93,7 @@ class TestSequenceManagement:
             link_layer.set_sequence(0, 0)
 
     @pytest.mark.asyncio
-    async def test_set_sequence_rejects_queued_frame(
+    async def test_set_sequence_rejects_counter_used_by_terminal_cad_failure(
         self, link_layer: LinkLayer, mock_radio: MockRadio
     ) -> None:
         mock_radio.cad_returns = True
@@ -103,7 +103,7 @@ class TestSequenceManagement:
             link_layer.set_sequence(0, 0)
 
         assert link_layer.get_sequence() == (0, 1)
-        assert len(link_layer.tx_queue) == 1
+        assert len(link_layer.tx_queue) == 0
 
     @pytest.mark.asyncio
     async def test_set_sequence_rejects_used_counter(self, link_layer: LinkLayer) -> None:

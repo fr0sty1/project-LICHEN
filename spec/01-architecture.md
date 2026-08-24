@@ -53,7 +53,7 @@ Every protocol layer uses existing IETF standards:
 +----------------------------------------------------------+
 |  Network Layer                          |
 |  IPv6 (RFC 8200) - compressed via SCHC                    |
-|  Link-local (fe80::/10) + Yggdrasil-derived (02xx::/7)    |
+|  Link-local (fe80::/10) + key-derived native (0200::/8)   |
 +----------------------------------------------------------+
 |                    Routing Layer                          |
 |  RPL (RFC 6550) - DODAG mesh formation                    |

@@ -8,24 +8,21 @@
       "sf": 7,
       "ema": 0.36,
       "load_factor": 0.0,
-      "hash_32": "00000000",
-      "interference_score": 0.263333
+      "hash_32": "00000000"
     },
     {
       "name": "seed1",
       "sf": 12,
       "ema": 0.421803,
       "load_factor": 0.618034,
-      "hash_32": "9e3779b9",
-      "interference_score": 0.396312
+      "hash_32": "9e3779b9"
     },
     {
       "name": "seed2",
       "sf": 10,
       "ema": 0.383607,
       "load_factor": 0.236068,
-      "hash_32": "3c6ef372",
-      "interference_score": 0.295957
+      "hash_32": "3c6ef372"
     },
     {
       "name": "density_estimate_high",

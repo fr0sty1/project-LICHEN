@@ -1,0 +1,89 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Root authorization validation vectors (spec 8.2, 8.4). Tests DODAGID == AddrForKey(root_pubkey) binding and Schnorr48 signature verification. Covers valid root, invalid signature, DODAGID mismatch (impersonation), and pubkey validation. Expected results are fixed literals independently checked with test/vectors/reference_schnorr48.py and direct SHA-512 address derivation.",
+  "vectors": [
+    {
+      "name": "valid_signature_and_dodagid",
+      "description": "Valid Schnorr48 signature with correct DODAGID == AddrForKey(pubkey) binding. Both checks pass.",
+      "seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pubkey_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "message_hex": "44494f3a20444f44414720636f6e6669672c2052504c496e7374616e636549443d307830312c2056657273696f6e3d3432",
+      "signature_hex": "a6e0ae614c9e8fce02ccbe52f98b31aa68b894db24b4d6fd8e6de22c784d7de4a7d3ed4919d97721df4a38edc1ad410a",
+      "dodagid_hex": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "expected_valid": true,
+      "expected_error": null
+    },
+    {
+      "name": "invalid_signature_zeroed",
+      "description": "All-zero signature fails Schnorr48 verification, but DODAGID binding is correct.",
+      "seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pubkey_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "message_hex": "44494f3a20444f44414720636f6e6669672c2052504c496e7374616e636549443d307830312c2056657273696f6e3d3432",
+      "signature_hex": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "dodagid_hex": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "expected_valid": false,
+      "expected_error": "signature_invalid"
+    },
+    {
+      "name": "dodagid_mismatch_impersonation",
+      "description": "Attacker has valid signature for their own pubkey but claims victim's DODAGID. DODAGID binding check fails.",
+      "seed_hex": "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6e5e4e3e2e1e0",
+      "pubkey_hex": "bafc71bead3ac5e4b63e9c8216ee71a34aaec65722eedbca728b4e9b3ccce396",
+      "message_hex": "44494f3a20444f44414720636f6e6669672c2052504c496e7374616e636549443d307830312c2056657273696f6e3d3432",
+      "signature_hex": "269c8c7d89b45a154228f55099a8d0586bd1d4ef34ed47d4e4e8c0d0e0015e674b7a63e0baf80030e6a0bf3f1877f703",
+      "dodagid_hex": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "attacker_real_dodagid_hex": "024e0a9a8c0ff3c74c0a9a8c0ff3c70a",
+      "expected_valid": false,
+      "expected_error": "dodagid_mismatch"
+    },
+    {
+      "name": "signature_message_mismatch",
+      "description": "Signature was computed over different message bytes. Schnorr48 verification fails.",
+      "seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "pubkey_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "signed_message_hex": "44494f3a20444f44414720636f6e6669672c2052504c496e7374616e636549443d307830312c2056657273696f6e3d3432",
+      "message_hex": "44494f3a20444f44414720636f6e6669672c2052504c496e7374616e636549443d307846462c2056657273696f6e3d3939",
+      "signature_hex": "a6e0ae614c9e8fce02ccbe52f98b31aa68b894db24b4d6fd8e6de22c784d7de4a7d3ed4919d97721df4a38edc1ad410a",
+      "dodagid_hex": "02ed4242ead4ac69ed4242ead4ac6948",
+      "dodagid_str": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948",
+      "expected_valid": false,
+      "expected_error": "signature_invalid"
+    },
+    {
+      "name": "pubkey_too_short",
+      "description": "Pubkey is only 16 bytes (should be 32). Validation fails before signature check.",
+      "pubkey_hex": "00000000000000000000000000000000",
+      "message_hex": "44494f3a20444f44414720636f6e6669672c2052504c496e7374616e636549443d307830312c2056657273696f6e3d3432",
+      "signature_hex": "a6e0ae614c9e8fce02ccbe52f98b31aa68b894db24b4d6fd8e6de22c784d7de4a7d3ed4919d97721df4a38edc1ad410a",
+      "dodagid_hex": "02ed4242ead4ac69ed4242ead4ac6948",
+      "expected_valid": false,
+      "expected_error": "pubkey_invalid"
+    },
+    {
+      "name": "valid_alternate_seed",
+      "description": "Second valid vector with different seed for cross-implementation determinism check.",
+      "seed_hex": "abababababababababababababababababababababababababababababababab",
+      "pubkey_hex": "248acbdbaf9e050196de704bea2d68770e519150d103b587dae2d9cad53dd930",
+      "message_hex": "44494f3a20696e7374616e63653d312c2076657273696f6e3d312c2072616e6b3d323536",
+      "signature_hex": "bb26c33f7e41a8873e2e7dfa13e4bdfbb93d33db18764e1efbf8cf1de04e215296b1fcba170612f3a28863ff770a3604",
+      "dodagid_hex": "0211e78d239a106f11e78d239a106fdb",
+      "dodagid_str": "211:e78d:239a:106f:11e7:8d23:9a10:6fdb",
+      "expected_valid": true,
+      "expected_error": null
+    },
+    {
+      "name": "signature_wrong_key",
+      "description": "Signature was made by identity A but verified against identity B's pubkey. Fails signature check.",
+      "pubkey_hex": "248acbdbaf9e050196de704bea2d68770e519150d103b587dae2d9cad53dd930",
+      "message_hex": "44494f3a20444f44414720636f6e6669672c2052504c496e7374616e636549443d307830312c2056657273696f6e3d3432",
+      "signature_hex": "a6e0ae614c9e8fce02ccbe52f98b31aa68b894db24b4d6fd8e6de22c784d7de4a7d3ed4919d97721df4a38edc1ad410a",
+      "dodagid_hex": "0211e78d239a106f11e78d239a106fdb",
+      "expected_valid": false,
+      "expected_error": "signature_invalid"
+    }
+  ]
+}

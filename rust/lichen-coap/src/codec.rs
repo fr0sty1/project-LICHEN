@@ -323,6 +323,11 @@ impl<'a> CoapOption<'a> {
     pub fn is_content_format(&self) -> bool {
         self.number == OptionNumber::ContentFormat as u16
     }
+
+    /// True if this is a Proxy-Uri option (RFC 7252 section 5.10.2).
+    pub fn is_proxy_uri(&self) -> bool {
+        self.number == OptionNumber::ProxyUri as u16
+    }
 }
 
 /// Iterator over CoAP options.

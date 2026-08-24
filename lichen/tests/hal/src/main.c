@@ -115,6 +115,14 @@ ZTEST(hal, test_headless_status_apis_are_deterministic)
 		    IS_ENABLED(CONFIG_LICHEN_HAS_PMIC)) {
 			continue;
 		}
+		if (unsupported_caps[i] == LICHEN_HAL_CAP_BUTTONS &&
+		    IS_ENABLED(CONFIG_LICHEN_HAS_BUTTONS)) {
+			continue;
+		}
+		if (unsupported_caps[i] == LICHEN_HAL_CAP_LEDS &&
+		    IS_ENABLED(CONFIG_LICHEN_HAS_LEDS)) {
+			continue;
+		}
 		zassert_equal(lichen_hal_capability_status(unsupported_caps[i]),
 			      -ENOTSUP,
 			      "capability %u should be unsupported",
@@ -143,8 +151,16 @@ ZTEST(hal, test_headless_status_apis_are_deterministic)
 	} else {
 		zassert_equal(lichen_hal_pmic_status(), -ENOTSUP);
 	}
-	zassert_equal(lichen_hal_buttons_status(), -ENOTSUP);
-	zassert_equal(lichen_hal_leds_status(), -ENOTSUP);
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_BUTTONS)) {
+		zassert_ok(lichen_hal_buttons_status());
+	} else {
+		zassert_equal(lichen_hal_buttons_status(), -ENOTSUP);
+	}
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_LEDS)) {
+		zassert_ok(lichen_hal_leds_status());
+	} else {
+		zassert_equal(lichen_hal_leds_status(), -ENOTSUP);
+	}
 	zassert_equal(lichen_hal_display_status(), -ENOTSUP);
 	zassert_equal(lichen_hal_external_flash_status(), -ENOTSUP);
 	zassert_equal(lichen_hal_location_status(), -ENOTSUP);
@@ -199,13 +215,23 @@ ZTEST(hal, test_absent_devices_return_unsupported)
 	}
 
 	zassert_equal(lichen_hal_led_get(NULL), -EINVAL);
-	zassert_equal(lichen_hal_led_get(&gpio), -ENOTSUP);
-	zassert_is_null(gpio.port);
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_LEDS)) {
+		zassert_equal(lichen_hal_led_get(&gpio), 0);
+		zassert_not_null(gpio.port);
+	} else {
+		zassert_equal(lichen_hal_led_get(&gpio), -ENOTSUP);
+		zassert_is_null(gpio.port);
+	}
 
 	gpio.port = (const struct device *)0x1;
 	zassert_equal(lichen_hal_button_get(NULL), -EINVAL);
-	zassert_equal(lichen_hal_button_get(&gpio), -ENOTSUP);
-	zassert_is_null(gpio.port);
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_BUTTONS)) {
+		zassert_equal(lichen_hal_button_get(&gpio), 0);
+		zassert_not_null(gpio.port);
+	} else {
+		zassert_equal(lichen_hal_button_get(&gpio), -ENOTSUP);
+		zassert_is_null(gpio.port);
+	}
 
 	dev = (const struct device *)0x1;
 	zassert_equal(lichen_hal_external_flash_device_get(&dev), -ENOTSUP);
@@ -1295,6 +1321,73 @@ ZTEST(hal, test_location_provider_rejects_bad_source_and_clamps_future_time)
 	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
 	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_STALE);
 	zassert_false(snapshot.latitude_e7_valid);
+}
+
+ZTEST(hal, test_synthetic_device_identity_allowed_on_native_sim)
+{
+	bool allowed = lichen_hal_synthetic_device_identity_allowed();
+
+	if (IS_ENABLED(CONFIG_BOARD_NATIVE_SIM)) {
+		zassert_true(allowed,
+			     "synthetic identity must be allowed on native_sim");
+	} else {
+		zassert_false(allowed,
+			      "synthetic identity must be rejected on production");
+	}
+}
+
+ZTEST(hal, test_synthetic_device_identity_get_returns_valid_id)
+{
+	uint8_t id[32] = { 0 };
+	int ret;
+
+	if (!IS_ENABLED(CONFIG_BOARD_NATIVE_SIM)) {
+		ztest_test_skip();
+	}
+
+	ret = lichen_hal_synthetic_device_identity_get(id, sizeof(id));
+	zassert_true(ret > 0, "expected positive length, got %d", ret);
+	zassert_true((size_t)ret <= sizeof(id), "id length exceeds buffer");
+
+	/* Verify returned ID is not all zeros (entropy sanity check) */
+	uint8_t nonzero = 0;
+	for (int i = 0; i < ret; i++) {
+		nonzero |= id[i];
+	}
+	zassert_not_equal(nonzero, 0U, "synthetic ID must not be all zeros");
+}
+
+ZTEST(hal, test_synthetic_device_identity_get_rejects_null)
+{
+	zassert_equal(lichen_hal_synthetic_device_identity_get(NULL, 32), -EINVAL);
+}
+
+ZTEST(hal, test_synthetic_device_identity_get_rejects_small_buffer)
+{
+	uint8_t small[1] = { 0 };
+	int ret;
+
+	if (!IS_ENABLED(CONFIG_BOARD_NATIVE_SIM)) {
+		ztest_test_skip();
+	}
+
+	ret = lichen_hal_synthetic_device_identity_get(small, sizeof(small));
+	zassert_equal(ret, -ENOMEM, "expected -ENOMEM for small buffer, got %d", ret);
+}
+
+ZTEST(hal, test_synthetic_device_identity_rejected_on_production)
+{
+	uint8_t id[32] = { 0 };
+	int ret;
+
+	if (IS_ENABLED(CONFIG_BOARD_NATIVE_SIM)) {
+		ztest_test_skip();
+	}
+
+	zassert_false(lichen_hal_synthetic_device_identity_allowed());
+	ret = lichen_hal_synthetic_device_identity_get(id, sizeof(id));
+	zassert_equal(ret, -ENOTSUP,
+		      "production builds must reject synthetic identity");
 }
 
 ZTEST(hal, test_duty_cycle_ccp13)

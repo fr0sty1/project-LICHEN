@@ -1,0 +1,38 @@
+{
+  "format_version": 1,
+  "description": "Security state-machine vectors for generation-bound T=0 SCHC reassembly admission.",
+  "profile": {
+    "hold_down_seconds": 60,
+    "canonical_opener": {"window": 0, "fcn": 62, "kind": "regular"},
+    "all1_may_open": false,
+    "generation_components": [
+      "local_public_key",
+      "remote_public_key",
+      "remote_key_generation",
+      "directional_rule_id"
+    ],
+    "local_generation_policy": "A live-local-rekey implementation additionally binds its opaque local key generation; the Python fixed-local-key owner persists under the full local public key."
+  },
+  "vectors": [
+    {
+      "name": "late_messages_advance_terminal_floor",
+      "events": [
+        {"counter": 0, "message": "opener", "result": "context_opened", "admission_floor": 0},
+        {"counter": 1, "message": "sender_abort", "result": "terminal"},
+        {"counter": 2, "message": "late_regular", "result": "discard", "terminal_high_water": 2},
+        {"counter": 3, "message": "late_all1", "result": "cached_abort", "terminal_high_water": 3},
+        {"at_seconds": 60, "counter": 4, "message": "late_non_opener", "result": "discard", "durable_floor": 4},
+        {"counter": 5, "message": "replacement_opener", "result": "context_opened", "admission_floor": 5},
+        {"counter": 3, "message": "delayed_prior_all1", "result": "link_replay_reject"}
+      ]
+    },
+    {
+      "name": "same_public_key_new_generation",
+      "events": [
+        {"counter": 0, "generation": "old", "message": "opener", "result": "context_opened"},
+        {"action": "revoke_and_reinstall_same_public_key", "generation": "new"},
+        {"counter": 1, "generation": "new", "message": "opener", "result": "old_domain_invalidated_new_context_opened"}
+      ]
+    }
+  ]
+}

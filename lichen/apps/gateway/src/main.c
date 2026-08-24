@@ -515,12 +515,7 @@ static void get_queue_stats(struct lichen_gateway_queue_stats *stats)
 		stats->packets_dropped_deadline = tx_stats.packets_dropped_deadline;
 		stats->packets_dropped_full = tx_stats.packets_dropped_full;
 		stats->max_latency_ms = tx_stats.max_latency_ms;
-		/*
-		 * avg_latency_ms is not tracked by tx_queue - would require
-		 * storing enqueue timestamps and computing exponential average.
-		 * Left as 0 for now; can be added to tx_queue if needed.
-		 */
-		stats->avg_latency_ms = 0;
+		stats->avg_latency_ms = tx_stats.avg_latency_ms;
 	}
 #endif
 }

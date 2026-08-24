@@ -25,7 +25,9 @@ from lichen.announce.coords import (
     encode_dtn_pending,
 )
 from lichen.announce.messages import (
+    ANNOUNCE_SIGNATURE_DOMAIN,
     ANNOUNCE_TYPE,
+    MAX_ANNOUNCE_APP_DATA,
     MAX_ANNOUNCE_HOPS,
     SIGNATURE_LENGTH,
     AnnounceError,
@@ -49,6 +51,7 @@ from lichen.gradient import GRADIENT_TIMEOUT_MS
 __all__ = [
     "ANNOUNCE_INTERVAL_MS",
     "ANNOUNCE_JITTER_MS",
+    "ANNOUNCE_SIGNATURE_DOMAIN",
     "ANNOUNCE_TYPE",
     "APP_DATA_TYPE_COORDS",
     "APP_DATA_TYPE_CONGESTION",
@@ -64,6 +67,7 @@ __all__ = [
     "DEFAULT_JITTER_MS",
     "GRADIENT_TIMEOUT_MS",
     "MAX_ANNOUNCE_HOPS",
+    "MAX_ANNOUNCE_APP_DATA",
     "SIGNATURE_LENGTH",
     "SchedulerConfig",
     "decode_congestion",

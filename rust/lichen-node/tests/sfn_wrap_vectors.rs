@@ -3,11 +3,10 @@
 //! Loads test vectors from test/vectors/ccp_sfn_wrap_slot_hash.json and validates
 //! Rust implementation against known-good values.
 //!
-//! NOTE: As of this writing, the Rust TdmaScheduler::slot_for is incomplete:
-//! it does not incorporate the SFN parameter. These tests document the expected
-//! behavior per spec, and will pass once the implementation is updated.
+//! Every slot assertion calls the production `TdmaScheduler` implementation.
 
 use lichen_core::lichen_hash_32;
+use lichen_node::TdmaScheduler;
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
@@ -53,14 +52,6 @@ fn find_vector(vectors: &[serde_json::Value], name: &str) -> serde_json::Value {
         .find(|v| v["name"].as_str() == Some(name))
         .cloned()
         .unwrap_or_else(|| panic!("Vector '{}' not found", name))
-}
-
-/// Expected slot_for implementation (matches Python/spec).
-/// Formula: (hash_32(eui64) + (sfn & 0xFFFFFFFF)) % num_slots
-fn expected_slot_for(eui64: &[u8; 8], sfn: u32, num_slots: u16) -> u16 {
-    let h = lichen_hash_32(eui64);
-    let sum = (h as u64) + (sfn as u64);
-    (sum % num_slots as u64) as u16
 }
 
 /// Expected sfn_delta implementation.
@@ -127,7 +118,7 @@ fn test_slot_for_sfn_zero() {
     let num_slots = vec["num_slots"].as_u64().unwrap() as u16;
     let expected = vec["expected_slot"].as_u64().unwrap() as u16;
 
-    let result = expected_slot_for(&eui, sfn, num_slots);
+    let result = TdmaScheduler::slot_for(&eui, sfn, num_slots).unwrap();
     assert_eq!(result, expected, "slot_for at sfn=0");
 }
 
@@ -142,7 +133,7 @@ fn test_slot_for_sfn_one() {
     let num_slots = vec["num_slots"].as_u64().unwrap() as u16;
     let expected = vec["expected_slot"].as_u64().unwrap() as u16;
 
-    let result = expected_slot_for(&eui, sfn, num_slots);
+    let result = TdmaScheduler::slot_for(&eui, sfn, num_slots).unwrap();
     assert_eq!(result, expected, "slot_for at sfn=1");
 }
 
@@ -157,8 +148,24 @@ fn test_slot_for_sfn_max() {
     let num_slots = vec["num_slots"].as_u64().unwrap() as u16;
     let expected = vec["expected_slot"].as_u64().unwrap() as u16;
 
-    let result = expected_slot_for(&eui, sfn, num_slots);
+    let result = TdmaScheduler::slot_for(&eui, sfn, num_slots).unwrap();
     assert_eq!(result, expected, "slot_for at sfn=0xFFFFFFFF");
+}
+
+#[test]
+fn test_slot_for_wraps_before_non_power_of_two_modulus() {
+    let vectors = load_vectors();
+    let vec = find_vector(
+        &vectors.vectors,
+        "slot_for_wrapping_sum_before_non_power_of_two_modulus",
+    );
+    let eui: [u8; 8] = parse_hex_bytes(vec["eui64_hex"].as_str().unwrap())
+        .try_into()
+        .unwrap();
+    let sfn = vec["sfn"].as_u64().unwrap() as u32;
+    let num_slots = vec["num_slots"].as_u64().unwrap() as u16;
+    let expected = vec["expected_slot"].as_u64().unwrap() as u16;
+    assert_eq!(TdmaScheduler::slot_for(&eui, sfn, num_slots), Ok(expected));
 }
 
 #[test]
@@ -172,7 +179,7 @@ fn test_slot_for_sfn_after_wrap() {
     let num_slots = vec["num_slots"].as_u64().unwrap() as u16;
     let expected = vec["expected_slot"].as_u64().unwrap() as u16;
 
-    let result = expected_slot_for(&eui, sfn, num_slots);
+    let result = TdmaScheduler::slot_for(&eui, sfn, num_slots).unwrap();
     assert_eq!(result, expected, "slot_for at sfn=2 (after wrap)");
 }
 
@@ -191,7 +198,7 @@ fn test_full_wrap_sequence() {
         let expected = entry["expected_slot"].as_u64().unwrap() as u16;
         let sfn_hex = entry["sfn_hex"].as_str().unwrap();
 
-        let result = expected_slot_for(&eui, sfn, num_slots);
+        let result = TdmaScheduler::slot_for(&eui, sfn, num_slots).unwrap();
         assert_eq!(
             result, expected,
             "At SFN={} ({}): got slot {}, expected {}",
@@ -214,8 +221,8 @@ fn test_sfn_wrap_continuity() {
     let expected_slot_at_last = vec["expected_slot_at_last"].as_u64().unwrap() as u16;
     let expected_slot_at_current = vec["expected_slot_at_current"].as_u64().unwrap() as u16;
 
-    let slot_at_last = expected_slot_for(&eui, last_sfn, num_slots);
-    let slot_at_current = expected_slot_for(&eui, current_sfn, num_slots);
+    let slot_at_last = TdmaScheduler::slot_for(&eui, last_sfn, num_slots).unwrap();
+    let slot_at_current = TdmaScheduler::slot_for(&eui, current_sfn, num_slots).unwrap();
     let delta = expected_sfn_delta(current_sfn, last_sfn);
 
     assert_eq!(slot_at_last, expected_slot_at_last);
@@ -337,8 +344,8 @@ fn test_sfn_increment_rotates_slot() {
 
     // Test at various SFN values including near wrap
     for sfn in [0u32, 1, 100, 0xFFFFFFFF - 1, 0xFFFFFFFF] {
-        let s0 = expected_slot_for(&eui, sfn, num_slots);
-        let s1 = expected_slot_for(&eui, sfn.wrapping_add(1), num_slots);
+        let s0 = TdmaScheduler::slot_for(&eui, sfn, num_slots).unwrap();
+        let s1 = TdmaScheduler::slot_for(&eui, sfn.wrapping_add(1), num_slots).unwrap();
         let expected = ((s0 as u32 + 1) % num_slots as u32) as u16;
         assert_eq!(
             s1, expected,
@@ -357,17 +364,12 @@ fn test_delta_equals_slot_difference() {
     let eui: [u8; 8] = eui_bytes.try_into().unwrap();
     let num_slots = vec["num_slots"].as_u64().unwrap() as u16;
 
-    let test_pairs: [(u32, u32); 4] = [
-        (0, 5),
-        (100, 150),
-        (0xFFFFFFFF, 2),
-        (0xFFFFFFFE, 5),
-    ];
+    let test_pairs: [(u32, u32); 4] = [(0, 5), (100, 150), (0xFFFFFFFF, 2), (0xFFFFFFFE, 5)];
 
     for (last, current) in test_pairs {
         let delta = expected_sfn_delta(current, last);
-        let s_last = expected_slot_for(&eui, last, num_slots);
-        let s_current = expected_slot_for(&eui, current, num_slots);
+        let s_last = TdmaScheduler::slot_for(&eui, last, num_slots).unwrap();
+        let s_current = TdmaScheduler::slot_for(&eui, current, num_slots).unwrap();
         let expected_slot = ((s_last as u32 + delta) % num_slots as u32) as u16;
         assert_eq!(
             s_current, expected_slot,

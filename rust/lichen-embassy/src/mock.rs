@@ -3,7 +3,9 @@
 //! These implement the lichen-hal traits using std, allowing protocol logic
 //! to be tested without real hardware.
 
-use lichen_hal::{ChannelConfig, Clock, NonVolatile, RadioConfig, RadioError, Rng, RxPacket};
+use lichen_hal::{
+    ChannelConfig, Clock, NonVolatile, RadioConfig, RadioError, Rng, RxPacket, TxResult,
+};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use std::time::Instant;
@@ -52,13 +54,15 @@ impl Default for MockRadio {
 impl lichen_hal::Radio for MockRadio {
     type Error = RadioError<core::convert::Infallible>;
 
-    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<TxResult, Self::Error> {
         let clear = self.cca(channel, -80).await?;
         if !clear {
             return Err(RadioError::ChannelBusy);
         }
         self.tx_queue.lock().unwrap().push(payload.to_vec());
-        Ok(())
+        // Estimate airtime: ~66us/byte at SF10/125kHz + 12ms preamble
+        let airtime_us = 12_000 + (payload.len() as u32) * 66;
+        Ok(TxResult { airtime_us })
     }
 
     async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {

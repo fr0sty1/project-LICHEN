@@ -59,8 +59,12 @@ No flag day required. CH0 is universal fallback. Old nodes stay on CH0. New node
 Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmissions can overlap without collision. This enables up to 6x capacity scaling via parallel logical channels on the same frequency. Works on ALL hardware.
 
 **SF Assignment:**
-- Preferred (Gateway-assigned): Border router includes `ASSIGNED_SF` RPL DIO option. Gateway tracks per-SF node counts and assigns least-loaded SF for load balance. Nodes **MUST** use assigned SF for all TX after joining.
-- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (FNV-1a32 per project-LICHEN-eirg) from CCP-15.8.3; short-address DAD uses `crc32_ieee(key=0x4c494348454e)` instead (see 4.5).
+- Preferred (Gateway-assigned): Border router includes the `ASSIGNED_SF` RPL
+  DIO option using project-local provisional Type `0x14`, as reserved by the
+  LICHEN RPL option registry in `09-packets-timing.md`. This is not an IANA
+  assignment. Gateway tracks per-SF node counts and assigns least-loaded SF
+  for load balance. Nodes **MUST** use assigned SF for all TX after joining.
+- Stateless hash-based (fallback): `assigned_sf = 7 + (hash_32(IID) mod 6)`. Uses consistent `hash_32` (FNV-1a32 per project-LICHEN-eirg) from CCP-15.8.3; short-address DAD instead uses the CRC32-IEEE seed-mixing construction in Section 4.5.
 - Join-based: Nodes join on SF10 (common ground). Gateway assigns via DIO or join response; node switches post-assignment.
 - Nodes without explicit assignment **MUST** use SF10 (backwards compatibility with all existing nodes).
 
@@ -176,58 +180,15 @@ See child issue project-LICHEN-zd2d.2 for driver implementation.
 
 ---
 
-
-
-### 4.5. DAD Retry Strategy
-
-When Duplicate Address Detection (DAD) indicates a collision on a 16-bit short
-address derived via `crc32_ieee(EUI-64, key=0x4c494348454e)` (CRC32-IEEE with
-initial value `0x4c494348454e` = ASCII "LICHEN", truncated to 32 bits), the
-node recomputes a candidate address using seed mixing rather than picking a
-random address, preserving deterministic derivation:
-
-```pseudocode
-fn derive_short_addr(eui64: [u8; 8]) -> u16
-    hash = crc32_ieee(eui64, key: 0x4c494348454e)
-    return (hash & 0xFFFF) as u16
-
-fn derive_short_addr_with_seed(eui64: [u8; 8], seed: u32) -> u16
-    // XOR the seed into the last 4 bytes of EUI-64 before hashing.
-    // This produces a different but deterministic address per seed.
-    mixed: [u8; 8] = eui64
-    mixed[4..8] ^= seed.to_le_bytes()
-    hash = crc32_ieee(mixed, key: 0x4c494348454e)
-    return (hash & 0xFFFF) as u16
-
-fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
-    addr = derive_short_addr(eui64)
-    if addr not in existing_addrs:
-        return addr
-    // Collision — try seed values 1, 2, ..., 255.
-    for seed in 1..=255:
-        addr = derive_short_addr_with_seed(eui64, seed)
-        if addr not in existing_addrs:
-            return addr
-    // All 256 candidates exhausted; fall back to EUI-64 extended addressing.
-    return None
-```
-
-If all 256 candidates are exhausted (maximum 255 seed values per 16-bit
-address space), the node MUST fall back to 64-bit extended addressing mode
-(see `02-physical-link.md:270`). Implementations MUST match
-`test/vectors/short_addr_dad.json` for the DAD retry sequence.
-
----
-
 ## 4. Link Layer
 
 ### 4.1. Frame Format
 
 ```
-+--------+--------+-------+--------+----------+---------+--------+
-| Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload | MIC    |
-+--------+--------+-------+--------+----------+---------+--------+
-   1B       1B       1B      2B       0/2/8B    var      0/48B
++--------+--------+-------+--------+----------+----------+---------+--------+
+| Length | LLSec  | Epoch | SeqNum | Dst Addr | SIID     | Payload | MIC    |
++--------+--------+-------+--------+----------+----------+---------+--------+
+   1B       1B       1B      2B       0/2/8B    0/8B      var      0/48B
 ```
 
 | Field | Size | Description |
@@ -237,8 +198,35 @@ address space), the node MUST fall back to 64-bit extended addressing mode
 | Epoch | 1 byte | Epoch counter (see 4.4) |
 | SeqNum | 2 bytes | Sequence number (replay protection) |
 | Dst Addr | 0/2/8 bytes | Destination address; 0 bytes for broadcast or elided mode |
+| SIID | 0/8 bytes | Signer Identifier: the canonical signer EUI-64 when the SI flag is set; routing hint only until the signature verifies; never an IPv6 IID |
 | Payload | Variable | Authenticated inner payload (dispatch byte + body) |
 | MIC | 0 or 48 bytes | No bytes when unsigned; full Schnorr-48 signature when signed |
+
+For a signed frame, the canonical Schnorr-48 transcript is not simply the
+wire prefix before MIC. It is:
+
+```
+"LICHEN-LINK-v1" || 0x00 || LENGTH || LLSec || Epoch || SeqNum || DST_LEN || DstAddr
+       || SIID-if-SI || Payload
+```
+
+The fixed 15-octet ASCII-and-NUL prefix is
+`4c494348454e2d4c494e4b2d763100`. It is the Link Signature Domain Version 1
+and separates link-frame signatures from every other use of Schnorr-48.
+`DST_LEN` is one non-wire octet containing `0`, `2`, or `8`, as selected by
+the address mode. It domain-separates the variable-length destination field.
+Every other transcript component is the exact wire octet sequence, in wire
+order, and MIC is excluded. A signer or verifier MUST NOT omit `DST_LEN`,
+append a terminator to Payload, or substitute parsed/re-encoded fields. When
+SI is set, the exact eight on-wire SIID octets are covered. The selected
+trust-store public key, rather than SIID by itself, establishes the
+authenticated sender identity.
+
+Version 1 verifiers MUST reject the legacy unprefixed transcript and every
+other application-profile domain. Changing the fixed domain octets requires a
+coordinated link-protocol version change. Rule Set Version 3 deployments use
+Link Signature Domain Version 1; mixed activation MUST be handled as a network
+upgrade and MUST NOT accept both transcripts for the same frame.
 
 The first byte of the authenticated inner payload is a dispatch value:
 
@@ -257,7 +245,7 @@ the link signature in the MIC field because it is part of the frame payload.
 ```
   7   6   5   4   3   2   1   0
 +---+---+---+---+---+---+---+---+
-| R | E | S |  MIC Len  | Addr Mode |
+| SI| E | S |  MIC Len  | Addr Mode |
 +---+---+---+---+---+---+---+---+
 ```
 
@@ -267,7 +255,15 @@ the link signature in the MIC field because it is part of the frame payload.
 | MIC Length | 2-4 | 0 or 1=compatibility selector; 2-7=reserved |
 | Signature | 5 | 1=48-byte Schnorr signature present; 0=no MIC |
 | Encrypted | 6 | 1=encrypted frame unsupported; receivers MUST reject |
-| Reserved | 7 | Must be 0 |
+| SIID Present (SI) | 7 | 1=an 8-byte Signer Identifier EUI-64 follows Dst Addr; 0=no SIID |
+
+SIID is an unauthenticated lookup hint until the complete transcript above
+has verified under the selected public key. Signed frames MUST set both S and
+SI and carry exactly one 8-byte signer EUI-64; unsigned frames MUST clear both
+bits. A receiver MUST discard an S/SI mismatch and MUST NOT use SIID to
+allocate replay, trust, routing, or fragmentation state before verification.
+For a key-derived local identity, the wire EUI-64 is obtained from the
+key-derived IPv6 IID by toggling the RFC 4291 universal/local bit exactly once.
 
 ### 4.3. Addressing Modes
 
@@ -275,8 +271,16 @@ the link signature in the MIC field because it is part of the frame payload.
 |------|------|-------------|
 | None (0) | 0B | Broadcast |
 | Short (1) | 2B | 16-bit short address (assigned by coordinator) |
-| Extended (2) | 8B | Stable identifier (key-derived IID or hardware EUI-64) |
+| Extended (2) | 8B | Canonical peer EUI-64 |
 | Elided (3) | 0B | Destination derived from context |
+
+Extended mode always carries the destination peer's canonical EUI-64 from the
+authenticated peer/neighbor record. A key-derived IPv6 IID is a different
+identifier and MUST NOT be substituted even though both values are eight
+octets. The standard modified-EUI-64 transform (toggle the universal/local bit
+of the first octet) is applied only when resolving that EUI-64 into a
+link-local IPv6 address; it does not alter the eight destination octets on the
+link-frame wire.
 
 ### 4.4. Epoch and Sequence Number
 
@@ -324,14 +328,41 @@ Per-sender counter, incremented for each transmission.
 
 **Receiver State:**
 
-Receivers maintain per-sender state:
+Receivers maintain state per authenticated signer and link-key generation:
 ```
 Sender State Entry:
-  IID: <sender IID>
+  SignerPublicKey: <full authenticated public key>
+  KeyGeneration: <opaque generation issued by the owning trust store>
   LastEpoch: <8 bits>
   LastSeqNum: <16 bits>
   Window: <32-bit bitmap for out-of-order tolerance>
 ```
+
+The replay key is `(SignerPublicKey, KeyGeneration)`. An IID, short address,
+SIID hint, IPv6 source address, interface identifier, or caller-supplied
+peer label MUST NOT replace either component. Two keys that share an address
+alias have independent windows. An old and a replacement key generation are
+also distinct, and retirement of a generation MUST immediately make all frames
+and replay state from that generation unusable.
+
+For signed ingress, implementations MUST parse only enough framing to select a
+candidate trust record, verify the canonical signature transcript, confirm
+that the record and opaque generation are still current, and only then perform
+the replay check. Signature verification, replay decision, durable replay
+advancement, and delivery MUST be one fail-closed transaction under the owning
+link-security authority. An unsigned or signature-invalid frame MUST NOT
+allocate, advance, evict, restore, or otherwise mutate replay state. If durable
+advancement is required by the implementation's persistence policy, a write or
+acknowledgement failure MUST reject the frame and leave the previous state
+authoritative; in-memory acceptance MUST NOT outrun durable state.
+
+Persisted replay records MUST bind the full public key, opaque key-generation
+identifier, highest counter, window bitmap, and a monotonic record generation
+under an integrity check. Missing, corrupt, truncated, identity-mismatched, or
+rolled-back storage fails closed for that signer generation. Key rotation MAY
+start a fresh counter only after the new generation is durably installed and
+the old generation is durably retired; clearing an address alias MUST NOT
+resurrect the retired generation.
 
 **Acceptance Rules:**
 
@@ -351,7 +382,10 @@ packet; it MUST NOT be interpreted as sequence-number wrap.
 
 At ~1 packet/second, 16-bit seqnum wraps every ~18 hours (per spec/02a-coordinated-capacity.md §2a.2 for SFN/now() unsigned modular arithmetic validated by ccp16.json). The epoch
 increment ensures the 24-bit logical counter advances monotonically.
-At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years--acceptable.
+The complete 24-bit counter space lasts about 194.18 days at one packet per
+second and about 19.42 days at ten packets per second. Reaching
+`(EPO=0xFF, SeqNum=0xFFFF)` is terminal counter exhaustion for that link key,
+not wrap; the sender MUST rotate the key before another authenticated frame.
 
 **Reboot Resilience:**
 
@@ -364,19 +398,19 @@ be established. No time synchronization is required.
 ### 4.5. DAD Retry Strategy
 
 When Duplicate Address Detection (DAD) indicates a collision on a 16-bit short
-address derived via `hash_32(EUI-64, 0)` (the integer `0` is NOT a length or
-seed; the call is ambiguous — see `02a-coordinated-capacity.md:119` which
-defines `SelectChannel(EUI64, Epoch, Density, NChannels)` with `FNV1A32(data)`
-where `data = CONCAT(EUI64, Epoch)`, and the C API `lichen_hash_32(data, len)`
-at `link_ctx.c:632`), the node recomputes a candidate address using seed mixing
-rather than picking a random address, preserving deterministic derivation:
+address, the node recomputes a candidate using seed mixing rather than choosing
+a random address. Short-address DAD uses reflected CRC32-IEEE/ISO-HDLC with
+polynomial `0xEDB88320` (the reflected form of `0x04C11DB7`) and update value
+`0x4348454E`, the low 32 bits of the historical ASCII-LICHEN initializer
+`0x4C494348454E`. Before processing, the update value is XORed with
+`0xFFFFFFFF`; each input octet is processed least-significant bit first; the
+final register is XORed with `0xFFFFFFFF`. This is equivalent to
+`binascii.crc32(data, 0x4348454E)`. This CRC construction is distinct from the
+FNV-1a32 `hash_32` used for channel and slot selection.
 
 ```pseudocode
 fn derive_short_addr(eui64: [u8; 8]) -> u16
-    // FNV-1a32 with basis 0x811c9dc5; single-argument hash of raw bytes.
-    // This is NOT hash_32(eui64, 0) — the (data, len) API is for the
-    // C implementation only; the spec-level function accepts byte data.
-    hash = fnv1a32(eui64, basis: 0x811C9DC5)
+    hash = crc32_ieee(eui64, initial: 0x4348454E)
     return hash & 0xFFFF
 
 fn derive_short_addr_with_seed(eui64: [u8; 8], seed: u32) -> u16
@@ -384,7 +418,7 @@ fn derive_short_addr_with_seed(eui64: [u8; 8], seed: u32) -> u16
     // This produces a different but deterministic address per seed.
     mixed: [u8; 8] = eui64
     mixed[4..8] ^= seed.to_le_bytes()
-    hash = fnv1a32(mixed, basis: 0x811C9DC5)
+    hash = crc32_ieee(mixed, initial: 0x4348454E)
     return hash & 0xFFFF
 
 fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
@@ -392,8 +426,6 @@ fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
     if addr not in existing_addrs:
         return addr
     // Collision — try seed values 1, 2, ..., 255.
-    // The 0 in the original ambiguous call was misinterpreted as length;
-    // the actual first-try call uses NO seed (derive_short_addr above).
     for seed in 1..=255:
         addr = derive_short_addr_with_seed(eui64, seed)
         if addr not in existing_addrs:
@@ -401,12 +433,11 @@ fn dad_retry(eui64: [u8; 8], existing_addrs: Set<u16>) -> Option<u16>
     return None  // collision space exhausted (256/65536 ≈ 0.4%)
 ```
 
-The retry strategy above replaces any earlier ambiguous `hash_32(EUI-64, N)`
-notation. All references to `hash_32` for short-address derivation MUST specify
-either the single-argument `fnv1a32(bytes)` form or the two-argument
-`fnv1a32(bytes, seed)` form with an explicit XOR-mixing convention.
+Implementations MUST match `test/vectors/short_addr_dad.json` and
+`test/vectors/dad_hash_clarification.json`. The FNV-1a32 comparison values in
+those artifacts are negative interop oracles and MUST NOT be used as DAD
+addresses.
 
 ---
 
 [← Previous: Architecture](01-architecture.md) | [Index](README.md) | [Next: Adaptation Layer →](03-adaptation.md)
-

@@ -120,23 +120,37 @@ pub struct MeshPrefix {
 
 #[cfg(feature = "std")]
 impl MeshPrefix {
-    pub fn new(prefix: [u8; 16], prefix_len: u8) -> Self {
-        Self { prefix, prefix_len }
+    /// Construct a mesh prefix. IPv6 prefix lengths are 0..=128; longer
+    /// values are rejected so `contains` never indexes past the 16-byte address.
+    pub fn new(prefix: [u8; 16], prefix_len: u8) -> Option<Self> {
+        if prefix_len > 128 {
+            return None;
+        }
+        Some(Self { prefix, prefix_len })
     }
 
     /// Check if an address is within this prefix.
+    ///
+    /// Invalid `prefix_len` values (`> 128`, including values that would
+    /// make `prefix_len / 8` exceed 16) fail closed: the address is not
+    /// considered in-prefix. `prefix_len` is a public field, so this
+    /// guard is independent of [`Self::new`].
     pub fn contains(&self, addr: &[u8; 16]) -> bool {
-        let full_bytes = (self.prefix_len / 8) as usize;
+        if self.prefix_len > 128 {
+            return false;
+        }
+
+        let full_bytes = usize::from(self.prefix_len / 8);
         let remaining_bits = self.prefix_len % 8;
 
-        // Check full bytes
+        // Check full bytes. `prefix_len <= 128` keeps this slice in 0..=16.
         if addr[..full_bytes] != self.prefix[..full_bytes] {
             return false;
         }
 
-        // Check remaining bits
-        if remaining_bits > 0 && full_bytes < 16 {
-            let mask = 0xFF << (8 - remaining_bits);
+        // Check remaining bits. For valid lengths this index is always < 16.
+        if remaining_bits > 0 {
+            let mask = u8::MAX << (8 - remaining_bits);
             if (addr[full_bytes] & mask) != (self.prefix[full_bytes] & mask) {
                 return false;
             }
@@ -489,9 +503,11 @@ impl HybridRouter {
         self.gradient_table.update(entry, now_ms);
     }
 
-    /// Add a mesh-local prefix.
+    /// Add a mesh-local prefix. Invalid prefix lengths (`> 128`) are ignored.
     pub fn add_mesh_prefix(&mut self, prefix: [u8; 16], prefix_len: u8) {
-        self.mesh_prefixes.push(MeshPrefix::new(prefix, prefix_len));
+        if let Some(mesh_prefix) = MeshPrefix::new(prefix, prefix_len) {
+            self.mesh_prefixes.push(mesh_prefix);
+        }
     }
 
     /// Remove a mesh-local prefix.
@@ -860,7 +876,7 @@ mod tests {
         prefix_bytes[2] = 0x0d;
         prefix_bytes[3] = 0xb8;
 
-        let prefix = MeshPrefix::new(prefix_bytes, 32);
+        let prefix = MeshPrefix::new(prefix_bytes, 32).expect("32 is a valid IPv6 prefix length");
 
         // Address within prefix
         let mut addr1 = prefix_bytes;
@@ -874,5 +890,77 @@ mod tests {
         addr2[2] = 0x0d;
         addr2[3] = 0xb9; // Different
         assert!(!prefix.contains(&addr2));
+    }
+
+    #[test]
+    fn mesh_prefix_new_rejects_len_over_128() {
+        let prefix = [0u8; 16];
+        assert!(MeshPrefix::new(prefix, 0).is_some());
+        assert!(MeshPrefix::new(prefix, 128).is_some());
+        assert!(MeshPrefix::new(prefix, 129).is_none());
+        assert!(MeshPrefix::new(prefix, 136).is_none());
+        assert!(MeshPrefix::new(prefix, 255).is_none());
+    }
+
+    #[test]
+    fn mesh_prefix_contains_fail_closed_on_invalid_len() {
+        // Direct struct construction can still set prefix_len > 128 because
+        // the field is public. contains must not panic and must not match.
+        let addr = [0u8; 16];
+        for prefix_len in [129u8, 135, 136, 200, 255] {
+            let prefix = MeshPrefix {
+                prefix: addr,
+                prefix_len,
+            };
+            assert!(
+                !prefix.contains(&addr),
+                "prefix_len {prefix_len} must fail closed"
+            );
+        }
+    }
+
+    #[test]
+    fn mesh_prefix_contains_128_is_exact_match() {
+        let mut addr = [0u8; 16];
+        addr[15] = 1;
+        let prefix = MeshPrefix::new(addr, 128).expect("128 is a valid IPv6 prefix length");
+        assert!(prefix.contains(&addr));
+
+        let mut other = addr;
+        other[15] = 2;
+        assert!(!prefix.contains(&other));
+    }
+
+    #[test]
+    fn mesh_prefix_contains_partial_byte() {
+        // 2001:db8:8000::/33 — bit 0 of byte 4 must be 1.
+        let mut prefix_bytes = [0u8; 16];
+        prefix_bytes[0] = 0x20;
+        prefix_bytes[1] = 0x01;
+        prefix_bytes[2] = 0x0d;
+        prefix_bytes[3] = 0xb8;
+        prefix_bytes[4] = 0x80;
+        let prefix = MeshPrefix::new(prefix_bytes, 33).expect("33 is a valid IPv6 prefix length");
+
+        let mut in_prefix = prefix_bytes;
+        in_prefix[4] = 0xff; // host bits after /33 may differ
+        assert!(prefix.contains(&in_prefix));
+
+        let mut out_prefix = prefix_bytes;
+        out_prefix[4] = 0x7f; // prefix bit 0 of byte 4 is 0
+        assert!(!prefix.contains(&out_prefix));
+    }
+
+    #[test]
+    fn add_mesh_prefix_ignores_invalid_len() {
+        let mut router = HybridRouter::new(link_local(1));
+        let mut prefix = gua(0);
+        prefix[15] = 0;
+
+        router.add_mesh_prefix(prefix, 136);
+        assert_eq!(router.classify_address(&gua(2)), AddressClass::External);
+
+        router.add_mesh_prefix(prefix, 64);
+        assert_eq!(router.classify_address(&gua(2)), AddressClass::MeshLocal);
     }
 }

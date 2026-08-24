@@ -9,13 +9,16 @@ description = "SCHC header compression (RFC 8724): rule model and compress/decom
 # Consistent with workspace: no default features. Use `default-features = false`
 # for no_std embedded builds. Explicitly enable `std` when needed.
 default = []
-std = []
+std = ["lichen-link/std", "lichen-link/schnorr"]
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "lichen-core/defmt"]
 log = ["dep:log", "lichen-core/log"]
+raw-fragment-codec = []
+test-utils = ["lichen-link/test-utils"]
 
 [dependencies]
 lichen-core = { path = "../lichen-core" }
+lichen-link = { path = "../lichen-link", default-features = false }
 schc = { version = "0.1", features = ["ack-on-error"] }
 
 # Logging backends (optional, feature-gated)
@@ -29,4 +32,16 @@ sha2 = "0.10"
 
 [[test]]
 name = "fragmentation"
+required-features = ["std", "raw-fragment-codec"]
+
+[[test]]
+name = "fragmentation_vectors"
+required-features = ["std", "raw-fragment-codec"]
+
+[[test]]
+name = "rule_versioning_vectors"
+required-features = ["std", "raw-fragment-codec"]
+
+[[test]]
+name = "authenticated_dio_vectors"
 required-features = ["std"]

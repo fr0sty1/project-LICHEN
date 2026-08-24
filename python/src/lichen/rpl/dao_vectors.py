@@ -52,7 +52,7 @@ def run_route_state_vectors(path: str | Path) -> DaoManager:
     for transition in document["tx_sequence_transitions"]:
         expected_lifetime = transition["path_lifetime"]
         if transition["advance_path_sequence"]:
-            tx_dao = tx_manager.build_dao_with_lifetime(
+            tx_dao = tx_manager.build_dao_with_lifetime_semantics_for_test(
                 manager.node_address, transition["path_lifetime"]
             )
         else:
@@ -60,7 +60,7 @@ def run_route_state_vectors(path: str | Path) -> DaoManager:
             if cached_update != (manager.node_address, transition["path_lifetime"]):
                 counters = (tx_manager._dao_sequence, tx_manager._path_sequence)
                 try:
-                    tx_manager.build_dao_copy_with_lifetime(
+                    tx_manager.build_dao_copy_with_lifetime_semantics_for_test(
                         manager.node_address, transition["path_lifetime"]
                     )
                 except DaoError:
@@ -72,9 +72,11 @@ def run_route_state_vectors(path: str | Path) -> DaoManager:
                 if cached_update is None:
                     raise AssertionError(f"{transition['name']}: no logical update to copy")
                 expected_lifetime = cached_update[1]
-                tx_dao = tx_manager.build_dao_copy_with_lifetime(*cached_update)
+                tx_dao = tx_manager.build_dao_copy_with_lifetime_semantics_for_test(
+                    *cached_update
+                )
             else:
-                tx_dao = tx_manager.build_dao_copy_with_lifetime(
+                tx_dao = tx_manager.build_dao_copy_with_lifetime_semantics_for_test(
                     manager.node_address, transition["path_lifetime"]
                 )
         tx_transit = TransitInformation.from_option(tx_dao.options[1])
@@ -133,7 +135,9 @@ def run_route_state_vectors(path: str | Path) -> DaoManager:
             )
         else:
             dao = DAO.from_bytes(bytes.fromhex(vector["dao_hex"]))
-            outcome = manager.evaluate_dao_at(dao, vector["now_seconds"])
+            outcome = manager.evaluate_dao_semantics_for_test_at(
+                dao, vector["now_seconds"]
+            )
         actual_outcome = {
             "accepted": outcome.accepted,
             "state_changed": outcome.state_changed,

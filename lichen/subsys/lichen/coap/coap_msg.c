@@ -652,6 +652,86 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 }
 
 /* --------------------------------------------------------------------------
+ * GET /msg/sent - Retrieve sent messages
+ * -------------------------------------------------------------------------- */
+
+static size_t encode_sent_cbor(uint8_t *buf, size_t buf_size)
+{
+	size_t off = 0;
+	size_t count;
+	char addr_str[LICHEN_MSG_ADDR_LEN];
+	const char *status_str;
+
+	k_mutex_lock(&s_msg_mutex, K_FOREVER);
+	count = s_sent_count;
+
+	/* {"messages": [...]} */
+	cbor_put_map_header(buf, &off, 1);
+	cbor_put_key(buf, &off, "messages");
+	cbor_put_array_header(buf, &off, count);
+
+	for (size_t i = 0; i < count && off + MSG_INBOX_ENTRY_MAX_CBOR <= buf_size; i++) {
+		const struct lichen_msg *msg = &s_sent[i];
+
+		if (lichen_coap_format_ipv6(msg->peer_addr, addr_str,
+				     sizeof(addr_str)) < 0) {
+			continue;
+		}
+
+		switch (msg->status) {
+		case LICHEN_MSG_STATUS_QUEUED:
+			status_str = "queued";
+			break;
+		case LICHEN_MSG_STATUS_SENDING:
+			status_str = "sending";
+			break;
+		case LICHEN_MSG_STATUS_DELIVERED:
+			status_str = "delivered";
+			break;
+		case LICHEN_MSG_STATUS_FAILED:
+			status_str = "failed";
+			break;
+		default:
+			status_str = "unknown";
+			break;
+		}
+
+		/* Each message: {id, to, body, timestamp, status} */
+		cbor_put_map_header(buf, &off, 5);
+		cbor_put_key(buf, &off, "id");
+		cbor_put_uint(buf, &off, msg->id);
+		cbor_put_key(buf, &off, "to");
+		cbor_put_tstr(buf, &off, addr_str, strlen(addr_str));
+		cbor_put_key(buf, &off, "body");
+		cbor_put_tstr(buf, &off, msg->body, msg->body_len);
+		cbor_put_key(buf, &off, "timestamp");
+		cbor_put_uint(buf, &off, msg->timestamp);
+		cbor_put_key(buf, &off, "status");
+		cbor_put_tstr(buf, &off, status_str, strlen(status_str));
+	}
+
+	k_mutex_unlock(&s_msg_mutex);
+	return off;
+}
+
+int lichen_msg_sent_get_handler(struct coap_resource *resource,
+				struct coap_packet *request,
+				struct sockaddr *addr, socklen_t addr_len)
+{
+	uint8_t cbor_buf[MSG_CBOR_MAX_SIZE];
+	size_t len;
+
+	len = encode_sent_cbor(cbor_buf, sizeof(cbor_buf));
+	if (len == 0) {
+		return lichen_coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
+	}
+
+	return lichen_coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_CONTENT, CBOR_CONTENT_FORMAT, cbor_buf, len);
+}
+
+/* --------------------------------------------------------------------------
  * GET /msg/inbox - Retrieve inbound messages (Observable)
  * -------------------------------------------------------------------------- */
 
@@ -862,6 +942,7 @@ bad_request:
 
 static const char * const msg_sent_path[] = { "msg", "sent", NULL };
 COAP_RESOURCE_DEFINE(msg_sent, lichen_coap_server, {
+	.get = lichen_msg_sent_get_handler,
 	.post = lichen_msg_sent_post,
 	.path = msg_sent_path,
 });

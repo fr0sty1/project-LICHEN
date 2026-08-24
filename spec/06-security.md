@@ -102,17 +102,17 @@ remains future `.44.9` work.
 
 ### 8.5. Unified Ed25519 Identity Derivation
 
-All node identity derives from **a single Ed25519 keypair**. This unifies link-layer Schnorr-48 signatures, X25519 (for EDHOC/OSCORE per §8.9), stable IID, and primary 02xx::/7 Yggdrasil address. No separate keys or ULA. See normative steps and full key management in §8.7, `rust/lichen-link/src/identity.rs:14-48` (`iid_from_pubkey`, `yggdrasil_addr_from_pubkey`), `python/src/lichen/crypto/identity.py:116-198` (`_pubkey_to_iid`, `yggdrasil_address`), `test/vectors/yggdrasil-derivation.json`, 04-network.md:§6.2, and 03-addressing.md.
+All node identity derives from **a single Ed25519 keypair**. This unifies link-layer Schnorr-48 signatures, X25519 (for EDHOC/OSCORE per §8.9), stable IID, and primary 0200::/8 native address. No separate keys or ULA. See normative steps and full key management in §8.7, `rust/lichen-link/src/identity.rs:14-48` (`iid_from_pubkey`, `yggdrasil_addr_from_pubkey`), `python/src/lichen/crypto/identity.py:116-198` (`_pubkey_to_iid`, `yggdrasil_address`), `test/vectors/yggdrasil-derivation.json`, 04-network.md:§6.2, and 03-addressing.md.
 
 **Overview (MUST match §8.7 and test vectors exactly):**
 
 1. 32-byte seed → Ed25519 keypair (deterministic per draft-lichen-schnorr-00).
-2. IID = SHA-512(pubkey)[0:8]; `iid[0] &= 0b1111_1101` (U/L bit **cleared** per RFC 4291; previous `|=0x02` incorrect). **MUST be SHA-512, not SHA-256** — inherited from Yggdrasil `AddrForKey` (`yggdrasil-go/src/address/address.go`) for 0200::/7 interop.
+2. IID = SHA-512(pubkey)[0:8]; `iid[0] &= 0b1111_1101` (U/L bit **cleared** per RFC 4291; previous `|=0x02` incorrect). **MUST be SHA-512, not SHA-256**. The native address profile fixes the first address byte to `0x02` (0200::/8).
 3. 02xx addr = `[0x02] + SHA-512(pubkey)[0:7] + IID` (lower 64 bits bind key to address; prevents substitution).
 4. X25519 priv = clamp(SHA-512(seed)[0:32]) for OSCORE/EDHOC.
 5. TOFU pins pubkey to derived IID/02xx (cryptographically enforced).
 
-Link-local `fe80::/10` for control only. 02xx::/7 primary for all routable traffic (mesh + Yggdrasil interop). See test vectors for exact byte/bit positions and oracles. This binds signatures, OSCORE, addressing into one key, eliminating mismatch attacks.
+Link-local `fe80::/10` is for control only. The key-derived 0200::/8 primary address is for all routable traffic. Global Yggdrasil participation, when enabled, is a separate identity-preserving profile. See test vectors for exact byte/bit positions and oracles. This binds signatures, OSCORE, and addressing into one key, eliminating mismatch attacks.
 
 **Benefits:**
 - Cryptographic binding across all uses (no key/address divergence)
@@ -136,13 +136,13 @@ high-security deployments, enable per-hop verification (costs CPU, not bytes).
 ### 8.7. Key Management
 
 
-A single 32-byte seed produces all material for signatures (Schnorr48), X25519 (for EDHOC/OSCORE), stable IID, and primary 02xx Yggdrasil address. Single key for all purposes. Supports simplified no-ULA model (fe80::IID + 02xx::/7 primary only) per 04-network.md §6.1, 05-routing.md. Matches test/vectors/yggdrasil-derivation.json exactly; see `python/src/lichen/crypto/identity.py:60` (from_seed), `rust/lichen-link/src/identity.rs:100` (Identity::from_seed).
+A single 32-byte seed produces all material for signatures (Schnorr48), X25519 (for EDHOC/OSCORE), stable IID, and the primary 0200::/8 native address. Single key for all purposes. Supports the simplified no-ULA model (fe80::IID + 0200::/8 primary only) per 04-network.md §6.1 and 05-routing.md. Matches test/vectors/yggdrasil-derivation.json exactly; see `python/src/lichen/crypto/identity.py:60` (from_seed), `rust/lichen-link/src/identity.rs:100` (Identity::from_seed).
 
 **Normative Derivation (MUST match test vectors exactly):**
 
 1. **Keypair**: `privkey, pubkey = derive_keypair(seed)` per draft-lichen-schnorr-00.md:97 (h=SHA-512(seed); privkey=clamp(h[0:32]); pubkey=basepoint_mult). Matches schnorr48.py:107 and Rust exactly.
 2. **IID**: `hash=SHA-512(pubkey); iid=hash[0:8]; iid[0] &= 0b1111_1101` (U/L bit clear per RFC 4291). **MUST be SHA-512** — Yggdrasil `AddrForKey` compatibility. See 04-network.md:53, identity.rs:22.
-3. **02xx Address**: `addr=[0x02] + SHA-512(pubkey)[0:7] + IID` (MUST: lower 64 bits == IID to bind key to address and prevent substitution attacks; upper 7 bytes from SHA-512(pubkey) for Yggdrasil 0200::/7 dispersion). No ULA. See identity.rs:40 (yggdrasil_addr_from_pubkey), test/vectors/yggdrasil-derivation.json.
+3. **0200::/8 Address**: `addr=[0x02] + SHA-512(pubkey)[0:7] + IID` (MUST: lower 64 bits == IID to bind key to address and prevent substitution attacks; bytes 1 through 7 are from SHA-512(pubkey)). No ULA. See identity.rs:40 (yggdrasil_addr_from_pubkey), test/vectors/yggdrasil-derivation.json.
  4. **X25519**: `x25519_priv=clamp(SHA-512(seed)[0:32])` per RFC 7748 §5 for EDHOC static DH (see 8.9). Matches Python identity.py:109, standards/crypto.md:79.
 
 
@@ -277,11 +277,32 @@ For high-security pairing without infrastructure:
 **Key Compromise and Rotation:**
 
 - Nodes SHOULD support key rotation announcements
-- Key change with valid signature from old key -> accept new key
+- A rotation signature is made by the old key over the exact transcript:
+
+  ```
+  "LICHEN-KEY-ROTATION-v1" || 0x00 || old_pubkey(32) ||
+  old_key_derived_iid(8) || new_pubkey(32) || rotation_sequence(8, network byte order)
+  ```
+
+  The rotation sequence is strictly increasing, starts above zero, and never
+  wraps. A signature from another protocol domain or over a different old IID,
+  key, or sequence MUST be rejected.
+- Key change with a valid domain-separated signature from the old key -> accept new key
 - An authenticated new key creates fresh per-peer replay state; counters from
   the old key MUST NOT constrain the new key
 - Key change without signature -> reject, require re-verification
 - Revocation: remove from local key store; no global revocation list
+
+Persisted trust entries MUST be treated as untrusted serialized input on every
+load. Implementations MUST enforce an exact versioned schema and bounds,
+recompute the IID and primary 0200::/8 address from each public key, reject
+non-finite timestamps and invalid enums or counters, and expose immutable
+detached entries to callers. Trust and private-key stores MUST use owned private
+directories, non-following regular-file opens, interprocess locks, unique
+mode-0600 temporary files, atomic replacement, and file plus directory `fsync`.
+Concurrent writers MUST use an exact revision comparison and fail rather than
+silently overwrite a newer trust state. Key generations and rotation sequences
+MUST fail closed at their integer maximum instead of wrapping.
 
 ### 8.8. OSCORE (RFC 8613)
 

@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from lichen.crypto.identity import PeerIdentity
+from lichen.ipv6.addr import eui64_to_iid, iid_to_eui64
 from lichen.ipv6.packet import IPv6Header
 from lichen.ipv6.udp import UdpDatagram
 from lichen.link.addressing import (
@@ -25,7 +27,9 @@ def _make_schc_payload(dst_str: str) -> bytes:
     src = IPv6Address("fe80::1")
     dst = IPv6Address(dst_str)
     coap = bytes([0x40, 0x01, 0x12, 0x34])
-    hdr = IPv6Header(src_addr=src, dst_addr=dst, next_header=17, payload_length=8 + len(coap), hop_limit=64)
+    hdr = IPv6Header(
+        src_addr=src, dst_addr=dst, next_header=17, payload_length=8 + len(coap), hop_limit=64
+    )
     udp = UdpDatagram(src_port=5683, dst_port=5683, payload=coap)
     raw = hdr.to_bytes() + udp.to_bytes(src, dst)
     return bytes([0x14]) + compress_packet(raw)
@@ -44,7 +48,14 @@ class TestAddrModeEncoding:
 
     def test_llsec_encodes_all_modes(self) -> None:
         for mode in AddrMode:
-            frame = LichenFrame(epoch=0, seqnum=0, dst_addr=b"\x00" * mode.addr_len, payload=b"\x14\x00", mic=b"", addr_mode=mode)
+            frame = LichenFrame(
+                epoch=0,
+                seqnum=0,
+                dst_addr=b"\x00" * mode.addr_len,
+                payload=b"\x14\x00",
+                mic=b"",
+                addr_mode=mode,
+            )
             llsec = frame.llsec_byte()
             assert (llsec & 0b11) == int(mode), f"mode {mode} not encoded in LLSec"
 
@@ -56,7 +67,9 @@ class TestAddrModeEncoding:
             (AddrMode.ELIDED, b""),
         ]
         for mode, dst in cases:
-            frame = LichenFrame(epoch=5, seqnum=10, dst_addr=dst, payload=b"\x14\x00\xaa", mic=b"", addr_mode=mode)
+            frame = LichenFrame(
+                epoch=5, seqnum=10, dst_addr=dst, payload=b"\x14\x00\xaa", mic=b"", addr_mode=mode
+            )
             data = frame.to_bytes()
             parsed = LichenFrame.from_bytes(data)
             assert parsed.addr_mode == mode
@@ -64,16 +77,27 @@ class TestAddrModeEncoding:
 
     def test_short_requires_two_bytes(self) -> None:
         with pytest.raises(FrameError, match="requires 2"):
-            LichenFrame(epoch=0, seqnum=0, dst_addr=b"\xaa", payload=b"", mic=b"", addr_mode=AddrMode.SHORT).to_bytes()
+            LichenFrame(
+                epoch=0, seqnum=0, dst_addr=b"\xaa", payload=b"", mic=b"", addr_mode=AddrMode.SHORT
+            ).to_bytes()
 
     def test_extended_requires_eight_bytes(self) -> None:
         with pytest.raises(FrameError, match="requires 8"):
-            LichenFrame(epoch=0, seqnum=0, dst_addr=b"\xaa\xbb", payload=b"", mic=b"", addr_mode=AddrMode.EXTENDED).to_bytes()
+            LichenFrame(
+                epoch=0,
+                seqnum=0,
+                dst_addr=b"\xaa\xbb",
+                payload=b"",
+                mic=b"",
+                addr_mode=AddrMode.EXTENDED,
+            ).to_bytes()
 
     def test_none_elided_reject_nonempty_dst(self) -> None:
         for mode in (AddrMode.NONE, AddrMode.ELIDED):
             with pytest.raises(FrameError, match="requires 0"):
-                LichenFrame(epoch=0, seqnum=0, dst_addr=b"\xaa", payload=b"", mic=b"", addr_mode=mode).to_bytes()
+                LichenFrame(
+                    epoch=0, seqnum=0, dst_addr=b"\xaa", payload=b"", mic=b"", addr_mode=mode
+                ).to_bytes()
 
 
 class TestElidedDerivation:
@@ -123,8 +147,14 @@ class TestElidedDerivation:
 
     def test_addressing_mode_for_destination(self) -> None:
         assert addressing_mode_for_destination(None) == AddrMode.NONE
-        assert addressing_mode_for_destination(IPv6Address("fe80::1"), use_elided=False) == AddrMode.EXTENDED
-        assert addressing_mode_for_destination(IPv6Address("fe80::1"), use_elided=True) == AddrMode.ELIDED
+        assert (
+            addressing_mode_for_destination(IPv6Address("fe80::1"), use_elided=False)
+            == AddrMode.EXTENDED
+        )
+        assert (
+            addressing_mode_for_destination(IPv6Address("fe80::1"), use_elided=True)
+            == AddrMode.ELIDED
+        )
 
 
 class TestReservedAddressValidation:
@@ -155,7 +185,9 @@ class TestReservedAddressValidation:
 
 
 # Vector-driven cross-validation
-VECTORS_PATH = Path(__file__).resolve().parents[2].parent / "test" / "vectors" / "link-addressing.json"
+VECTORS_PATH = (
+    Path(__file__).resolve().parents[2].parent / "test" / "vectors" / "link-addressing.json"
+)
 
 
 def _load_vectors():
@@ -205,3 +237,16 @@ class TestVectorValidation:
         if "llsec" in vector:
             assert frame.llsec_byte() == vector["llsec"]
         assert (frame.llsec_byte() & 0b11) == vector["addr_mode"]
+
+    def test_key_derived_extended_eui64_oracle(self) -> None:
+        vector = next(
+            item for _, item in _load_vectors() if item["name"] == "key_derived_extended_eui64"
+        )
+        iid = PeerIdentity.from_pubkey(bytes.fromhex(vector["sender_pubkey_hex"])).iid
+        wire_eui64 = bytes.fromhex(vector["wire_eui64_hex"])
+        assert iid.hex() == vector["key_derived_iid"]
+        assert iid_to_eui64(iid) == wire_eui64
+        assert eui64_to_iid(wire_eui64) == iid
+        frame = LichenFrame.from_bytes(bytes.fromhex(vector["encoded"]))
+        assert frame.addr_mode is AddrMode.EXTENDED
+        assert frame.dst_addr == wire_eui64

@@ -72,6 +72,7 @@ class TestSlotForVectors:
             "slot_for_sfn_zero",
             "slot_for_sfn_one",
             "slot_for_sfn_max",
+            "slot_for_wrapping_sum_before_non_power_of_two_modulus",
             "slot_for_sfn_after_wrap",
             "slot_for_different_num_slots_8",
             "slot_for_different_num_slots_32",

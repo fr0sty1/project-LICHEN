@@ -1,0 +1,509 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "SCHC Rule Versioning test vectors per spec section 5.7. Covers DIO Rule Version Option serialization/parsing, Rule 255 uncompressed fallback, version mismatch scenarios, and decompression failure cases.",
+  "vectors": [
+    {
+      "name": "dio_rule_version_option_v0",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "DIO Rule Version Option with reserved version 0; it never activates an operational fallback registry.",
+      "option_type": 19,
+      "option_length": 1,
+      "version": 0,
+      "wire": "130100",
+      "provenance": "Version 0 is reserved per spec section 5.7. Rule 255 syntax is version-independent under its narrow policy, but does not make version 0 operational; Type=0x13 is SCHC_RULE_VERSION_TYPE."
+    },
+    {
+      "name": "dio_rule_version_option_v1",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "DIO Rule Version Option with version 1 (legacy experimental, not interoperable).",
+      "option_type": 19,
+      "option_length": 1,
+      "version": 1,
+      "wire": "130101",
+      "provenance": "Version 1 is legacy experimental per spec section 5.7 table."
+    },
+    {
+      "name": "dio_rule_version_option_v2",
+      "category": "rule_version",
+      "priority": "P0",
+      "description": "DIO Rule Version Option with version 2 (legacy pre-canonical Rule 7 profile).",
+      "option_type": 19,
+      "option_length": 1,
+      "version": 2,
+      "wire": "130102",
+      "provenance": "Version 2 predates the canonical specialized Rule 7 residue."
+    },
+    {
+      "name": "dio_rule_version_option_v3",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "DIO Rule Version Option with version 3 (current canonical Rule 7 profile).",
+      "option_type": 19,
+      "option_length": 1,
+      "version": 3,
+      "wire": "130103",
+      "provenance": "Version 3 is current and includes the canonical specialized Rule 7 residue."
+    },
+    {
+      "name": "dio_rule_version_option_v127",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "DIO Rule Version Option with version 127 (mid-range boundary).",
+      "option_type": 19,
+      "option_length": 1,
+      "version": 127,
+      "wire": "13017f",
+      "provenance": "8-bit unsigned version field; 127 is mid-range boundary."
+    },
+    {
+      "name": "dio_rule_version_option_v255",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "DIO Rule Version Option with version 255 (maximum 8-bit value).",
+      "option_type": 19,
+      "option_length": 1,
+      "version": 255,
+      "wire": "1301ff",
+      "provenance": "8-bit unsigned version field allows 0-255; 255 is maximum."
+    },
+    {
+      "name": "dio_rule_version_parse_truncated_2byte",
+      "category": "rule_version",
+      "priority": "P0",
+      "description": "Parsing Rule Version Option with only 2 bytes must fail (needs 3).",
+      "wire": "1301",
+      "expect_error": "truncated",
+      "provenance": "Wire format requires 3 bytes: Type(1B) + Length(1B) + Version(1B)."
+    },
+    {
+      "name": "dio_rule_version_parse_truncated_1byte",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "Parsing Rule Version Option with only 1 byte must fail.",
+      "wire": "13",
+      "expect_error": "truncated",
+      "provenance": "Wire format requires 3 bytes minimum."
+    },
+    {
+      "name": "dio_rule_version_parse_wrong_type",
+      "category": "rule_version",
+      "priority": "P0",
+      "description": "Parsing with wrong option type 0x12 must fail.",
+      "wire": "120102",
+      "expect_error": "wrong_type",
+      "expect_type": 18,
+      "provenance": "Expected Type=0x13; 0x12 is different option type."
+    },
+    {
+      "name": "dio_rule_version_parse_wrong_length",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "Parsing with length field != 1 must fail.",
+      "wire": "13020102",
+      "expect_error": "wrong_length",
+      "expect_length": 2,
+      "provenance": "Length field must be exactly 1 for SchcRuleVersionOption."
+    },
+    {
+      "name": "dio_rule_version_parse_trailing_bytes",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "A fixed three-byte option must reject trailing bytes rather than consume another TLV.",
+      "wire": "130103ff",
+      "expect_error": "trailing_bytes",
+      "provenance": "The parser returns no consumed length, so its input must be exactly one canonical option."
+    },
+    {
+      "name": "dio_rule_version_parse_length_0",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "A complete Type 0x13, Length 0 TLV is rejected because the SCHC Rule Version value length must be exactly one.",
+      "wire": "1300",
+      "expect_error": "wrong_length",
+      "expect_length": 0,
+      "provenance": "The TLV is structurally complete at two bytes, but Length 0 violates the option's required Length 1."
+    },
+    {
+      "name": "version_compatible_v3_v3",
+      "category": "rule_version",
+      "priority": "P0",
+      "description": "Current version 3 peers are compatible.",
+      "local_version": 3,
+      "remote_version": 3,
+      "expect_compatible": true,
+      "provenance": "Same current versions are compatible per spec section 5.7."
+    },
+    {
+      "name": "version_compatible_v2_v2",
+      "category": "rule_version",
+      "priority": "P0",
+      "description": "Legacy version 2 is not operational without an immutable version-2 registry.",
+      "local_version": 2,
+      "remote_version": 2,
+      "expect_compatible": false,
+      "expect_error": "unsupported_version",
+      "provenance": "This implementation ships only the immutable Version 3 registry."
+    },
+    {
+      "name": "version_compatible_v0_v0",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "Reserved version 0 is never operationally compatible.",
+      "local_version": 0,
+      "remote_version": 0,
+      "expect_compatible": false,
+      "expect_error": "unsupported_version",
+      "provenance": "Version 0 is reserved and cannot identify a compression registry."
+    },
+    {
+      "name": "version_compatible_v255_v255",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "Undefined future version 255 is not operationally compatible.",
+      "local_version": 255,
+      "remote_version": 255,
+      "expect_compatible": false,
+      "expect_error": "unsupported_version",
+      "provenance": "Equality cannot activate a rule registry that is not implemented."
+    },
+    {
+      "name": "version_mismatch_v1_v2",
+      "category": "rule_version",
+      "priority": "P0",
+      "description": "Version 1 and legacy version 2 are incompatible.",
+      "local_version": 1,
+      "remote_version": 2,
+      "expect_compatible": false,
+      "expect_error": "version_mismatch",
+      "provenance": "Different versions are incompatible per spec section 5.7."
+    },
+    {
+      "name": "version_mismatch_v2_v1",
+      "category": "rule_version",
+      "priority": "P0",
+      "description": "Legacy version 2 and version 1 are incompatible.",
+      "local_version": 2,
+      "remote_version": 1,
+      "expect_compatible": false,
+      "expect_error": "version_mismatch",
+      "provenance": "Mismatch regardless of which side is higher."
+    },
+    {
+      "name": "version_mismatch_v2_v3",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "Legacy version 2 and current version 3 are incompatible.",
+      "local_version": 2,
+      "remote_version": 3,
+      "expect_compatible": false,
+      "expect_error": "version_mismatch",
+      "provenance": "Future versions require matching; no forward compatibility."
+    },
+    {
+      "name": "version_mismatch_v0_v2",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "Version 0 (reserved) and legacy version 2 are incompatible.",
+      "local_version": 0,
+      "remote_version": 2,
+      "expect_compatible": false,
+      "expect_error": "version_mismatch",
+      "provenance": "Reserved version 0 not interoperable with production versions."
+    },
+    {
+      "name": "version_mismatch_v254_v255",
+      "category": "rule_version",
+      "priority": "P2",
+      "description": "Adjacent high versions 254 and 255 are incompatible.",
+      "local_version": 254,
+      "remote_version": 255,
+      "expect_compatible": false,
+      "expect_error": "version_mismatch",
+      "provenance": "Versions must match exactly; no range compatibility."
+    },
+    {
+      "name": "rule255_fallback_min_ipv6",
+      "category": "uncompressed",
+      "priority": "P0",
+      "description": "Rule 255 fallback with minimal 40-byte IPv6 header only.",
+      "packet": "6000000000003b40fe800000000000000000000000000001fe800000000000000000000000000002",
+      "compressed": "ff6000000000003b40fe800000000000000000000000000001fe800000000000000000000000000002",
+      "rule_id": 255,
+      "compressed_size": 41,
+      "provenance": "A zero-payload IPv6 packet uses Next Header 59 (No Next Header); its 40-byte header plus the Rule 255 prefix is 41 bytes."
+    },
+    {
+      "name": "rule255_fallback_ipv6_udp_8byte_payload",
+      "category": "uncompressed",
+      "priority": "P1",
+      "description": "Rule 255 fallback with IPv6+UDP+8-byte payload.",
+      "packet": "6000000000101140fe800000000000000000000000000001fe8000000000000000000000000000021633163300106dc7deadbeefcafe0000",
+      "compressed": "ff6000000000101140fe800000000000000000000000000001fe8000000000000000000000000000021633163300106dc7deadbeefcafe0000",
+      "rule_id": 255,
+      "compressed_size": 57,
+      "provenance": "40-byte IPv6 + 8-byte UDP + 8-byte payload + 1-byte prefix = 57 bytes."
+    },
+    {
+      "name": "rule255_fallback_max_single_frame",
+      "category": "uncompressed",
+      "priority": "P1",
+      "description": "Rule 255 with a raw IPv6 packet at the exact signed Extended-unicast single-frame limit.",
+      "rule_id": 255,
+      "max_single_frame_packet": 184,
+      "compressed_overhead": 1,
+      "schc_packet_limit": 185,
+      "l2_payload_limit": 186,
+      "provenance": "A 255-byte frame leaves 186 L2 payload bytes after fixed fields, Extended DST, mandatory SIID, and Schnorr-48; dispatch consumes one and Rule 255 consumes one, leaving 184 IPv6 bytes."
+    },
+    {
+      "name": "rule255_version_mismatch_fallback",
+      "category": "uncompressed",
+      "priority": "P1",
+      "description": "Outside an incompatible DODAG, an authenticated peer registry may use Rule 255 fallback for one unfragmented packet.",
+      "scenario": "version_mismatch",
+      "local_version": 3,
+      "remote_version": 2,
+      "scope": "outside_incompatible_dodag",
+      "authenticated_peer_registry": true,
+      "packet_fits_single_frame": true,
+      "use_rule_255": true,
+      "provenance": "Rule 255 is a narrowly scoped authenticated-peer fallback and cannot bypass DODAG admission."
+    },
+    {
+      "name": "decompression_failure_empty_packet",
+      "category": "rejection",
+      "priority": "P0",
+      "description": "Empty SCHC packet must raise error, not crash.",
+      "wire": "",
+      "expect_error": "empty_packet",
+      "provenance": "Zero-length input must produce clean error."
+    },
+    {
+      "name": "decompression_failure_unknown_rule_8",
+      "category": "rejection",
+      "priority": "P0",
+      "description": "Rule ID 8 (first gap after defined Rules 0-7) must raise unknown_rule_id.",
+      "wire": "08aabbccdd",
+      "expect_error": "unknown_rule_id",
+      "expect_rule_id": 8,
+      "provenance": "Rules 8-63 are undefined gaps; must reject cleanly."
+    },
+    {
+      "name": "decompression_failure_unknown_rule_63",
+      "category": "rejection",
+      "priority": "P1",
+      "description": "Rule ID 63 is outside the Version 3 wire registry and must raise unknown_rule_id.",
+      "wire": "3f11223344",
+      "expect_error": "unknown_rule_id",
+      "expect_rule_id": 63,
+      "provenance": "Rule 63 is an undefined wire ID; Python helper IDs 64-66 are descriptor components, not a following wire-ID range."
+    },
+    {
+      "name": "decompression_failure_unknown_rule_67",
+      "category": "rejection",
+      "priority": "P1",
+      "description": "Rule ID 67 is outside the Version 3 wire registry and must raise unknown_rule_id.",
+      "wire": "43deadbeef",
+      "expect_error": "unknown_rule_id",
+      "expect_rule_id": 67,
+      "provenance": "Rule 67 is an undefined wire ID; local descriptor helpers 64-66 do not establish a wire-ID allocation."
+    },
+    {
+      "name": "decompression_failure_unknown_rule_119",
+      "category": "rejection",
+      "priority": "P1",
+      "description": "Rule ID 119 (just before fragmentation) must raise unknown_rule_id.",
+      "wire": "77aabbccddee",
+      "expect_error": "unknown_rule_id",
+      "expect_rule_id": 119,
+      "provenance": "Rule 119 undefined; fragmentation starts at 120."
+    },
+    {
+      "name": "decompression_failure_unknown_rule_254",
+      "category": "rejection",
+      "priority": "P1",
+      "description": "Rule ID 254 (just before 255) must raise unknown_rule_id.",
+      "wire": "fe00112233",
+      "expect_error": "unknown_rule_id",
+      "expect_rule_id": 254,
+      "provenance": "Rule 254 undefined; 255 is uncompressed fallback."
+    },
+    {
+      "name": "decompression_failure_truncated_rule0",
+      "category": "rejection",
+      "priority": "P0",
+      "description": "Rule 0 packet truncated at 5 bytes (needs 23+ for residue).",
+      "wire": "00aabbccdd",
+      "expect_error": "truncated_residue",
+      "rule_id": 0,
+      "provenance": "Rule 0 requires 22-byte residue + 1-byte ID; 5 bytes is truncated."
+    },
+    {
+      "name": "decompression_failure_helper_rule66_not_wire",
+      "category": "rejection",
+      "priority": "P1",
+      "description": "Helper descriptor ID 66 is not a Version 3 wire Rule ID and must be rejected before residue decoding.",
+      "wire": "42aabb",
+      "expect_error": "unknown_rule_id",
+      "expect_rule_id": 66,
+      "provenance": "The ICMPv6-Echo helper Rule object numbered 66 composes whole-packet Rule 2; default contexts never select or decode 66 on wire."
+    },
+    {
+      "name": "decompression_failure_ipv6_invalid_version",
+      "category": "rejection",
+      "priority": "P1",
+      "description": "Decompressed IPv6 with invalid version nibble must fail.",
+      "scenario": "invalid_ipv6",
+      "invalid_field": "version",
+      "provenance": "Spec section 5.7: decompression producing invalid IPv6 must drop packet."
+    },
+    {
+      "name": "rule_set_v3_registry_fingerprint",
+      "category": "registry",
+      "priority": "P1",
+      "description": "Canonical Version 3 generic descriptor membership, lookup, deterministic selection, and fingerprint; specialized wire Rule 7 is tested through the packet codec.",
+      "registry_version": 3,
+      "rule_ids": [5, 6, 0, 1, 2, 3, 4, 255],
+      "descriptor_hash_algorithm": "fnv1a64-lichen-schc-descriptor-v1",
+      "descriptor_hash": "4ae04dbf28c2fc3b",
+      "get_present": [5, 6, 0, 1, 2, 3, 4, 255],
+      "get_absent": [7, 64, 65, 66, 254],
+      "specialized_wire_rule_ids": [7],
+      "descriptor_helper_ids": [64, 65, 66],
+      "generic_decode_rejects": [64, 65, 66],
+      "default_selection": [
+        {"fields_from_rule": 5, "selected_rule": 0},
+        {"fields_from_rule": 6, "selected_rule": 1},
+        {"fields_from_rule": 0, "selected_rule": 0},
+        {"fields_from_rule": 1, "selected_rule": 1},
+        {"fields_from_rule": 2, "selected_rule": 2},
+        {"fields_from_rule": 3, "selected_rule": 3},
+        {"fields_from_rule": 4, "selected_rule": 4}
+      ],
+      "provenance": "FNV-1a-64 covers only the generic descriptor registry. Rule 7 is the canonical specialized codec path; Rules 64-66 are non-wire helper descriptors."
+    },
+    {
+      "name": "repeated_failures_version_mismatch_detection",
+      "category": "rule_version",
+      "priority": "P2",
+      "description": "Repeated decompression failures from same source suggests version mismatch.",
+      "failure_threshold": 3,
+      "action": "notify_operator",
+      "source": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+      "expected_notifications": [false, false, true, false],
+      "provenance": "Per spec section 5.7 table: repeated failures trigger mismatch notification."
+    },
+    {
+      "name": "failure_tracker_capacity_fails_closed_without_eviction",
+      "category": "rule_version",
+      "priority": "P2",
+      "description": "A full authenticated-source tracker rejects a new signer and preserves the existing consecutive-failure run.",
+      "failure_tracker_capacity": 1,
+      "failure_threshold": 2,
+      "capacity_policy": "fail_closed_no_eviction",
+      "sources": [
+        "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+        "17cb79fb2b4120f2b1ec65e4198d6e08b28e813feb01e4a400839b85e18080ce",
+        "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+      ],
+      "expected_results": ["below_threshold", "tracker_full", "notify_operator"],
+      "provenance": "Bounded implementations fail closed rather than evicting an authenticated signer whose consecutive-failure run is security-relevant."
+    },
+    {
+      "name": "dio_dodag_filter_version_match",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "Node joins DODAG when DIO version matches local version.",
+      "local_version": 3,
+      "dio_version": 3,
+      "expect_join": true,
+      "provenance": "Per spec section 5.7: nodes MUST join or remain only in a DODAG advertising the authenticated supported version."
+    },
+    {
+      "name": "dio_dodag_filter_version_mismatch",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "Node does not join DODAG when DIO version mismatches local.",
+      "local_version": 3,
+      "dio_version": 2,
+      "expect_join": false,
+      "provenance": "Per spec section 5.7: version mismatch indicates firmware incompatibility."
+    },
+    {
+      "name": "fragmentation_requires_version_match",
+      "category": "rule_version",
+      "priority": "P1",
+      "description": "Directional fragmentation Rules 0x78 and 0x79 require a matching rule-set version; 0x7A through 0xFE remain reserved.",
+      "local_version": 3,
+      "remote_version": 2,
+      "expect_compatible": false,
+      "packet_requires_fragmentation": true,
+      "can_send": false,
+      "provenance": "Per spec section 5.7: Rule 255 does not provide fragmentation compatibility, and Version 3 assigns only 0x78/0x79 to fragmentation."
+    },
+    {
+      "name": "rule255_no_fragmentation",
+      "category": "uncompressed",
+      "priority": "P1",
+      "description": "Rule 255 packet exceeding single frame cannot fragment without version match.",
+      "rule_id": 255,
+      "packet_size": 300,
+      "single_frame_limit": 185,
+      "can_fragment": false,
+      "provenance": "Per spec section 5.7: Rule 255 does not provide fragmentation compatibility."
+    }
+  ],
+  "admission_policy_vectors": [
+    {
+      "name": "rule255_mismatch_inside_dodag_rejected",
+      "description": "A sender advertising an incompatible root-originated rule version cannot use Rule 255 to join or exchange operational traffic inside that DODAG.",
+      "local_version": 3,
+      "remote_version": 2,
+      "scope": "inside_incompatible_dodag",
+      "authenticated_peer_registry": true,
+      "packet_fits_single_frame": true,
+      "use_rule_255": false,
+      "expect_join": false,
+      "expect_delivery": false,
+      "provenance": "Rule 255 support does not weaken the authenticated DODAG rule-version admission boundary."
+    },
+    {
+      "name": "non_root_propagates_root_version_unchanged",
+      "description": "Every authenticated parent-selectable non-root DIO propagates the root-originated version byte exactly.",
+      "emitter_role": "non_root_parent",
+      "parent_selectable": true,
+      "authenticated": true,
+      "root_originated_version": 3,
+      "advertised_version": 3,
+      "expect_parent_candidate": true,
+      "provenance": "A non-root cannot substitute its local version or omit the root's version while remaining parent-selectable."
+    },
+    {
+      "name": "non_root_version_substitution_rejected",
+      "description": "A validly signed non-root DIO that substitutes another rule version is not a parent candidate.",
+      "emitter_role": "non_root_parent",
+      "parent_selectable": true,
+      "authenticated": true,
+      "root_originated_version": 3,
+      "advertised_version": 2,
+      "expect_parent_candidate": false,
+      "expect_error": "root_version_not_propagated",
+      "provenance": "Hop authentication does not authorize changing a root-scoped compatibility value."
+    },
+    {
+      "name": "parent_selectable_dio_missing_version_rejected",
+      "description": "An authenticated DIO without exactly one rule-version option cannot be parent-selectable.",
+      "emitter_role": "non_root_parent",
+      "parent_selectable": true,
+      "authenticated": true,
+      "root_originated_version": 3,
+      "advertised_version": null,
+      "expect_parent_candidate": false,
+      "expect_error": "missing_rule_version",
+      "provenance": "Exact propagation requires one canonical Type 0x13/Length 1 option on every parent-selectable DIO."
+    }
+  ]
+}

@@ -50,6 +50,13 @@ static int test_init_rejects_null(void)
 	return 1;
 }
 
+static int test_empty_null_returns_true(void)
+{
+	/* Documented contract: tx_queue_empty(NULL) returns true */
+	ASSERT_TRUE(tx_queue_empty(NULL), "empty(NULL) returns true");
+	return 1;
+}
+
 static int test_init_success(void)
 {
 	struct tx_queue queue;
@@ -369,6 +376,65 @@ static int test_stats_tracking(void)
 	return 1;
 }
 
+static int test_latency_tracking(void)
+{
+	struct tx_queue queue;
+	uint8_t data[4] = {1, 2, 3, 4};
+	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len;
+	uint32_t latency = UINT32_MAX;
+	struct tx_queue_stats stats;
+
+	tx_queue_test_set_time(1000);
+	tx_queue_init(&queue);
+
+	tx_queue_push(&queue, data, sizeof(data), TX_PRIORITY_BULK, 160000);
+
+	tx_queue_test_set_time(1100);
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, &latency), 0,
+		  "pop succeeds");
+	ASSERT_EQ(latency, 100, "latency measured from enqueue time");
+
+	tx_queue_stats_get(&queue, &stats);
+	ASSERT_EQ(stats.max_latency_ms, 100, "max latency tracked");
+	ASSERT_EQ(stats.avg_latency_ms, 12, "avg latency is EWMA of 100");
+
+	return 1;
+}
+
+static int test_latency_max_and_reset(void)
+{
+	struct tx_queue queue;
+	uint8_t data[4] = {1, 2, 3, 4};
+	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len;
+	struct tx_queue_stats stats;
+
+	tx_queue_test_set_time(1000);
+	tx_queue_init(&queue);
+
+	tx_queue_push(&queue, data, sizeof(data), TX_PRIORITY_BULK, 160000);
+	tx_queue_test_set_time(1050);
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop 1");
+
+	tx_queue_test_set_time(1200);
+	tx_queue_push(&queue, data, sizeof(data), TX_PRIORITY_BULK, 160000);
+	tx_queue_test_set_time(1400);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop 2");
+
+	tx_queue_stats_get(&queue, &stats);
+	ASSERT_EQ(stats.max_latency_ms, 200, "max latency keeps worst case");
+
+	tx_queue_clear(&queue);
+	tx_queue_stats_get(&queue, &stats);
+	ASSERT_EQ(stats.max_latency_ms, 0, "clear resets max latency");
+	ASSERT_EQ(stats.avg_latency_ms, 0, "clear resets avg latency");
+
+	return 1;
+}
+
 static int test_clear(void)
 {
 	struct tx_queue queue;
@@ -506,6 +572,7 @@ int main(void)
 
 	printf("Initialization tests:\n");
 	RUN_TEST(test_init_rejects_null);
+	RUN_TEST(test_empty_null_returns_true);
 	RUN_TEST(test_init_success);
 
 	printf("\nPush validation tests:\n");
@@ -534,6 +601,8 @@ int main(void)
 
 	printf("\nStatistics and misc tests:\n");
 	RUN_TEST(test_stats_tracking);
+	RUN_TEST(test_latency_tracking);
+	RUN_TEST(test_latency_max_and_reset);
 	RUN_TEST(test_clear);
 
 	printf("\nConcurrency/TSAN tests:\n");

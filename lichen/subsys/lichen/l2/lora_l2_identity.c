@@ -99,7 +99,7 @@ int generate_eui64(uint8_t *eui64)
              * SECURITY: Refusing to start without stable identity. A random EUI-64
              * would change on each reboot, breaking IPv6 NDP and mesh routing.
              */
-            LOG_ERR("lora_l2: hwinfo_get_device_id failed (%d)", (int)hwid_len);
+            LOG_ERR("lora_l2: hwinfo_get_device_id failed (%ld)", (long)hwid_len);
             /* Cast safe: hwinfo errors are negative errno (-E*), always fit in int */
             ret = (int)hwid_len;
             goto cleanup;
@@ -116,7 +116,7 @@ int generate_eui64(uint8_t *eui64)
      * to that call. If the driver returns len > sizeof(hwid), the buffer was
      * already overflown - this check catches the inconsistency defensively. */
     if ((size_t)hwid_len > sizeof(hwid)) {
-        LOG_ERR("lora_l2: hwinfo returned invalid length (%d)", (int)hwid_len);
+        LOG_ERR("lora_l2: hwinfo returned invalid length (%ld)", (long)hwid_len);
         ret = -EINVAL;
         goto cleanup;
     }
@@ -157,9 +157,7 @@ int generate_eui64(uint8_t *eui64)
      * 3. Matches RFC 7343 (ORCHID) approach for cryptographic identifiers
      */
     memcpy(eui64, hash, 8);
-    /* hwid_len is ssize_t; cast to int is safe since hwinfo_get_device_id()
-     * returns at most sizeof(hwid) (32 bytes), well within int range. */
-    LOG_DBG("lora_l2: EUI-64 from hashed hardware ID (%d bytes)", (int)hwid_len);
+    LOG_DBG("lora_l2: EUI-64 from hashed hardware ID (%ld bytes)", (long)hwid_len);
 
     /*
      * IEEE 802 EUI-64 first octet bit definitions (LSB numbering):

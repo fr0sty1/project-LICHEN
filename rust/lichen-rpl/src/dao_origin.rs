@@ -15,11 +15,14 @@
 #![forbid(unsafe_code)]
 
 #[cfg(feature = "std")]
-use crate::message::{Dao, SignedDaoEnvelope, DaoEnvelopeError, OPT_DAO_ORIGIN_SIGNATURE, DAO_ORIGIN_SIGNATURE_DATA_LEN};
+use crate::message::{
+    Dao, DaoEnvelopeError, SignedDaoEnvelope, DAO_ORIGIN_SIGNATURE_DATA_LEN,
+    OPT_DAO_ORIGIN_SIGNATURE,
+};
 #[cfg(feature = "std")]
 use crate::verify::dao_origin_digest;
 #[cfg(feature = "std")]
-use lichen_link::{identity::iid_from_pubkey, schnorr};
+use lichen_link::{schnorr, ygg_addr_from_pubkey};
 #[cfg(feature = "std")]
 use sha2::{Digest, Sha512};
 
@@ -225,9 +228,15 @@ impl<'a, P: PinTable, R: OriginReplayStore> DaoOriginValidator<'a, P, R> {
             Err(err) => {
                 let reason = match err {
                     DaoEnvelopeError::MissingSignature => DaoOriginRejectReason::SignatureMissing,
-                    DaoEnvelopeError::DuplicateSignature => DaoOriginRejectReason::SignatureDuplicate,
-                    DaoEnvelopeError::NonTerminalSignature => DaoOriginRejectReason::SignatureNotFinal,
-                    DaoEnvelopeError::InvalidOptionLength => DaoOriginRejectReason::SignatureInvalidLength,
+                    DaoEnvelopeError::DuplicateSignature => {
+                        DaoOriginRejectReason::SignatureDuplicate
+                    }
+                    DaoEnvelopeError::NonTerminalSignature => {
+                        DaoOriginRejectReason::SignatureNotFinal
+                    }
+                    DaoEnvelopeError::InvalidOptionLength => {
+                        DaoOriginRejectReason::SignatureInvalidLength
+                    }
                     DaoEnvelopeError::UnknownOption(_) | DaoEnvelopeError::Rpl(_) => {
                         DaoOriginRejectReason::Malformed
                     }
@@ -248,8 +257,7 @@ impl<'a, P: PinTable, R: OriginReplayStore> DaoOriginValidator<'a, P, R> {
         };
 
         // Step 4: Validate key-to-IID binding
-        let expected_iid = iid_from_pubkey(&pubkey.into());
-        if source_iid != expected_iid {
+        if origin != ygg_addr_from_pubkey(&pubkey) {
             return DaoOriginResult::reject(DaoOriginRejectReason::IidMismatch);
         }
 
@@ -362,10 +370,6 @@ mod tests {
                 pins: HashMap::new(),
             }
         }
-
-        fn pin(&mut self, iid: [u8; 8], pubkey: [u8; 32]) {
-            self.pins.insert(iid, pubkey);
-        }
     }
 
     impl PinTable for MockPinTable {
@@ -401,7 +405,10 @@ mod tests {
     fn test_reject_result() {
         let result = DaoOriginResult::reject(DaoOriginRejectReason::OriginNotPinned);
         assert!(!result.valid);
-        assert_eq!(result.reject_reason, Some(DaoOriginRejectReason::OriginNotPinned));
+        assert_eq!(
+            result.reject_reason,
+            Some(DaoOriginRejectReason::OriginNotPinned)
+        );
         assert!(result.pubkey.is_none());
         assert!(result.origin_sequence.is_none());
         assert!(result.dao_digest.is_none());
@@ -451,14 +458,14 @@ mod tests {
         wire[1] = 0x40; // K=0, D=1
         wire[2] = 0; // reserved
         wire[3] = 1; // dao_sequence
-        // dodag_id: 16 bytes at offset 4-19
+                     // dodag_id: 16 bytes at offset 4-19
         wire[4] = 0xfd;
         // Signature option at offset 20 (immediately after DAO base with D=1)
         wire[20] = 0x12; // OPT_DAO_ORIGIN_SIGNATURE
         wire[21] = 56; // length
-        // origin_sequence (8 bytes, network byte order) - must be non-zero
+                       // origin_sequence (8 bytes, network byte order) - must be non-zero
         wire[22..30].copy_from_slice(&[0, 0, 0, 0, 0, 0, 0, 1]); // sequence = 1
-        // signature (48 bytes) at offset 30-77
+                                                                 // signature (48 bytes) at offset 30-77
 
         let origin = [0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, 0x01];
         let dodag_id = [0xfdu8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -467,7 +474,10 @@ mod tests {
 
         // The validator will reject for OriginNotPinned since the pin table is empty
         assert!(!result.valid);
-        assert_eq!(result.reject_reason, Some(DaoOriginRejectReason::OriginNotPinned));
+        assert_eq!(
+            result.reject_reason,
+            Some(DaoOriginRejectReason::OriginNotPinned)
+        );
     }
 
     #[test]

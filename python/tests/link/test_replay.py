@@ -12,6 +12,7 @@ import pytest
 
 from lichen.link.replay import (
     WINDOW_SIZE,
+    ReplayCapacityError,
     ReplayProtector,
     ReplayWindow,
     logical_counter,
@@ -33,6 +34,17 @@ class TestLogicalCounter:
     def test_out_of_range(self, epoch: int, seqnum: int) -> None:
         with pytest.raises(ValueError):
             logical_counter(epoch, seqnum)
+
+    @pytest.mark.parametrize("bad", [True, False, 1.0, "1"])
+    def test_requires_exact_integer_types(self, bad: object) -> None:
+        with pytest.raises(TypeError, match="epoch must be an exact integer"):
+            logical_counter(bad, 0)  # type: ignore[arg-type]
+        with pytest.raises(TypeError, match="seqnum must be an exact integer"):
+            logical_counter(0, bad)  # type: ignore[arg-type]
+
+    def test_exact_integer_boundaries(self) -> None:
+        assert logical_counter(0, 0) == 0
+        assert logical_counter(0xFF, 0xFFFF) == 0xFF_FFFF
 
 
 class TestReplayWindow:
@@ -121,8 +133,31 @@ class TestReplayWindow:
         with pytest.raises(ValueError):
             ReplayWindow(window_size=0)
 
+    @pytest.mark.parametrize("method", ["check", "commit", "check_and_update"])
+    @pytest.mark.parametrize("bad", [True, False, 1.0, "1"])
+    def test_public_counter_methods_require_exact_integers(
+        self,
+        method: str,
+        bad: object,
+    ) -> None:
+        window = ReplayWindow()
+        operation = getattr(window, method)
+        with pytest.raises(TypeError):
+            operation(bad, 0)
+        with pytest.raises(TypeError):
+            operation(0, bad)
+        assert window.highest == -1
+
 
 class TestReplayProtector:
+    def test_highest_snapshots_without_allocating_unseen_peer(self) -> None:
+        p = ReplayProtector(max_peers=1)
+        assert p.highest(b"unseen") == -1
+        assert p.check_and_update(b"kept", 2, 7) is True
+        assert p.highest(b"kept") == logical_counter(2, 7)
+        assert p.highest(b"other-unseen") == -1
+        assert p.check_and_update(b"kept", 2, 7) is False
+
     def test_per_sender_isolation(self) -> None:
         p = ReplayProtector()
         assert p.check_and_update(b"A", 0, 1) is True
@@ -156,6 +191,113 @@ class TestReplayProtector:
 
     def test_window_size_constant(self) -> None:
         assert WINDOW_SIZE == 32
+
+    @pytest.mark.parametrize("method", ["check", "commit", "check_and_update"])
+    @pytest.mark.parametrize("bad", [True, False, 1.0, "1"])
+    def test_public_counter_methods_require_exact_integers(
+        self,
+        method: str,
+        bad: object,
+    ) -> None:
+        protector = ReplayProtector(max_peers=1, max_retained_floors=1)
+        operation = getattr(protector, method)
+        with pytest.raises(TypeError):
+            operation(b"peer", bad, 0)
+        with pytest.raises(TypeError):
+            operation(b"peer", 0, bad)
+        assert protector.highest(b"peer") == -1
+        assert not protector._windows
+
+    def test_rejected_floor_admission_preserves_unrelated_window_and_lru(self) -> None:
+        protector = ReplayProtector(max_peers=1, max_retained_floors=1)
+        assert protector.check_and_update(b"kept", 0, 10)
+        window = protector._windows[b"kept"]
+        before = (
+            list(protector._windows),
+            list(protector._floors.items()),
+            window._highest,
+            window._bitmap,
+        )
+
+        with pytest.raises(ReplayCapacityError, match="floor registry"):
+            protector.check_and_update(b"rejected", 0, 1)
+
+        assert list(protector._windows) == before[0]
+        assert list(protector._floors.items()) == before[1]
+        assert protector._windows[b"kept"] is window
+        assert (window._highest, window._bitmap) == before[2:]
+        assert protector.check_and_update(b"kept", 0, 9)
+
+    def test_rotate_rejects_occupied_replacement_without_mutation(self) -> None:
+        protector = ReplayProtector()
+        assert protector.check_and_update(b"old", 0, 5)
+        assert protector.check_and_update(b"new", 0, 7)
+        with pytest.raises(ValueError, match="replacement sender"):
+            protector.rotate(b"old", b"new")
+        assert protector.highest(b"old") == 5
+        assert protector.highest(b"new") == 7
+
+    def test_rejected_existing_replay_does_not_refresh_lru(self) -> None:
+        protector = ReplayProtector(max_peers=2, max_retained_floors=4)
+        assert protector.check_and_update(b"oldest", 0, 10)
+        assert protector.check_and_update(b"newest", 0, 10)
+        before = list(protector._windows)
+
+        assert protector.check_and_update(b"oldest", 0, 10) is False
+        assert list(protector._windows) == before
+        assert protector.check_and_update(b"replacement", 0, 1)
+        assert list(protector._windows) == [b"newest", b"replacement"]
+
+    def test_rejected_evicted_sender_does_not_resurrect_or_evict(self) -> None:
+        protector = ReplayProtector(max_peers=2, max_retained_floors=4)
+        assert protector.check_and_update(b"evicted", 0, 10)
+        assert protector.check_and_update(b"kept-a", 0, 10)
+        assert protector.check_and_update(b"kept-b", 0, 10)
+        before_windows = list(protector._windows)
+        before_floors = list(protector._floors.items())
+
+        assert protector.check_and_update(b"evicted", 0, 10) is False
+        assert list(protector._windows) == before_windows
+        assert list(protector._floors.items()) == before_floors
+
+    def test_export_import_preserves_exact_windows_floors_and_lru(self) -> None:
+        original = ReplayProtector(max_peers=2, max_retained_floors=4)
+        assert original.check_and_update(b"evicted", 0, 10)
+        assert original.check_and_update(b"active", 0, 20)
+        assert original.check_and_update(b"newest", 0, 30)
+        assert original.check_and_update(b"active", 0, 19)
+        original.pin(b"active")
+
+        restored = ReplayProtector(max_peers=2, max_retained_floors=4)
+        restored.import_state(original.export_state())
+
+        assert restored.export_state() == original.export_state()
+        assert restored.check_and_update(b"active", 0, 19) is False
+        assert restored.check_and_update(b"evicted", 0, 10) is False
+
+    @pytest.mark.parametrize(
+        "mutation",
+        [
+            lambda state: state["windows"][0].__setitem__("highest", 9),
+            lambda state: state.__setitem__("floors", []),
+            lambda state: state["windows"][0].__setitem__("bitmap", 2),
+            lambda state: state["windows"][0].__setitem__("bitmap", 0),
+        ],
+        ids=["floor-above-highest", "missing-floor", "missing-bit-zero", "empty-bitmap"],
+    )
+    def test_import_rejects_inconsistent_window_snapshot_atomically(self, mutation) -> None:
+        source = ReplayProtector(max_peers=2, max_retained_floors=4)
+        assert source.check_and_update(b"peer", 0, 10)
+        malformed = source.export_state()
+        mutation(malformed)
+        target = ReplayProtector(max_peers=2, max_retained_floors=4)
+        assert target.check_and_update(b"kept", 0, 3)
+        before = target.export_state()
+
+        with pytest.raises(ValueError, match="replay (window|state)"):
+            target.import_state(malformed)
+
+        assert target.export_state() == before
 
 
 class TestTwoPhaseReplayWindow:
@@ -431,3 +573,26 @@ class TestThreadSafetyReplayProtector:
         # All should succeed since they have different sequence numbers
         # This verifies no race in window creation
         assert all(results), f"Expected all True, got {results}"
+
+
+def test_pristine_pinned_snapshot_round_trips_exactly() -> None:
+    protector = ReplayProtector()
+    protector.pin(b"pristine")
+    snapshot = protector.export_state()
+    restored = ReplayProtector()
+    restored.import_state(snapshot)
+    assert restored.export_state() == snapshot
+
+
+def test_link_owned_replay_admin_mutation_is_sealed(link_layer) -> None:  # type: ignore[no-untyped-def]
+    state = link_layer.replay_protector.export_state()
+    with pytest.raises(RuntimeError, match="owned by LinkLayer"):
+        link_layer.replay_protector.import_state(state)
+    with pytest.raises(RuntimeError, match="owned by LinkLayer"):
+        link_layer.replay_protector.reset(b"peer")
+    with pytest.raises(RuntimeError, match="owned by LinkLayer"):
+        link_layer.replay_protector.rotate(b"old", b"new")
+    with pytest.raises(RuntimeError, match="owned by LinkLayer"):
+        link_layer.replay_protector.check_and_update(b"peer", 0, 1)
+    with pytest.raises(RuntimeError, match="owned by LinkLayer"):
+        link_layer.replay_protector.pin(b"peer")

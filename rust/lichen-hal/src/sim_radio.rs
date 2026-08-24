@@ -6,7 +6,7 @@
 //! Connects to the Python simulator over TCP and implements the Radio trait.
 //! Uses 4-byte LE length-prefix framing.
 
-use crate::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
+use crate::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket, TxResult};
 use std::io::{Read, Write};
 use std::net::TcpStream;
 
@@ -97,7 +97,7 @@ impl SimRadio {
 impl Radio for SimRadio {
     type Error = SimError;
 
-    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<TxResult, Self::Error> {
         // Format: MSG_TX(1) + len(2, LE) + channel(1) + payload
         let mut msg = Vec::with_capacity(4 + payload.len());
         msg.push(MSG_TX);
@@ -109,7 +109,16 @@ impl Radio for SimRadio {
 
         let resp = self.recv_msg()?;
         match resp.first() {
-            Some(&MSG_TX_DONE) => Ok(()),
+            Some(&MSG_TX_DONE) => {
+                // Response format: MSG_TX_DONE(1) + airtime_us(4, LE)
+                let airtime_us = if resp.len() >= 5 {
+                    u32::from_le_bytes([resp[1], resp[2], resp[3], resp[4]])
+                } else {
+                    // Fallback estimate if simulator doesn't send airtime
+                    12_000 + (payload.len() as u32) * 66
+                };
+                Ok(TxResult { airtime_us })
+            }
             Some(&MSG_TX_FAIL) | Some(&MSG_ERR) => Err(RadioError::Hardware),
             _ => Err(RadioError::Protocol),
         }

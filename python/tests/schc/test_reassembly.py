@@ -4,15 +4,28 @@
 
 from __future__ import annotations
 
+import threading
+
 import pytest
 
-from lichen.schc.fragment import Fragment, FragmentError
-from lichen.schc.reassembly import FragmentReceiver, ReassemblyManager
+from lichen.schc.fragment import (
+    MAX_PACKET_SIZE,
+    TILE_SIZE,
+    WINDOW_SIZE,
+    Fragment,
+    FragmentError,
+    compute_mic,
+)
+from lichen.schc.reassembly import (
+    FragmentReceiver,
+    ReassemblyManager,
+    _AuthenticatedReassemblyManager,
+)
 
-RECOVERY_PACKET = bytes(187) + b"\x11" * 187 + b"\xa5"
-TILE_0 = bytes.fromhex("787c") + bytes(187)
-TILE_1 = bytes.fromhex("787a") + b"\x22" * 187
-ALL_1 = bytes.fromhex("787fd90535ad4a")
+RECOVERY_PACKET = bytes(TILE_SIZE) + b"\x11" * TILE_SIZE + b"\xa5"
+TILE_0 = bytes.fromhex("787c") + bytes(TILE_SIZE)
+TILE_1 = bytes.fromhex("787a") + b"\x22" * TILE_SIZE
+ALL_1 = bytes.fromhex("787ebfb40b514a")
 
 
 def test_clean_reassembly_uses_literal_recovery_wires() -> None:
@@ -39,23 +52,28 @@ def test_dropped_regular_tile_uses_literal_recovery_wires() -> None:
 
 
 def test_two_window_all0_no_ack_and_w1_completion() -> None:
-    final = Fragment(0x78, 1, 63, b"\xa5", bytes.fromhex("8727c8e5"))
-    incomplete = FragmentReceiver(max_size=11782)
+    max_size = WINDOW_SIZE * TILE_SIZE + 1
+    packet = b"\xa5" * max_size
+    final = Fragment(0x78, 1, 63, b"\xa5", compute_mic(packet))
+    incomplete = FragmentReceiver(max_size=max_size)
     assert incomplete.receive(final).response == bytes.fromhex("78000000000000000000")
 
-    receiver = FragmentReceiver(max_size=11782)
+    receiver = FragmentReceiver(max_size=max_size)
     for fcn in range(62, -1, -1):
-        result = receiver.receive(Fragment(0x78, 0, fcn, b"\xa5" * 187))
+        result = receiver.receive(Fragment(0x78, 0, fcn, b"\xa5" * TILE_SIZE))
         assert result.response is None
     completed = receiver.receive(final)
     assert completed.response == bytes.fromhex("78c0")
-    assert completed.reassembled == b"\xa5" * 11782
+    assert completed.reassembled == packet
 
 
 def test_mandatory_receiver_limit_and_configured_overflow() -> None:
     packet = b"\xa5" * 1281
-    fragments = [Fragment(0x78, 0, fcn, b"\xa5" * 187) for fcn in range(62, 56, -1)]
-    fragments.append(Fragment(0x78, 0, 63, b"\xa5" * 159, bytes.fromhex("daca2bc3")))
+    regular_count, final_size = divmod(len(packet), TILE_SIZE)
+    fragments = [
+        Fragment(0x78, 0, 62 - index, b"\xa5" * TILE_SIZE) for index in range(regular_count)
+    ]
+    fragments.append(Fragment(0x78, 0, 63, b"\xa5" * final_size, compute_mic(packet)))
 
     receiver = FragmentReceiver()
     result = None
@@ -99,7 +117,7 @@ def test_all1_first_capacity_includes_retained_final_tile() -> None:
     assert result.response == bytes.fromhex("78ffff")
     assert result.aborted and receiver.done and receiver._all1 is None
 
-    receiver = FragmentReceiver(max_size=187)
+    receiver = FragmentReceiver(max_size=TILE_SIZE)
     assert receiver.receive_bytes(ALL_1).response == bytes.fromhex("780000000000000000")
     result = receiver.receive_bytes(TILE_0)
     assert result.response == bytes.fromhex("78ffff")
@@ -130,7 +148,7 @@ def test_duplicate_conflicts_abort() -> None:
     receiver = FragmentReceiver()
     assert receiver.receive_bytes(TILE_0).response is None
     assert receiver.receive_bytes(TILE_0).response is None
-    conflict = Fragment(0x78, 0, 62, b"x" * 187)
+    conflict = Fragment(0x78, 0, 62, b"x" * TILE_SIZE)
     assert receiver.receive(conflict).response == bytes.fromhex("78ffff")
 
     receiver = FragmentReceiver()
@@ -156,9 +174,9 @@ def test_malformed_input_and_resource_limit_abort() -> None:
     receiver = FragmentReceiver()
     assert receiver.receive_bytes(bytes.fromhex("78ff")).response == bytes.fromhex("78ffff")
 
-    receiver = FragmentReceiver(max_size=187)
+    receiver = FragmentReceiver(max_size=TILE_SIZE)
     assert receiver.receive_bytes(TILE_0).response is None
-    second = Fragment(0x78, 0, 61, bytes(187))
+    second = Fragment(0x78, 0, 61, bytes(TILE_SIZE))
     assert receiver.receive(second).response == bytes.fromhex("78ffff")
 
 
@@ -170,7 +188,7 @@ def test_manager_validates_before_allocating_and_never_evicts() -> None:
     assert len(manager) == 0
 
     with pytest.raises(FragmentError):
-        manager.receive("bad", Fragment(0x77, 0, 62, bytes(187)))
+        manager.receive("bad", Fragment(0x77, 0, 62, bytes(TILE_SIZE)))
     assert len(manager) == 0
 
     malformed = Fragment(0x78, 0, 62, b"short")
@@ -188,7 +206,54 @@ def test_manager_validates_before_allocating_and_never_evicts() -> None:
     assert len(manager) == 0
 
 
-@pytest.mark.parametrize("max_size", [0, 23563])
+@pytest.mark.parametrize("max_size", [0, MAX_PACKET_SIZE + 1])
 def test_manager_rejects_invalid_max_size(max_size: int) -> None:
     with pytest.raises(ValueError, match="max_size"):
         ReassemblyManager(max_size=max_size)
+
+
+@pytest.mark.parametrize("window_size", [True, False, 1.5])
+def test_receiver_rejects_non_integer_window_size(window_size: object) -> None:
+    with pytest.raises(FragmentError, match="window_size must be integer"):
+        FragmentReceiver(window_size=window_size)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("max_size", [True, False, 0, 1.5, MAX_PACKET_SIZE + 1])
+def test_receiver_rejects_non_integer_max_size(max_size: object) -> None:
+    with pytest.raises(ValueError, match="max_size"):
+        FragmentReceiver(max_size=max_size)  # type: ignore[arg-type]
+
+
+def test_receiver_accepts_exact_profile_capacity() -> None:
+    assert FragmentReceiver(max_size=MAX_PACKET_SIZE).max_size == MAX_PACKET_SIZE
+
+
+@pytest.mark.parametrize("max_contexts", [True, False, 1.5])
+def test_manager_rejects_non_integer_max_contexts(max_contexts: object) -> None:
+    with pytest.raises(ValueError, match="max_contexts must be a positive integer"):
+        ReassemblyManager(max_contexts=max_contexts)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("max_size", [True, False, 1.5])
+def test_manager_rejects_non_integer_max_size(max_size: object) -> None:
+    with pytest.raises(ValueError, match="max_size must be a positive integer"):
+        ReassemblyManager(max_size=max_size)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("max_size", [True, False, 0, 1.5, MAX_PACKET_SIZE + 1])
+def test_authenticated_manager_rejects_invalid_max_size(max_size: object) -> None:
+    with pytest.raises(ValueError, match="max_size"):
+        _AuthenticatedReassemblyManager(
+            bytes(32),
+            security_lock=threading.RLock(),
+            max_size=max_size,  # type: ignore[arg-type]
+        )
+
+
+def test_authenticated_manager_accepts_exact_profile_capacity() -> None:
+    manager = _AuthenticatedReassemblyManager(
+        bytes(32),
+        security_lock=threading.RLock(),
+        max_size=MAX_PACKET_SIZE,
+    )
+    assert manager._max_size == MAX_PACKET_SIZE

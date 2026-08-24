@@ -33,6 +33,42 @@ static const uint8_t link_local_prefix[8] = {
     0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+bool lichen_is_mesh_addr(const struct in6_addr *addr)
+{
+    if (addr == NULL) {
+        return false;
+    }
+
+    /*
+     * SECURITY: Mesh address validation for SSRF prevention.
+     *
+     * The forward proxy must only forward requests to mesh-internal addresses.
+     * Allowing arbitrary IPv6 addresses would enable SSRF attacks where a
+     * malicious client uses the proxy to reach internal services or the
+     * public internet.
+     *
+     * Allowed prefixes:
+     * - fd00::/8 (ULA): LICHEN mesh addresses. First byte must be 0xfd.
+     *   We accept all fd00::/8 addresses, not just our specific ULA prefix,
+     *   because mesh nodes may have multiple ULA prefixes configured.
+     *
+     * - fe80::/10 (link-local): Direct neighbor access. First byte is 0xfe,
+     *   first two bits of second byte are 10 (checked via mask 0xc0 == 0x80).
+     */
+
+    /* Check for ULA fd00::/8 */
+    if (addr->s6_addr[0] == 0xfd) {
+        return true;
+    }
+
+    /* Check for link-local fe80::/10 */
+    if (addr->s6_addr[0] == 0xfe && (addr->s6_addr[1] & 0xc0) == 0x80) {
+        return true;
+    }
+
+    return false;
+}
+
 int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
 {
     if (eui64 == NULL || iid == NULL) {

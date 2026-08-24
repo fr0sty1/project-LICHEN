@@ -1,0 +1,207 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "tx_queue_bounded",
+  "description": "Small bounded queue oracle per spec appendix-bufferbloat.md B.2.1. TX queue capacity, priority ordering, deadline expiry, preemption, and backpressure behavior.",
+  "spec": "spec/appendix-bufferbloat.md",
+  "vectors": [
+    {
+      "name": "capacity_default_4",
+      "description": "TX queue capacity is 4 packets (spec: 'TX queue: 4 packets max').",
+      "property": "capacity",
+      "expected": {
+        "capacity": 4
+      }
+    },
+    {
+      "name": "priority_p0_sos",
+      "description": "P0 (SOS) is highest priority with numeric value 0.",
+      "property": "priority_value",
+      "priority_name": "SOS",
+      "expected": {
+        "priority_value": 0
+      }
+    },
+    {
+      "name": "priority_p1_routing",
+      "description": "P1 (ROUTING) has numeric value 1.",
+      "property": "priority_value",
+      "priority_name": "ROUTING",
+      "expected": {
+        "priority_value": 1
+      }
+    },
+    {
+      "name": "priority_p2_urgent",
+      "description": "P2 (URGENT) has numeric value 2.",
+      "property": "priority_value",
+      "priority_name": "URGENT",
+      "expected": {
+        "priority_value": 2
+      }
+    },
+    {
+      "name": "priority_p3_normal",
+      "description": "P3 (NORMAL) has numeric value 3.",
+      "property": "priority_value",
+      "priority_name": "NORMAL",
+      "expected": {
+        "priority_value": 3
+      }
+    },
+    {
+      "name": "priority_p4_bulk",
+      "description": "P4 (BULK) is lowest priority with numeric value 4.",
+      "property": "priority_value",
+      "priority_name": "BULK",
+      "expected": {
+        "priority_value": 4
+      }
+    },
+    {
+      "name": "deadline_sos_2000ms",
+      "description": "SOS (P0) default deadline is 2000ms - transmit ASAP.",
+      "property": "deadline",
+      "priority_name": "SOS",
+      "expected": {
+        "deadline_ms": 2000
+      }
+    },
+    {
+      "name": "deadline_routing_5000ms",
+      "description": "ROUTING (P1) default deadline is 5000ms.",
+      "property": "deadline",
+      "priority_name": "ROUTING",
+      "expected": {
+        "deadline_ms": 5000
+      }
+    },
+    {
+      "name": "deadline_urgent_30000ms",
+      "description": "URGENT (P2) default deadline is 30000ms.",
+      "property": "deadline",
+      "priority_name": "URGENT",
+      "expected": {
+        "deadline_ms": 30000
+      }
+    },
+    {
+      "name": "deadline_normal_60000ms",
+      "description": "NORMAL (P3) default deadline is 60000ms.",
+      "property": "deadline",
+      "priority_name": "NORMAL",
+      "expected": {
+        "deadline_ms": 60000
+      }
+    },
+    {
+      "name": "deadline_bulk_120000ms",
+      "description": "BULK (P4) default deadline is 120000ms - can wait.",
+      "property": "deadline",
+      "priority_name": "BULK",
+      "expected": {
+        "deadline_ms": 120000
+      }
+    },
+    {
+      "name": "priority_ordering_lower_value_higher_urgency",
+      "description": "Lower priority value means higher urgency (P0 < P1 < P2 < P3 < P4).",
+      "property": "priority_ordering",
+      "expected": {
+        "sos_lt_routing": true,
+        "routing_lt_urgent": true,
+        "urgent_lt_normal": true,
+        "normal_lt_bulk": true
+      }
+    },
+    {
+      "name": "preemption_higher_evicts_lower",
+      "description": "When queue is full, higher priority packet evicts lowest priority packet.",
+      "property": "preemption",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "bulk1", "priority": "BULK"},
+          {"data": "bulk2", "priority": "BULK"}
+        ],
+        "incoming": {"data": "routing", "priority": "ROUTING"}
+      },
+      "expected": {
+        "action": "preempt",
+        "evicted_priority": "BULK",
+        "queue_contains": ["routing", "bulk2"]
+      }
+    },
+    {
+      "name": "backpressure_same_priority_rejected",
+      "description": "When queue full with same priority, new packet rejected with QueueFullError.",
+      "property": "backpressure",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "bulk1", "priority": "BULK"},
+          {"data": "bulk2", "priority": "BULK"}
+        ],
+        "incoming": {"data": "bulk3", "priority": "BULK"}
+      },
+      "expected": {
+        "action": "reject",
+        "error": "QueueFullError"
+      }
+    },
+    {
+      "name": "backpressure_lower_priority_rejected",
+      "description": "When queue full with higher priority, lower priority rejected.",
+      "property": "backpressure",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "urgent1", "priority": "URGENT"},
+          {"data": "urgent2", "priority": "URGENT"}
+        ],
+        "incoming": {"data": "bulk", "priority": "BULK"}
+      },
+      "expected": {
+        "action": "reject",
+        "error": "QueueFullError"
+      }
+    },
+    {
+      "name": "expiry_drops_stale_packets",
+      "description": "Packets past deadline are dropped before transmission.",
+      "property": "expiry",
+      "scenario": {
+        "packet": {"data": "stale", "deadline_ms": 100},
+        "time_advance_ms": 200
+      },
+      "expected": {
+        "action": "drop",
+        "stat_increment": "packets_dropped_deadline"
+      }
+    },
+    {
+      "name": "pop_order_by_priority_then_fifo",
+      "description": "Pop order: priority first (lower value first), then FIFO within same priority.",
+      "property": "pop_order",
+      "scenario": {
+        "push_sequence": [
+          {"data": "bulk1", "priority": "BULK"},
+          {"data": "routing1", "priority": "ROUTING"},
+          {"data": "bulk2", "priority": "BULK"},
+          {"data": "routing2", "priority": "ROUTING"}
+        ]
+      },
+      "expected": {
+        "pop_order": ["routing1", "routing2", "bulk1", "bulk2"]
+      }
+    },
+    {
+      "name": "stats_track_latency",
+      "description": "Queue tracks max and average latency for diagnostics.",
+      "property": "stats",
+      "expected": {
+        "stats_fields": ["packets_queued", "packets_dropped_deadline", "packets_dropped_preempt", "packets_dropped_full", "packets_transmitted", "max_latency_ms", "avg_latency_ms"]
+      }
+    }
+  ]
+}

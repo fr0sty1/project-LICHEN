@@ -17,7 +17,9 @@ use crate::node::{rpl_code, valid_ipv6_envelope};
 use crate::stack::{Priority, TxError};
 
 use super::error::{DaoSendError, RplControlError};
-use super::util::{dao_ipv6_packet, ipv6_eui64, ipv6_l2_destination, rpl_ipv6_packet};
+use super::util::{
+    dao_ipv6_packet, ipv6_eui64, ipv6_l2_destination, link_local_from_iid, rpl_ipv6_packet,
+};
 use super::{RplRole, RplStack};
 
 impl<R: Radio, S: NonVolatile> RplStack<R, S> {
@@ -53,19 +55,30 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     }
 
     pub async fn send_dio(&mut self, destination: [u8; 16]) -> Result<(), TxError> {
-        let mut body = [0u8; 64];
-        let len = self.rpl.build_dio(&mut body);
+        let mut body = [0u8; 160];
+        let len = self
+            .rpl
+            .router
+            .build_authenticated_dio(&mut body, self.stack.link_ref());
         if len == 0 {
             return Err(TxError::BufferTooSmall);
         }
+        // DIO is link-local control traffic. Callers may identify a neighbor by
+        // its primary native address, but the on-wire IPv6 destination remains
+        // that neighbor's canonical link-local address.
+        let control_destination = if destination[0] == 0xff {
+            destination
+        } else {
+            link_local_from_iid(destination[8..].try_into().expect("complete IPv6 IID"))
+        };
         let packet = rpl_ipv6_packet(
-            self.local_rpl_addr,
-            destination,
+            self.local_control_addr,
+            control_destination,
             rpl_code::DIO,
             &body[..len],
         )
         .ok_or(TxError::BufferTooSmall)?;
-        let l2_destination = ipv6_l2_destination(destination);
+        let l2_destination = ipv6_l2_destination(control_destination);
         // RPL DIO is control traffic (P1)
         self.stack
             .send_ipv6_to(
@@ -77,9 +90,19 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     }
 
     pub async fn send_dis(&mut self, destination: [u8; 16]) -> Result<(), TxError> {
-        let packet = rpl_ipv6_packet(self.local_rpl_addr, destination, rpl_code::DIS, &[0, 0])
-            .ok_or(TxError::BufferTooSmall)?;
-        let l2_destination = ipv6_l2_destination(destination);
+        let control_destination = if destination[0] == 0xff {
+            destination
+        } else {
+            link_local_from_iid(destination[8..].try_into().expect("complete IPv6 IID"))
+        };
+        let packet = rpl_ipv6_packet(
+            self.local_control_addr,
+            control_destination,
+            rpl_code::DIS,
+            &[0, 0],
+        )
+        .ok_or(TxError::BufferTooSmall)?;
+        let l2_destination = ipv6_l2_destination(control_destination);
         // RPL DIS is control traffic (P1)
         self.stack
             .send_ipv6_to(
@@ -152,6 +175,28 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         // Non-CoAP IPv6 diagnostic uses Normal priority (P3)
         self.stack
             .send_ipv6_to_route(ipv6, &route.next_hop, &route.source_route, Priority::Normal)
+            .await
+    }
+
+    /// Border-router egress for an already routed IPv6 packet.
+    ///
+    /// This still uses the owned stack's durable link tuple allocation,
+    /// SCHC compressor, signer, CCA, and radio path. `destination` is the
+    /// immediate link EUI-64; `None` emits a signed broadcast.
+    pub async fn send_border_ipv6(
+        &mut self,
+        ipv6: &[u8],
+        destination: Option<[u8; 8]>,
+    ) -> Result<(), TxError> {
+        if !valid_ipv6_envelope(ipv6) {
+            return Err(TxError::BufferTooSmall);
+        }
+        self.stack
+            .send_ipv6_to(
+                ipv6,
+                destination.as_ref().map_or(&[], <[u8; 8]>::as_slice),
+                Priority::Normal,
+            )
             .await
     }
 

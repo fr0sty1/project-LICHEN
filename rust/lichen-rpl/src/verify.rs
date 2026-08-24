@@ -5,7 +5,7 @@
 #[cfg(feature = "std")]
 use crate::message::{Dao, DaoEnvelopeError, SignedDaoEnvelope};
 #[cfg(feature = "std")]
-use lichen_link::{identity::iid_from_pubkey, keys::PublicKey, schnorr};
+use lichen_link::{keys::PublicKey, schnorr, ygg_addr_from_pubkey};
 #[cfg(feature = "std")]
 use sha2::{Digest, Sha256, Sha512};
 
@@ -76,7 +76,7 @@ impl<'a> SignatureVerifiedDao<'a> {
         }
         let envelope = SignedDaoEnvelope::from_bytes(wire).map_err(map_envelope_error)?;
         let pinned_key = pinned_key.ok_or(DaoVerifyError::UnknownKey)?;
-        if origin[8..] != iid_from_pubkey(&pinned_key) {
+        if origin != ygg_addr_from_pubkey(pinned_key.as_bytes()) {
             return Err(DaoVerifyError::IidMismatch);
         }
         // D=0 uses Some([0; 16]) sentinel - use active_dodag_id for digest.

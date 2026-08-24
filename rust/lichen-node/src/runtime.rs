@@ -283,7 +283,6 @@ mod tests {
     use lichen_core::addr::NodeId;
     use lichen_core::constants::RPL_INSTANCE_ID;
     use lichen_link::{identity::Identity, keys::Seed};
-    use lichen_rpl::message::Dio;
     use lichen_rpl::routing::DaoManager;
 
     use crate::{Node, Router};

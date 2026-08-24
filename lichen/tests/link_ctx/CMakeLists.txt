@@ -17,6 +17,10 @@ set_target_properties(link_ctx_test PROPERTIES
 )
 target_include_directories(link_ctx_test PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+)
+target_compile_definitions(link_ctx_test PRIVATE
+  CONFIG_LICHEN_LINK_MAX_NEIGHBORS=16
 )
 target_compile_options(link_ctx_test PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(link_ctx_test PRIVATE Threads::Threads)

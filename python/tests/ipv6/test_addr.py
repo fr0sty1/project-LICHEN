@@ -8,20 +8,20 @@ Oracles are hand-computed or taken from the spec's worked example addresses
 
 from __future__ import annotations
 
-from ipaddress import IPv6Address, IPv6Network
+import json
+from ipaddress import IPv6Address
+from pathlib import Path
 
 import pytest
 
+from lichen.crypto.identity import Identity
 from lichen.ipv6.addr import (
     AddrError,
-    AddressManager,
-    Identity,
-    Scope,
     eui64_to_iid,
+    link_local_from_pubkey,
     mac48_to_eui64,
-    make_gua,
     make_link_local,
-    make_ula,
+    native_address_from_pubkey,
     short_addr_to_iid,
 )
 
@@ -30,6 +30,7 @@ from lichen.ipv6.addr import (
 # the U/L bit of the first octet: 0x12 XOR 0x02 = 0x10.
 SPEC_EUI64 = bytes([0x10, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0])
 SPEC_IID = bytes([0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0])
+VECTORS = Path(__file__).resolve().parents[3] / "test" / "vectors" / "ipv6-addresses.json"
 
 
 def test_eui64_to_iid_flips_ul_bit() -> None:
@@ -85,71 +86,30 @@ def test_make_link_local_rejects_bad_iid() -> None:
         make_link_local(b"\x00" * 4)
 
 
-def test_make_ula_matches_spec_example() -> None:
-    prefix = IPv6Network("fd12:3456:789a:0001::/64")
-    # Note: ULA support deprecated per 04-network.md (primary 02xx only); test
-    # retained for legacy prefix handling during transition.
-    assert make_ula(prefix, SPEC_IID) == IPv6Address("fd12:3456:789a:1:1234:5678:9abc:def0")
+def test_key_identity_exposes_only_bound_native_and_link_local_addresses() -> None:
+    identity = Identity.from_seed(bytes(range(32)))
+    assert native_address_from_pubkey(identity.pubkey) == IPv6Address(identity.ygg_addr)
+    assert native_address_from_pubkey(identity.pubkey).packed[0] == 0x02
+    assert link_local_from_pubkey(identity.pubkey) == make_link_local(identity.iid)
 
 
-def test_make_ula_rejects_non_ula_prefix() -> None:
+@pytest.mark.parametrize("pubkey", [b"", bytes(31), bytes(33), bytearray(32)])
+def test_key_derived_address_helpers_reject_noncanonical_public_keys(pubkey) -> None:
     with pytest.raises(AddrError):
-        make_ula(IPv6Network("2001:db8::/64"), SPEC_IID)
-
-
-def test_make_ula_rejects_non_64_prefix() -> None:
+        native_address_from_pubkey(pubkey)
     with pytest.raises(AddrError):
-        make_ula(IPv6Network("fd12:3456:789a::/48"), SPEC_IID)
+        link_local_from_pubkey(pubkey)
 
 
-def test_make_gua_matches_spec_example() -> None:
-    prefix = IPv6Network("2001:db8:1234:1::/64")
-    assert make_gua(prefix, SPEC_IID) == IPv6Address("2001:db8:1234:1:1234:5678:9abc:def0")
-
-
-def test_make_gua_rejects_non_gua_prefix() -> None:
-    with pytest.raises(AddrError):
-        make_gua(IPv6Network("fd00::/64"), SPEC_IID)
-
-
-def test_identity_iid_and_link_local() -> None:
-    ident = Identity(SPEC_EUI64)
-    assert ident.iid == SPEC_IID
-    assert ident.link_local == IPv6Address("fe80::1234:5678:9abc:def0")
-
-
-def test_identity_from_mac48() -> None:
-    ident = Identity.from_mac48(bytes([0x00, 0x11, 0x22, 0x33, 0x44, 0x55]))
-    assert ident.iid == bytes([0x02, 0x11, 0x22, 0xFF, 0xFE, 0x33, 0x44, 0x55])
-
-
-def test_identity_rejects_bad_eui64() -> None:
-    with pytest.raises(AddrError):
-        Identity(b"\x00" * 6)
-
-
-def test_address_manager_has_link_local_from_start() -> None:
-    mgr = AddressManager(Identity(SPEC_EUI64))
-    assert mgr.get(Scope.LINK_LOCAL) == IPv6Address("fe80::1234:5678:9abc:def0")
-    assert mgr.get(Scope.ULA) is None
-    assert mgr.get(Scope.GUA) is None
-    assert mgr.all() == [IPv6Address("fe80::1234:5678:9abc:def0")]
-
-
-def test_address_manager_set_and_clear_prefixes() -> None:
-    mgr = AddressManager(Identity(SPEC_EUI64))
-    ula = mgr.set_ula_prefix(IPv6Network("fd12:3456:789a:0001::/64"))
-    gua = mgr.set_gua_prefix(IPv6Network("2001:db8:1234:1::/64"))
-    assert mgr.get(Scope.ULA) == ula
-    assert mgr.get(Scope.GUA) == gua
-    assert len(mgr.all()) == 3
-
-    mgr.clear(Scope.ULA)
-    assert mgr.get(Scope.ULA) is None
-    assert len(mgr.all()) == 2
-
-
-def test_address_manager_cannot_clear_link_local() -> None:
-    mgr = AddressManager(Identity(SPEC_EUI64))
-    with pytest.raises(AddrError):
-        mgr.clear(Scope.LINK_LOCAL)
+def test_key_derived_ipv6_vectors_match_production_boundaries() -> None:
+    document = json.loads(VECTORS.read_text())
+    key_vectors = [
+        vector for vector in document["vectors"]
+        if vector["profile"] == "key_derived_identity"
+    ]
+    assert len(key_vectors) >= 5
+    for vector in key_vectors:
+        public_key = bytes.fromhex(vector["pubkey"])
+        assert native_address_from_pubkey(public_key).packed.hex() == vector["native_packed"]
+        assert str(native_address_from_pubkey(public_key)) == vector["native"]
+        assert link_local_from_pubkey(public_key).packed.hex() == vector["link_local_packed"]

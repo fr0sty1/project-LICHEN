@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import os
+import stat
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from ipaddress import IPv6Address
@@ -11,6 +13,9 @@ from pathlib import Path
 
 import pytest
 
+import lichen.rpl.dao_persistence as dao_persistence_module
+from lichen.crypto.identity import Identity, yggdrasil_address
+from lichen.rollback_anchor import AnchoredState
 from lichen.rpl.dao_manager import DaoManager
 from lichen.rpl.dao_persistence import (
     DaoPersistenceError,
@@ -18,6 +23,48 @@ from lichen.rpl.dao_persistence import (
     TwoSlotFilePersistence,
     compute_dao_digest,
 )
+from lichen.rpl.dao_types import DaoError
+
+_RealTwoSlotFilePersistence = TwoSlotFilePersistence
+_DAO_ANCHOR_KEY = bytes(range(32))
+
+
+class MemoryStateAnchor:
+    def __init__(self) -> None:
+        self.states: dict[bytes, AnchoredState] = {}
+
+    def read(self, key: bytes) -> AnchoredState | None:
+        return self.states.get(key)
+
+    def advance(
+        self,
+        key: bytes,
+        expected: AnchoredState | None,
+        state: AnchoredState,
+    ) -> None:
+        if self.states.get(key) != expected:
+            raise RuntimeError("anchor compare-and-advance failed")
+        if expected is not None and state.revision != expected.revision + 1:
+            raise RuntimeError("anchor revision did not advance exactly")
+        self.states[key] = state
+
+
+_DAO_ANCHORS: dict[Path, MemoryStateAnchor] = {}
+
+
+def TwoSlotFilePersistence(  # noqa: N802  # type: ignore[no-untyped-def]
+    base_dir: Path, *, fail_closed: bool = True
+):
+    path = Path(base_dir)
+    anchor = _DAO_ANCHORS.setdefault(path, MemoryStateAnchor())
+    return _RealTwoSlotFilePersistence(
+        path,
+        revision_anchor=anchor,
+        anchor_key=_DAO_ANCHOR_KEY,
+        allow_tx_bootstrap=True,
+        fail_closed=fail_closed,
+    )
+
 
 ROOT = IPv6Address("fd00::1")
 N1 = IPv6Address("fd00::11")
@@ -111,6 +158,17 @@ class TestMemoryPersistence:
         assert floor is not None
         assert floor.sequence == 50
 
+    def test_batch_validation_is_all_or_nothing(self) -> None:
+        persistence = MemoryPersistence()
+        with pytest.raises(ValueError):
+            persistence.store_rx_floors_batch(
+                [
+                    (TEST_PUBKEY, 1, compute_dao_digest(b"valid")),
+                    (b"short", 2, compute_dao_digest(b"invalid")),
+                ]
+            )
+        assert persistence.load_rx_floor(TEST_PUBKEY) is None
+
 
 class TestTwoSlotFilePersistence:
     """Tests for crash-safe two-slot file persistence."""
@@ -129,7 +187,7 @@ class TestTwoSlotFilePersistence:
         file_path = tmp_path / "some_file"
         file_path.write_bytes(b"not a directory")
 
-        with pytest.raises(DaoPersistenceError, match="not a directory"):
+        with pytest.raises(DaoPersistenceError, match="not an owned directory"):
             TwoSlotFilePersistence(file_path, fail_closed=False)
 
     def test_fails_closed_property(self, tmp_path: Path) -> None:
@@ -148,6 +206,10 @@ class TestTwoSlotFilePersistence:
         # Both are crash-safe regardless of fail_closed setting
         assert persistence_fail_closed.is_crash_safe is True
         assert persistence_fail_open.is_crash_safe is True
+
+    def test_fail_closed_policy_requires_exact_boolean(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="exact boolean"):
+            TwoSlotFilePersistence(tmp_path, fail_closed=1)  # type: ignore[arg-type]
 
     def test_tx_state_survives_restart(self, tmp_path: Path) -> None:
         persistence1 = TwoSlotFilePersistence(tmp_path, fail_closed=False)
@@ -174,6 +236,95 @@ class TestTwoSlotFilePersistence:
         assert floor.sequence == 100
         assert floor.digest == digest
 
+    def test_private_directory_and_slot_modes(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        persistence.store_tx_state(1, b"signed-dao")
+        assert stat.S_IMODE(tmp_path.stat().st_mode) == 0o700
+        assert stat.S_IMODE((tmp_path / "dao_tx_0.bin").stat().st_mode) == 0o600
+
+    def test_symlink_and_oversized_slots_fail_closed(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        target = tmp_path / "attacker"
+        target.write_bytes(b"not-a-slot")
+        os.symlink(target, tmp_path / "dao_tx_0.bin")
+        with pytest.raises(DaoPersistenceError, match="TX state corrupt"):
+            persistence.load_tx_state()
+
+        (tmp_path / "dao_tx_0.bin").unlink()
+        oversized = tmp_path / "dao_tx_0.bin"
+        oversized.write_bytes(bytes(52 + 64 * 1024 + 1))
+        oversized.chmod(0o600)
+        with pytest.raises(DaoPersistenceError, match="TX state corrupt"):
+            persistence.load_tx_state()
+
+    def test_broken_symlink_slots_are_corrupt_not_fresh(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        os.symlink(tmp_path / "missing-tx", tmp_path / "dao_tx_0.bin")
+        with pytest.raises(DaoPersistenceError, match="TX state corrupt"):
+            persistence.load_tx_state()
+
+        (tmp_path / "dao_tx_0.bin").unlink()
+        rx_path = tmp_path / f"dao_rx_{TEST_PUBKEY.hex()}_0.bin"
+        os.symlink(tmp_path / "missing-rx", rx_path)
+        with pytest.raises(DaoPersistenceError, match="RX floor corrupt"):
+            persistence.load_rx_floor(TEST_PUBKEY)
+
+    def test_generation_exhaustion_is_explicit_and_preserves_last_state(
+        self, tmp_path: Path
+    ) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        persistence._write_slot(tmp_path / "dao_tx_0.bin", 0xFFFFFFFF, 9, b"last-signed-dao")
+        anchor_key = persistence._state_anchor_key(b"tx")
+        persistence._revision_anchor.advance(
+            anchor_key,
+            None,
+            persistence._slot_anchor(0xFFFFFFFF, 9, b"last-signed-dao"),
+        )
+        with pytest.raises(DaoPersistenceError, match="generation exhausted"):
+            persistence.store_tx_state(10, b"new-signed-dao")
+        state = persistence.load_tx_state()
+        assert state is not None
+        assert state.sequence == 9
+
+    def test_writer_preserves_wholly_corrupt_tx_slots(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        persistence.store_tx_state(1, b"signed-dao-1")
+        persistence.store_tx_state(2, b"signed-dao-2")
+        slots = [tmp_path / "dao_tx_0.bin", tmp_path / "dao_tx_1.bin"]
+        for slot in slots:
+            slot.write_bytes(b"CORRUPT")
+        before = [slot.read_bytes() for slot in slots]
+
+        with pytest.raises(DaoPersistenceError, match="deleted"):
+            persistence.store_tx_state(3, b"signed-dao-3")
+
+        assert [slot.read_bytes() for slot in slots] == before
+
+    def test_two_instances_cannot_rollback_an_acknowledged_replay_floor(
+        self, tmp_path: Path
+    ) -> None:
+        first = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        second = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        digest10 = compute_dao_digest(b"dao-10")
+        digest11 = compute_dao_digest(b"dao-11")
+        second.store_rx_floor(TEST_PUBKEY, 11, digest11)
+        with pytest.raises(DaoPersistenceError, match="sequence rollback"):
+            first.store_rx_floor(TEST_PUBKEY, 10, digest10)
+        assert first.get_floor(TEST_PUBKEY) == (11, digest11)
+
+    def test_multi_floor_batch_is_rejected_without_partial_commit(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        second_key = bytes((1,)) * 32
+        with pytest.raises(DaoPersistenceError, match="non-atomic"):
+            persistence.store_rx_floors_batch(
+                [
+                    (TEST_PUBKEY, 1, compute_dao_digest(b"one")),
+                    (second_key, 1, compute_dao_digest(b"two")),
+                ]
+            )
+        assert persistence.get_floor(TEST_PUBKEY) is None
+        assert persistence.get_floor(second_key) is None
+
     def test_two_slot_alternation(self, tmp_path: Path) -> None:
         """Verify slots alternate and newer generation wins."""
         persistence = TwoSlotFilePersistence(tmp_path, fail_closed=False)
@@ -190,8 +341,84 @@ class TestTwoSlotFilePersistence:
         assert state.sequence == 3
         assert state.dao_bytes == b"third"
 
-    def test_corrupt_slot_falls_back_to_other(self, tmp_path: Path) -> None:
-        """If one slot is corrupt, the other valid slot is used.
+    def test_conflicting_equal_generation_tx_slots_fail_closed(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        persistence._write_slot(tmp_path / "dao_tx_0.bin", 7, 10, b"first")
+        persistence._write_slot(tmp_path / "dao_tx_1.bin", 7, 11, b"second")
+
+        with pytest.raises(DaoPersistenceError, match="conflicting generations"):
+            persistence.load_tx_state()
+        with pytest.raises(DaoPersistenceError, match="conflicting generations"):
+            persistence.store_tx_state(12, b"third")
+
+    def test_conflicting_equal_generation_rx_slots_fail_closed(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        first = compute_dao_digest(b"first")
+        second = compute_dao_digest(b"second")
+        persistence._write_slot(tmp_path / f"dao_rx_{TEST_PUBKEY.hex()}_0.bin", 7, 10, first)
+        persistence._write_slot(tmp_path / f"dao_rx_{TEST_PUBKEY.hex()}_1.bin", 7, 11, second)
+
+        with pytest.raises(DaoPersistenceError, match="conflicting generations"):
+            persistence.load_rx_floor(TEST_PUBKEY)
+
+    def test_unanchored_generation_ahead_tx_slot_is_ignored(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path)
+        persistence.store_tx_state(10, b"committed")
+        persistence._write_slot(tmp_path / "dao_tx_1.bin", 2, 255, b"forged")
+
+        state = TwoSlotFilePersistence(tmp_path).load_tx_state()
+        assert state is not None
+        assert (state.sequence, state.dao_bytes) == (10, b"committed")
+
+    def test_unanchored_generation_ahead_rx_slot_is_ignored(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path)
+        committed = compute_dao_digest(b"committed")
+        forged = compute_dao_digest(b"forged")
+        persistence.store_rx_floor(TEST_PUBKEY, 10, committed)
+        persistence._write_slot(tmp_path / f"dao_rx_{TEST_PUBKEY.hex()}_1.bin", 2, 255, forged)
+
+        floor = TwoSlotFilePersistence(tmp_path).load_rx_floor(TEST_PUBKEY)
+        assert floor is not None
+        assert (floor.sequence, floor.digest) == (10, committed)
+
+    def test_process_lock_does_not_relabel_body_oserror(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        failure = OSError("injected slot write failure")
+
+        def fail_write(*_args: object) -> None:
+            raise failure
+
+        monkeypatch.setattr(persistence, "_write_slot", fail_write)
+        with pytest.raises(OSError) as raised:
+            persistence.store_tx_state(1, b"dao")
+        assert raised.value is failure
+
+    def test_slot_staging_cleanup_preserves_primary_error_and_closes_fd(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path)
+        descriptors: list[int] = []
+
+        def fail_fchmod(fd: int, _mode: int) -> None:
+            descriptors.append(fd)
+            raise OSError("primary staging failure")
+
+        def fail_unlink(*_args: object, **_kwargs: object) -> None:
+            raise OSError("cleanup failure")
+
+        monkeypatch.setattr(dao_persistence_module.os, "fchmod", fail_fchmod)
+        monkeypatch.setattr(Path, "unlink", fail_unlink)
+
+        with pytest.raises(OSError, match="primary staging failure"):
+            persistence._write_slot(tmp_path / "dao_tx_0.bin", 1, 1, b"signed-dao")
+        assert len(descriptors) == 1
+        with pytest.raises(OSError):
+            os.fstat(descriptors[0])
+
+    def test_corrupt_newest_slot_cannot_roll_back_to_older(self, tmp_path: Path) -> None:
+        """If the newest slot is corrupt, the anchor rejects the older slot.
 
         Per spec section 8.6: "use two independently validated slots with
         generation numbers so interruption cannot expose a partially written
@@ -219,12 +446,8 @@ class TestTwoSlotFilePersistence:
 
         # Create fresh persistence instance (simulates restart)
         persistence2 = TwoSlotFilePersistence(tmp_path, fail_closed=False)
-        state = persistence2.load_tx_state()
-
-        # Should fall back to the older but valid slot (slot0)
-        assert state is not None
-        assert state.sequence == 10
-        assert state.dao_bytes == b"ten"
+        with pytest.raises(DaoPersistenceError, match="rollback or substitution"):
+            persistence2.load_tx_state()
 
     def test_both_slots_corrupt_fails_closed(self, tmp_path: Path) -> None:
         """If both slots are corrupt, fail_closed raises."""
@@ -237,8 +460,49 @@ class TestTwoSlotFilePersistence:
                 f.write(b"corrupted")
 
         persistence2 = TwoSlotFilePersistence(tmp_path, fail_closed=True)
-        with pytest.raises(DaoPersistenceError, match="TX state corrupt"):
+        with pytest.raises(DaoPersistenceError, match="deleted"):
             persistence2.load_tx_state()
+
+    def test_deleting_marker_and_all_tx_slots_cannot_reset_sequence(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=False)
+        persistence.store_tx_state(7, b"signed-dao")
+        (tmp_path / ".dao_tx_initialized").unlink()
+        for slot in tmp_path.glob("dao_tx_*.bin"):
+            slot.unlink()
+
+        with pytest.raises(DaoPersistenceError, match="deleted"):
+            TwoSlotFilePersistence(tmp_path, fail_closed=False).load_tx_state()
+
+    def test_restoring_old_tx_slot_set_is_detected(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path)
+        persistence.store_tx_state(1, b"one")
+        snapshot = {path.name: path.read_bytes() for path in tmp_path.glob("dao_tx_*.bin")}
+        persistence.store_tx_state(2, b"two")
+        for path in tmp_path.glob("dao_tx_*.bin"):
+            path.unlink()
+        for name, contents in snapshot.items():
+            restored = tmp_path / name
+            restored.write_bytes(contents)
+            restored.chmod(0o600)
+
+        with pytest.raises(DaoPersistenceError, match="rollback or substitution"):
+            TwoSlotFilePersistence(tmp_path).load_tx_state()
+
+    def test_restoring_old_rx_slot_set_is_detected(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path)
+        persistence.store_rx_floor(TEST_PUBKEY, 1, compute_dao_digest(b"one"))
+        pattern = f"dao_rx_{TEST_PUBKEY.hex()}_*.bin"
+        snapshot = {path.name: path.read_bytes() for path in tmp_path.glob(pattern)}
+        persistence.store_rx_floor(TEST_PUBKEY, 2, compute_dao_digest(b"two"))
+        for path in tmp_path.glob(pattern):
+            path.unlink()
+        for name, contents in snapshot.items():
+            restored = tmp_path / name
+            restored.write_bytes(contents)
+            restored.chmod(0o600)
+
+        with pytest.raises(DaoPersistenceError, match="rollback or substitution"):
+            TwoSlotFilePersistence(tmp_path).load_rx_floor(TEST_PUBKEY)
 
     def test_missing_state_returns_none_when_not_fail_closed(self, tmp_path: Path) -> None:
         """Missing state returns None when fail_closed=False."""
@@ -298,16 +562,13 @@ class TestTwoSlotFilePersistence:
         persistence2 = TwoSlotFilePersistence(tmp_path, fail_closed=True)
 
         # SECURITY: get_floor must raise, not return None, to fail closed
-        with pytest.raises(DaoPersistenceError, match="RX floor corrupt"):
+        with pytest.raises(DaoPersistenceError, match="deleted"):
             persistence2.get_floor(TEST_PUBKEY)
 
     def test_get_floor_returns_none_on_corrupt_state_when_not_fail_closed(
         self, tmp_path: Path
     ) -> None:
-        """get_floor returns None when fail_closed=False and state is corrupt.
-
-        When fail_closed=False, corrupt state falls back to None (for testing).
-        """
+        """Anchored state stays fail-closed even when legacy fail_closed is false."""
         digest = compute_dao_digest(b"test dao")
         persistence = TwoSlotFilePersistence(tmp_path, fail_closed=False)
 
@@ -325,9 +586,8 @@ class TestTwoSlotFilePersistence:
         # Create new persistence instance
         persistence2 = TwoSlotFilePersistence(tmp_path, fail_closed=False)
 
-        # Should return None (not raise) when fail_closed=False
-        result = persistence2.get_floor(TEST_PUBKEY)
-        assert result is None
+        with pytest.raises(DaoPersistenceError, match="deleted"):
+            persistence2.get_floor(TEST_PUBKEY)
 
     def test_concurrent_writes_no_data_loss(self, tmp_path: Path) -> None:
         """Concurrent writes must not lose data due to TOCTOU race.
@@ -342,6 +602,7 @@ class TestTwoSlotFilePersistence:
         writes_per_thread = 50
         barrier = threading.Barrier(num_writers)
         results: list[int] = []
+        rejected_rollbacks: list[int] = []
         results_lock = threading.Lock()
 
         def writer(thread_id: int) -> None:
@@ -349,7 +610,13 @@ class TestTwoSlotFilePersistence:
             barrier.wait()
             for i in range(writes_per_thread):
                 seq = thread_id * 1000 + i
-                persistence.store_tx_state(seq, f"thread{thread_id}_write{i}".encode())
+                try:
+                    persistence.store_tx_state(seq, f"thread{thread_id}_write{i}".encode())
+                except DaoPersistenceError as exc:
+                    assert "sequence rollback" in str(exc)
+                    with results_lock:
+                        rejected_rollbacks.append(seq)
+                    continue
                 with results_lock:
                     results.append(seq)
 
@@ -360,12 +627,12 @@ class TestTwoSlotFilePersistence:
                 f.result()  # Raise any exceptions
 
         # All writes completed
-        assert len(results) == num_writers * writes_per_thread
+        assert len(results) + len(rejected_rollbacks) == num_writers * writes_per_thread
 
         # The final state must be one of the written values (not corrupted)
         state = persistence.load_tx_state()
         assert state is not None
-        assert state.sequence in results
+        assert state.sequence == max(results + rejected_rollbacks)
 
         # Verify alternation still works: both slots should have valid data
         # after many writes. Read raw slots to verify.
@@ -390,6 +657,7 @@ class TestTwoSlotFilePersistence:
         writes_per_thread = 50
         barrier = threading.Barrier(num_writers)
         results: list[int] = []
+        rejected_rollbacks: list[int] = []
         results_lock = threading.Lock()
 
         def writer(thread_id: int) -> None:
@@ -397,7 +665,13 @@ class TestTwoSlotFilePersistence:
             for i in range(writes_per_thread):
                 seq = thread_id * 1000 + i
                 digest = compute_dao_digest(f"thread{thread_id}_write{i}".encode())
-                persistence.store_rx_floor(TEST_PUBKEY, seq, digest)
+                try:
+                    persistence.store_rx_floor(TEST_PUBKEY, seq, digest)
+                except DaoPersistenceError as exc:
+                    assert "sequence rollback" in str(exc)
+                    with results_lock:
+                        rejected_rollbacks.append(seq)
+                    continue
                 with results_lock:
                     results.append(seq)
 
@@ -406,15 +680,29 @@ class TestTwoSlotFilePersistence:
             for f in futures:
                 f.result()
 
-        assert len(results) == num_writers * writes_per_thread
+        assert len(results) + len(rejected_rollbacks) == num_writers * writes_per_thread
 
         floor = persistence.load_rx_floor(TEST_PUBKEY)
         assert floor is not None
-        assert floor.sequence in results
+        assert floor.sequence == max(results + rejected_rollbacks)
 
 
 class TestDaoManagerWithPersistence:
     """Tests for DaoManager integration with persistence."""
+
+    def test_public_origination_rejects_unsigned_manager(self, tmp_path: Path) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        manager = DaoManager(
+            node_address=N1,
+            dodag_id=ROOT,
+            persistence=persistence,
+        )
+
+        with pytest.raises(DaoError, match="origin_identity") as exc_info:
+            manager.build_dao(ROOT)
+
+        assert exc_info.value.reason == "origin_identity_required"
+        assert persistence.load_tx_state() is None
 
     def test_build_dao_persists_before_return(self, tmp_path: Path) -> None:
         """build_dao persists state before returning."""
@@ -425,7 +713,7 @@ class TestDaoManagerWithPersistence:
             persistence=persistence,
         )
 
-        manager.build_dao(ROOT)  # Triggers persistence
+        manager.build_dao_semantics_for_test(ROOT)  # Triggers persistence
 
         # Check persistence has the state
         state = persistence.load_tx_state()
@@ -443,8 +731,8 @@ class TestDaoManagerWithPersistence:
         )
 
         # Build some DAOs to advance sequence
-        manager1.build_dao(ROOT)
-        manager1.build_dao(ROOT)
+        manager1.build_dao_semantics_for_test(ROOT)
+        manager1.build_dao_semantics_for_test(ROOT)
         seq_after = manager1._path_sequence
 
         # Simulate restart
@@ -466,7 +754,7 @@ class TestDaoManagerWithPersistence:
             persistence=persistence,
         )
 
-        dao = manager.build_dao(ROOT)
+        dao = manager.build_dao_semantics_for_test(ROOT)
         last_bytes = manager.get_last_dao_bytes()
 
         assert last_bytes is not None
@@ -483,8 +771,8 @@ class TestDaoManagerWithPersistence:
 
         # Build and process a DAO from N1
         node1 = DaoManager(node_address=N1, dodag_id=ROOT)
-        dao = node1.build_dao(ROOT)
-        root.process_dao(dao)
+        dao = node1.build_dao_semantics_for_test(ROOT)
+        root.process_dao_semantics_for_test(dao)
 
         # Check RX floor was persisted (keyed by target address)
         floor = persistence.load_rx_floor(N1.packed)
@@ -502,8 +790,8 @@ class TestDaoManagerWithPersistence:
             persistence=persistence,
         )
         node1 = DaoManager(node_address=N1, dodag_id=ROOT)
-        dao = node1.build_dao(ROOT)
-        root1.process_dao(dao)
+        dao = node1.build_dao_semantics_for_test(ROOT)
+        root1.process_dao_semantics_for_test(dao)
 
         floor_before = persistence.load_rx_floor(N1.packed)
         assert floor_before is not None
@@ -554,6 +842,13 @@ class TestRequireCrashSafety:
     When require_crash_safety=True, operations fail if persistence is not configured.
     """
 
+    def test_policy_requires_exact_boolean(self) -> None:
+        with pytest.raises(ValueError, match="exact boolean"):
+            DaoManager(
+                node_address=N1,
+                require_crash_safety=0,
+            )  # type: ignore[arg-type]
+
     def test_init_fails_without_persistence_when_required(self) -> None:
         """DaoManager init fails when require_crash_safety=True but no persistence."""
         from lichen.rpl.dao_types import DaoError
@@ -574,11 +869,14 @@ class TestRequireCrashSafety:
         - Fail-closed behavior (raises on missing/corrupt state)
         """
         persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        identity = Identity.from_seed(bytes(range(32)))
         manager = DaoManager(
-            node_address=N1,
+            node_address=yggdrasil_address(identity.pubkey),
             dodag_id=ROOT,
             require_crash_safety=True,
             persistence=persistence,
+            origin_identity=identity,
+            allow_tx_bootstrap=True,
         )
         assert manager.require_crash_safety is True
 
@@ -619,10 +917,10 @@ class TestRequireCrashSafety:
 
         # Build a DAO from a node
         node = DaoManager(node_address=N1, dodag_id=ROOT)
-        dao = node.build_dao(ROOT)
+        dao = node.build_dao_semantics_for_test(ROOT)
 
         with pytest.raises(DaoError, match="crash-safe persistence required"):
-            root.process_dao(dao)
+            root.process_dao_semantics_for_test(dao)
 
     def test_memory_persistence_allowed_when_not_required(self) -> None:
         """MemoryPersistence works when crash safety is not required.
@@ -638,7 +936,7 @@ class TestRequireCrashSafety:
         )
 
         # Should work without errors
-        dao = manager.build_dao(ROOT)
+        dao = manager.build_dao_semantics_for_test(ROOT)
         assert dao is not None
 
     def test_init_fails_with_non_crash_safe_persistence_when_required(self) -> None:
@@ -724,10 +1022,10 @@ class TestRequireCrashSafety:
 
         # Build a DAO from a node
         node = DaoManager(node_address=N1, dodag_id=ROOT)
-        dao = node.build_dao(ROOT)
+        dao = node.build_dao_semantics_for_test(ROOT)
 
         with pytest.raises(DaoError, match="persistence backend does not fail closed"):
-            root.process_dao(dao)
+            root.process_dao_semantics_for_test(dao)
 
     def test_build_dao_fails_with_non_crash_safe_persistence_when_required(self) -> None:
         """build_dao fails when require_crash_safety=True but persistence is not crash-safe.
@@ -766,19 +1064,22 @@ class TestRequireCrashSafety:
 
         # Build a DAO from a node
         node = DaoManager(node_address=N1, dodag_id=ROOT)
-        dao = node.build_dao(ROOT)
+        dao = node.build_dao_semantics_for_test(ROOT)
 
         with pytest.raises(DaoError, match="persistence backend is not crash-safe"):
-            root.process_dao(dao)
+            root.process_dao_semantics_for_test(dao)
 
     def test_crash_safe_persistence_with_enforcement(self, tmp_path: Path) -> None:
         """Full workflow works with crash-safe, fail-closed persistence and enforcement."""
         persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        identity = Identity.from_seed(bytes(range(32)))
         manager = DaoManager(
-            node_address=N1,
+            node_address=yggdrasil_address(identity.pubkey),
             dodag_id=ROOT,
             require_crash_safety=True,
             persistence=persistence,
+            origin_identity=identity,
+            allow_tx_bootstrap=True,
         )
 
         # Build DAO should persist and succeed
@@ -788,7 +1089,101 @@ class TestRequireCrashSafety:
         # State should be persisted
         state = persistence.load_tx_state()
         assert state is not None
-        assert state.sequence == manager._path_sequence
+        assert state.sequence == manager._origin_sequence == 1
+        assert state.dao_bytes == dao.to_bytes()
+
+    def test_authenticated_origination_requires_explicit_first_bootstrap(
+        self, tmp_path: Path
+    ) -> None:
+        identity = Identity.from_seed(bytes(range(32)))
+        manager = DaoManager(
+            node_address=yggdrasil_address(identity.pubkey),
+            dodag_id=ROOT,
+            persistence=TwoSlotFilePersistence(tmp_path, fail_closed=True),
+            origin_identity=identity,
+        )
+
+        with pytest.raises(DaoError) as error:
+            manager.build_dao(ROOT)
+        assert error.value.reason == "persistence_missing"
+
+    @pytest.mark.parametrize("damage", ["delete", "corrupt", "sequence_mismatch"])
+    def test_authenticated_origination_retains_terminal_tx_recovery_failure(
+        self, tmp_path: Path, damage: str
+    ) -> None:
+        identity = Identity.from_seed(bytes(range(32)))
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        first = DaoManager(
+            node_address=yggdrasil_address(identity.pubkey),
+            dodag_id=ROOT,
+            persistence=persistence,
+            origin_identity=identity,
+            allow_tx_bootstrap=True,
+        )
+        retained = first.build_dao(ROOT)
+        if damage == "delete":
+            for path in tmp_path.glob("dao_tx_*.bin"):
+                path.unlink()
+        elif damage == "corrupt":
+            for path in tmp_path.glob("dao_tx_*.bin"):
+                path.write_bytes(b"corrupt")
+        else:
+            persistence.store_tx_state(2, retained.to_bytes())
+
+        restarted = DaoManager(
+            node_address=yggdrasil_address(identity.pubkey),
+            dodag_id=ROOT,
+            persistence=TwoSlotFilePersistence(tmp_path, fail_closed=True),
+            origin_identity=identity,
+            allow_tx_bootstrap=damage == "delete",
+        )
+        with pytest.raises(DaoError) as error:
+            restarted.build_dao(ROOT)
+        assert error.value.reason in {"persistence_missing", "persistence_corrupt"}
+
+    @pytest.mark.parametrize("authorization", [1, 0, "true", object()])
+    def test_authenticated_tx_bootstrap_requires_exact_boolean(
+        self, tmp_path: Path, authorization: object
+    ) -> None:
+        identity = Identity.from_seed(bytes(range(32)))
+        with pytest.raises(ValueError, match="exact boolean"):
+            DaoManager(
+                node_address=yggdrasil_address(identity.pubkey),
+                dodag_id=ROOT,
+                persistence=TwoSlotFilePersistence(tmp_path, fail_closed=True),
+                origin_identity=identity,
+                allow_tx_bootstrap=authorization,  # type: ignore[arg-type]
+            )
+
+    def test_authenticated_tx_rejects_corrupt_marker_even_with_valid_slot(
+        self, tmp_path: Path
+    ) -> None:
+        persistence = TwoSlotFilePersistence(tmp_path, fail_closed=True)
+        persistence.store_tx_state(1, b"retained")
+        marker = tmp_path / ".dao_tx_initialized"
+        marker.write_bytes(b"corrupt")
+        marker.chmod(0o600)
+
+        with pytest.raises(DaoPersistenceError, match="marker is unsafe"):
+            persistence.load_tx_state()
+
+    def test_origin_sequence_max_is_valid_once_then_terminal(self, tmp_path: Path) -> None:
+        identity = Identity.from_seed(bytes(range(32)))
+        manager = DaoManager(
+            node_address=yggdrasil_address(identity.pubkey),
+            dodag_id=ROOT,
+            persistence=TwoSlotFilePersistence(tmp_path, fail_closed=True),
+            origin_identity=identity,
+            allow_tx_bootstrap=True,
+        )
+        manager._origin_sequence = 0xFFFFFFFFFFFFFFFE
+
+        final = manager.build_dao(ROOT)
+        assert manager._origin_sequence == 0xFFFFFFFFFFFFFFFF
+        assert final.options[-1].data[:8] == b"\xff" * 8
+        with pytest.raises(DaoError) as error:
+            manager.build_dao(ROOT)
+        assert error.value.reason == "origin_sequence_exhausted"
 
     def test_root_crash_safe_persistence_with_enforcement(self, tmp_path: Path) -> None:
         """Root process_dao works with crash-safe, fail-closed persistence and enforcement."""
@@ -802,10 +1197,10 @@ class TestRequireCrashSafety:
 
         # Build a DAO from a node (without enforcement for simplicity)
         node = DaoManager(node_address=N1, dodag_id=ROOT)
-        dao = node.build_dao(ROOT)
+        dao = node.build_dao_semantics_for_test(ROOT)
 
         # Root should accept and persist
-        root.process_dao(dao)
+        root.process_dao_semantics_for_test(dao)
 
         # RX floor should be persisted
         floor = persistence.load_rx_floor(N1.packed)
@@ -827,7 +1222,7 @@ class TestRequireCrashSafety:
             require_crash_safety=False,
             persistence=persistence,
         )
-        manager.build_dao(ROOT)  # Persist some TX state
+        manager.build_dao_semantics_for_test(ROOT)  # Persist some TX state
 
         # Verify state was persisted
         assert persistence.load_tx_state() is not None
@@ -846,9 +1241,7 @@ class TestRequireCrashSafety:
                 persistence=TwoSlotFilePersistence(tmp_path, fail_closed=True),
             )
 
-    def test_init_succeeds_on_corrupt_tx_state_when_not_required(
-        self, tmp_path: Path
-    ) -> None:
+    def test_init_succeeds_on_corrupt_tx_state_when_not_required(self, tmp_path: Path) -> None:
         """DaoManager init succeeds when require_crash_safety=False and TX state is corrupt.
 
         Without crash safety enforcement, corrupt state falls back to defaults.
@@ -868,7 +1261,7 @@ class TestRequireCrashSafety:
             require_crash_safety=False,
             persistence=persistence,
         )
-        manager1.build_dao(ROOT)  # Persist some TX state
+        manager1.build_dao_semantics_for_test(ROOT)  # Persist some TX state
 
         # Verify state was persisted with sequence > 240
         state = persistence.load_tx_state()

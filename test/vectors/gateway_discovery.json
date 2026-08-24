@@ -1,0 +1,295 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "gateway_discovery",
+  "description": "Gateway coordination discovery vectors (GCP-4: backbone multicast and LoRa fallback). Independent CBOR/wire oracles per spec 08-gateway-coordination.md. Covers CoAP request/response format, GatewayInfo CBOR encoding, LoRaGatewayAnnounce wire format, IID comparison, and time master election.",
+  "spec": "spec/08-gateway-coordination.md GCP-4",
+  "vectors": [
+    {
+      "name": "coap_get_gateway_info",
+      "description": "CoAP CON GET request for /.well-known/lichen-gw/info (GCP-4.1 backbone discovery).",
+      "type": "coap_request",
+      "mtype": 0,
+      "mtype_name": "CON",
+      "code": 1,
+      "code_name": "0.01 GET",
+      "mid": 1,
+      "token": "abcd",
+      "uri_path": [".well-known", "lichen-gw", "info"],
+      "multicast_dst": "ff02::1",
+      "note": "Multicast to all-nodes IPv6 address on backbone link",
+      "encoded": "42010001abcdbb2e77656c6c2d6b6e6f776e096c696368656e2d677704696e666f"
+    },
+    {
+      "name": "coap_response_gateway_info",
+      "description": "CoAP ACK 2.05 Content response with GatewayInfo CBOR payload.",
+      "type": "coap_response",
+      "mtype": 2,
+      "mtype_name": "ACK",
+      "code": 69,
+      "code_name": "2.05 Content",
+      "mid": 1,
+      "token": "abcd",
+      "content_format": 60,
+      "content_format_name": "application/cbor",
+      "payload_description": "GatewayInfo for fe80::1 (see gateway_info_minimal)",
+      "encoded": "62450001abcdc13cffa60150fe80000000000000000000000000000102a601183c02f403f504f405080619010003a401000301040002983c000102030405060708090a0b0c0d0e0f101112131415161718181819181a181b181c181d181e181f1820182118221823182418251826182718281829182a182b182c182d182e182f1830183118321833183418351836183718381839183a183b04183c0582000107656c6f63616c"
+    },
+    {
+      "name": "coap_observe_registration",
+      "description": "CoAP CON GET with Observe=0 to register for gateway info notifications.",
+      "type": "coap_request",
+      "mtype": 0,
+      "mtype_name": "CON",
+      "code": 1,
+      "code_name": "0.01 GET",
+      "mid": 2,
+      "token": "dead",
+      "observe": 0,
+      "observe_note": "0=register for notifications per RFC 7641",
+      "uri_path": [".well-known", "lichen-gw", "info"],
+      "encoded": "42010002dead61005b2e77656c6c2d6b6e6f776e096c696368656e2d677704696e666f"
+    },
+    {
+      "name": "gateway_info_minimal",
+      "description": "Minimal GatewayInfo response with default capabilities and single gateway.",
+      "type": "backbone_info",
+      "fields": {
+        "iid": "fe80::1",
+        "superframe_duration_s": 60,
+        "federation_modes": [
+          "PSK",
+          "ED25519"
+        ],
+        "time_source": "local",
+        "capabilities": {
+          "max_slots": 60,
+          "gps_sync": false,
+          "backbone_ipv6": true,
+          "lr_fhss": false,
+          "channels": 8,
+          "max_nodes": 256
+        },
+        "slot_map": {
+          "mode": "INTERLEAVED",
+          "gateway_count": 1,
+          "ordinal": 0
+        }
+      },
+      "encoded": "a60150fe80000000000000000000000000000102a601183c02f403f504f405080619010003a401000301040002983c000102030405060708090a0b0c0d0e0f101112131415161718181819181a181b181c181d181e181f1820182118221823182418251826182718281829182a182b182c182d182e182f1830183118321833183418351836183718381839183a183b04183c0582000107656c6f63616c"
+    },
+    {
+      "name": "gateway_info_full",
+      "description": "Full GatewayInfo with GPS sync, epoch, and 3-gateway interleaved slots.",
+      "type": "backbone_info",
+      "fields": {
+        "iid": "fe80::1234:5678:9abc:def0",
+        "superframe_duration_s": 60,
+        "superframe_epoch": 1720000000,
+        "federation_modes": [
+          "PSK",
+          "ED25519"
+        ],
+        "time_source": "gps",
+        "capabilities": {
+          "max_slots": 60,
+          "gps_sync": true,
+          "backbone_ipv6": true,
+          "lr_fhss": false,
+          "channels": 8,
+          "max_nodes": 256
+        },
+        "slot_map": {
+          "mode": "INTERLEAVED",
+          "gateway_count": 3,
+          "ordinal": 0
+        }
+      },
+      "encoded": "a70150fe80000000000000123456789abcdef002a601183c02f503f504f405080619010003a40100030304000294000306090c0f12151818181b181e182118241827182a182d183018331836183904183c058200010763677073061a66851e00"
+    },
+    {
+      "name": "gateway_info_contiguous",
+      "description": "GatewayInfo with contiguous slot allocation mode (slots 20-39).",
+      "type": "backbone_info",
+      "fields": {
+        "iid": "fe80::dead:beef:cafe:babe",
+        "superframe_duration_s": 60,
+        "federation_modes": [
+          "PSK",
+          "ED25519"
+        ],
+        "time_source": "backbone",
+        "capabilities": {
+          "max_slots": 60,
+          "gps_sync": false,
+          "backbone_ipv6": true,
+          "lr_fhss": false,
+          "channels": 8,
+          "max_nodes": 256
+        },
+        "slot_map": {
+          "mode": "CONTIGUOUS",
+          "gateway_count": 3,
+          "ordinal": 1,
+          "start_slot": 20,
+          "slot_count": 20
+        }
+      },
+      "encoded": "a60150fe80000000000000deadbeefcafebabe02a601183c02f403f504f405080619010003a601010303040102941415161718181819181a181b181c181d181e181f182018211822182318241825182618270514061404183c0582000107686261636b626f6e65"
+    },
+    {
+      "name": "lora_announce_basic",
+      "description": "LoRa gateway announce with GATEWAY flag set (GCP-4.2 fallback).",
+      "type": "lora_announce",
+      "fields": {
+        "iid_short": "1234def0",
+        "superframe_epoch": 1720000000,
+        "channel_id": 7
+      },
+      "encoded": "811234def066851e0007"
+    },
+    {
+      "name": "lora_announce_channel_zero",
+      "description": "LoRa gateway announce on channel 0 (control channel).",
+      "type": "lora_announce",
+      "fields": {
+        "iid_short": "aabbccdd",
+        "superframe_epoch": 1720001234,
+        "channel_id": 0
+      },
+      "encoded": "81aabbccdd668522d200"
+    },
+    {
+      "name": "lora_announce_max_channel",
+      "description": "LoRa gateway announce on maximum channel 15.",
+      "type": "lora_announce",
+      "fields": {
+        "iid_short": "deadbeef",
+        "superframe_epoch": 0,
+        "channel_id": 15
+      },
+      "encoded": "81deadbeef000000000f"
+    },
+    {
+      "name": "gateway_flag_set",
+      "description": "Type byte with GATEWAY flag set (0x80 bit).",
+      "type": "flag_check",
+      "type_byte": 129,
+      "is_gateway": true
+    },
+    {
+      "name": "gateway_flag_clear",
+      "description": "Type byte without GATEWAY flag (regular announce).",
+      "type": "flag_check",
+      "type_byte": 1,
+      "is_gateway": false
+    },
+    {
+      "name": "iid_compare_lower_wins",
+      "description": "IID comparison: lower IID wins slot conflict (per GCP-6.3).",
+      "type": "iid_compare",
+      "iid_a": "fe80::0001:0001:0001:0001",
+      "iid_b": "fe80::ffff:ffff:ffff:ffff",
+      "result": -1
+    },
+    {
+      "name": "iid_compare_higher_loses",
+      "description": "IID comparison: higher IID loses slot conflict.",
+      "type": "iid_compare",
+      "iid_a": "fe80::ffff:ffff:ffff:ffff",
+      "iid_b": "fe80::0001:0001:0001:0001",
+      "result": 1
+    },
+    {
+      "name": "iid_compare_equal",
+      "description": "IID comparison: equal IIDs.",
+      "type": "iid_compare",
+      "iid_a": "fe80::1234:5678:9abc:def0",
+      "iid_b": "fe80::1234:5678:9abc:def0",
+      "result": 0
+    },
+    {
+      "name": "time_master_gps_preferred",
+      "description": "Time master election: GPS gateway wins over non-GPS with lower IID.",
+      "type": "time_master",
+      "candidates": [
+        {
+          "iid": "fe80::0001",
+          "has_gps": false
+        },
+        {
+          "iid": "fe80::ffff",
+          "has_gps": true
+        }
+      ],
+      "elected": "fe80::ffff"
+    },
+    {
+      "name": "time_master_lowest_iid_among_gps",
+      "description": "Time master election: lowest IID wins among GPS-equipped gateways.",
+      "type": "time_master",
+      "candidates": [
+        {
+          "iid": "fe80::ffff",
+          "has_gps": true
+        },
+        {
+          "iid": "fe80::0001",
+          "has_gps": true
+        }
+      ],
+      "elected": "fe80::0001"
+    },
+    {
+      "name": "time_master_lowest_iid_no_gps",
+      "description": "Time master election: lowest IID wins when no GPS available.",
+      "type": "time_master",
+      "candidates": [
+        {
+          "iid": "fe80::ffff",
+          "has_gps": false
+        },
+        {
+          "iid": "fe80::0001",
+          "has_gps": false
+        }
+      ],
+      "elected": "fe80::0001"
+    },
+    {
+      "name": "time_master_empty",
+      "description": "Time master election: no candidates returns null.",
+      "type": "time_master",
+      "candidates": [],
+      "elected": null
+    },
+    {
+      "name": "lora_announce_missing_gateway_flag",
+      "description": "Error case: LoRa announce without GATEWAY flag should be rejected.",
+      "type": "lora_announce_error",
+      "encoded": "011234def066851e0007",
+      "expect_error": "GATEWAY flag not set"
+    },
+    {
+      "name": "lora_announce_truncated",
+      "description": "Error case: LoRa announce payload too short (need 10 bytes).",
+      "type": "lora_announce_error",
+      "encoded": "811234",
+      "expect_error": "payload too short"
+    },
+    {
+      "name": "gateway_info_missing_iid",
+      "description": "Error case: GatewayInfo CBOR without required IID field.",
+      "type": "backbone_info_error",
+      "encoded": "a102a0",
+      "expect_error": "missing or invalid gateway IID"
+    },
+    {
+      "name": "gateway_info_invalid_cbor",
+      "description": "Error case: Truncated CBOR payload.",
+      "type": "backbone_info_error",
+      "encoded": "bf01",
+      "expect_error": "invalid CBOR"
+    }
+  ]
+}

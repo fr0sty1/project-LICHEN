@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for announce processor."""
 
+from collections import OrderedDict
 from ipaddress import IPv6Address
 
 import pytest
@@ -284,6 +285,7 @@ class TestDuplicateDetection:
 
         assert result.accepted is True  # Different originator, so accepted
 
+
 class TestGradientUpdate:
     """Tests for gradient table updates."""
 
@@ -349,6 +351,63 @@ class TestGradientUpdate:
         assert route.next_hop == neighbor
         assert route.seq_num == 1
         assert route.source == GradientSource.ANNOUNCE
+
+    def test_durable_floor_reconciles_after_gradient_failure_and_restart(
+        self,
+        identity: Identity,
+        neighbor: IPv6Address,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        announce = make_signed_announce(identity, seq_num=7)
+        durable: dict[bytes, tuple[bytes, int]] = {}
+        first_table = GradientTable()
+        first = AnnounceProcessor(
+            gradient_table=first_table,
+            address_builder=lambda iid: IPv6Address(bytes.fromhex("0200000000000000") + iid),
+            state_committer=lambda iid, key, seq: durable.setdefault(iid, (key, seq)),
+        )
+
+        def fail_update(*_args: object, **_kwargs: object) -> bool:
+            raise RuntimeError("route failed")
+
+        monkeypatch.setattr(first_table, "update", fail_update)
+        with pytest.raises(RuntimeError, match="route failed"):
+            first.process(announce, neighbor, now_ms=0)
+
+        key, floor = durable[identity.iid]
+        destination = IPv6Address(bytes.fromhex("0200000000000000") + identity.iid)
+        restarted = AnnounceProcessor(
+            gradient_table=GradientTable(),
+            address_builder=lambda _iid: destination,
+            _seen=OrderedDict([(identity.iid, floor)]),
+            _pinned_keys=OrderedDict([(identity.iid, key)]),
+            _pending_reconciliation={identity.iid},
+            state_committer=lambda _iid, _pubkey, _seq: None,
+        )
+        result = restarted.process(announce, neighbor, now_ms=1)
+
+        assert result.accepted
+        assert identity.iid not in restarted._pending_reconciliation
+        assert restarted.gradient_table.lookup(destination, now=1) is not None
+
+    def test_persistence_failure_exposes_no_pin_floor_or_gradient(
+        self,
+        processor: AnnounceProcessor,
+        identity: Identity,
+        neighbor: IPv6Address,
+    ) -> None:
+        announce = make_signed_announce(identity, seq_num=1)
+
+        def fail_commit(_iid: bytes, _pubkey: bytes, _sequence: int) -> None:
+            raise RuntimeError("durable state unavailable")
+
+        processor.state_committer = fail_commit
+        with pytest.raises(RuntimeError, match="durable state unavailable"):
+            processor.process(announce, neighbor, now_ms=0)
+
+        assert processor.known_originators() == []
+        assert processor.pinned_pubkey_for(identity.iid) is None
+        assert len(processor.gradient_table) == 0
 
     def test_installs_gradient_on_accept(
         self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
@@ -596,6 +655,128 @@ class TestKeyPinning:
         assert result.accepted
         # Pin unchanged
         assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
+
+    def test_rejects_different_pubkey_for_pinned_iid(
+        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
+    ):
+        """TOFU: A different pubkey claiming the same IID is rejected.
+
+        This is a security-critical test. If an attacker finds a pubkey that
+        hashes to the same IID (collision), they should not be able to hijack
+        the identity after we've pinned the legitimate key.
+        """
+        # First, accept the legitimate announce
+        ann1 = make_signed_announce(identity, seq_num=1)
+        result1 = processor.process(ann1, neighbor, now_ms=0)
+        assert result1.accepted
+
+        # Now craft a forged announce with a different pubkey but same IID.
+        # In practice this would require a hash collision, but we simulate
+        # by directly constructing the message and bypassing IID validation.
+        forged_pubkey = bytes([0x42] * 32)
+
+        # Bypass IID check by making the originator_iid match what a legitimate
+        # message would have - but use the pinned identity's IID so it looks like
+        # the same node.
+        forged = AnnounceMessage(
+            originator_iid=identity.iid,  # Same IID as before
+            pubkey=forged_pubkey,  # Different pubkey!
+            seq_num=2,  # Higher seq to pass staleness check
+        )
+        # Sign with some signature (won't matter - IID check fails first)
+        forged = AnnounceMessage(
+            originator_iid=identity.iid,
+            pubkey=forged_pubkey,
+            seq_num=2,
+            signature=bytes(48),  # Garbage sig
+        )
+
+        result2 = processor.process(forged, neighbor, now_ms=1000)
+
+        # Should be rejected due to IID mismatch (pubkey doesn't derive to claimed IID)
+        # This test documents that the IID binding is the first line of defense.
+        # The KEY_MISMATCH check is a second line if IID validation is bypassed.
+        assert result2.accepted is False
+        assert result2.reject_reason == AnnounceRejectReason.IID_MISMATCH
+
+    def test_rejects_key_mismatch_if_iid_check_bypassed(
+        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
+    ):
+        """KEY_MISMATCH: If IID and signature validation are bypassed, pinned key check catches it.
+
+        This is defense-in-depth. In normal operation, the IID binding check
+        (pubkey derives to claimed IID) and signature verification prevent
+        different keys. But if those checks are somehow bypassed (e.g., corrupted
+        deserialization, future cryptographic weakness), the pinned key comparison
+        is the last line of defense.
+        """
+        # Accept the legitimate announce first
+        ann1 = make_signed_announce(identity, seq_num=1)
+        processor.process(ann1, neighbor, now_ms=0)
+
+        # Create a valid announce, then corrupt it to have a different pubkey
+        # while preserving the IID (simulating bypass of IID derivation check)
+        ann2 = make_signed_announce(identity, seq_num=2)
+
+        # Force a different pubkey (bypass frozen dataclass)
+        different_pubkey = bytes([0x99] * 32)
+        object.__setattr__(ann2, "pubkey", different_pubkey)
+
+        # Bypass both IID check and signature verification to reach KEY_MISMATCH
+        original_iid = identity.iid
+
+        from lichen.announce import processor as proc_module
+
+        original_iid_fn = proc_module._pubkey_to_iid
+        original_verify = proc_module.verify
+
+        def fake_pubkey_to_iid(pubkey: bytes) -> bytes:
+            if pubkey == different_pubkey:
+                return original_iid  # Lie: say this pubkey derives to same IID
+            return original_iid_fn(pubkey)
+
+        def fake_verify(pubkey: bytes, message: bytes, signature: bytes) -> bool:
+            if pubkey == different_pubkey:
+                return True  # Bypass signature check for the forged key
+            return original_verify(pubkey, message, signature)
+
+        proc_module._pubkey_to_iid = fake_pubkey_to_iid
+        proc_module.verify = fake_verify
+        try:
+            result = processor.process(ann2, neighbor, now_ms=1000)
+        finally:
+            proc_module._pubkey_to_iid = original_iid_fn
+            proc_module.verify = original_verify
+
+        # KEY_MISMATCH should catch this even though IID and signature checks were bypassed
+        assert result.accepted is False
+        assert result.reject_reason == AnnounceRejectReason.KEY_MISMATCH
+        destination = processor.address_builder(identity.iid)
+        route = processor.gradient_table.lookup(destination, now=1000)
+        assert route is not None
+        assert route.seq_num == 1
+        assert route.next_hop == neighbor
+
+    def test_pin_table_full_rejection_does_not_install_gradient(
+        self,
+        processor: AnnounceProcessor,
+        identity: Identity,
+        neighbor: IPv6Address,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """A capacity rejection leaves all routing and identity state untouched."""
+        from lichen.announce import processor as proc_module
+
+        monkeypatch.setattr(proc_module, "MAX_ENTRIES", 0)
+        announce = make_signed_announce(identity, seq_num=1)
+
+        result = processor.process(announce, neighbor, now_ms=0)
+
+        assert result.accepted is False
+        assert result.reject_reason == AnnounceRejectReason.PIN_TABLE_FULL
+        assert processor.pinned_pubkey_for(identity.iid) is None
+        assert processor.known_originators() == []
+        assert len(processor.gradient_table) == 0
 
 
 class TestSeqNumWrapAround:

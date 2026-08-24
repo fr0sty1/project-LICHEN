@@ -5,6 +5,7 @@
   "vectors": [
     {
       "name": "fixed_seed_sign_sign",
+      "description": "Valid EDHOC handshake with SIGN_SIGN method",
       "seed_i": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
       "seed_r": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
       "msg1": "01005820132c442be010fbd57e72603328aa76e71fccc1503aae219327d14d9c9993f4724100",
@@ -22,7 +23,58 @@
       "oscore_master_secret": "91c74423a954df9b36051fe6badb7d59",
       "oscore_master_salt": "7544cef4e9bae298",
       "oscore_sender_id": "00",
-      "oscore_recipient_id": "01"
+      "oscore_recipient_id": "01",
+      "valid": true
+    },
+    {
+      "name": "msg3_tampered_signature",
+      "description": "Message 3 with tampered signature byte must be rejected",
+      "seed_r": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "peer_pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "msg3": "5d79b46252635dea1b6128880c7129e98790f0716240a6ba79657a7a7007b0717d8fda7621a2151d59d6ad52ecaf0ed7b8ab815df361227900e79c586cc0a4999d6f37bada8f9138130d95015bef28959b8a5b2461",
+      "th_3": "0dbf46957a00fdf525adaa725805a4cd16642b486af20b18613ef5664645d502",
+      "valid": false,
+      "expected_error": "signature_verification_failed"
+    },
+    {
+      "name": "msg3_wrong_peer_key",
+      "description": "Message 3 verified against wrong public key must be rejected",
+      "seed_r": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "peer_pubkey": "e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58",
+      "msg3": "5d79b46252635dea1b6128880c7129e98790f0716240a6ba79657a7a7007b0717d8fda7621a2151d59d6ad52ecaf0ed7b8ab815df361227900e79c586cc0a4999d6f37bada8f9138130d95005bef28959b8a5b2461",
+      "th_3": "0dbf46957a00fdf525adaa725805a4cd16642b486af20b18613ef5664645d502",
+      "valid": false,
+      "expected_error": "id_cred_mismatch"
+    },
+    {
+      "name": "msg3_tampered_id_cred",
+      "description": "Message 3 with tampered ID_CRED_I region must be rejected",
+      "seed_r": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "peer_pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "msg3": "5d78b46252635dea1b6128880c7129e98790f0716240a6ba79657a7a7007b0717d8fda7621a2151d59d6ad52ecaf0ed7b8ab815df361227900e79c586cc0a4999d6f37bada8f9138130d95005bef28959b8a5b2461",
+      "th_3": "0dbf46957a00fdf525adaa725805a4cd16642b486af20b18613ef5664645d502",
+      "valid": false,
+      "expected_error": "decryption_or_id_cred_failed"
+    },
+    {
+      "name": "msg3_truncated",
+      "description": "Truncated Message 3 (< minimum size) must be rejected",
+      "seed_r": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "peer_pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "msg3": "5d79b46252635dea",
+      "th_3": "0dbf46957a00fdf525adaa725805a4cd16642b486af20b18613ef5664645d502",
+      "valid": false,
+      "expected_error": "message_too_short"
+    },
+    {
+      "name": "msg3_all_zero",
+      "description": "All-zero Message 3 ciphertext must be rejected",
+      "seed_r": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "peer_pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "msg3": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "th_3": "0dbf46957a00fdf525adaa725805a4cd16642b486af20b18613ef5664645d502",
+      "valid": false,
+      "expected_error": "decryption_failed"
     }
   ]
 }

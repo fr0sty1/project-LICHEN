@@ -30,6 +30,16 @@ pub struct RxPacket {
     pub snr: Option<i8>,
 }
 
+/// Transmission result with airtime for duty cycle tracking.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TxResult {
+    /// Actual airtime in microseconds.
+    ///
+    /// Real radios report measured airtime; simulators return computed values.
+    /// Used by the duty cycle tracker to deduct from budget after each TX.
+    pub airtime_us: u32,
+}
+
 /// Radio configuration.
 #[derive(Debug, Clone, Copy)]
 pub struct RadioConfig {
@@ -115,11 +125,13 @@ pub trait Radio {
     type Error;
 
     /// Transmit a packet on specified channel (CCP-12/15). Returns when transmission completes.
+    ///
+    /// Returns `TxResult` with actual airtime for duty cycle tracking.
     fn transmit(
         &mut self,
         channel: u8,
         payload: &[u8],
-    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
+    ) -> impl core::future::Future<Output = Result<TxResult, Self::Error>>;
 
     /// CCP-15: Clear Channel Assessment (CAD/CCA) on channel before TX. Returns true if clear.
     fn cca(
@@ -524,6 +536,36 @@ mod tests {
         assert_eq!(cfg.spreading_factor, 10);
         assert_eq!(cfg.bandwidth, 125_000);
         assert_eq!(cfg.tx_power, 14);
+    }
+
+    #[test]
+    fn radio_config_from_operating_class_all_regions() {
+        // US/CA (class 0)
+        let params = lookup_operating_class(0).expect("US/CA class");
+        let cfg = RadioConfig::from_operating_class(params);
+        assert_eq!(cfg.frequency, 903_900_000, "US/CA frequency");
+        assert_eq!(cfg.spreading_factor, 10, "US/CA SF");
+        assert_eq!(cfg.bandwidth, 125_000, "US/CA bandwidth");
+        assert_eq!(cfg.coding_rate, 5, "US/CA coding rate");
+        assert_eq!(cfg.tx_power, 20, "US/CA TX power");
+
+        // EU (class 1)
+        let params = lookup_operating_class(1).expect("EU class");
+        let cfg = RadioConfig::from_operating_class(params);
+        assert_eq!(cfg.frequency, 868_100_000, "EU frequency");
+        assert_eq!(cfg.spreading_factor, 10, "EU SF");
+        assert_eq!(cfg.bandwidth, 125_000, "EU bandwidth");
+        assert_eq!(cfg.coding_rate, 5, "EU coding rate");
+        assert_eq!(cfg.tx_power, 14, "EU TX power");
+
+        // AU/NZ (class 2)
+        let params = lookup_operating_class(2).expect("AU/NZ class");
+        let cfg = RadioConfig::from_operating_class(params);
+        assert_eq!(cfg.frequency, 916_800_000, "AU/NZ frequency");
+        assert_eq!(cfg.spreading_factor, 10, "AU/NZ SF");
+        assert_eq!(cfg.bandwidth, 125_000, "AU/NZ bandwidth");
+        assert_eq!(cfg.coding_rate, 5, "AU/NZ coding rate");
+        assert_eq!(cfg.tx_power, 30, "AU/NZ TX power");
     }
 
     #[test]

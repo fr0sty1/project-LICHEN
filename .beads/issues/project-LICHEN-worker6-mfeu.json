@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-mfeu",
+  "title": "Require exact DAO builder scalar types",
+  "description": "API correctness review finding in python/src/lichen/rpl/dao_manager.py lines 445-499: _build_dao checks only 0 \u003c= path_lifetime \u003c= 255, so bool values are accepted as lifetimes, floats pass the range check and later leak a raw bytes TypeError, and ack_requested is not required to be bool (DAO.to_bytes coerces arbitrary truthy values). Validate exact int/non-bool path_lifetime and exact bool ack_requested before constructing or signing a DAO; cover bool/float/truthy-object inputs.",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:29:20.466193Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:29:42.82603Z",
+  "started_at": "2026-08-24T18:29:42.82603Z",
+  "lease_expires_at": "2026-08-24T18:34:42.82603Z",
+  "heartbeat_at": "2026-08-24T18:29:42.82603Z"
+}

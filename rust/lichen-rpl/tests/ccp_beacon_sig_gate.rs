@@ -19,12 +19,7 @@ const VECTORS: &str = include_str!("../../../test/vectors/ccp_beacon_sig_gate.js
 fn load_vectors() -> Vec<Value> {
     let document: Value = serde_json::from_str(VECTORS).unwrap();
     assert_eq!(document["format_version"], 2);
-    document["vectors"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .cloned()
-        .collect()
+    document["vectors"].as_array().unwrap().to_vec()
 }
 
 fn path_cost_vectors() -> Vec<Value> {
@@ -65,7 +60,10 @@ fn path_cost_calculation_matches_vectors() {
         };
 
         let actual = candidate.path_cost(mhri);
-        assert_eq!(actual, expected, "{name}: path_cost={actual}, expected={expected}");
+        assert_eq!(
+            actual, expected,
+            "{name}: path_cost={actual}, expected={expected}"
+        );
     }
 }
 
@@ -157,13 +155,18 @@ fn path_cost_negative_etx_returns_max() {
 #[test]
 fn admissibility_with_default_max_rank_increase() {
     // Rust default MAX_RANK_INCREASE is 1024
-    assert_eq!(MAX_RANK_INCREASE, 1024, "Rust MAX_RANK_INCREASE should be 1024");
+    assert_eq!(
+        MAX_RANK_INCREASE, 1024,
+        "Rust MAX_RANK_INCREASE should be 1024"
+    );
 
     for vector in admissibility_vectors() {
         let name = vector["name"].as_str().unwrap();
         let lowest_rank = vector["lowest_rank"].as_u64().unwrap() as u16;
         let path_cost = vector["path_cost"].as_u64().unwrap() as u16;
-        let expected_admissible = vector["expected_rust_admissible_default"].as_bool().unwrap();
+        let expected_admissible = vector["expected_rust_admissible_default"]
+            .as_bool()
+            .unwrap();
 
         // Check ceiling calculation with Rust default
         let ceiling = lowest_rank.saturating_add(MAX_RANK_INCREASE);

@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+
+/*
+ * R1 Neo serial precedence test overlay.
+ * Sets lichen,native-uart to the USB CDC ACM device for explicit precedence
+ * testing, matching the pattern used by the puck application.
+ */
+/ {
+	chosen {
+		lichen,native-uart = &cdc_acm_uart0;
+	};
+};

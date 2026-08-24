@@ -498,7 +498,15 @@ int lichen_rpl_dao_manager_lookup(struct lichen_rpl_dao_manager *_Nullable dm,
 /** Count root routes, returning zero when root state is not bound. */
 int lichen_rpl_dao_manager_route_count(struct lichen_rpl_dao_manager *_Nullable dm);
 
-/** Classify an RFC 6550 8-bit lollipop sequence transition. */
+/**
+ * Classify RFC 6550 Section 7.2 lollipop DAOSequence / Path Sequence.
+ *
+ * SEQUENCE_WINDOW=16. Same-region pairs use RFC 1982 serial arithmetic on
+ * the low 7 bits (a multi-step crossing of the 127->0 restart is newer);
+ * cross-region pairs are always comparable per RFC 6550 Section 7.2 rule
+ * 3.1. Mirrors rust/lichen-rpl/src/routing.rs seq_is_newer(); see
+ * lichen/tests/rpl_dao_sequence/sweep.c for the exhaustive check.
+ */
 enum lichen_rpl_sequence_relation lichen_rpl_sequence_compare(
 	uint8_t incoming, uint8_t current);
 

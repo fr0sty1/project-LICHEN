@@ -5,7 +5,6 @@
 
 use lichen_hal::loopback::LoopbackRadio;
 use lichen_hal::storage::mem::MemStorage;
-use lichen_ipv6::Addr;
 use lichen_link::identity::{Identity, PeerIdentity};
 use lichen_link::Seed;
 use lichen_node::{AnnounceProcessor, GradientTable, RplReceiveOutcome, RplStack, SecureStack};
@@ -42,13 +41,18 @@ impl SenderStateStore for OscoreStore {
 fn downstream_can_construct_secure_rpl_owner() {
     let (radio, _peer_radio) = LoopbackRadio::pair();
     let identity = Identity::from_seed(Seed::new([0x61; 32]));
+    let local_rpl_addr = lichen_link::ygg_addr_from_pubkey(identity.pubkey.as_bytes());
     let secure = SecureStack::from_radio(radio, identity, 128, 0).unwrap();
-    let local_addr = secure.local_addr().0;
     let announces = AnnounceProcessor::new(GradientTable::new(64), [0xfd, 0, 0, 0, 0, 0, 0, 1]);
 
-    let _owner =
-        RplStack::provision_leaf(secure, local_addr, local_addr, announces, MemStorage::new())
-            .unwrap();
+    let _owner = RplStack::provision_leaf(
+        secure,
+        local_rpl_addr,
+        local_rpl_addr,
+        announces,
+        MemStorage::new(),
+    )
+    .unwrap();
 }
 
 #[tokio::test]
@@ -58,6 +62,8 @@ async fn downstream_secure_rpl_request() {
     let bob_identity = Identity::from_seed(Seed::new([0x72; 32]));
     let alice_iid = alice_identity.iid;
     let bob_iid = bob_identity.iid;
+    let alice_rpl_addr = lichen_link::ygg_addr_from_pubkey(alice_identity.pubkey.as_bytes());
+    let bob_rpl_addr = lichen_link::ygg_addr_from_pubkey(bob_identity.pubkey.as_bytes());
 
     let mut alice_secure = SecureStack::from_radio(alice_radio, alice_identity, 128, 0).unwrap();
     let mut bob_secure = SecureStack::from_radio(bob_radio, bob_identity, 128, 0).unwrap();
@@ -67,22 +73,27 @@ async fn downstream_secure_rpl_request() {
     bob_secure.add_peer(PeerIdentity::from_pubkey(
         Identity::from_seed(Seed::new([0x71; 32])).pubkey,
     ));
-    let alice_addr = alice_secure.local_addr().0;
-    let bob_addr = bob_secure.local_addr().0;
+    let bob_control_addr = bob_secure.local_addr();
 
     let mut alice = RplStack::provision_leaf(
         alice_secure,
-        alice_addr,
-        bob_addr,
-        AnnounceProcessor::new(GradientTable::new(64), alice_addr[..8].try_into().unwrap()),
+        alice_rpl_addr,
+        bob_rpl_addr,
+        AnnounceProcessor::new(
+            GradientTable::new(64),
+            alice_rpl_addr[..8].try_into().unwrap(),
+        ),
         MemStorage::new(),
     )
     .unwrap();
     let mut bob = RplStack::provision_leaf(
         bob_secure,
-        bob_addr,
-        bob_addr,
-        AnnounceProcessor::new(GradientTable::new(64), bob_addr[..8].try_into().unwrap()),
+        bob_rpl_addr,
+        bob_rpl_addr,
+        AnnounceProcessor::new(
+            GradientTable::new(64),
+            bob_rpl_addr[..8].try_into().unwrap(),
+        ),
         MemStorage::new(),
     )
     .unwrap();
@@ -106,7 +117,7 @@ async fn downstream_secure_rpl_request() {
 
     alice
         .send_secure_get(
-            &Addr(bob_addr),
+            &bob_control_addr,
             &bob_iid,
             &["status"],
             &[0xa1],

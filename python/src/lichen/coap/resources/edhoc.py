@@ -230,6 +230,12 @@ class EdhocResource(resource.Resource):
                 # This is Message 1 - start new session
                 return await self._handle_message_1(peer_host, payload)
             else:
+                # Check for exact M1 retransmission before assuming M3
+                if active_session["msg1"] == payload:
+                    return self._edhoc_response(active_session["msg2"])
+                # Check if this is a different M1 (restart attempt) - reject it
+                if self._message_1_connection_id(payload) is not None:
+                    return Message(code=BAD_REQUEST)
                 # This is Message 3 - complete handshake
                 return await self._handle_message_3(peer_host, payload, active_session)
         except _EdhocTransientError:

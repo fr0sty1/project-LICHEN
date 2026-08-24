@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/fuzz_schc.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/schc/schc.c.o"
-  "CMakeFiles/fuzz_schc.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/schc/schc.c.o.d"
+  "CMakeFiles/fuzz_schc.dir/Users/markatwood/Desktop/Projects/project-LICHEN/lichen/subsys/schc/schc.c.o"
+  "CMakeFiles/fuzz_schc.dir/Users/markatwood/Desktop/Projects/project-LICHEN/lichen/subsys/schc/schc.c.o.d"
   "CMakeFiles/fuzz_schc.dir/fuzz_schc.c.o"
   "CMakeFiles/fuzz_schc.dir/fuzz_schc.c.o.d"
   "fuzz_schc"

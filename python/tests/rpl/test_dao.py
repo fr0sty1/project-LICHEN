@@ -70,9 +70,9 @@ def test_option_codecs_are_exact_and_canonicalize_unused_prefix_bits() -> None:
     assert TransitInformation.from_option(transit.to_option()) == transit
     with pytest.raises(DaoError, match="canonical length"):
         RplTarget.from_option(RplOption(RplOptionType.RPL_TARGET, b"\0\x00\0"))
-    with pytest.raises(DaoError, match="must contain|missing parent address"):
+    with pytest.raises(DaoError, match="Data Length"):
         TransitInformation.from_option(
-            RplOption(RplOptionType.TRANSIT_INFORMATION, b"\x80\x00\x00\x00")
+            RplOption(RplOptionType.TRANSIT_INFORMATION, b"\x80\x00\x00\x00\x00")
         )
 
 
@@ -86,17 +86,18 @@ def test_transit_information_rejects_nonzero_flags(flags: int) -> None:
         TransitInformation.from_option(option)
 
 
-def test_transit_information_rejects_external_encoding() -> None:
-    with pytest.raises(DaoError, match="external.*not supported"):
-        TransitInformation(ROOT, external=True).to_option()
+def test_transit_information_preserves_external_encoding() -> None:
+    encoded = TransitInformation(ROOT, external=True).to_option()
+    assert encoded.data[0] == 0x80
+    assert TransitInformation.from_option(encoded).external is True
 
 
 def test_build_dao_advances_sequences_and_compatibility_edge_parser() -> None:
     manager = DaoManager(node_address=N2, dodag_id=ROOT)
     manager_copy = copy(manager)
-    first = manager.build_dao(N1, ack_requested=True)
-    copied_first = manager_copy.build_dao(N1)
-    second = manager.build_dao(ROOT)
+    first = manager.build_dao_semantics_for_test(N1, ack_requested=True)
+    copied_first = manager_copy.build_dao_semantics_for_test(N1)
+    second = manager.build_dao_semantics_for_test(ROOT)
     assert first.ack_requested is True
     assert first.dao_sequence == copied_first.dao_sequence == 241
     first_transit = TransitInformation.from_option(first.options[1])
@@ -111,19 +112,19 @@ def test_build_dao_advances_sequences_and_compatibility_edge_parser() -> None:
 def test_build_dao_with_lifetime_advances_new_updates_but_not_copies() -> None:
     manager = DaoManager(node_address=N2, dodag_id=ROOT)
 
-    first = manager.build_dao_with_lifetime(N1, 17)
+    first = manager.build_dao_with_lifetime_semantics_for_test(N1, 17)
     first_transit = TransitInformation.from_option(first.options[1])
     assert first.dao_sequence == 241
     assert first_transit.path_sequence == 241
     assert first_transit.path_lifetime == 17
 
-    exact_copy = manager.build_dao_copy_with_lifetime(N1, 17)
+    exact_copy = manager.build_dao_copy_with_lifetime_semantics_for_test(N1, 17)
     copy_transit = TransitInformation.from_option(exact_copy.options[1])
     assert exact_copy.dao_sequence == 242
     assert copy_transit.path_sequence == 241
     assert copy_transit.path_lifetime == 17
 
-    withdrawal = manager.build_dao_with_lifetime(N1, 0)
+    withdrawal = manager.build_dao_with_lifetime_semantics_for_test(N1, 0)
     withdrawal_transit = TransitInformation.from_option(withdrawal.options[1])
     assert withdrawal.dao_sequence == 243
     assert withdrawal_transit.path_sequence == 242
@@ -134,42 +135,42 @@ def test_build_dao_copy_rejects_before_first_logical_update() -> None:
     manager = DaoManager(node_address=N2, dodag_id=ROOT)
 
     with pytest.raises(DaoError, match="last logical update"):
-        manager.build_dao_copy_with_lifetime(N1, 17)
+        manager.build_dao_copy_with_lifetime_semantics_for_test(N1, 17)
 
 
 def test_build_dao_copy_rejects_parent_mismatch() -> None:
     manager = DaoManager(node_address=N2, dodag_id=ROOT)
-    manager.build_dao_with_lifetime(N1, 17)
+    manager.build_dao_with_lifetime_semantics_for_test(N1, 17)
 
     with pytest.raises(DaoError, match="last logical update"):
-        manager.build_dao_copy_with_lifetime(ROOT, 17)
+        manager.build_dao_copy_with_lifetime_semantics_for_test(ROOT, 17)
 
 
 def test_build_dao_copy_rejects_lifetime_mismatch() -> None:
     manager = DaoManager(node_address=N2, dodag_id=ROOT)
-    manager.build_dao_with_lifetime(N1, 17)
+    manager.build_dao_with_lifetime_semantics_for_test(N1, 17)
 
     with pytest.raises(DaoError, match="last logical update"):
-        manager.build_dao_copy_with_lifetime(N1, 18)
+        manager.build_dao_copy_with_lifetime_semantics_for_test(N1, 18)
 
 
 def test_rejected_dao_copies_leave_both_counters_unchanged() -> None:
     manager = DaoManager(node_address=N2, dodag_id=ROOT)
-    manager.build_dao_with_lifetime(N1, 17)
+    manager.build_dao_with_lifetime_semantics_for_test(N1, 17)
     counters = (manager._dao_sequence, manager._path_sequence)
 
     with pytest.raises(DaoError):
-        manager.build_dao_copy_with_lifetime(ROOT, 17)
+        manager.build_dao_copy_with_lifetime_semantics_for_test(ROOT, 17)
 
     assert (manager._dao_sequence, manager._path_sequence) == counters
 
 
 def test_exact_dao_copy_advances_only_dao_sequence_and_copies_with_manager() -> None:
     manager = DaoManager(node_address=N2, dodag_id=ROOT)
-    update = manager.build_dao_with_lifetime(N1, 17)
+    update = manager.build_dao_with_lifetime_semantics_for_test(N1, 17)
     manager_copy = copy(manager)
 
-    exact_copy = manager_copy.build_dao_copy_with_lifetime(N1, 17)
+    exact_copy = manager_copy.build_dao_copy_with_lifetime_semantics_for_test(N1, 17)
     transit = TransitInformation.from_option(exact_copy.options[1])
 
     assert exact_copy.dao_sequence == update.dao_sequence + 1
@@ -183,10 +184,10 @@ def test_exact_dao_copy_advances_only_dao_sequence_and_copies_with_manager() -> 
 @pytest.mark.parametrize(
     ("method_name", "lifetime"),
     [
-        ("build_dao_with_lifetime", -1),
-        ("build_dao_with_lifetime", 256),
-        ("build_dao_copy_with_lifetime", -1),
-        ("build_dao_copy_with_lifetime", 256),
+        ("build_dao_with_lifetime_semantics_for_test", -1),
+        ("build_dao_with_lifetime_semantics_for_test", 256),
+        ("build_dao_copy_with_lifetime_semantics_for_test", -1),
+        ("build_dao_copy_with_lifetime_semantics_for_test", 256),
     ],
 )
 def test_build_dao_with_lifetime_rejects_invalid_lifetimes(
@@ -198,7 +199,7 @@ def test_build_dao_with_lifetime_rejects_invalid_lifetimes(
     with pytest.raises(ValueError, match="Path Lifetime must fit one octet"):
         getattr(manager, method_name)(N1, lifetime)
 
-    valid = manager.build_dao_with_lifetime(N1, 1)
+    valid = manager.build_dao_with_lifetime_semantics_for_test(N1, 1)
     assert valid.dao_sequence == 241
     assert TransitInformation.from_option(valid.options[1]).path_sequence == 241
 
@@ -213,12 +214,12 @@ def test_lollipop_increment_boundaries(current: int, expected: int) -> None:
 
 def test_process_requires_root_and_matching_instance() -> None:
     with pytest.raises(DaoError, match="only valid on the root"):
-        DaoManager(node_address=N1).process_dao(make_dao(N1, ROOT))
+        DaoManager(node_address=N1).process_dao_semantics_for_test(make_dao(N1, ROOT))
 
     root = DaoManager(node_address=ROOT, is_root=True, rpl_instance_id=5)
     wrong = make_dao(N1, ROOT)
     with pytest.raises(DaoError, match="instance ID 0 != 5"):
-        root.process_dao(wrong)
+        root.process_dao_semantics_for_test(wrong)
     assert root.routing_table.lookup(N1) is None
 
 
@@ -226,12 +227,12 @@ def test_ack_and_line_routes_remain_compatible() -> None:
     root = DaoManager(node_address=ROOT, is_root=True)
     ack_dao = make_dao(N1, ROOT)
     ack_dao.ack_requested = True
-    ack = root.process_dao(ack_dao)
+    ack = root.process_dao_semantics_for_test(ack_dao)
     assert ack is not None
     assert ack.dao_sequence == 1
 
-    root.process_dao(make_dao(N2, N1))
-    root.process_dao(make_dao(N3, N2))
+    root.process_dao_semantics_for_test(make_dao(N2, N1))
+    root.process_dao_semantics_for_test(make_dao(N3, N2))
     assert root.routing_table.lookup(N1) == [N1]
     assert root.routing_table.lookup(N2) == [N1, N2]
     assert root.routing_table.lookup(N3) == [N1, N2, N3]
@@ -239,13 +240,17 @@ def test_ack_and_line_routes_remain_compatible() -> None:
 
 def test_parent_change_updates_route() -> None:
     root = DaoManager(node_address=ROOT, is_root=True)
-    root.process_dao(DaoManager(node_address=N1).build_dao(ROOT))
-    root.process_dao(DaoManager(node_address=N2).build_dao(ROOT))
+    root.process_dao_semantics_for_test(
+        DaoManager(node_address=N1).build_dao_semantics_for_test(ROOT)
+    )
+    root.process_dao_semantics_for_test(
+        DaoManager(node_address=N2).build_dao_semantics_for_test(ROOT)
+    )
     n3 = DaoManager(node_address=N3)
-    root.process_dao(n3.build_dao(N1))
+    root.process_dao_semantics_for_test(n3.build_dao_semantics_for_test(N1))
     assert root.routing_table.lookup(N3) == [N1, N3]
     # N3 reparents to N2 (seq now increments, satisfying replay check).
-    root.process_dao(n3.build_dao(N2))
+    root.process_dao_semantics_for_test(n3.build_dao_semantics_for_test(N2))
     assert root.routing_table.lookup(N3) == [N2, N3]
     assert (N3, N1) not in root._edge_expiry
     assert root._edge_expiry[(N3, N2)] is None
@@ -280,11 +285,11 @@ def test_equal_path_sequence_descriptor_mutations_reject_atomically(
         return DAO(rpl_instance_id=0, dao_sequence=1, options=options)
 
     root = DaoManager(node_address=ROOT, is_root=True, lifetime_unit_seconds=1)
-    root.process_dao_at(dao_with_descriptor(initial_descriptor), 100)
+    root.process_dao_semantics_for_test_at(dao_with_descriptor(initial_descriptor), 100)
     candidates = dict(root._candidate_map)
 
     with pytest.raises(DaoError, match="equal Path Sequence"):
-        root.process_dao_at(dao_with_descriptor(incoming_descriptor), 101)
+        root.process_dao_semantics_for_test_at(dao_with_descriptor(incoming_descriptor), 101)
 
     assert root._path_sequences == {N1: 10}
     assert root._descriptors == {N1: retained_descriptor}
@@ -295,10 +300,10 @@ def test_equal_path_sequence_descriptor_mutations_reject_atomically(
 
 def test_lollipop_wrap_is_newer_but_large_jump_is_incomparable() -> None:
     root = DaoManager(node_address=ROOT, is_root=True)
-    root.process_dao(make_dao(N1, ROOT, sequence=255))
-    root.process_dao(make_dao(N1, ROOT, sequence=0))
+    root.process_dao_semantics_for_test(make_dao(N1, ROOT, sequence=255))
+    root.process_dao_semantics_for_test(make_dao(N1, ROOT, sequence=0))
     with pytest.raises(DaoError, match="stale or incomparable"):
-        root.process_dao(make_dao(N1, ROOT, sequence=32))
+        root.process_dao_semantics_for_test(make_dao(N1, ROOT, sequence=32))
     assert root._path_sequences[N1] == 0
 
 
@@ -311,7 +316,7 @@ def test_grouped_targets_and_transits_expand_cartesian_product() -> None:
             TransitInformation(N3, path_sequence=7, path_control=0x40),
         ],
     )
-    root.process_dao(dao)
+    root.process_dao_semantics_for_test(dao)
     assert root._parent_map[N1] == (ROOT, N3)
     assert root._parent_map[N2] == (ROOT, N3)
     assert root.routing_table.lookup(N1) == [N1]
@@ -331,14 +336,14 @@ def test_consecutive_groups_and_target_descriptors_are_accepted() -> None:
             TransitInformation(N1, path_sequence=8).to_option(),
         ],
     )
-    root.process_dao(dao)
+    root.process_dao_semantics_for_test(dao)
     assert root.routing_table.lookup(N2) == [N1, N2]
 
 
 def test_exact_duplicate_transits_deduplicate_but_conflicts_reject_atomically() -> None:
     root = DaoManager(node_address=ROOT, is_root=True)
     transit = TransitInformation(ROOT, path_sequence=3, path_control=0x80)
-    root.process_dao(grouped_dao([N1], [transit, transit]))
+    root.process_dao_semantics_for_test(grouped_dao([N1], [transit, transit]))
     assert root._parent_map[N1] == (ROOT,)
 
     conflict = grouped_dao(
@@ -349,7 +354,7 @@ def test_exact_duplicate_transits_deduplicate_but_conflicts_reject_atomically() 
         ],
     )
     with pytest.raises(DaoError, match="conflicting duplicate"):
-        root.process_dao(conflict)
+        root.process_dao_semantics_for_test(conflict)
     assert root.routing_table.lookup(N1) == [N1]
     assert root.routing_table.lookup(N2) is None
 
@@ -371,7 +376,9 @@ def test_group_sequence_and_lifetime_must_match(
     transits: list[TransitInformation],
 ) -> None:
     with pytest.raises(DaoError, match="inconsistent Transit group"):
-        DaoManager(node_address=ROOT, is_root=True).process_dao(grouped_dao([N2], transits))
+        DaoManager(node_address=ROOT, is_root=True).process_dao_semantics_for_test(
+            grouped_dao([N2], transits)
+        )
 
 
 def test_duplicate_target_across_groups_rejects_without_mutation() -> None:
@@ -387,16 +394,16 @@ def test_duplicate_target_across_groups_rejects_without_mutation() -> None:
         ],
     )
     with pytest.raises(DaoError, match="duplicate RPL Target"):
-        root.process_dao(dao)
+        root.process_dao_semantics_for_test(dao)
     assert len(root.routing_table) == 0
     assert root._path_sequences == {}
 
 
 def test_candidate_control_preference_then_complete_path_lexical_order() -> None:
     root = DaoManager(node_address=ROOT, is_root=True)
-    root.process_dao(make_dao(N1, ROOT))
-    root.process_dao(make_dao(N2, ROOT))
-    root.process_dao(
+    root.process_dao_semantics_for_test(make_dao(N1, ROOT))
+    root.process_dao_semantics_for_test(make_dao(N2, ROOT))
+    root.process_dao_semantics_for_test(
         grouped_dao(
             [N3],
             [
@@ -407,7 +414,7 @@ def test_candidate_control_preference_then_complete_path_lexical_order() -> None
     )
     assert root.routing_table.lookup(N3) == [N2, N3]
 
-    root.process_dao(
+    root.process_dao_semantics_for_test(
         grouped_dao(
             [N3],
             [
@@ -421,8 +428,8 @@ def test_candidate_control_preference_then_complete_path_lexical_order() -> None
 
 def test_incomplete_preferred_candidate_is_skipped_for_complete_path() -> None:
     root = DaoManager(node_address=ROOT, is_root=True)
-    root.process_dao(make_dao(N1, ROOT))
-    root.process_dao(
+    root.process_dao_semantics_for_test(make_dao(N1, ROOT))
+    root.process_dao_semantics_for_test(
         grouped_dao(
             [N3],
             [
@@ -437,7 +444,7 @@ def test_incomplete_preferred_candidate_is_skipped_for_complete_path() -> None:
 def test_child_before_parent_commits_state_then_routes_without_child_resend() -> None:
     authority = IPv6Address("fd00::aa")
     root = DaoManager(node_address=ROOT, is_root=True)
-    root.process_dao(make_dao(N3, N1))
+    root.process_dao_semantics_for_test(make_dao(N3, N1))
     assert root._path_sequences == {N3: 1}
     assert root.routing_table.lookup(N3) is None
     child_state = root.route_state_snapshot(authority)["targets"][0]
@@ -445,31 +452,31 @@ def test_child_before_parent_commits_state_then_routes_without_child_resend() ->
     assert child_state["selected_candidate"] is None
     assert root.routing_table_snapshot() == {}
 
-    root.process_dao(make_dao(N1, ROOT))
+    root.process_dao_semantics_for_test(make_dao(N1, ROOT))
     assert root.routing_table.lookup(N3) == [N1, N3]
 
 
 def test_incomplete_cycle_rejects_atomically_then_parent_can_arrive() -> None:
     root = DaoManager(node_address=ROOT, is_root=True)
-    root.process_dao(make_dao(N1, N2))
+    root.process_dao_semantics_for_test(make_dao(N1, N2))
     assert root.routing_table.lookup(N1) is None
 
     with pytest.raises(DaoError, match="cycle"):
-        root.process_dao(make_dao(N2, N1))
+        root.process_dao_semantics_for_test(make_dao(N2, N1))
     assert root._path_sequences == {N1: 1}
     assert N2 not in root._candidate_map
     assert root.routing_table.lookup(N1) is None
 
-    root.process_dao(make_dao(N2, ROOT))
+    root.process_dao_semantics_for_test(make_dao(N2, ROOT))
     assert root.routing_table.lookup(N1) == [N2, N1]
     assert root.routing_table.lookup(N2) == [N2]
 
 
 def test_no_active_path_control_bit_rejects_atomically() -> None:
     root = DaoManager(node_address=ROOT, is_root=True, pcs=3)
-    root.process_dao(make_dao(N1, ROOT))
+    root.process_dao_semantics_for_test(make_dao(N1, ROOT))
     with pytest.raises(DaoError, match="no active Path Control"):
-        root.process_dao(make_dao(N2, ROOT, control=0x01))
+        root.process_dao_semantics_for_test(make_dao(N2, ROOT, control=0x01))
     assert root.routing_table.lookup(N1) == [N1]
     assert root.routing_table.lookup(N2) is None
 
@@ -479,13 +486,13 @@ def test_ninth_hop_dao_is_rejected_atomically() -> None:
     nodes = [IPv6Address(f"fd00::{index}") for index in range(2, 11)]
     parent = ROOT
     for node in nodes[:8]:
-        root.process_dao(make_dao(node, parent))
+        root.process_dao_semantics_for_test(make_dao(node, parent))
         parent = node
 
     before_sequences = dict(root._path_sequences)
     before_routes = root.routing_table_snapshot()
     with pytest.raises(DaoError, match="maximum hop count"):
-        root.process_dao(make_dao(nodes[8], nodes[7]))
+        root.process_dao_semantics_for_test(make_dao(nodes[8], nodes[7]))
 
     assert root._path_sequences == before_sequences
     assert root.routing_table_snapshot() == before_routes
@@ -496,22 +503,22 @@ def test_ninth_hop_dao_is_rejected_atomically() -> None:
 def test_newer_withdrawal_and_expiry_retain_tombstones_and_equal_cannot_revive() -> None:
     root = DaoManager(node_address=ROOT, is_root=True, lifetime_unit_seconds=1)
     active = make_dao(N1, ROOT, sequence=10, lifetime=2)
-    root.process_dao_at(active, 100)
+    root.process_dao_semantics_for_test_at(active, 100)
     assert root.expire_routes(102) is True
     assert root.routing_table.lookup(N1) is None
     assert root._path_sequences[N1] == 10
     assert N1 in root._candidate_map
 
-    root.process_dao_at(active, 103)
+    root.process_dao_semantics_for_test_at(active, 103)
     assert root.routing_table.lookup(N1) is None
     with pytest.raises(DaoError, match="equal Path Sequence"):
-        root.process_dao_at(make_dao(N1, ROOT, sequence=10, lifetime=3), 103)
+        root.process_dao_semantics_for_test_at(make_dao(N1, ROOT, sequence=10, lifetime=3), 103)
 
-    root.process_dao_at(make_dao(N1, ROOT, sequence=11, lifetime=3), 103)
+    root.process_dao_semantics_for_test_at(make_dao(N1, ROOT, sequence=11, lifetime=3), 103)
     assert root.routing_table.lookup(N1) == [N1]
     with pytest.raises(DaoError, match="stale or incomparable"):
-        root.process_dao_at(make_dao(N1, ROOT, sequence=10, lifetime=0), 104)
-    root.process_dao_at(make_dao(N1, ROOT, sequence=12, lifetime=0), 104)
+        root.process_dao_semantics_for_test_at(make_dao(N1, ROOT, sequence=10, lifetime=0), 104)
+    root.process_dao_semantics_for_test_at(make_dao(N1, ROOT, sequence=12, lifetime=0), 104)
     assert root.routing_table.lookup(N1) is None
     assert root._path_sequences[N1] == 12
 
@@ -531,15 +538,15 @@ def test_newer_withdrawal_and_expiry_retain_tombstones_and_equal_cannot_revive()
 def test_malformed_group_ordering_rejects(options: list[RplOption], message: str) -> None:
     dao = DAO(rpl_instance_id=0, dao_sequence=1, options=options)
     with pytest.raises(DaoError, match=message):
-        DaoManager(node_address=ROOT, is_root=True).process_dao(dao)
+        DaoManager(node_address=ROOT, is_root=True).process_dao_semantics_for_test(dao)
 
 
 def test_cycle_failure_is_atomic() -> None:
     root = DaoManager(node_address=ROOT, is_root=True)
-    root.process_dao(make_dao(N1, ROOT))
-    root.process_dao(make_dao(N2, N1))
+    root.process_dao_semantics_for_test(make_dao(N1, ROOT))
+    root.process_dao_semantics_for_test(make_dao(N2, N1))
     with pytest.raises(DaoError, match="cycle"):
-        root.process_dao(make_dao(N1, N2, sequence=2))
+        root.process_dao_semantics_for_test(make_dao(N1, N2, sequence=2))
     assert root.routing_table.lookup(N1) == [N1]
     assert root.routing_table.lookup(N2) == [N1, N2]
     assert root._path_sequences[N1] == 1
@@ -547,15 +554,15 @@ def test_cycle_failure_is_atomic() -> None:
 
 def test_target_candidate_and_route_capacity_failures_are_atomic() -> None:
     target_limited = DaoManager(node_address=ROOT, is_root=True, max_targets=1)
-    target_limited.process_dao(make_dao(N1, ROOT))
+    target_limited.process_dao_semantics_for_test(make_dao(N1, ROOT))
     with pytest.raises(DaoError, match="Path Sequence capacity"):
-        target_limited.process_dao(make_dao(N2, ROOT))
+        target_limited.process_dao_semantics_for_test(make_dao(N2, ROOT))
     assert target_limited.routing_table.lookup(N1) == [N1]
     assert target_limited.routing_table.lookup(N2) is None
 
     candidate_limited = DaoManager(node_address=ROOT, is_root=True, max_candidates=1)
     with pytest.raises(DaoError, match="candidate capacity"):
-        candidate_limited.process_dao(
+        candidate_limited.process_dao_semantics_for_test(
             grouped_dao(
                 [N3],
                 [TransitInformation(N1), TransitInformation(N2)],
@@ -564,20 +571,176 @@ def test_target_candidate_and_route_capacity_failures_are_atomic() -> None:
     assert candidate_limited._path_sequences == {}
 
     route_limited = DaoManager(node_address=ROOT, is_root=True, max_routes=1)
-    route_limited.process_dao(make_dao(N1, ROOT))
+    route_limited.process_dao_semantics_for_test(make_dao(N1, ROOT))
     with pytest.raises(DaoError, match="route capacity"):
-        route_limited.process_dao(make_dao(N2, ROOT))
+        route_limited.process_dao_semantics_for_test(make_dao(N2, ROOT))
     assert route_limited.routing_table.lookup(N1) == [N1]
     assert route_limited.routing_table.lookup(N2) is None
 
 
 @pytest.mark.parametrize("capacity", [0, -1])
 def test_per_target_candidate_capacity_must_be_positive(capacity: int) -> None:
-    with pytest.raises(ValueError, match="DAO capacities must be positive"):
+    with pytest.raises(ValueError, match="exact bounded positive integer"):
         DaoManager(
             node_address=ROOT,
             is_root=True,
             max_candidates_per_target=capacity,
+        )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("max_targets", True),
+        ("max_targets", 1.5),
+        ("max_candidates", float("nan")),
+        ("max_routes", float("inf")),
+        ("max_candidates_per_target", 65536),
+    ],
+)
+def test_resource_capacities_require_exact_bounded_integers(field: str, value: object) -> None:
+    with pytest.raises(ValueError, match="exact bounded positive integer"):
+        DaoManager(node_address=ROOT, **{field: value})
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("is_root", 1),
+        ("require_crash_safety", 1),
+        ("allow_tx_bootstrap", 1),
+        ("rpl_instance_id", True),
+        ("rpl_instance_id", 256),
+        ("pcs", 1.0),
+        ("pcs", 8),
+        ("_dao_sequence", True),
+        ("_dao_sequence", 256),
+        ("_path_sequence", -1),
+        ("_origin_sequence", 1 << 64),
+    ],
+)
+def test_dao_configuration_rejects_noncanonical_scalar_values(field: str, value: object) -> None:
+    with pytest.raises(ValueError):
+        DaoManager(node_address=ROOT, **{field: value})
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("lifetime_unit_seconds", True),
+        ("lifetime_unit_seconds", 0),
+        ("lifetime_unit_seconds", float("nan")),
+        ("lifetime_unit_seconds", float("inf")),
+        ("freshness_retention_seconds", -1),
+        ("freshness_retention_seconds", float("nan")),
+    ],
+)
+def test_dao_timing_configuration_requires_finite_valid_durations(
+    field: str, value: object
+) -> None:
+    with pytest.raises(ValueError, match="finite valid duration"):
+        DaoManager(node_address=ROOT, **{field: value})
+
+
+@pytest.mark.parametrize("field", ["lifetime_unit_seconds", "freshness_retention_seconds"])
+def test_dao_timing_configuration_rejects_huge_integer(field: str) -> None:
+    with pytest.raises(ValueError, match="finite valid duration"):
+        DaoManager(node_address=ROOT, **{field: 10**4000})
+
+
+@pytest.mark.parametrize("now", [True, -1, float("nan"), float("inf"), 10**4000])
+def test_invalid_explicit_time_rejects_before_route_mutation(now: object) -> None:
+    root = DaoManager(node_address=ROOT, is_root=True)
+
+    with pytest.raises(DaoError) as raised:
+        root.process_dao_semantics_for_test_at(make_dao(N1, ROOT), now)  # type: ignore[arg-type]
+
+    assert raised.value.reason == "invalid_time"
+    assert root.routing_table.lookup(N1) is None
+    assert root._path_sequences == {}
+
+
+@pytest.mark.parametrize(
+    "clock",
+    [
+        lambda: float("nan"),
+        lambda: float("inf"),
+        lambda: -1.0,
+        lambda: (_ for _ in ()).throw(RuntimeError("clock unavailable")),
+    ],
+)
+def test_invalid_clock_sample_rejects_before_route_mutation(clock: object) -> None:
+    root = DaoManager(node_address=ROOT, is_root=True, clock=clock)  # type: ignore[arg-type]
+
+    with pytest.raises(DaoError) as raised:
+        root.process_dao_semantics_for_test(make_dao(N1, ROOT))
+
+    assert raised.value.reason == "invalid_time"
+    assert root.routing_table.lookup(N1) is None
+    assert root._path_sequences == {}
+
+
+def test_backward_time_rejects_atomically() -> None:
+    root = DaoManager(node_address=ROOT, is_root=True)
+    root.process_dao_semantics_for_test_at(make_dao(N1, ROOT, sequence=1), 10)
+    before_route = root.routing_table.lookup(N1)
+    before_sequences = dict(root._path_sequences)
+
+    with pytest.raises(DaoError) as raised:
+        root.process_dao_semantics_for_test_at(make_dao(N1, ROOT, sequence=2), 9)
+
+    assert raised.value.reason == "invalid_time"
+    assert root.routing_table.lookup(N1) == before_route
+    assert root._path_sequences == before_sequences
+
+
+@pytest.mark.parametrize(
+    "manager,dao,now",
+    [
+        (
+            DaoManager(node_address=ROOT, is_root=True, lifetime_unit_seconds=1e308),
+            make_dao(N1, ROOT, lifetime=2),
+            1.0,
+        ),
+        (
+            DaoManager(
+                node_address=ROOT,
+                is_root=True,
+                freshness_retention_seconds=1e308,
+            ),
+            make_dao(N1, ROOT, lifetime=0),
+            1e308,
+        ),
+    ],
+)
+def test_time_arithmetic_overflow_rejects_before_mutation(
+    manager: DaoManager, dao: DAO, now: float
+) -> None:
+    with pytest.raises(DaoError) as raised:
+        manager.process_dao_semantics_for_test_at(dao, now)
+
+    assert raised.value.reason == "invalid_time"
+    assert manager.routing_table.lookup(N1) is None
+    assert manager._path_sequences == {}
+
+
+@pytest.mark.parametrize("path_lifetime", [True, 1.0, "1"])
+def test_dao_builder_requires_exact_path_lifetime(path_lifetime: object) -> None:
+    manager = DaoManager(node_address=N1)
+    with pytest.raises(ValueError, match="exact u8"):
+        manager.build_dao_with_lifetime_semantics_for_test(
+            ROOT,
+            path_lifetime,  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.parametrize("ack_requested", [0, 1, "yes", None])
+def test_dao_builder_requires_exact_ack_requested(ack_requested: object) -> None:
+    manager = DaoManager(node_address=N1)
+    with pytest.raises(ValueError, match="exact boolean"):
+        manager.build_dao_semantics_for_test(
+            ROOT,
+            ack_requested=ack_requested,  # type: ignore[arg-type]
         )
 
 
@@ -596,7 +759,7 @@ def test_per_target_candidate_capacity_exact_boundary_is_accepted() -> None:
         ],
     )
 
-    root.process_dao(dao)
+    root.process_dao_semantics_for_test(dao)
 
     assert root._path_sequences == {N3: 7}
     assert root._parent_map == {N3: (N1, N2)}
@@ -610,7 +773,7 @@ def test_per_target_candidate_capacity_over_boundary_rejects_atomically() -> Non
         max_candidates=4,
         max_candidates_per_target=2,
     )
-    root.process_dao(make_dao(N4, ROOT, sequence=6))
+    root.process_dao_semantics_for_test(make_dao(N4, ROOT, sequence=6))
     dao = grouped_dao(
         [N3],
         [
@@ -621,7 +784,7 @@ def test_per_target_candidate_capacity_over_boundary_rejects_atomically() -> Non
     )
 
     with pytest.raises(DaoError, match="per-target candidate capacity exceeded"):
-        root.process_dao(dao)
+        root.process_dao_semantics_for_test(dao)
 
     assert root._path_sequences == {N4: 6}
     assert root._parent_map == {N4: (ROOT,)}
@@ -646,7 +809,7 @@ def test_target_descriptor_is_optional_once_and_immediately_after_each_target() 
             TransitInformation(ROOT).to_option(),
         ],
     )
-    root.process_dao(accepted)
+    root.process_dao_semantics_for_test(accepted)
     assert root.routing_table.lookup(N1) == [N1]
     assert root.routing_table.lookup(N2) == [N2]
 
@@ -666,7 +829,9 @@ def test_target_descriptor_is_optional_once_and_immediately_after_each_target() 
     ]
     for options in malformed:
         with pytest.raises(DaoError, match="immediately follow one Target"):
-            root.process_dao(DAO(rpl_instance_id=0, dao_sequence=2, options=options))
+            root.process_dao_semantics_for_test(
+                DAO(rpl_instance_id=0, dao_sequence=2, options=options)
+            )
     assert root.routing_table.lookup(N1) == [N1]
     assert root.routing_table.lookup(N2) == [N2]
 
@@ -678,8 +843,8 @@ def test_inactive_snapshot_does_not_consume_active_candidate_capacity() -> None:
         max_targets=2,
         max_candidates=1,
     )
-    root.process_dao(make_dao(N1, ROOT, sequence=1, lifetime=0))
-    root.process_dao(make_dao(N2, ROOT, sequence=1, lifetime=255))
+    root.process_dao_semantics_for_test(make_dao(N1, ROOT, sequence=1, lifetime=0))
+    root.process_dao_semantics_for_test(make_dao(N2, ROOT, sequence=1, lifetime=255))
     assert root._path_sequences == {N1: 1, N2: 1}
     assert len(root._candidate_map[N1]) == 1
     assert root.routing_table.lookup(N1) is None
@@ -688,7 +853,7 @@ def test_inactive_snapshot_does_not_consume_active_candidate_capacity() -> None:
 
 def test_exact_deadline_boundary_expires_without_refresh() -> None:
     root = DaoManager(node_address=ROOT, is_root=True, lifetime_unit_seconds=2)
-    root.process_dao_at(make_dao(N1, ROOT, sequence=1, lifetime=3), 10)
+    root.process_dao_semantics_for_test_at(make_dao(N1, ROOT, sequence=1, lifetime=3), 10)
     assert root._edge_expiry[(N1, ROOT)] == 16
     assert root.expire_routes(15.999) is False
     assert root.routing_table.lookup(N1) == [N1]
@@ -704,23 +869,21 @@ def test_expired_tombstone_reclaims_only_after_retention_boundary() -> None:
         freshness_retention_seconds=10,
         max_targets=1,
     )
-    root.process_dao_at(make_dao(N1, ROOT, sequence=1, lifetime=2), 100)
+    root.process_dao_semantics_for_test_at(make_dao(N1, ROOT, sequence=1, lifetime=2), 100)
     root.expire_routes(102)
     with pytest.raises(DaoError, match="capacity"):
-        root.process_dao_at(make_dao(N2, ROOT), 111.999)
+        root.process_dao_semantics_for_test_at(make_dao(N2, ROOT), 111.999)
     assert root._path_sequences == {N1: 1}
 
     # Should succeed without error. Retention boundary allows reclaim of tombstone.
-    root.process_dao_at(make_dao(N1, ROOT, sequence=2, lifetime=255, dao_sequence=2), 112)
+    root.process_dao_semantics_for_test_at(
+        make_dao(N1, ROOT, sequence=2, lifetime=255, dao_sequence=2), 112
+    )
     assert root.routing_table.lookup(N1) == [N1]
 
 
 def test_transit_information_e_flag_parsing() -> None:
-    """RFC 6550 6.7.8: Parent Address is only present when E flag is set.
-
-    The parser must check the E flag and only require/parse parent address
-    when E=1. Options with E=0 (no parent address) must parse successfully.
-    """
+    """E describes external ownership; Data Length carries parent presence."""
     from lichen.rpl.messages import RplOption
 
     # E=1 (0x80): parent address present (standard LICHEN case)
@@ -728,6 +891,7 @@ def test_transit_information_e_flag_parsing() -> None:
     opt_e1 = RplOption(RplOptionType.TRANSIT_INFORMATION, e1_data)
     ti_e1 = TransitInformation.from_option(opt_e1)
     assert ti_e1.parent_address == ROOT
+    assert ti_e1.external is True
     assert ti_e1.path_sequence == 1
     assert ti_e1.path_lifetime == 30
 
@@ -736,16 +900,17 @@ def test_transit_information_e_flag_parsing() -> None:
     opt_e0 = RplOption(RplOptionType.TRANSIT_INFORMATION, e0_data)
     ti_e0 = TransitInformation.from_option(opt_e0)
     assert ti_e0.parent_address is None
+    assert ti_e0.external is False
     assert ti_e0.path_sequence == 2
     assert ti_e0.path_lifetime == 60
 
 
 def test_transit_information_e_flag_encoding() -> None:
     """Verify E flag is correctly encoded when serializing Transit Information."""
-    # With parent address: E flag should be set (0x80)
+    # A self-owned parent address keeps E clear.
     ti_with_parent = TransitInformation(parent_address=ROOT, path_lifetime=30)
     opt = ti_with_parent.to_option()
-    assert opt.data[0] & 0x80 == 0x80  # E flag is set
+    assert opt.data[0] & 0x80 == 0x00
     assert len(opt.data) == 4 + 16  # includes parent address
 
     # Without parent address: E flag should be clear

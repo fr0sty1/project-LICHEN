@@ -230,6 +230,19 @@ pub struct SecureResponseData<'a> {
     pub payload: &'a [u8],
 }
 
+/// Plaintext request fields to protect with OSCORE.
+#[derive(Debug, Clone, Copy)]
+pub struct SecureRequestData<'a> {
+    /// URI-Path segments in wire order.
+    pub uri_path: &'a [&'a str],
+    /// CoAP token used to correlate the protected response.
+    pub token: &'a [u8],
+    /// Inner CoAP request method.
+    pub method: MessageCode,
+    /// Inner request payload.
+    pub payload: &'a [u8],
+}
+
 pub(crate) struct SecureRoute<'a> {
     pub(crate) source: &'a Addr,
     pub(crate) destination: &'a Addr,
@@ -290,6 +303,22 @@ impl<R: Radio> SecureStack<R> {
 
     pub(crate) fn link(&mut self) -> &mut LinkLayer {
         self.stack.link()
+    }
+
+    pub(crate) fn link_ref(&self) -> &LinkLayer {
+        self.stack.link_ref()
+    }
+
+    pub(crate) fn forget_peer(&mut self, iid: &[u8; 8]) {
+        self.stack.forget_peer(iid);
+    }
+
+    pub(crate) fn decompress_authenticated_frame(
+        &mut self,
+        frame: &lichen_link::link_layer::AuthenticatedFrame,
+        out: &mut [u8],
+    ) -> Result<usize, lichen_schc::SchcError> {
+        self.stack.decompress_authenticated_frame(frame, out)
     }
 
     pub(crate) async fn send_l2_payload_to(
@@ -418,6 +447,31 @@ impl<R: Radio> SecureStack<R> {
         .await
     }
 
+    /// Send an OSCORE-protected CoAP request with an explicit inner method and
+    /// payload. This is the authenticated client boundary used by gateway
+    /// coordination integration.
+    pub async fn send_secure_request<S: SenderStateStore>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        request: SecureRequestData<'_>,
+        store: &mut S,
+    ) -> Result<RequestCorrelation, SecureError> {
+        let source = self.stack.local_addr();
+        self.send_secure_request_to(
+            SecureRoute {
+                source: &source,
+                destination: dst,
+                l2_destination: &[],
+                source_route: &[],
+            },
+            peer_iid,
+            request,
+            store,
+        )
+        .await
+    }
+
     pub(crate) async fn send_secure_get_to<S: SenderStateStore>(
         &mut self,
         route: SecureRoute<'_>,
@@ -426,7 +480,28 @@ impl<R: Radio> SecureStack<R> {
         token: &[u8],
         store: &mut S,
     ) -> Result<RequestCorrelation, SecureError> {
-        if token.len() > MAX_TOKEN_LEN {
+        self.send_secure_request_to(
+            route,
+            peer_iid,
+            SecureRequestData {
+                uri_path,
+                token,
+                method: MessageCode::GET,
+                payload: &[],
+            },
+            store,
+        )
+        .await
+    }
+
+    async fn send_secure_request_to<S: SenderStateStore>(
+        &mut self,
+        route: SecureRoute<'_>,
+        peer_iid: &[u8; 8],
+        request: SecureRequestData<'_>,
+        store: &mut S,
+    ) -> Result<RequestCorrelation, SecureError> {
+        if request.token.len() > MAX_TOKEN_LEN {
             return Err(SecureError::CoapEncode);
         }
         let ctx = self
@@ -443,7 +518,7 @@ impl<R: Radio> SecureStack<R> {
         // First Uri-Path (option 11): delta = 11 - 0 = 11.
         // Subsequent Uri-Path options: delta = 11 - 11 = 0 (same option number repeats).
         // Length < 13: fits in 4-bit nibble. Length >= 13: use extended form (13 + ext byte).
-        for seg in uri_path {
+        for seg in request.uri_path {
             let delta = if class_e_len == 0 { 11 } else { 0 };
             let seg_bytes = seg.as_bytes();
             // RFC 7252 section 3.1: length encoding
@@ -479,17 +554,22 @@ impl<R: Radio> SecureStack<R> {
         }
 
         // Reject bounded-output failures before consuming a sender sequence.
-        ctx.preflight_protect_request(&class_e[..class_e_len], &[])
+        ctx.preflight_protect_request(&class_e[..class_e_len], request.payload)
             .map_err(map_protect_error)?;
         let oscore_option_len = ctx.next_request_option_len().map_err(map_protect_error)?;
         let context_id = ctx.context_id();
+        let protected_payload_len = 1usize
+            .checked_add(class_e_len)
+            .and_then(|length| length.checked_add(request.payload.len()))
+            .and_then(|length| length.checked_add(TAG_LEN))
+            .ok_or(SecureError::CoapEncode)?;
         preflight_secure_frame(
             route.source,
             route.destination,
             route.l2_destination,
             route.source_route,
-            token.len(),
-            1 + class_e_len + TAG_LEN,
+            request.token.len(),
+            protected_payload_len,
             oscore_option_len,
         )?;
 
@@ -500,7 +580,7 @@ impl<R: Radio> SecureStack<R> {
             ReservationError::Storage(_) => SecureError::PersistenceFailed,
         })?;
         let (ciphertext, oscore_opt) = reservation
-            .protect_request(MessageCode::GET.0, &class_e[..class_e_len], &[])
+            .protect_request(request.method.0, &class_e[..class_e_len], request.payload)
             .map_err(map_protect_error)?;
 
         let piv_len = (oscore_opt[0] & 0x07) as usize;
@@ -518,7 +598,7 @@ impl<R: Radio> SecureStack<R> {
             MessageType::Confirmable,
             MessageCode::POST, // OSCORE uses POST
             mid,
-            token,
+            request.token,
         )
         .map_err(|_| SecureError::CoapEncode)?;
 
@@ -545,11 +625,11 @@ impl<R: Radio> SecureStack<R> {
             )
             .await?;
         let mut correlation_token = [0; MAX_TOKEN_LEN];
-        correlation_token[..token.len()].copy_from_slice(token);
+        correlation_token[..request.token.len()].copy_from_slice(request.token);
         Ok(RequestCorrelation {
             message_id: mid,
             token: correlation_token,
-            token_len: token.len() as u8,
+            token_len: request.token.len() as u8,
             request_piv,
             request_piv_len: piv_len as u8,
             context_id,
@@ -962,7 +1042,9 @@ fn preflight_secure_frame(
     if coap_len > 256 - IPV6_HEADER_LEN - UDP_HEADER_LEN {
         return Err(SecureError::CoapEncode);
     }
-    let max_schc_len = if l2_destination.len() == 8 { 193 } else { 200 };
+    // Account for the authenticated frame's mandatory signer EUI-64. Extended
+    // addressing additionally carries the eight-byte link destination.
+    let max_schc_len = if l2_destination.len() == 8 { 185 } else { 193 };
     let schc_len = if source_route.len() > 1 {
         let routing_len = 8usize
             .checked_add(
@@ -1143,7 +1225,7 @@ mod tests {
     use super::*;
     use core::convert::Infallible;
     use lichen_hal::loopback::LoopbackRadio;
-    use lichen_hal::{ChannelConfig, RadioConfig, RxPacket};
+    use lichen_hal::{ChannelConfig, RadioConfig, RxPacket, TxResult};
     use lichen_link::identity::{Identity, PeerIdentity};
     use lichen_link::Seed;
     use lichen_oscore::{Context as OscoreContext, ContextId, SenderSequenceState};
@@ -1152,10 +1234,12 @@ mod tests {
     use std::vec;
 
     fn received(coap: &[u8], sender_iid: [u8; 8]) -> ReceivedSecureDatagram {
+        let mut sender_eui64 = sender_iid;
+        sender_eui64[0] ^= 0x02;
         ReceivedSecureDatagram {
             coap: coap.to_vec(),
             sender_iid,
-            source: Addr::link_local_from_eui64(&sender_iid),
+            source: Addr::link_local_from_eui64(&sender_eui64),
             destination: Addr::link_local_from_eui64(&[0; 8]),
             source_port: PORT_COAP,
             destination_port: PORT_COAP,
@@ -1220,9 +1304,14 @@ mod tests {
     impl Radio for RecordingRadio {
         type Error = Infallible;
 
-        async fn transmit(&mut self, _channel: u8, _payload: &[u8]) -> Result<(), Self::Error> {
+        async fn transmit(
+            &mut self,
+            _channel: u8,
+            payload: &[u8],
+        ) -> Result<TxResult, Self::Error> {
             self.events.lock().unwrap().push("transmit");
-            Ok(())
+            let airtime_us = 12_000 + (payload.len() as u32) * 66;
+            Ok(TxResult { airtime_us })
         }
 
         async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
@@ -1251,11 +1340,16 @@ mod tests {
     impl Radio for SwitchableRadio {
         type Error = ();
 
-        async fn transmit(&mut self, _channel: u8, _payload: &[u8]) -> Result<(), Self::Error> {
+        async fn transmit(
+            &mut self,
+            _channel: u8,
+            payload: &[u8],
+        ) -> Result<TxResult, Self::Error> {
             if self.fail.load(Ordering::Relaxed) {
                 Err(())
             } else {
-                Ok(())
+                let airtime_us = 12_000 + (payload.len() as u32) * 66;
+                Ok(TxResult { airtime_us })
             }
         }
 
@@ -1576,7 +1670,11 @@ mod tests {
 
         // One OSCORE option with reserved flag bit 5 set.
         alice
-            .send_coap_raw(&bob.local_addr(), &[0x40, 0x02, 0x12, 0x34, 0x91, 0x20], Priority::Normal)
+            .send_coap_raw(
+                &bob.local_addr(),
+                &[0x40, 0x02, 0x12, 0x34, 0x91, 0x20],
+                Priority::Normal,
+            )
             .await
             .unwrap();
 

@@ -7,10 +7,21 @@
 //! - Queue capacity: 4 packets max
 //! - Deadline expiry: routing 5s, control 10s, user/bulk 60s
 //! - Priority preemption: higher priority items evict lower priority when full
+//!
+//! # Duty Cycle Integration
+//!
+//! The [`TxQueue::pop_if_allowed`] method integrates with congestion levels
+//! (spec 07 section 10.2.3) to gate transmission based on duty cycle budget:
+//! - NORMAL: all priorities allowed
+//! - ELEVATED: only SOS/ROUTING/URGENT (P0-P2)
+//! - CRITICAL: only SOS/ROUTING (P0-P1)
+//! - EXHAUSTED: no transmission allowed
 
 use core::cmp::Ordering;
 use core::fmt;
 use heapless::binary_heap::{BinaryHeap, Max};
+
+use crate::duty_cycle::{check_congestion_allows, CongestionLevel};
 
 /// Error returned when pushing to the TX queue fails.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -437,6 +448,83 @@ impl TxQueue {
         Some(item)
     }
 
+    /// Pop the highest priority item that is allowed at the given congestion level.
+    ///
+    /// This method integrates TX queue with duty cycle gating per spec 07 section 10.2.3:
+    /// - NORMAL: all priorities allowed (P0-P4)
+    /// - ELEVATED: only P0-P2 (SOS, ROUTING, URGENT)
+    /// - CRITICAL: only P0-P1 (SOS, ROUTING)
+    /// - EXHAUSTED: nothing allowed
+    ///
+    /// Items that are not allowed remain in the queue for later transmission
+    /// when congestion eases. Expired items are removed regardless of congestion.
+    ///
+    /// Returns `None` if the queue is empty or no items are allowed.
+    pub fn pop_if_allowed(&mut self, now_ms: u64, level: CongestionLevel) -> Option<TxItem> {
+        // First, expire stale items
+        self.expire_before(now_ms);
+
+        // If exhausted, nothing is allowed
+        if level == CongestionLevel::Exhausted {
+            return None;
+        }
+
+        // Check if the top item is allowed
+        if let Some(top) = self.heap.peek() {
+            if check_congestion_allows(level, top.priority) {
+                return self.pop(now_ms);
+            }
+        }
+
+        // Top item not allowed - search for the highest priority item that IS allowed.
+        // This requires draining and rebuilding the heap (small queue, so acceptable).
+        let mut temp = heapless::Vec::<TxItem, TX_QUEUE_CAPACITY>::new();
+        let mut found: Option<TxItem> = None;
+
+        while let Some(item) = self.heap.pop() {
+            if found.is_none() && check_congestion_allows(level, item.priority) {
+                // Found an allowed item - take it
+                self.bytes_pending -= item.len();
+                self.by_priority[item.priority as usize] -= 1;
+
+                // Update latency stats
+                let latency_ms = now_ms.saturating_sub(item.enqueue_time_ms) as u32;
+                if latency_ms > self.max_latency_ms {
+                    self.max_latency_ms = latency_ms;
+                }
+                self.avg_latency_scaled = self
+                    .avg_latency_scaled
+                    .saturating_sub(self.avg_latency_scaled / 8)
+                    .saturating_add(latency_ms);
+
+                found = Some(item);
+            } else {
+                // Not allowed or already found one - keep for later
+                temp.push(item).ok();
+            }
+        }
+
+        // Put remaining items back
+        for item in temp {
+            self.heap.push(item).ok();
+        }
+
+        found
+    }
+
+    /// Check if any item in the queue is allowed at the given congestion level.
+    ///
+    /// This is a quick check without modifying the queue.
+    #[inline]
+    pub fn has_allowed(&self, level: CongestionLevel) -> bool {
+        if level == CongestionLevel::Exhausted {
+            return false;
+        }
+        self.heap
+            .iter()
+            .any(|item| check_congestion_allows(level, item.priority))
+    }
+
     /// Peek at the highest priority item without removing it.
     #[inline]
     pub fn peek(&self) -> Option<&TxItem> {
@@ -548,9 +636,7 @@ mod tests {
         queue
             .push(TxPriority::Routing, deadline, now, b"routing")
             .unwrap();
-        queue
-            .push(TxPriority::Sos, deadline, now, b"sos")
-            .unwrap();
+        queue.push(TxPriority::Sos, deadline, now, b"sos").unwrap();
 
         // Should pop in priority order (lowest enum value first)
         assert_eq!(queue.pop(now).unwrap().priority, TxPriority::Sos);
@@ -586,9 +672,7 @@ mod tests {
         let now = 1000u64;
         let deadline = now + DEADLINE_NORMAL_MS;
 
-        queue
-            .push(TxPriority::Sos, deadline, now, b"sos")
-            .unwrap();
+        queue.push(TxPriority::Sos, deadline, now, b"sos").unwrap();
         queue
             .push(TxPriority::Normal, deadline, now, b"hello world")
             .unwrap();
@@ -853,9 +937,7 @@ mod tests {
         assert!(queue.is_full());
 
         // Push higher priority item
-        queue
-            .push(TxPriority::Sos, deadline, now, b"sos")
-            .unwrap();
+        queue.push(TxPriority::Sos, deadline, now, b"sos").unwrap();
 
         // Should have preempted oldest Bulk item
         let stats = queue.stats();
@@ -898,8 +980,12 @@ mod tests {
         let deadline = now + DEADLINE_NORMAL_MS;
 
         // Push 3 items
-        queue.push(TxPriority::Normal, deadline, now, b"one").unwrap();
-        queue.push(TxPriority::Normal, deadline, now, b"two").unwrap();
+        queue
+            .push(TxPriority::Normal, deadline, now, b"one")
+            .unwrap();
+        queue
+            .push(TxPriority::Normal, deadline, now, b"two")
+            .unwrap();
         queue
             .push(TxPriority::Normal, deadline, now, b"three")
             .unwrap();
@@ -1039,5 +1125,255 @@ mod tests {
 
         let item = queue.pop(now + 50).unwrap();
         assert_eq!(item.enqueue_time_ms(), now);
+    }
+
+    // --- Duty cycle integration tests (spec 07 section 10.2.3) ---
+
+    #[test]
+    fn pop_if_allowed_normal_allows_all() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        let now = 1000u64;
+        let deadline = now + DEADLINE_NORMAL_MS;
+
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk")
+            .unwrap();
+
+        // NORMAL level allows all priorities including Bulk
+        let item = queue.pop_if_allowed(now, CongestionLevel::Normal).unwrap();
+        assert_eq!(item.priority, TxPriority::Bulk);
+        assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn pop_if_allowed_elevated_blocks_low_priority() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        let now = 1000u64;
+        let deadline = now + DEADLINE_NORMAL_MS;
+
+        // Queue has only low-priority items
+        queue
+            .push(TxPriority::Normal, deadline, now, b"normal")
+            .unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk")
+            .unwrap();
+
+        // ELEVATED blocks NORMAL and BULK
+        assert!(queue
+            .pop_if_allowed(now, CongestionLevel::Elevated)
+            .is_none());
+        // Items should still be in queue
+        assert_eq!(queue.len(), 2);
+    }
+
+    #[test]
+    fn pop_if_allowed_elevated_allows_urgent() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        let now = 1000u64;
+        let deadline = now + DEADLINE_NORMAL_MS;
+
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk")
+            .unwrap();
+        queue
+            .push(TxPriority::Urgent, deadline, now, b"urgent")
+            .unwrap();
+        queue
+            .push(TxPriority::Normal, deadline, now, b"normal")
+            .unwrap();
+
+        // ELEVATED allows Urgent, should skip over Bulk and Normal
+        let item = queue
+            .pop_if_allowed(now, CongestionLevel::Elevated)
+            .unwrap();
+        assert_eq!(item.priority, TxPriority::Urgent);
+        assert_eq!(queue.len(), 2); // Bulk and Normal remain
+    }
+
+    #[test]
+    fn pop_if_allowed_critical_only_sos_routing() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        let now = 1000u64;
+        let deadline = now + DEADLINE_NORMAL_MS;
+
+        queue
+            .push(TxPriority::Urgent, deadline, now, b"urgent")
+            .unwrap();
+        queue
+            .push(TxPriority::Routing, deadline, now, b"routing")
+            .unwrap();
+
+        // CRITICAL only allows Routing (and SOS), blocks Urgent
+        let item = queue
+            .pop_if_allowed(now, CongestionLevel::Critical)
+            .unwrap();
+        assert_eq!(item.priority, TxPriority::Routing);
+
+        // Urgent should remain
+        assert_eq!(queue.len(), 1);
+        assert!(queue
+            .pop_if_allowed(now, CongestionLevel::Critical)
+            .is_none());
+    }
+
+    #[test]
+    fn pop_if_allowed_exhausted_blocks_all() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        let now = 1000u64;
+        let deadline = now + DEADLINE_NORMAL_MS;
+
+        // Even SOS is blocked at EXHAUSTED
+        queue.push(TxPriority::Sos, deadline, now, b"sos").unwrap();
+
+        assert!(queue
+            .pop_if_allowed(now, CongestionLevel::Exhausted)
+            .is_none());
+        assert_eq!(queue.len(), 1); // Item remains
+    }
+
+    #[test]
+    fn pop_if_allowed_finds_allowed_item_behind_blocked() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        let now = 1000u64;
+        let deadline = now + DEADLINE_NORMAL_MS;
+
+        // Sos has highest priority, but let's verify we can find routing behind bulk
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk1")
+            .unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk2")
+            .unwrap();
+        queue.push(TxPriority::Sos, deadline, now, b"sos").unwrap();
+
+        // At CRITICAL, only SOS/ROUTING allowed
+        // Since heap orders by priority, SOS should be at top anyway
+        let item = queue
+            .pop_if_allowed(now, CongestionLevel::Critical)
+            .unwrap();
+        assert_eq!(item.priority, TxPriority::Sos);
+
+        // Now only bulk items remain, should return None
+        assert!(queue
+            .pop_if_allowed(now, CongestionLevel::Critical)
+            .is_none());
+        assert_eq!(queue.len(), 2);
+    }
+
+    #[test]
+    fn pop_if_allowed_updates_latency_stats() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        let enqueue_time = 1000u64;
+        let deadline = enqueue_time + DEADLINE_NORMAL_MS;
+
+        queue
+            .push(TxPriority::Sos, deadline, enqueue_time, b"sos")
+            .unwrap();
+
+        // Pop 200ms later
+        let pop_time = enqueue_time + 200;
+        let _item = queue
+            .pop_if_allowed(pop_time, CongestionLevel::Normal)
+            .unwrap();
+
+        let stats = queue.stats();
+        assert_eq!(stats.max_latency_ms, 200);
+    }
+
+    #[test]
+    fn has_allowed_check() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        let now = 1000u64;
+        let deadline = now + DEADLINE_NORMAL_MS;
+
+        // Empty queue
+        assert!(!queue.has_allowed(CongestionLevel::Normal));
+
+        // Add bulk item
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk")
+            .unwrap();
+
+        assert!(queue.has_allowed(CongestionLevel::Normal));
+        assert!(!queue.has_allowed(CongestionLevel::Elevated)); // Bulk not allowed
+        assert!(!queue.has_allowed(CongestionLevel::Critical));
+        assert!(!queue.has_allowed(CongestionLevel::Exhausted));
+
+        // Add SOS item
+        queue.push(TxPriority::Sos, deadline, now, b"sos").unwrap();
+
+        assert!(queue.has_allowed(CongestionLevel::Normal));
+        assert!(queue.has_allowed(CongestionLevel::Elevated));
+        assert!(queue.has_allowed(CongestionLevel::Critical));
+        assert!(!queue.has_allowed(CongestionLevel::Exhausted)); // Nothing allowed
+    }
+
+    #[test]
+    fn pop_if_allowed_preserves_fifo_within_priority() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        let now = 1000u64;
+        let deadline = now + DEADLINE_NORMAL_MS;
+
+        // Add multiple SOS items - should preserve FIFO order
+        queue
+            .push(TxPriority::Sos, deadline, now, b"first")
+            .unwrap();
+        queue
+            .push(TxPriority::Sos, deadline, now, b"second")
+            .unwrap();
+        queue
+            .push(TxPriority::Sos, deadline, now, b"third")
+            .unwrap();
+
+        assert_eq!(
+            queue
+                .pop_if_allowed(now, CongestionLevel::Critical)
+                .unwrap()
+                .data(),
+            b"first"
+        );
+        assert_eq!(
+            queue
+                .pop_if_allowed(now, CongestionLevel::Critical)
+                .unwrap()
+                .data(),
+            b"second"
+        );
+        assert_eq!(
+            queue
+                .pop_if_allowed(now, CongestionLevel::Critical)
+                .unwrap()
+                .data(),
+            b"third"
+        );
+    }
+
+    #[test]
+    fn pop_if_allowed_empty_queue() {
+        use crate::duty_cycle::CongestionLevel;
+
+        let mut queue = TxQueue::new();
+        assert!(queue
+            .pop_if_allowed(1000, CongestionLevel::Normal)
+            .is_none());
     }
 }

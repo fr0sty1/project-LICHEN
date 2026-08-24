@@ -40,24 +40,26 @@
     },
     {
       "name": "frame_with_signature",
-      "description": "Frame with signature_present flag set, MIC contains Schnorr-48 signature",
-      "input_hex": "3a2105abcdbeef55555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555511223344",
+      "description": "Parser-only signed-frame shape with mandatory signer EUI-64 and an intentionally invalid repeated-byte MIC",
+      "input_hex": "42a105abcdbeef001122334455667711223344555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555",
       "expected": {
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": true,
+        "authentication_expected": false,
         "encrypted": false,
         "epoch": 5,
         "seqnum": 43981,
         "dst_addr_hex": "beef",
-        "payload_hex": "55555555",
-        "mic_hex": "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555511223344",
-        "notes": "MIC is exactly LICHEN_SIG_LEN (48) bytes when signature_present is true"
+        "signer_eui64_hex": "0011223344556677",
+        "payload_hex": "11223344",
+        "mic_hex": "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555",
+        "notes": "Structural/parser-only fixture: S and SI are both set and MIC is exactly 48 bytes, but the repeated 0x55 value is not a valid Schnorr-48 signature and MUST NOT authenticate"
       }
     },
     {
-      "name": "frame_with_64bit_mic",
-      "description": "Extended address (EUI-64), unsigned with MicLength=64",
+      "name": "extended_address_selector_1_unsigned",
+      "description": "Extended address (EUI-64), unsigned with compatibility selector 1 and no MIC bytes",
       "input_hex": "1806ff0001010203040506070854455354deadbeefcafebabe",
       "expected": {
         "addr_mode": 2,
@@ -125,12 +127,12 @@
       }
     },
     {
-      "name": "reserved_bit7_reject",
-      "description": "LLSec bit 7 is reserved and MUST be 0 (spec 4.2)",
+      "name": "si_without_signature_reject",
+      "description": "Signer-identifier presence without a signature MUST be rejected",
       "input_hex": "0880011234aabbccdd",
       "expected": {
         "error": true,
-        "error_type": "reserved_bit_set"
+        "error_type": "signer_presence_mismatch"
       }
     },
     {

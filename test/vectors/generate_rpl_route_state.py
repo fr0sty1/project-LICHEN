@@ -5,10 +5,16 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from copy import deepcopy
 from pathlib import Path
+from typing import Any
+
+VECTORS_DIR = Path(__file__).resolve().parent
+if str(VECTORS_DIR) not in sys.path:
+    sys.path.insert(0, str(VECTORS_DIR))
+
+from atomic_json import atomic_write_json, json_bytes, read_bounded_exact  # noqa: E402
 
 OUT = Path(__file__).with_name("rpl_route_state.json")
 # Use Yggdrasil 02xx::/8 addresses per LICHEN spec (no ULA in routable context)
@@ -123,14 +129,19 @@ TX_SEQUENCE_TRANSITIONS = [
         "expected_path_sequence": 242,
     },
 ]
-HOP_ADDRESSES = [f"02001122334455660011223344556{value:03x}" for value in range(0x10, 0x19)]
+HOP_ADDRESSES = [
+    f"02001122334455660011223344556{value:03x}" for value in range(0x10, 0x19)
+]
 ROUTE_HOP_BOUNDARIES = [
     {"name": "eight_hops_accepted", "path": HOP_ADDRESSES[:8], "accepted": True},
     {"name": "nine_hops_rejected", "path": HOP_ADDRESSES, "accepted": False},
 ]
 
 
-def target(prefix: str) -> dict:
+JsonObject = dict[str, Any]
+
+
+def target(prefix: str) -> JsonObject:
     encoded = bytes([5, 18, 0, 128]) + bytes.fromhex(prefix)
     return {
         "kind": "target",
@@ -140,17 +151,17 @@ def target(prefix: str) -> dict:
     }
 
 
-def descriptor(value: int) -> dict:
+def descriptor(value: int) -> JsonObject:
     encoded = bytes([9, 4]) + value.to_bytes(4, "big")
     return {"kind": "descriptor", "value": value, "encoded": encoded.hex()}
 
 
-def raw_descriptor(data: bytes) -> dict:
+def raw_descriptor(data: bytes) -> JsonObject:
     encoded = bytes([9, len(data)]) + data
     return {"kind": "raw_descriptor", "data": data.hex(), "encoded": encoded.hex()}
 
 
-def unsupported_option(option_type: int, data: bytes = b"") -> dict:
+def unsupported_option(option_type: int, data: bytes = b"") -> JsonObject:
     encoded = bytes([option_type, len(data)]) + data
     return {
         "kind": "unsupported",
@@ -162,8 +173,8 @@ def unsupported_option(option_type: int, data: bytes = b"") -> dict:
 
 def transit(
     parent: str, sequence: int, lifetime: int, control: int, *, external: bool = False
-) -> dict:
-    e_flag = 0x80 if parent != DODAG else 0x00
+) -> JsonObject:
+    e_flag = 0x80 if external else 0x00
     encoded = bytes([6, 20, e_flag, control, sequence, lifetime]) + bytes.fromhex(
         parent
     )
@@ -182,11 +193,11 @@ def dao(
     name: str,
     now: int,
     dao_sequence: int,
-    options: list[dict],
+    options: list[JsonObject],
     *,
     flags: int = 0,
     reserved: int = 0,
-) -> dict:
+) -> JsonObject:
     base = bytes([0, 0x40 | flags, reserved, dao_sequence]) + bytes.fromhex(DODAG)
     event = {
         "name": name,
@@ -194,7 +205,9 @@ def dao(
         "now_seconds": now,
         "dao_sequence": dao_sequence,
         "options": options,
-        "dao_hex": (base + b"".join(bytes.fromhex(option["encoded"]) for option in options)).hex(),
+        "dao_hex": (
+            base + b"".join(bytes.fromhex(option["encoded"]) for option in options)
+        ).hex(),
     }
     if flags:
         event["flags"] = flags
@@ -203,7 +216,7 @@ def dao(
     return event
 
 
-def candidate(option: dict, now: int, lifetime_unit: int) -> dict:
+def candidate(option: JsonObject, now: int, lifetime_unit: int) -> JsonObject:
     lifetime = option["path_lifetime"]
     return {
         "parent": option["parent"],
@@ -243,10 +256,14 @@ def preference_subfield(path_control: int) -> int:
     return next(index for index, mask in enumerate(masks, 1) if path_control & mask)
 
 
-def routing_table(state: dict[str, dict]) -> tuple[dict[str, dict], dict[str, dict]]:
-    routes: dict[str, dict] = {}
-    selected: dict[str, dict] = {}
-    unresolved = {prefix for prefix, record in state.items() if record["disposition"] == "active"}
+def routing_table(
+    state: dict[str, JsonObject],
+) -> tuple[dict[str, JsonObject], dict[str, JsonObject]]:
+    routes: dict[str, JsonObject] = {}
+    selected: dict[str, JsonObject] = {}
+    unresolved = {
+        prefix for prefix, record in state.items() if record["disposition"] == "active"
+    }
     while unresolved:
         progress = False
         for prefix in sorted(unresolved):
@@ -265,10 +282,14 @@ def routing_table(state: dict[str, dict]) -> tuple[dict[str, dict], dict[str, di
                     path = routes[item["parent"]]["path"] + [prefix]
                 else:
                     continue
-                candidates.append((preference_subfield(item["path_control"]), path, item))
+                candidates.append(
+                    (preference_subfield(item["path_control"]), path, item)
+                )
             if not candidates:
                 continue
-            subfield, path, winner = min(candidates, key=lambda value: (value[0], value[1]))
+            subfield, path, winner = min(
+                candidates, key=lambda value: (value[0], value[1])
+            )
             selected[prefix] = {
                 "parent": winner["parent"],
                 "preference_subfield": subfield,
@@ -290,7 +311,7 @@ def routing_table(state: dict[str, dict]) -> tuple[dict[str, dict], dict[str, di
     return routes, selected
 
 
-def snapshot(state: dict[str, dict]) -> dict:
+def snapshot(state: dict[str, JsonObject]) -> JsonObject:
     routes, selected = routing_table(state)
     records = []
     for prefix in sorted(state):
@@ -306,8 +327,10 @@ def snapshot(state: dict[str, dict]) -> dict:
     }
 
 
-def contains_cycle(state: dict[str, dict]) -> bool:
-    active = {prefix for prefix, record in state.items() if record["disposition"] == "active"}
+def contains_cycle(state: dict[str, JsonObject]) -> bool:
+    active = {
+        prefix for prefix, record in state.items() if record["disposition"] == "active"
+    }
     visiting: set[str] = set()
     complete: set[str] = set()
 
@@ -328,12 +351,12 @@ def contains_cycle(state: dict[str, dict]) -> bool:
 
 
 def apply_dao(
-    state: dict[str, dict],
-    event: dict,
-    limits: dict,
+    state: dict[str, JsonObject],
+    event: JsonObject,
+    limits: JsonObject,
     lifetime_unit: int,
     retention_seconds: int,
-) -> tuple[dict, dict]:
+) -> tuple[dict[str, JsonObject], JsonObject]:
     if event.get("flags", 0) != 0 or event.get("reserved", 0) != 0:
         return state, {
             "accepted": False,
@@ -341,9 +364,9 @@ def apply_dao(
             "refreshed": False,
             "reason": "malformed_group",
         }
-    groups: list[tuple[list[dict], list[dict]]] = []
-    targets: list[dict] = []
-    transits: list[dict] = []
+    groups: list[tuple[list[JsonObject], list[JsonObject]]] = []
+    targets: list[JsonObject] = []
+    transits: list[JsonObject] = []
     seen: set[str] = set()
     for option in event["options"]:
         if option["kind"] == "target":
@@ -428,7 +451,10 @@ def apply_dao(
                 "reason": "inconsistent_group",
             }
         sequence = next(iter(sequences))
-        incoming = [candidate(item, event["now_seconds"], lifetime_unit) for item in group_transits]
+        incoming = [
+            candidate(item, event["now_seconds"], lifetime_unit)
+            for item in group_transits
+        ]
         if len(incoming) > limits["max_candidates_per_target"]:
             return state, {
                 "accepted": False,
@@ -437,7 +463,11 @@ def apply_dao(
                 "reason": "capacity",
             }
         incoming_semantic = [
-            {key: value for key, value in item.items() if key not in ("installed_at", "expires_at")}
+            {
+                key: value
+                for key, value in item.items()
+                if key not in ("installed_at", "expires_at")
+            }
             for item in incoming
         ]
         incoming_semantic.sort(key=lambda item: item["parent"])
@@ -545,7 +575,10 @@ def apply_dao(
             "refreshed": False,
             "reason": "cycle",
         }
-    if len(proposal) > limits["max_targets"] or candidate_count > limits["max_candidates"]:
+    if (
+        len(proposal) > limits["max_targets"]
+        or candidate_count > limits["max_candidates"]
+    ):
         return state, {
             "accepted": False,
             "state_changed": False,
@@ -560,7 +593,7 @@ def apply_dao(
     }
 
 
-def build_document() -> dict:
+def build_document() -> JsonObject:
     limits = {
         "max_targets": 7,
         "max_candidates_per_target": 4,
@@ -590,7 +623,9 @@ def build_document() -> dict:
             [target(PARENT_4), transit(PARENT_2, 1, 255, 0x80)],
         ),
         dao("initial_multi_parent_grouped_install", 100, 4, two_targets + two_parents),
-        dao("equal_exact_semantic_replay_no_refresh", 110, 5, two_targets + two_parents),
+        dao(
+            "equal_exact_semantic_replay_no_refresh", 110, 5, two_targets + two_parents
+        ),
         dao(
             "equal_reordered_equivalence_no_refresh",
             120,
@@ -754,7 +789,11 @@ def build_document() -> dict:
             "unsupported_dao_option_rejected",
             203,
             19,
-            [target(TARGET_B), transit(PARENT_2, 12, 5, 0x80), unsupported_option(0xEE)],
+            [
+                target(TARGET_B),
+                transit(PARENT_2, 12, 5, 0x80),
+                unsupported_option(0xEE),
+            ],
         ),
         dao(
             "duplicate_target_rejected",
@@ -903,7 +942,7 @@ def build_document() -> dict:
         ),
     ]
 
-    state: dict[str, dict] = {}
+    state: dict[str, JsonObject] = {}
     vectors = []
     for event in events:
         before = snapshot(state)
@@ -928,7 +967,9 @@ def build_document() -> dict:
                 "reason": "expired",
             }
         else:
-            state, outcome = apply_dao(state, event, limits, lifetime_unit, retention_seconds)
+            state, outcome = apply_dao(
+                state, event, limits, lifetime_unit, retention_seconds
+            )
         event["before"] = before
         event["expected"] = {**outcome, "state": snapshot(state)}
         vectors.append(event)
@@ -973,15 +1014,21 @@ def main() -> None:
     for case in document["sequence_relations"]:
         actual = sequence_relation(case["incoming"], case["current"])
         if actual != case["expected"]:
-            raise SystemExit(f"{case['name']}: generated {actual}, expected {case['expected']}")
+            raise SystemExit(
+                f"{case['name']}: generated {actual}, expected {case['expected']}"
+            )
     if sys.argv[1:] == ["--check"]:
-        if json.loads(OUT.read_text()) != document:
+        try:
+            current = read_bounded_exact(OUT)
+        except (FileNotFoundError, RuntimeError):
+            current = None
+        if current != json_bytes(document):
             raise SystemExit(f"{OUT.name} is not deterministically generated")
         print(f"checked {len(document['vectors'])} vectors in {OUT.name}")
         return
     if sys.argv[1:]:
         raise SystemExit("usage: generate_rpl_route_state.py [--check]")
-    OUT.write_text(json.dumps(document, indent=2) + "\n")
+    atomic_write_json(OUT, document)
     print(f"wrote {len(document['vectors'])} vectors to {OUT.name}")
 
 

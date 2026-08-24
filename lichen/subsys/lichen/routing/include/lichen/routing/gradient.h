@@ -27,7 +27,7 @@ extern "C" {
 
 /* Default max entries (can be overridden by Kconfig) */
 #ifndef CONFIG_LICHEN_ROUTING_GRADIENT_MAX_ENTRIES
-#define CONFIG_LICHEN_ROUTING_GRADIENT_MAX_ENTRIES 32
+#define CONFIG_LICHEN_ROUTING_GRADIENT_MAX_ENTRIES 64
 #endif
 
 /* Default gradient timeout in milliseconds (600 sec = 10 min, 2x announce interval) */

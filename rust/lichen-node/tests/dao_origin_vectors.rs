@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: The contributors to the LICHEN project
 
 use lichen_core::addr::NodeId;
-use lichen_core::announce::{Announce, AnnounceBuilder};
+use lichen_core::announce::{write_announce_signed_data, Announce, AnnounceBuilder};
 use lichen_hal::storage::mem::MemStorage;
 use lichen_link::identity::Identity;
 use lichen_link::keys::Seed;
@@ -75,11 +75,16 @@ fn vectors() -> impl Iterator<Item = &'static str> {
 
 fn pinned_announces(identity: &Identity, prefix: [u8; 8], root_id: NodeId) -> AnnounceProcessor {
     let rx_channel = 0;
-    let mut signed = [0u8; 43];
-    signed[..8].copy_from_slice(&identity.iid);
-    signed[8..40].copy_from_slice(identity.pubkey.as_bytes());
-    signed[40..42].copy_from_slice(&1u16.to_be_bytes());
-    signed[42] = rx_channel;
+    let mut signed = [0u8; 64];
+    write_announce_signed_data(
+        &identity.iid,
+        identity.pubkey.as_bytes(),
+        1,
+        rx_channel,
+        &[],
+        &mut signed,
+    )
+    .unwrap();
     let signature = sign(&identity.privkey, &identity.pubkey, &signed);
     let mut wire = [0u8; 128];
     let len = AnnounceBuilder {
@@ -113,7 +118,7 @@ fn expected_outcome(reason: &str) -> DaoHandlingOutcome {
         "unknown_key" => DaoHandlingOutcome::UnknownKey,
         "instance_mismatch" | "dodag_mismatch" => DaoHandlingOutcome::WrongScope,
         // Public pin lookup is keyed by claimed IID; a forged IID has no key.
-        "iid_mismatch" => DaoHandlingOutcome::UnknownKey,
+        "iid_mismatch" => DaoHandlingOutcome::IidMismatch,
         "invalid_signature" => DaoHandlingOutcome::BadSignature,
         "sequence_conflict" | "replay" => DaoHandlingOutcome::Replay,
         "missing_target"

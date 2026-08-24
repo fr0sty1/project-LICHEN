@@ -4,10 +4,10 @@
 
 Wire layout (spec 4.1)::
 
-    +--------+--------+-------+--------+----------+---------+--------+
-    | Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload | MIC    |
-    +--------+--------+-------+--------+----------+---------+--------+
-       1B       1B       1B      2B       0/2/8B    var      0/48B
+    +--------+--------+-------+--------+----------+------+---------+--------+
+    | Length | LLSec  | Epoch | SeqNum | Dst Addr | SIID | Payload | MIC    |
+    +--------+--------+-------+--------+----------+------+---------+--------+
+       1B       1B       1B      2B       0/2/8B    0/8B   var      0/48B
 
 ``Length`` is the total frame length excluding the Length field itself.
 Multi-byte integer fields are big-endian.
@@ -18,13 +18,17 @@ The LLSec byte (spec 4.2) packs, from the least-significant bit::
     bits 2-4 : MIC selector (0 or 1; ignored for wire MIC length)
     bit  5   : Signature present (Schnorr-48, 48 bytes)
     bit  6   : Encrypted (unsupported; receivers MUST reject)
-    bit  7   : Reserved (must be 0; receivers MUST reject)
+    bit  7   : Signer identifier present (SI; canonical EUI-64; MUST equal S)
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
+
+# Exact application-domain prefix for every link Schnorr-48 transcript.
+# Changing these octets is a protocol-version change.
+LINK_SIGNATURE_DOMAIN = b"LICHEN-LINK-v1\x00"
 
 
 class AddrMode(IntEnum):
@@ -61,10 +65,16 @@ class MicLength(IntEnum):
     BITS32 = 0  # compatibility selector; unsigned frames have no MIC
     BITS64 = 1  # compatibility selector; unsigned frames have no MIC
 
-    @property
-    def mic_len(self) -> int:
-        """Number of MIC bytes for this setting."""
-        return 4 if self == MicLength.BITS32 else 8
+    def wire_mic_len(self, *, signature_present: bool) -> int:
+        """Return the profile MIC width for this selector and signature state.
+
+        The selector is retained for compatibility but does not select a wire
+        width in the current profile. Unsigned frames carry no MIC, while both
+        selector values carry the full Schnorr-48 value when signed.
+        """
+        if type(signature_present) is not bool:
+            raise TypeError("signature_present must be bool")
+        return _SIGNATURE_LENGTH if signature_present else 0
 
 
 # LLSec bit fields.
@@ -73,7 +83,7 @@ _MIC_LEN_SHIFT = 2
 _MIC_LEN_MASK = 0b0000_0111
 _SIGNATURE_BIT = 1 << 5
 _ENCRYPTED_BIT = 1 << 6
-_RESERVED_BIT = 1 << 7  # Reserved; must be 0
+_SI_BIT = 1 << 7
 
 _MAX_FRAME_BODY = 254  # spec 4.1: Length field value is 4-254 bytes
 MAX_FRAME_BODY = _MAX_FRAME_BODY
@@ -82,6 +92,10 @@ _SIGNATURE_LENGTH = 48  # Schnorr-48 signature
 
 class FrameError(Exception):
     """Raised when a link-layer frame is malformed."""
+
+
+class EncryptedFrameError(FrameError):
+    """Raised when the unsupported encrypted-frame flag is present."""
 
 
 @dataclass
@@ -98,10 +112,13 @@ class LichenFrame:
         addr_mode: Destination addressing mode.
         mic_length: MIC length selector (ignored for length when signed).
         signature_present: Whether Schnorr-48 signature is present in MIC field
-            (LLSec bit 5; see draft-lichen-schnorr-00). Design note: signature
-            reuses mic field for wire compatibility; link_layer.receive strips
-            it from payload visible to upper layers.
+            (LLSec bit 5; see draft-lichen-schnorr-00). The signature lives
+            entirely in the 48-byte MIC field; the payload is delivered to
+            consumers whole, with no bytes stripped for signatures.
         encrypted: Whether the unsupported encrypted-frame flag is set.
+        signer_eui64: The signer's canonical EUI-64 wire value. It is modified
+            into an IPv6 IID only when resolving the link address. Present
+            exactly when signed.
     """
 
     epoch: int
@@ -113,8 +130,29 @@ class LichenFrame:
     mic_length: MicLength = MicLength.BITS32
     signature_present: bool = False
     encrypted: bool = False
+    signer_eui64: bytes = b""
 
     def _validate(self) -> None:
+        if type(self.addr_mode) is not AddrMode:
+            raise FrameError("addr_mode must be an AddrMode")
+        if type(self.mic_length) is not MicLength:
+            raise FrameError("mic_length must be a supported MicLength selector")
+        if type(self.signature_present) is not bool:
+            raise FrameError("signature_present must be bool")
+        if type(self.encrypted) is not bool:
+            raise FrameError("encrypted must be bool")
+        if type(self.epoch) is not int:
+            raise FrameError("epoch must be an integer")
+        if type(self.seqnum) is not int:
+            raise FrameError("seqnum must be an integer")
+        for name, value in (
+            ("dst_addr", self.dst_addr),
+            ("payload", self.payload),
+            ("mic", self.mic),
+            ("signer_eui64", self.signer_eui64),
+        ):
+            if type(value) is not bytes:
+                raise FrameError(f"{name} must be bytes")
         if self.encrypted:
             raise FrameError("encrypted frames are unsupported")
         if not 0 <= self.epoch <= 0xFF:
@@ -129,6 +167,10 @@ class LichenFrame:
         expected_mic_len = _SIGNATURE_LENGTH if self.signature_present else 0
         if len(self.mic) != expected_mic_len:
             raise FrameError(f"mic is {len(self.mic)} bytes but {expected_mic_len} are required")
+        if bool(self.signer_eui64) != self.signature_present:
+            raise FrameError("signature and signer EUI-64 presence must match")
+        if self.signature_present and len(self.signer_eui64) != 8:
+            raise FrameError("signed frame requires an 8-byte signer EUI-64")
 
     def llsec_byte(self) -> int:
         """Compute the LLSec flags byte."""
@@ -138,6 +180,8 @@ class LichenFrame:
             value |= _SIGNATURE_BIT
         if self.encrypted:
             value |= _ENCRYPTED_BIT
+        if self.signer_eui64:
+            value |= _SI_BIT
         return value
 
     def to_bytes(self) -> bytes:
@@ -148,13 +192,16 @@ class LichenFrame:
                 with the LLSec modes, or the frame exceeds 254 body bytes.
         """
         self._validate()
-        body_len = 4 + len(self.dst_addr) + len(self.payload) + len(self.mic)
+        body_len = (
+            4 + len(self.dst_addr) + len(self.signer_eui64) + len(self.payload) + len(self.mic)
+        )
         if body_len > MAX_FRAME_BODY:
             raise FrameError(f"frame body is {body_len} bytes, exceeds {MAX_FRAME_BODY}")
         body = (
             bytes([self.llsec_byte(), self.epoch])
             + self.seqnum.to_bytes(2, "big")
             + self.dst_addr
+            + self.signer_eui64
             + self.payload
             + self.mic
         )
@@ -166,8 +213,10 @@ class LichenFrame:
 
         Raises:
             FrameError: If the data is truncated, the length field is wrong, the
-                reserved bit is set, or the MIC-length field is reserved.
+                signature/SIID flags disagree, or the MIC-length field is reserved.
         """
+        if type(data) is not bytes:
+            raise FrameError("frame must be bytes")
         if len(data) < 1:
             raise FrameError("frame is empty")
         if len(data) > MAX_FRAME_BODY + 1:
@@ -186,12 +235,11 @@ class LichenFrame:
             raise FrameError(f"frame body too short: {length} bytes")
 
         llsec = body[0]
-        # SECURITY: Spec mandates bit 7 is reserved and must be 0.
-        if llsec & _RESERVED_BIT:
-            raise FrameError("reserved bit is set")
-        # SECURITY: Encrypted frames are unsupported; receivers MUST reject (spec 4.2).
+        # SECURITY: Encrypted frames are unsupported; receivers MUST reject
+        # them before signature or reserved-bit processing so E=1 always
+        # reports as unsupported encryption (spec 4.2).
         if llsec & _ENCRYPTED_BIT:
-            raise FrameError("encrypted frames are unsupported")
+            raise EncryptedFrameError("encrypted frames are unsupported")
         addr_mode = AddrMode(llsec & _ADDR_MODE_MASK)
         mic_field = (llsec >> _MIC_LEN_SHIFT) & _MIC_LEN_MASK
         try:
@@ -209,16 +257,22 @@ class LichenFrame:
         offset = 4
         addr_len = addr_mode.addr_len
         signature_present = bool(llsec & _SIGNATURE_BIT)
+        signer_eui64_present = bool(llsec & _SI_BIT)
+        if signer_eui64_present != signature_present:
+            raise FrameError("signature and signer EUI-64 presence bits must match")
         # SECURITY: Reject frames where signature_present is set but the frame
         # body is too short for the 48-byte Schnorr signature. An attacker could
         # set the signature bit without appending a signature, hoping the parser
         # reads past the buffer (over-read) or misinterprets payload bytes as MIC.
         mic_len = _SIGNATURE_LENGTH if signature_present else 0
-        if length < offset + addr_len + mic_len:
+        signer_eui64_len = 8 if signer_eui64_present else 0
+        if length < offset + addr_len + signer_eui64_len + mic_len:
             raise FrameError("frame too short for declared address/MIC sizes")
 
         dst_addr = body[offset : offset + addr_len]
         offset += addr_len
+        signer_eui64 = body[offset : offset + signer_eui64_len]
+        offset += signer_eui64_len
         payload = body[offset : len(body) - mic_len]
         mic = body[len(body) - mic_len :]
 
@@ -232,4 +286,5 @@ class LichenFrame:
             mic_length=mic_length,
             signature_present=signature_present,
             encrypted=bool(llsec & _ENCRYPTED_BIT),
+            signer_eui64=signer_eui64,
         )

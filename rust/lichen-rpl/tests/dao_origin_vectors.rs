@@ -147,9 +147,9 @@ fn dao_origin_signature_vectors_match_fixed_literals() {
 
 #[test]
 fn exact_lengths_unknown_options_and_d0_scope_reject_before_crypto() {
-    let d0 = hex("0000002a05120080fd424c494348454e7159bd633b2e912006140080f1fffe8000000000000000000000000000011238000000000000002b89fb14e3595d3c1b7cf3e411c65c245004d3ba57d6c5c5c0fd31ae51bd35dc1645d7f8020e29ec398483e06ab3e5c400");
-    let source = hex("fe800000000000007159bd633b2e9120").try_into().unwrap();
-    let dodag = hex("fd424c494348454e0000000000000001").try_into().unwrap();
+    let d0 = hex("0000002a05120080027359bd633b2e917159bd633b2e912006148080f1fffe8000000000000000000000000000011238000000000000002b0fcb2989fa1d4b9b3f8151c01f831a59bbaff8c11f091b223566d1f2431d8b0107e85ab1c1afa49082025824ede0b607");
+    let source = hex("027359bd633b2e917159bd633b2e9120").try_into().unwrap();
+    let dodag = hex("fe800000000000000000000000000001").try_into().unwrap();
     let key = PublicKey::new(
         hex("207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6")
             .try_into()

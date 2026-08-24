@@ -156,7 +156,7 @@ const MIC_LEN_SHIFT: u8 = 2;
 const MIC_LEN_MASK: u8 = 0b0000_0111;
 const SIGNATURE_BIT: u8 = 1 << 5;
 const ENCRYPTED_BIT: u8 = 1 << 6;
-const RESERVED_BIT: u8 = 1 << 7;
+const SIGNER_EUI64_BIT: u8 = 1 << 7;
 
 /// Maximum serialized LoRa frame length, including the Length field.
 pub const MAX_FRAME_LEN: usize = 255;
@@ -176,6 +176,7 @@ pub enum FrameError {
     AddrLenMismatch,
     MicLenMismatch,
     SignatureMicMismatch,
+    SignatureSignerMismatch,
     EncryptedUnsupported,
     TrailingBytes,
     FrameTooLarge,
@@ -192,6 +193,9 @@ impl core::fmt::Display for FrameError {
             Self::AddrLenMismatch => write!(f, "address length mismatch"),
             Self::MicLenMismatch => write!(f, "MIC length mismatch"),
             Self::SignatureMicMismatch => write!(f, "signature MIC must be 48 bytes"),
+            Self::SignatureSignerMismatch => {
+                write!(f, "signed frames require exactly one 8-byte signer EUI-64")
+            }
             Self::EncryptedUnsupported => {
                 write!(f, "encrypted frames are unsupported")
             }
@@ -244,6 +248,8 @@ pub struct LichenFrame<'a> {
     pub epoch: u8,
     pub seqnum: LinkSeqNum,
     pub dst_addr: &'a [u8],
+    /// Canonical signer EUI-64, present exactly when `signature` is present.
+    pub signer_eui64: &'a [u8],
     pub payload: &'a [u8],
     pub mic: &'a [u8],
     pub addr_mode: AddrMode,
@@ -259,6 +265,7 @@ impl<'a> LichenFrame<'a> {
         v |= ((self.mic_length as u8) & MIC_LEN_MASK) << MIC_LEN_SHIFT;
         if self.signature.is_present() {
             v |= SIGNATURE_BIT;
+            v |= SIGNER_EUI64_BIT;
         }
         if self.encryption.is_encrypted() {
             v |= ENCRYPTED_BIT;
@@ -281,7 +288,11 @@ impl<'a> LichenFrame<'a> {
                 FrameError::MicLenMismatch
             });
         }
-        let body_len = 4 + self.dst_addr.len() + self.payload.len() + self.mic.len();
+        if self.signature.is_present() != (self.signer_eui64.len() == 8) {
+            return Err(FrameError::SignatureSignerMismatch);
+        }
+        let body_len =
+            4 + self.dst_addr.len() + self.signer_eui64.len() + self.payload.len() + self.mic.len();
         if body_len > MAX_FRAME_BODY {
             return Err(FrameError::FrameTooLarge);
         }
@@ -298,6 +309,8 @@ impl<'a> LichenFrame<'a> {
         let mut off = 5;
         buf[off..off + self.dst_addr.len()].copy_from_slice(self.dst_addr);
         off += self.dst_addr.len();
+        buf[off..off + self.signer_eui64.len()].copy_from_slice(self.signer_eui64);
+        off += self.signer_eui64.len();
         buf[off..off + self.payload.len()].copy_from_slice(self.payload);
         off += self.payload.len();
         buf[off..off + self.mic.len()].copy_from_slice(self.mic);
@@ -349,12 +362,10 @@ impl<'a> LichenFrame<'a> {
             return Err(TooShort::new(4, length).into());
         }
         let llsec = body[0];
-        if llsec & RESERVED_BIT != 0 {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("length-read frame can fail LLSec reserved bit check");
-            return Err(FrameError::ReservedBitSet);
-        }
-        // SECURITY: Encrypted frames are unsupported; receivers MUST reject (spec 4.2).
+        // SECURITY: Encrypted frames are unsupported; receivers MUST reject
+        // them before signature or reserved-bit processing so E=1 always
+        // reports as `EncryptedUnsupported` (spec 4.2, link_frame.json
+        // `signed_encrypted_unsupported`).
         if llsec & ENCRYPTED_BIT != 0 {
             transition_frame_state(&mut state, FrameProcessingState::Failed)
                 .expect("length-read frame can fail encrypted check");
@@ -374,8 +385,15 @@ impl<'a> LichenFrame<'a> {
             .expect("valid fixed header can advance to header-read");
         let addr_len = addr_mode.addr_len();
         let signature = llsec & SIGNATURE_BIT != 0;
+        let signer_present = llsec & SIGNER_EUI64_BIT != 0;
+        if signature != signer_present {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("header-read frame can fail S/SI consistency check");
+            return Err(FrameError::SignatureSignerMismatch);
+        }
+        let signer_len = if signer_present { 8 } else { 0 };
         let mic_len = if signature { 48 } else { 0 };
-        let min_body = 4 + addr_len + mic_len;
+        let min_body = 4 + addr_len + signer_len + mic_len;
         if body.len() < min_body {
             transition_frame_state(&mut state, FrameProcessingState::Failed)
                 .expect("header-read frame can fail variable length check");
@@ -383,7 +401,9 @@ impl<'a> LichenFrame<'a> {
         }
         let dst_addr = &body[4..4 + addr_len];
         let payload_end = body.len() - mic_len;
-        let payload = &body[4 + addr_len..payload_end];
+        let signer_start = 4 + addr_len;
+        let signer_eui64 = &body[signer_start..signer_start + signer_len];
+        let payload = &body[signer_start + signer_len..payload_end];
         let mic = &body[payload_end..];
         transition_frame_state(&mut state, FrameProcessingState::Parsed)
             .expect("header-read frame can parse successfully");
@@ -391,6 +411,7 @@ impl<'a> LichenFrame<'a> {
             epoch,
             seqnum,
             dst_addr,
+            signer_eui64,
             payload,
             mic,
             addr_mode,
@@ -512,11 +533,11 @@ mod tests {
     }
 
     #[test]
-    fn reserved_bit_error() {
+    fn signer_bit_without_signature_is_rejected() {
         let wire = from_hex("0b8001000261626301020304");
         assert_eq!(
             LichenFrame::from_bytes(&wire),
-            Err(FrameError::ReservedBitSet)
+            Err(FrameError::SignatureSignerMismatch)
         );
     }
 
@@ -532,7 +553,7 @@ mod tests {
 
     #[test]
     fn signed_short_mic_error() {
-        let wire = [9, 0x20, 1, 0, 0, 0, 0, 0, 0, 0];
+        let wire = [9, 0xa0, 1, 0, 0, 0, 0, 0, 0, 0];
         assert!(matches!(
             LichenFrame::from_bytes(&wire),
             Err(FrameError::TooShort(_))
@@ -545,6 +566,7 @@ mod tests {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
             dst_addr: &[0xaa],
+            signer_eui64: &[],
             payload: &[],
             mic: &[],
             addr_mode: AddrMode::Short,
@@ -559,6 +581,7 @@ mod tests {
 
         let frame = LichenFrame {
             dst_addr: &[],
+            signer_eui64: &[],
             mic: &[],
             addr_mode: AddrMode::None,
             signature: Signature::Present,
@@ -573,6 +596,7 @@ mod tests {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
             dst_addr: &[],
+            signer_eui64: &[],
             payload: &[0; 252],
             mic: &[],
             addr_mode: AddrMode::None,
@@ -589,6 +613,7 @@ mod tests {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
             dst_addr: &[],
+            signer_eui64: &[],
             payload: &[],
             mic: &[],
             addr_mode: AddrMode::None,
@@ -608,6 +633,7 @@ mod tests {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
             dst_addr: &[],
+            signer_eui64: &[],
             payload: b"test",
             mic: &[],
             addr_mode: AddrMode::None,
@@ -676,6 +702,8 @@ mod tests {
             #[serde(default)]
             dst_addr_hex: String,
             #[serde(default)]
+            signer_eui64_hex: String,
+            #[serde(default)]
             payload_hex: String,
             #[serde(default)]
             payload_len: Option<usize>,
@@ -716,6 +744,7 @@ mod tests {
                             matches!(error, FrameError::TooShort(_))
                         }
                         "reserved_bit_set" => error == FrameError::ReservedBitSet,
+                        "signer_presence_mismatch" => error == FrameError::SignatureSignerMismatch,
                         "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
                         "encrypted_unsupported" => error == FrameError::EncryptedUnsupported,
                         "frame_too_large" => error == FrameError::FrameTooLarge,
@@ -766,6 +795,12 @@ mod tests {
                     frame.dst_addr,
                     hex_decode(&vector.expected.dst_addr_hex).as_slice(),
                     "{}: dst_addr",
+                    name
+                );
+                assert_eq!(
+                    frame.signer_eui64,
+                    hex_decode(&vector.expected.signer_eui64_hex).as_slice(),
+                    "{}: signer_eui64",
                     name
                 );
                 assert_eq!(

@@ -32,6 +32,8 @@ use lichen_hal::NonVolatile;
 use lichen_ipv6::{icmpv6_checksum, Addr};
 #[cfg(feature = "std")]
 use lichen_rpl::routing::SignatureVerifiedDao;
+#[cfg(feature = "std")]
+use lichen_rpl::{message::SignedDaoEnvelope, verify::dao_origin_digest};
 
 /// ICMPv6 RPL message codes.
 pub mod rpl_code {
@@ -98,6 +100,40 @@ pub struct Node {
 pub struct RplNode {
     pub(crate) node: Node,
     pub(crate) router: Router,
+}
+
+#[cfg(feature = "std")]
+fn resolve_dao_signer_from_bounded_snapshot(
+    dao_bytes: &[u8],
+    origin: [u8; 16],
+    active_dodag_id: [u8; 16],
+    announces: &AnnounceProcessor,
+) -> Option<lichen_link::keys::PublicKey> {
+    let envelope = SignedDaoEnvelope::from_bytes(dao_bytes).ok()?;
+    let effective_dodag_id = envelope
+        .dao
+        .dodag_id
+        .filter(|id| *id != [0; 16])
+        .unwrap_or(active_dodag_id);
+    let digest = dao_origin_digest(
+        origin,
+        effective_dodag_id,
+        envelope.origin.origin_sequence,
+        envelope.unsigned_bytes,
+    );
+    let candidates = announces.pinned_pubkeys_snapshot()?;
+    let mut resolved = None;
+    for candidate in candidates {
+        if lichen_link::schnorr::verify(&candidate, &digest, envelope.origin.signature) {
+            if resolved.is_some() {
+                // Multiple verifying pins are an identity collision. Never let
+                // iteration order select which trust identity wins.
+                return None;
+            }
+            resolved = Some(candidate);
+        }
+    }
+    resolved
 }
 
 impl Node {
@@ -345,12 +381,20 @@ impl RplNode {
         dao_admission: &lichen_rpl::routing::DaoAdmissionState,
     ) -> DaoHandlingOutcome {
         let iid = origin[8..].try_into().expect("IPv6 IID is eight bytes");
+        let pinned_key = announces.pinned_pubkey_for(&iid).or_else(|| {
+            resolve_dao_signer_from_bounded_snapshot(
+                dao_bytes,
+                origin,
+                self.router.dodag_id(),
+                announces,
+            )
+        });
         let verified = match SignatureVerifiedDao::verify_signature(
             dao_bytes,
             origin,
             RPL_INSTANCE_ID,
             self.router.dodag_id(),
-            announces.pinned_pubkey_for(&iid),
+            pinned_key,
         ) {
             Ok(verified) => verified,
             Err(DaoVerifyError::Malformed(_)) => return DaoHandlingOutcome::Malformed,
@@ -387,7 +431,7 @@ impl RplNode {
     ///
     /// Returns `(output_len, rpl_event)`. For [`RplEvent::DaoForwarded`], send
     /// the output bytes to `next_hop`; otherwise a nonzero output is a reply.
-    pub fn handle_frame_rpl(
+    pub(crate) fn handle_frame_rpl_internal(
         &mut self,
         l2_payload: &[u8],
         sender_iid: [u8; 8],
@@ -399,7 +443,8 @@ impl RplNode {
 
     /// Process an authenticated SCHC payload with measured link quality.
     /// `now_ms` must use one nondecreasing monotonic `u64` timeline.
-    pub fn handle_frame_rpl_with_link(
+    #[cfg(feature = "raw-rpl-test-api")]
+    pub(crate) fn handle_frame_rpl_with_link_internal(
         &mut self,
         l2_payload: &[u8],
         sender_iid: [u8; 8],
@@ -409,6 +454,32 @@ impl RplNode {
         rssi: i8,
     ) -> (usize, RplEvent) {
         self.handle_frame_rpl_inner(l2_payload, sender_iid, reply, now_ms, Some((etx, rssi)))
+    }
+
+    /// Raw RPL parser exposed only to explicit test/vector builds.
+    #[cfg(feature = "raw-rpl-test-api")]
+    pub fn handle_frame_rpl(
+        &mut self,
+        l2_payload: &[u8],
+        sender_iid: [u8; 8],
+        reply: &mut [u8],
+        now_ms: u64,
+    ) -> (usize, RplEvent) {
+        self.handle_frame_rpl_internal(l2_payload, sender_iid, reply, now_ms)
+    }
+
+    /// Raw RPL parser with caller-supplied link metrics, for tests only.
+    #[cfg(feature = "raw-rpl-test-api")]
+    pub fn handle_frame_rpl_with_link(
+        &mut self,
+        l2_payload: &[u8],
+        sender_iid: [u8; 8],
+        reply: &mut [u8],
+        now_ms: u64,
+        etx: f32,
+        rssi: i8,
+    ) -> (usize, RplEvent) {
+        self.handle_frame_rpl_with_link_internal(l2_payload, sender_iid, reply, now_ms, etx, rssi)
     }
 
     fn handle_frame_rpl_inner(
@@ -535,7 +606,12 @@ impl RplNode {
                             return (0, RplEvent::None);
                         }
 
-                        if !is_ula_or_global(&sender_addr) || !is_ula_or_global(&dst) {
+                        let canonical_link_local_source = sender_addr[..8]
+                            == [0xfe, 0x80, 0, 0, 0, 0, 0, 0]
+                            && source_matches_sender_iid(&sender_addr, &sender_iid);
+                        if (!canonical_link_local_source && !is_ula_or_global(&sender_addr))
+                            || !is_ula_or_global(&dst)
+                        {
                             return (0, RplEvent::None);
                         }
 
@@ -598,6 +674,7 @@ impl RplNode {
     }
 
     /// Mutable access to the router. Only for testing.
+    #[cfg(feature = "raw-rpl-test-api")]
     pub fn router_mut(&mut self) -> &mut Router {
         &mut self.router
     }
@@ -665,8 +742,12 @@ fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
 
 #[cfg(feature = "std")]
 fn is_ula_or_global(address: &[u8; 16]) -> bool {
+    let is_lichen_native = address[0] == 0x02;
     let address = Ipv6Addr(*address);
-    address.is_ula() || address.is_gua()
+    // LICHEN native identities occupy 0200::/8. This project-specific
+    // globally routable space is outside Rust's conventional 2000::/3 GUA
+    // predicate but is valid for isolated-mesh DAO forwarding.
+    is_lichen_native || address.is_ula() || address.is_gua()
 }
 
 #[cfg(feature = "std")]
@@ -815,7 +896,7 @@ mod tests {
             flags: 0,
             dodag_id: root_addr,
         };
-        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
+        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::SERIALIZED_LEN];
         dio.write_to(&mut dio_bytes).unwrap();
         let packet = l2_rpl_packet(root_addr, child_addr, rpl_code::DIO, &dio_bytes);
 
@@ -863,7 +944,7 @@ mod tests {
             flags: 0,
             dodag_id: root_addr,
         };
-        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
+        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::SERIALIZED_LEN];
         dio.write_to(&mut dio_bytes).unwrap();
 
         let make_child = |last: u8| {
@@ -943,8 +1024,9 @@ mod tests {
         let parent_id = NodeId(parent_eui64);
         let leaf_id = NodeId(leaf_eui64);
         let root_addr = ula(root_id);
-        let parent_addr = ula(parent_id);
-        let leaf_addr = ula(leaf_id);
+        let parent_addr =
+            lichen_core::addr::ygg_addr_from_pubkey(parent_identity.pubkey.as_bytes());
+        let leaf_addr = lichen_core::addr::ygg_addr_from_pubkey(leaf_identity.pubkey.as_bytes());
         let mut root_storage = MemStorage::new();
         let (root_router, mut root_rx) =
             Router::provision_root(&mut root_storage, root_addr).unwrap();
@@ -987,7 +1069,7 @@ mod tests {
             flags: 0,
             dodag_id: root_addr,
         };
-        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
+        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::SERIALIZED_LEN];
         root_dio.write_to(&mut dio_bytes).unwrap();
         assert!(parent
             .router
@@ -1159,8 +1241,7 @@ mod tests {
         let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let root_addr = ula(root_id);
         let identity = Identity::from_seed(Seed::new([0x36; 32]));
-        let mut origin = root_addr;
-        origin[8..].copy_from_slice(&identity.iid);
+        let origin = lichen_core::addr::ygg_addr_from_pubkey(identity.pubkey.as_bytes());
         let mut storage = MemStorage::new();
         let (router, mut rx_state) = Router::provision_root(&mut storage, root_addr).unwrap();
         let mut dao_admission =
@@ -1297,7 +1378,7 @@ mod tests {
             flags: 0,
             dodag_id: root_addr,
         };
-        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
+        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::SERIALIZED_LEN];
         dio.write_to(&mut dio_bytes).unwrap();
         assert!(parent.router.process_dio(&dio, &dio_bytes, root_addr, 0, 0));
 
@@ -1497,6 +1578,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::clone_on_copy)] // This regression intentionally exercises the Clone derive.
     fn rpl_event_derives_partialeq_eq_debug_clone_copy() {
         use super::RplEvent;
         assert_eq!(RplEvent::None, RplEvent::None);

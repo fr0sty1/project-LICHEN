@@ -30,8 +30,8 @@
 extern "C" {
 #endif
 
-/** Default CoAP timeout in milliseconds */
-#define LICHEN_COAP_TIMEOUT_MS 5000
+/** Default CoAP timeout in milliseconds (matches LICHEN_ACK_TIMEOUT in Python) */
+#define LICHEN_COAP_TIMEOUT_MS 15000
 
 /** Maximum response payload size */
 #define LICHEN_COAP_MAX_PAYLOAD 256

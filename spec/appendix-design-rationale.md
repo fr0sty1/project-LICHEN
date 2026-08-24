@@ -387,8 +387,8 @@ Single channel creates contention hotspot. CCP-16 coordinates capacity. All impl
 
 **TDMA Slots (Zephyr scheduler, Rust sim)**
 - Root includes epoch and `num_slots` (default 8) in extended RPL config option (see draft-lichen-rpl-lora).
-- Slot ID = hash_32(eui64 || epoch) % num_slots using lichen_hash_32 FNV-1a32 (consistent per CCP-15.8.3 and project-LICHEN-eirg; matches Rust lichen-core::lichen_hash_32, Python _hash_32, C impl). samples/lora_ping::packet_hash uses crc32_ieee for telemetry only. Cross-ref spec/02a-coordinated-capacity.md.
-- Slot duration = max_airtime(current_SF) + 100ms guard. Node uses lichen_link_set_slot() in subsys.
+- Slot ID = `(hash_32(eui64) + u32(SFN)) mod num_slots` using FNV-1a32 and unsigned-32 wrapping addition. It MUST match `ccp_sfn_wrap_slot_hash.json`; hashing a concatenation or using CRC32 is non-conformant. Cross-ref spec/02a-coordinated-capacity.md.
+- Slot duration is at least the configured profile's maximum permitted PHY-payload airtime plus the single 50 ms guard. The SF10/125 kHz profile minimum is 2,346 ms. Node uses lichen_link_set_slot() in subsys.
 - TX suppressed outside slot (tdma_tx_allowed()).
 
 Normative pseudocode and thresholds are now in 02a-coordinated-capacity:2a.7 (with pure IETF-style definitions for adaptive_sf_select, select_channel, now(); EMA alpha=1/4, per-neighbor state, DIO signaling). SF10 is the REQUIRED baseline for moderate density per section 7.1; density-aware overrides and CH0 fallback apply only on explicit thresholds (density >8 triggers specific SF and control channel rules). Implementations MUST match test/vectors/ccp16.json and ccp_load_balancing.json exactly. No dead code; all paths exercised by vectors.
@@ -458,4 +458,3 @@ correspondingly smarter about what it spends.
 
 ---
 [Index](README.md) | [Architecture](01-architecture.md)
-

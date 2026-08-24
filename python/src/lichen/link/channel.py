@@ -51,9 +51,10 @@ def sfn_from_unix_time(
         epoch_base_us: Epoch base time in microseconds (default: 2024-01-01 00:00:00 UTC).
 
     Returns:
-        Superframe number (0 if time is before epoch).
+        Superframe number (0 if time is before epoch, or if
+        ``superframe_duration_us`` is 0 to avoid division by zero).
     """
-    if unix_time_us < epoch_base_us:
+    if superframe_duration_us <= 0 or unix_time_us < epoch_base_us:
         return 0
     return (unix_time_us - epoch_base_us) // superframe_duration_us
 
@@ -72,7 +73,7 @@ def synchronized_hop_channel(sfn: int, seed: int = 0, n_channels: int = 64) -> i
     Returns:
         Channel number (1 to n_channels-1, avoiding CH0 control channel).
     """
-    data = seed.to_bytes(4, "little") + (sfn & 0xFFFFFFFF).to_bytes(4, "little")
+    data = (seed & 0xFFFFFFFF).to_bytes(4, "little") + (sfn & 0xFFFFFFFF).to_bytes(4, "little")
     h = hash_32(data)
     n = max(n_channels - 1, 1)
     return 1 + (h % n)
@@ -124,7 +125,11 @@ def select_channel(
 
     # Priority 3: hash-based for known peers
     if peer_known and peer_eui64 is not None and len(peer_eui64) == 8:
-        data = peer_eui64 + epoch.to_bytes(4, "little") + (sfn & 0xFFFFFFFF).to_bytes(4, "little")
+        data = (
+            peer_eui64
+            + (epoch & 0xFFFFFFFF).to_bytes(4, "little")
+            + (sfn & 0xFFFFFFFF).to_bytes(4, "little")
+        )
         h = hash_32(data)
         n = max(n_channels - 1, 1)
         ch = 1 + (h % n)

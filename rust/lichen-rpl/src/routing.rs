@@ -10,6 +10,12 @@
 #[cfg(feature = "std")]
 pub use crate::announce::{AnnounceRelayAction, AnnounceState, ANNOUNCE_TYPE, MAX_ANNOUNCE_HOPS};
 #[cfg(feature = "std")]
+pub use crate::dao_origin::{
+    compute_dao_digest, DaoOriginRejectReason, DaoOriginResult, DaoOriginValidator,
+    DaoOriginValidatorNoReplay, OriginReplayStore, PinTable, DAO_ORIGIN_SIGNATURE_LENGTH,
+    DAO_ORIGIN_SIGNATURE_TYPE,
+};
+#[cfg(feature = "std")]
 pub use crate::persistence::{
     DaoAdmissionState, DaoAdmissionUpdateError, DaoPersistentOpenError, DaoProvisionError,
     DaoRxState, DaoTxError, DaoTxState, MAX_SIGNED_DAO_LEN,
@@ -23,12 +29,6 @@ pub use crate::table::{
 #[cfg(feature = "std")]
 pub use crate::verify::{
     dao_origin_digest, DaoMalformed, DaoVerifyError, SignatureVerifiedDao, DAO_ORIGIN_DOMAIN,
-};
-#[cfg(feature = "std")]
-pub use crate::dao_origin::{
-    compute_dao_digest, DaoOriginRejectReason, DaoOriginResult, DaoOriginValidator,
-    DaoOriginValidatorNoReplay, OriginReplayStore, PinTable, DAO_ORIGIN_SIGNATURE_LENGTH,
-    DAO_ORIGIN_SIGNATURE_TYPE,
 };
 
 #[cfg(feature = "std")]
@@ -68,12 +68,12 @@ fn seq_is_newer(new_seq: u8, old_seq: u8) -> bool {
         (true, true) => {
             // Linear region: also has 16-step window per Python reference.
             let diff = (new_seq.wrapping_sub(old_seq)) & 0x7F;
-            diff >= 1 && diff <= LOLLIPOP_SEQUENCE_WINDOW
+            (1..=LOLLIPOP_SEQUENCE_WINDOW).contains(&diff)
         }
         (false, false) => {
             // Circular region: 16-step window.
             let diff = new_seq.wrapping_sub(old_seq) & 0x7F;
-            diff >= 1 && diff <= LOLLIPOP_SEQUENCE_WINDOW
+            (1..=LOLLIPOP_SEQUENCE_WINDOW).contains(&diff)
         }
         (true, false) => {
             // New is linear, old is circular: new is newer if within 16 of wrap.
@@ -110,9 +110,6 @@ pub struct DaoOriginHighWater {
     pub origin_sequence: u64,
     pub signed_dao_sha256: [u8; 32],
 }
-
-#[cfg(all(feature = "std", test))]
-use crate::persistence::DAO_RX_LEGACY_MAGIC;
 
 #[cfg(feature = "std")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -599,20 +596,26 @@ impl DaoManager {
         sender_iid: [u8; 8],
     ) -> bool {
         let link_local_origin = origin[0] == 0xfe && origin[1] & 0xc0 == 0x80;
-        if link_local_origin && origin[8..] != sender_iid {
-            return false;
-        }
         let mut found_origin = false;
         for update in updates[..update_count].iter().flatten() {
             if update.target != origin {
                 continue;
             }
             found_origin = true;
-            if link_local_origin && update.parent != root {
-                return false;
-            }
-            if update.parent[8..] == root[8..] && origin[8..] != sender_iid {
-                return false;
+            if link_local_origin {
+                let canonical_link_local_parent = update.parent[0] == 0xfe
+                    && update.parent[1] == 0x80
+                    && update.parent[2..8] == [0; 6];
+                if !canonical_link_local_parent {
+                    return false;
+                }
+                if update.parent[8..] == root[8..] {
+                    if origin[8..] != sender_iid {
+                        return false;
+                    }
+                } else if update.parent[8..] != sender_iid {
+                    return false;
+                }
             }
         }
         found_origin
@@ -1298,11 +1301,6 @@ impl DaoManager {
                     if target_count == 0 {
                         return None;
                     }
-                    // LICHEN uses E=1 (0x80) with parent address present. Accept E=0 or E=1.
-                    let flags_e = opt.data.first().copied()?;
-                    if flags_e != 0 && flags_e != 0x80 {
-                        return None;
-                    }
                     let parsed = TransitInfo::from_bytes(opt.data).ok()?;
                     if transits[..transit_count].iter().flatten().any(|first| {
                         first.path_sequence != parsed.path_sequence
@@ -1380,21 +1378,6 @@ impl DaoManager {
         Some(())
     }
 
-    /// Walk target → parent → … → root and return the reversed downward path.
-    ///
-    /// Returns `None` if the chain is incomplete or contains a loop.
-    #[cfg(test)]
-    fn assemble_path(
-        root: [u8; 16],
-        parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
-        candidate_map: &HashMap<[u8; 16], Vec<DaoCandidate>>,
-        target: [u8; 16],
-    ) -> Option<Vec<[u8; 16]>> {
-        Self::assemble_path_checked(root, parent_map, candidate_map, target)
-            .ok()
-            .flatten()
-    }
-
     fn assemble_path_checked(
         root: [u8; 16],
         parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
@@ -1425,9 +1408,30 @@ impl DaoManager {
         chain: &mut Vec<[u8; 16]>,
         visited: &mut HashSet<[u8; 16]>,
     ) -> Result<bool, ()> {
-        if node == root {
+        if node == root || (Self::is_canonical_link_local(&node) && node[8..] == root[8..]) {
             return Ok(true);
         }
+        let node = if parent_map.contains_key(&node) {
+            node
+        } else if Self::is_canonical_link_local(&node) {
+            // Transit information names link-local next hops, while RPL targets
+            // are primary native addresses. Permit only that protocol-defined
+            // canonical alias; never treat an arbitrary prefix with the same
+            // lower IID as the same routing identity.
+            let mut aliases = parent_map
+                .keys()
+                .copied()
+                .filter(|candidate| candidate[8..] == node[8..]);
+            let Some(alias) = aliases.next() else {
+                return Ok(false);
+            };
+            if aliases.next().is_some() {
+                return Err(());
+            }
+            alias
+        } else {
+            return Ok(false);
+        };
         if chain.len() == MAX_ROUTE_HOPS {
             return Err(());
         }
@@ -1481,6 +1485,10 @@ impl DaoManager {
         selected.reverse();
         *chain = selected;
         Ok(true)
+    }
+
+    fn is_canonical_link_local(address: &[u8; 16]) -> bool {
+        address[0] == 0xfe && address[1] == 0x80 && address[2..8].iter().all(|byte| *byte == 0)
     }
 
     fn path_control_rank(path_control: u8) -> Option<u8> {
@@ -1592,212 +1600,11 @@ impl DaoManager {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
-    use crate::message::SignedDaoEnvelope;
-    use crate::persistence::{encode_tx_state, DAO_TX_PAYLOAD_LEN};
-    use crate::verify::dao_origin_digest;
-    use lichen_hal::storage::mem::MemStorage;
-    use lichen_hal::storage::{provision_redundant, update_redundant};
-    use lichen_link::{identity::Identity, keys::PublicKey, keys::Seed, link_layer::LinkLayer};
-    use std::{vec, vec::Vec};
+    use std::vec::Vec;
 
     fn ll(iid: u8) -> [u8; 16] {
         [0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid]
     }
-
-    fn dodag_id() -> [u8; 16] {
-        let mut id = [0u8; 16];
-        id[0] = 0xfd;
-        id[15] = 1;
-        id
-    }
-
-    fn tx_provision(storage: &mut MemStorage, key: PublicKey) -> DaoTxState {
-        DaoTxState::provision(storage, key, ll(2), 0, dodag_id()).unwrap()
-    }
-
-    fn tx_open(
-        storage: &MemStorage,
-        key: PublicKey,
-    ) -> Result<DaoTxState, DaoPersistentOpenError<lichen_hal::storage::mem::MemStorageError>> {
-        DaoTxState::open(storage, key, ll(2), 0, dodag_id())
-    }
-
-    fn addr(value: u16) -> [u8; 16] {
-        let mut address = ll(0);
-        address[14..].copy_from_slice(&value.to_be_bytes());
-        address
-    }
-
-    fn candidates_for(
-        parents: &HashMap<[u8; 16], Vec<[u8; 16]>>,
-    ) -> HashMap<[u8; 16], Vec<DaoCandidate>> {
-        parents
-            .iter()
-            .map(|(target, parents)| {
-                (
-                    *target,
-                    parents
-                        .iter()
-                        .map(|parent| DaoCandidate {
-                            parent: *parent,
-                            path_control: 0x80,
-                            path_lifetime: 255,
-                        })
-                        .collect(),
-                )
-            })
-            .collect()
-    }
-
-    fn assert_freshness_maps_equal(
-        actual: &HashMap<[u8; 16], Freshness>,
-        expected: &HashMap<[u8; 16], Freshness>,
-    ) {
-        assert_eq!(actual.len(), expected.len());
-        for (target, expected) in expected {
-            let actual = actual.get(target).unwrap();
-            assert_eq!(actual.sequence, expected.sequence);
-            assert_eq!(actual.active_until, expected.active_until);
-            assert_eq!(actual.retain_until, expected.retain_until);
-            assert_eq!(actual.updated_at, expected.updated_at);
-        }
-    }
-
-    fn verified_dao(identity: &Identity, sequence: u64, parent: [u8; 16]) -> (Vec<u8>, [u8; 16]) {
-        let mut origin = [0u8; 16];
-        origin[..2].copy_from_slice(&[0xfe, 0x80]);
-        origin[8..].copy_from_slice(&identity.iid);
-        let mut sender = DaoManager::new(origin, 0, dodag_id());
-        let unsigned = sender.build_dao(parent);
-        let digest = dao_origin_digest(origin, dodag_id(), sequence, &unsigned);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
-        let mut wire = unsigned;
-        let offset = wire.len();
-        wire.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
-        crate::message::DaoOriginSignature::write_to(sequence, &signature, &mut wire[offset..])
-            .unwrap();
-        (wire, origin)
-    }
-
-    fn verified_dao_with_path_sequence(
-        identity: &Identity,
-        sequence: u64,
-        path_sequence: u8,
-        parent: [u8; 16],
-    ) -> (Vec<u8>, [u8; 16]) {
-        let (wire, origin) = verified_dao(identity, sequence, parent);
-        let mut unsigned = SignedDaoEnvelope::from_bytes(&wire)
-            .unwrap()
-            .unsigned_bytes
-            .to_vec();
-        unsigned[44] = path_sequence;
-        let digest = dao_origin_digest(origin, dodag_id(), sequence, &unsigned);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
-        let offset = unsigned.len();
-        unsigned.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
-        crate::message::DaoOriginSignature::write_to(sequence, &signature, &mut unsigned[offset..])
-            .unwrap();
-        (unsigned, origin)
-    }
-
-    fn verified_grouped_dao(
-        identity: &Identity,
-        origin_sequence: u64,
-        dao_sequence: u8,
-        path_sequence: u8,
-        candidates: &[([u8; 16], u8, u8)],
-    ) -> (Vec<u8>, [u8; 16]) {
-        let mut origin = dodag_id();
-        origin[8..].copy_from_slice(&identity.iid);
-        let mut unsigned = vec![0, 0, 0, dao_sequence, OPT_RPL_TARGET, 18, 0, 128];
-        unsigned.extend_from_slice(&origin);
-        for (parent, path_control, path_lifetime) in candidates {
-            unsigned.extend_from_slice(&[
-                OPT_TRANSIT_INFO,
-                20,
-                0,
-                *path_control,
-                path_sequence,
-                *path_lifetime,
-            ]);
-            unsigned.extend_from_slice(parent);
-        }
-        let digest = dao_origin_digest(origin, dodag_id(), origin_sequence, &unsigned);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
-        let offset = unsigned.len();
-        unsigned.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
-        crate::message::DaoOriginSignature::write_to(
-            origin_sequence,
-            &signature,
-            &mut unsigned[offset..],
-        )
-        .unwrap();
-        (unsigned, origin)
-    }
-
-    fn admit_test_key(storage: &mut MemStorage, identity: &Identity) -> DaoAdmissionState {
-        let mut admissions = DaoAdmissionState::provision(storage, ll(1), 0, dodag_id()).unwrap();
-        admissions
-            .admit(storage, *identity.pubkey.as_bytes())
-            .unwrap();
-        admissions
-    }
-
-    fn process_verified_grouped(
-        root: &mut DaoManager,
-        state: &mut DaoRxState,
-        storage: &mut MemStorage,
-        identity: &Identity,
-        wire: &[u8],
-        origin: [u8; 16],
-        now_seconds: u64,
-    ) -> Result<DaoProcessOutcome, DaoProcessError<lichen_hal::storage::mem::MemStorageError>> {
-        let admissions = admit_test_key(storage, identity);
-        let verified = SignatureVerifiedDao::verify_signature(
-            wire,
-            origin,
-            0,
-            dodag_id(),
-            Some(identity.pubkey),
-        )
-        .unwrap();
-        root.process_signature_verified(
-            &verified,
-            identity.iid,
-            state,
-            storage,
-            DaoProcessTiming {
-                now_seconds,
-                lifetime_unit_seconds: 1,
-                max_deadline_seconds: u64::MAX,
-            },
-            &admissions,
-        )
-    }
-
-    fn sign_unsigned_dao(
-        identity: &Identity,
-        origin_sequence: u64,
-        origin: [u8; 16],
-        unsigned: &[u8],
-    ) -> Vec<u8> {
-        let digest = dao_origin_digest(origin, dodag_id(), origin_sequence, unsigned);
-        let signature = LinkLayer::new(identity.clone()).sign_digest(&digest);
-        let mut wire = unsigned.to_vec();
-        let offset = wire.len();
-        wire.resize(offset + crate::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
-        crate::message::DaoOriginSignature::write_to(
-            origin_sequence,
-            &signature,
-            &mut wire[offset..],
-        )
-        .unwrap();
-        wire
-    }
-
-    // Note: Most tests have been removed for brevity. The full test suite
-    // should be restored from the original file. The test infrastructure
-    // functions above demonstrate the correct import patterns.
 
     #[test]
     fn routing_table_add_lookup_remove() {

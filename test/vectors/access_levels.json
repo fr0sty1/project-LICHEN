@@ -1,0 +1,262 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "LCI access level enforcement",
+  "description": "Test vectors for Local Client Interface access control (spec 17.6.3). Three access levels: read_only (GET non-sensitive), standard (GET/Observe, mesh access, no /diag/raw/*), admin (all operations). Access level determined by transport binding.",
+  "spec": "spec/11-lci.md section 17.6.3",
+  "vectors": {
+    "transport_binding": [
+      {
+        "name": "usb_is_admin",
+        "description": "USB transport grants admin access level",
+        "transport": "usb",
+        "expected_level": "admin"
+      },
+      {
+        "name": "serial_is_admin",
+        "description": "Serial/UART transport grants admin access level",
+        "transport": "serial",
+        "expected_level": "admin"
+      },
+      {
+        "name": "ble_is_standard",
+        "description": "BLE transport grants standard access level",
+        "transport": "ble",
+        "expected_level": "standard"
+      },
+      {
+        "name": "wifi_is_standard",
+        "description": "WiFi transport grants standard access level (untrusted network)",
+        "transport": "wifi",
+        "expected_level": "standard"
+      },
+      {
+        "name": "ipc_is_admin",
+        "description": "IPC (same device process) grants admin access level",
+        "transport": "ipc",
+        "expected_level": "admin"
+      }
+    ],
+    "read_only_level": [
+      {
+        "name": "read_only_allows_get_config",
+        "description": "Read-only level allows GET /config",
+        "access_level": "read_only",
+        "method": "GET",
+        "resource": "/config",
+        "allowed": true
+      },
+      {
+        "name": "read_only_allows_get_status",
+        "description": "Read-only level allows GET /status",
+        "access_level": "read_only",
+        "method": "GET",
+        "resource": "/status",
+        "allowed": true
+      },
+      {
+        "name": "read_only_blocks_get_diag_raw",
+        "description": "Read-only level blocks GET /diag/raw/* (sensitive)",
+        "access_level": "read_only",
+        "method": "GET",
+        "resource": "/diag/raw/rx",
+        "allowed": false,
+        "error_code": "4.03"
+      },
+      {
+        "name": "read_only_blocks_put_config",
+        "description": "Read-only level blocks PUT /config",
+        "access_level": "read_only",
+        "method": "PUT",
+        "resource": "/config",
+        "allowed": false,
+        "error_code": "4.01"
+      },
+      {
+        "name": "read_only_blocks_observe",
+        "description": "Read-only level blocks Observe on resources",
+        "access_level": "read_only",
+        "method": "GET",
+        "resource": "/status",
+        "observe": true,
+        "allowed": false,
+        "error_code": "4.01"
+      },
+      {
+        "name": "read_only_allows_wellknown_core",
+        "description": "Read-only level allows GET /.well-known/core",
+        "access_level": "read_only",
+        "method": "GET",
+        "resource": "/.well-known/core",
+        "allowed": true
+      }
+    ],
+    "standard_level": [
+      {
+        "name": "standard_allows_get_config",
+        "description": "Standard level allows GET /config",
+        "access_level": "standard",
+        "method": "GET",
+        "resource": "/config",
+        "allowed": true
+      },
+      {
+        "name": "standard_allows_get_status",
+        "description": "Standard level allows GET /status",
+        "access_level": "standard",
+        "method": "GET",
+        "resource": "/status",
+        "allowed": true
+      },
+      {
+        "name": "standard_allows_observe",
+        "description": "Standard level allows Observe on status resources",
+        "access_level": "standard",
+        "method": "GET",
+        "resource": "/status",
+        "observe": true,
+        "allowed": true
+      },
+      {
+        "name": "standard_allows_mesh_access",
+        "description": "Standard level allows direct mesh CoAP reachability",
+        "access_level": "standard",
+        "method": "GET",
+        "resource": "/mesh/fe80::1234:5678/status",
+        "allowed": true
+      },
+      {
+        "name": "standard_blocks_diag_raw",
+        "description": "Standard level blocks /diag/raw/* (sensitive diagnostics)",
+        "access_level": "standard",
+        "method": "GET",
+        "resource": "/diag/raw/rx",
+        "allowed": false,
+        "error_code": "4.03"
+      },
+      {
+        "name": "standard_blocks_put_config",
+        "description": "Standard level blocks PUT /config",
+        "access_level": "standard",
+        "method": "PUT",
+        "resource": "/config",
+        "allowed": false,
+        "error_code": "4.01"
+      },
+      {
+        "name": "standard_blocks_delete_keys",
+        "description": "Standard level blocks DELETE /keys",
+        "access_level": "standard",
+        "method": "DELETE",
+        "resource": "/keys/abcdef",
+        "allowed": false,
+        "error_code": "4.01"
+      }
+    ],
+    "admin_level": [
+      {
+        "name": "admin_allows_get_config",
+        "description": "Admin level allows GET /config",
+        "access_level": "admin",
+        "method": "GET",
+        "resource": "/config",
+        "allowed": true
+      },
+      {
+        "name": "admin_allows_put_config",
+        "description": "Admin level allows PUT /config (configuration modification)",
+        "access_level": "admin",
+        "method": "PUT",
+        "resource": "/config",
+        "allowed": true
+      },
+      {
+        "name": "admin_allows_delete_keys",
+        "description": "Admin level allows DELETE /keys/* (key management)",
+        "access_level": "admin",
+        "method": "DELETE",
+        "resource": "/keys/deadbeef",
+        "allowed": true
+      },
+      {
+        "name": "admin_allows_diag_raw_rx",
+        "description": "Admin level allows GET /diag/raw/rx",
+        "access_level": "admin",
+        "method": "GET",
+        "resource": "/diag/raw/rx",
+        "allowed": true
+      },
+      {
+        "name": "admin_allows_diag_raw_tx",
+        "description": "Admin level allows POST /diag/raw/tx (raw transmission)",
+        "access_level": "admin",
+        "method": "POST",
+        "resource": "/diag/raw/tx",
+        "allowed": true
+      },
+      {
+        "name": "admin_allows_observe",
+        "description": "Admin level allows Observe on any resource",
+        "access_level": "admin",
+        "method": "GET",
+        "resource": "/diag/raw/rx",
+        "observe": true,
+        "allowed": true
+      }
+    ],
+    "edge_cases": [
+      {
+        "name": "diag_raw_subpath_blocked_standard",
+        "description": "Any path under /diag/raw/ is blocked for standard level",
+        "access_level": "standard",
+        "method": "GET",
+        "resource": "/diag/raw/foo/bar/baz",
+        "allowed": false,
+        "error_code": "4.03"
+      },
+      {
+        "name": "diag_not_raw_allowed_standard",
+        "description": "/diag/other (not /diag/raw/*) is allowed for standard level",
+        "access_level": "standard",
+        "method": "GET",
+        "resource": "/diag/stats",
+        "allowed": true
+      },
+      {
+        "name": "put_status_blocked_all",
+        "description": "PUT /status is blocked for all levels (read-only resource)",
+        "access_level": "admin",
+        "method": "PUT",
+        "resource": "/status",
+        "allowed": false,
+        "error_code": "4.05"
+      },
+      {
+        "name": "unknown_resource_404",
+        "description": "Unknown resource returns 4.04 Not Found regardless of access level",
+        "access_level": "admin",
+        "method": "GET",
+        "resource": "/nonexistent",
+        "allowed": false,
+        "error_code": "4.04"
+      },
+      {
+        "name": "proxy_optional_standard",
+        "description": "Standard level MAY access /proxy if implemented",
+        "access_level": "standard",
+        "method": "GET",
+        "resource": "/proxy",
+        "allowed": true,
+        "note": "optional resource, 4.04 if not implemented"
+      },
+      {
+        "name": "wellknown_lichen_allowed_all",
+        "description": "/.well-known/lichen-* discovery allowed for all levels",
+        "access_level": "read_only",
+        "method": "GET",
+        "resource": "/.well-known/lichen-gw/info",
+        "allowed": true
+      }
+    ]
+  }
+}

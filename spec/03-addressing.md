@@ -12,14 +12,14 @@ LICHEN nodes have a stable cryptographic identity based on an Ed25519 keypair. H
 **Derivation (MUST be identical across all implementations; see test vectors):**
 
 1. Ed25519 public key (32 bytes)
-2. SHA-256 of the pubkey produces a 32-byte digest.
+2. SHA-512 of the pubkey produces a 64-byte digest.
 3. Take the first 8 bytes as the 64-bit IID; clear the U/L bit per RFC 4291 (`iid[0] &= 0b11111101`).
 4. Encode the 64-bit IID as Crockford Base32 (13 characters, big-endian, no padding).
 5. Insert dashes after the 4th and 8th characters.
 
 **Example:** `KCVN-MRPX-QWERT`
 
-This address is short enough to speak, type, and remember. It has acceptable collision probability up to 5B nodes (~0.5 expected collisions). It is cryptographically bound to the Ed25519 public key used for signatures, OSCORE, and IPv6 Interface Identifiers. The same IID is used for link-local (`fe80::/10`), ULA, and optional GUA addresses (see 04-network.md §12).
+This address is short enough to speak, type, and remember. It has acceptable collision probability up to 5B nodes (~0.5 expected collisions). It is cryptographically bound to the Ed25519 public key used for signatures, OSCORE, and IPv6 Interface Identifiers. The same IID is used for the link-local address (`fe80::/10`) and the lower 64 bits of the node's key-derived native `0200::/8` `/128`; ULA addresses are not used (see 04-network.md §12).
 
 On first contact, nodes exchange the full pubkey; TOFU pins the binding. Collisions (rare) are resolved by context, GNSS, or full key verification (DANE/PKIX optional).
 

@@ -1,0 +1,289 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "Announce relay behavior",
+  "description": "Test vectors for announce relay processing (spec 9.3). Covers signature verification, duplicate detection, gradient table update, and hop-limited forwarding.",
+  "spec": "spec/05-routing.md section 9.3",
+  "constants": {
+    "MAX_ANNOUNCE_HOPS": 15,
+    "GRADIENT_TIMEOUT_MS": 600000
+  },
+  "vectors": {
+    "signature_verification": [
+      {
+        "name": "valid_signature_accepted",
+        "description": "Announce with valid Schnorr signature is accepted",
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "pubkey": "e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58",
+          "seq_num": 42,
+          "hop_count": 3,
+          "rx_channel": 5,
+          "signature_valid": true
+        },
+        "from_neighbor": "fe80::aaaa:bbbb:cccc:dddd",
+        "expected": {
+          "action": "accept",
+          "update_gradient": true,
+          "forward": true
+        }
+      },
+      {
+        "name": "invalid_signature_rejected",
+        "description": "Announce with invalid signature is dropped",
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "pubkey": "e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58",
+          "seq_num": 42,
+          "hop_count": 3,
+          "rx_channel": 5,
+          "signature_valid": false
+        },
+        "from_neighbor": "fe80::aaaa:bbbb:cccc:dddd",
+        "expected": {
+          "action": "drop",
+          "reason": "invalid_signature",
+          "update_gradient": false,
+          "forward": false
+        }
+      }
+    ],
+    "duplicate_detection": [
+      {
+        "name": "fresher_seq_accepted",
+        "description": "Announce with higher seq_num replaces existing gradient",
+        "existing_gradient": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "seq_num": 40,
+          "hop_count": 5
+        },
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 42,
+          "hop_count": 3,
+          "signature_valid": true
+        },
+        "expected": {
+          "action": "accept",
+          "update_gradient": true,
+          "forward": true
+        }
+      },
+      {
+        "name": "stale_seq_rejected",
+        "description": "Announce with lower seq_num is dropped as stale",
+        "existing_gradient": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "seq_num": 42,
+          "hop_count": 3
+        },
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 40,
+          "hop_count": 5,
+          "signature_valid": true
+        },
+        "expected": {
+          "action": "drop",
+          "reason": "stale_announce",
+          "update_gradient": false,
+          "forward": false
+        }
+      },
+      {
+        "name": "equal_seq_rejected",
+        "description": "Announce with equal seq_num is dropped as duplicate",
+        "existing_gradient": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "seq_num": 42,
+          "hop_count": 3
+        },
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 42,
+          "hop_count": 4,
+          "signature_valid": true
+        },
+        "expected": {
+          "action": "drop",
+          "reason": "stale_announce",
+          "update_gradient": false,
+          "forward": false
+        }
+      },
+      {
+        "name": "seq_wrap_fresher",
+        "description": "Seq 0 is fresher than 65535 after wrap (RFC 1982)",
+        "existing_gradient": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "seq_num": 65535,
+          "hop_count": 3
+        },
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 0,
+          "hop_count": 4,
+          "signature_valid": true
+        },
+        "expected": {
+          "action": "accept",
+          "update_gradient": true,
+          "forward": true
+        }
+      }
+    ],
+    "gradient_update": [
+      {
+        "name": "new_originator_creates_entry",
+        "description": "Announce from unknown originator creates gradient entry",
+        "existing_gradient": null,
+        "announce": {
+          "originator_iid": "fedcba9876543210",
+          "seq_num": 1,
+          "hop_count": 2,
+          "signature_valid": true
+        },
+        "from_neighbor": "fe80::1111:2222:3333:4444",
+        "expected": {
+          "action": "accept",
+          "update_gradient": true,
+          "new_gradient": {
+            "destination": "fe80::fedc:ba98:7654:3210",
+            "next_hop": "fe80::1111:2222:3333:4444",
+            "hop_count": 2,
+            "seq_num": 1,
+            "source": "announce"
+          }
+        }
+      },
+      {
+        "name": "better_path_updates_next_hop",
+        "description": "Announce with lower hop count updates next_hop",
+        "existing_gradient": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "next_hop": "fe80::old1:old2:old3:old4",
+          "seq_num": 42,
+          "hop_count": 5
+        },
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 43,
+          "hop_count": 3,
+          "signature_valid": true
+        },
+        "from_neighbor": "fe80::new1:new2:new3:new4",
+        "expected": {
+          "action": "accept",
+          "update_gradient": true,
+          "new_gradient": {
+            "next_hop": "fe80::new1:new2:new3:new4",
+            "hop_count": 3
+          }
+        }
+      }
+    ],
+    "hop_limited_forward": [
+      {
+        "name": "forward_when_hops_below_max",
+        "description": "Announce is forwarded when hop_count < MAX_ANNOUNCE_HOPS",
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 42,
+          "hop_count": 14,
+          "signature_valid": true
+        },
+        "expected": {
+          "action": "accept",
+          "forward": true,
+          "forwarded_hop_count": 15
+        }
+      },
+      {
+        "name": "no_forward_at_max_hops",
+        "description": "Announce is not forwarded when hop_count == MAX_ANNOUNCE_HOPS",
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 42,
+          "hop_count": 15,
+          "signature_valid": true
+        },
+        "expected": {
+          "action": "accept",
+          "update_gradient": true,
+          "forward": false,
+          "reason": "max_hops_reached"
+        }
+      },
+      {
+        "name": "no_forward_beyond_max_hops",
+        "description": "Announce with hop_count > MAX is accepted but not forwarded",
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 42,
+          "hop_count": 16,
+          "signature_valid": true
+        },
+        "expected": {
+          "action": "accept",
+          "update_gradient": true,
+          "forward": false,
+          "reason": "max_hops_exceeded"
+        }
+      }
+    ],
+    "edge_cases": [
+      {
+        "name": "first_announce_from_self",
+        "description": "Announce from self is not relayed (originator == receiver)",
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 1,
+          "hop_count": 0,
+          "signature_valid": true
+        },
+        "receiver_iid": "1234567890abcdef",
+        "expected": {
+          "action": "drop",
+          "reason": "self_announce",
+          "forward": false
+        }
+      },
+      {
+        "name": "zero_hop_count_is_valid",
+        "description": "Announce with hop_count=0 (fresh from originator) is valid",
+        "announce": {
+          "originator_iid": "fedcba9876543210",
+          "seq_num": 1,
+          "hop_count": 0,
+          "signature_valid": true
+        },
+        "expected": {
+          "action": "accept",
+          "forward": true,
+          "forwarded_hop_count": 1
+        }
+      },
+      {
+        "name": "expired_gradient_replaced",
+        "description": "Even stale seq_num accepted if existing gradient expired",
+        "existing_gradient": {
+          "destination": "fe80::1234:5678:9abc:def0",
+          "seq_num": 100,
+          "hop_count": 3,
+          "expired": true
+        },
+        "announce": {
+          "originator_iid": "1234567890abcdef",
+          "seq_num": 50,
+          "hop_count": 4,
+          "signature_valid": true
+        },
+        "expected": {
+          "action": "accept",
+          "update_gradient": true,
+          "note": "Expired entries don't block fresher ones"
+        }
+      }
+    ]
+  }
+}

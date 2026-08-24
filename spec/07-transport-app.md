@@ -548,8 +548,8 @@ with worse performance characteristics for LoRa.
 ```
 FCN: 6 bits -> 63 tiles per window
 Windows: 2
-Tile size: 187 bytes
-Encoding ceiling: 126 × 187 = 23,562 bytes
+Tile size: 179 bytes
+Encoding ceiling: 126 × 179 = 22,554 bytes
 Mandatory receiver capacity: 1281 bytes
 ```
 

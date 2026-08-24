@@ -2,24 +2,21 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """LICHEN IPv6 network layer.
 
-Address handling (IID derivation, link-local/ULA/GUA construction) and IPv6
-packet construction/parsing.
+Key-derived native/link-local address handling and IPv6 packet construction.
 """
 
+from lichen.crypto.identity import Identity, PeerIdentity, yggdrasil_address
 from lichen.ipv6.addr import (
-    GUA_NETWORK,
     LINK_LOCAL_NETWORK,
-    ULA_NETWORK,
+    NATIVE_NETWORK,
     AddrError,
-    AddressManager,
-    Identity,
-    Scope,
     address_from_prefix,
     eui64_to_iid,
+    iid_to_eui64,
+    link_local_from_pubkey,
     mac48_to_eui64,
-    make_gua,
     make_link_local,
-    make_ula,
+    native_address_from_pubkey,
     short_addr_to_iid,
     to_ipv6,
 )
@@ -55,12 +52,10 @@ from lichen.ipv6.udp import (
 )
 
 __all__ = [
-    "GUA_NETWORK",
     "HEADER_LENGTH",
     "LINK_LOCAL_NETWORK",
-    "ULA_NETWORK",
+    "NATIVE_NETWORK",
     "AddrError",
-    "AddressManager",
     "DestUnreachableCode",
     "EchoReply",
     "EchoRequest",
@@ -72,9 +67,9 @@ __all__ = [
     "Icmpv6Message",
     "Icmpv6Type",
     "Identity",
+    "PeerIdentity",
     "NextHeader",
     "PacketError",
-    "Scope",
     "TimeExceededCode",
     "UDP_HEADER_LENGTH",
     "UDP_NEXT_HEADER",
@@ -83,15 +78,17 @@ __all__ = [
     "udp_checksum",
     "address_from_prefix",
     "eui64_to_iid",
+    "iid_to_eui64",
     "handle_icmpv6",
     "icmpv6_checksum",
     "mac48_to_eui64",
     "make_dest_unreachable",
-    "make_gua",
     "make_link_local",
     "make_packet_too_big",
     "make_time_exceeded",
-    "make_ula",
+    "link_local_from_pubkey",
+    "native_address_from_pubkey",
     "short_addr_to_iid",
     "to_ipv6",
+    "yggdrasil_address",
 ]

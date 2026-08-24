@@ -7,10 +7,13 @@ and key rotation per spec section 8.7.
 """
 
 import inspect
+import json
 from dataclasses import FrozenInstanceError
+from pathlib import Path
 
 import pytest
 
+import lichen.crypto.trust as trust_module
 from lichen.crypto import (
     DerivationMismatchError,
     Identity,
@@ -27,16 +30,50 @@ from lichen.crypto import (
     verify_trust_vector,
 )
 from lichen.crypto.schnorr48 import sign as schnorr_sign
+from lichen.crypto.schnorr48 import verify as schnorr_verify
 from lichen.crypto.trust import compute_rotation_transcript
 
 # Deterministic seeds for reproducible tests
 SEED_ALICE = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000001")
 SEED_BOB = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000002")
 SEED_CHARLIE = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000003")
+GCP3_VECTORS = Path(__file__).parents[3] / "test" / "vectors" / "gcp3_trust_models.json"
 
 
 def test_verify_or_pin_exposes_no_ineffective_upgrade_authorization() -> None:
     assert "allow_upgrade" not in inspect.signature(TrustStore.verify_or_pin).parameters
+
+
+def test_canonical_gcp3_rotation_vectors_drive_python_production_oracle() -> None:
+    document = json.loads(GCP3_VECTORS.read_bytes())
+    rotations = [case for case in document["vectors"] if case["category"] == "rotation"]
+    assert rotations
+
+    for case in rotations:
+        old_pubkey = bytes.fromhex(case["old_pubkey"])
+        old_iid = bytes.fromhex(case["old_iid"])
+        new_pubkey = bytes.fromhex(case["new_pubkey"])
+        sequence = case["rotation_sequence"]
+        signature = bytes.fromhex(case["rotation_signature"])
+        transcript = compute_rotation_transcript(old_pubkey, new_pubkey, sequence)
+
+        assert verify_pubkey_derivation(old_pubkey, old_iid)
+        assert transcript.hex() == case["rotation_message"]
+        assert schnorr_verify(old_pubkey, transcript, signature) is case["signature_valid"]
+
+        store = TrustStore(auto_pin=True)
+        store.verify_or_pin(old_pubkey, old_iid)
+        if case["expected_result"] == "accept_rotation":
+            rotated = store.rotate_key_semantics_for_test(
+                old_pubkey, new_pubkey, sequence, signature
+            )
+            assert rotated.pubkey == new_pubkey
+            assert rotated.iid == bytes.fromhex(case["new_iid"])
+            assert rotated.rotation_sequence == sequence
+        else:
+            assert case["expected_result"] == "reject_invalid_signature"
+            with pytest.raises(TrustError, match="signature verification failed"):
+                store.rotate_key_semantics_for_test(old_pubkey, new_pubkey, sequence, signature)
 
 
 class TestTrustEntry:
@@ -80,6 +117,32 @@ class TestTrustEntry:
         """TrustEntry.from_pubkey rejects invalid pubkey length."""
         with pytest.raises(ValueError, match="32 bytes"):
             TrustEntry.from_pubkey(b"\x00" * 16)
+
+    def test_rejects_unrepresentable_integer_timestamp(self):
+        alice = Identity.from_seed(SEED_ALICE)
+
+        with pytest.raises(ValueError, match="finite non-negative"):
+            TrustEntry(
+                pubkey=alice.pubkey,
+                iid=alice.iid,
+                ygg_addr=alice.ygg_addr,
+                trust_level=TrustLevel.TOFU,
+                first_seen=10**309,
+                last_seen=10**309,
+            )
+
+    def test_large_integer_timestamp_ordering_is_exact(self):
+        alice = Identity.from_seed(SEED_ALICE)
+
+        with pytest.raises(ValueError, match="must not precede"):
+            TrustEntry(
+                pubkey=alice.pubkey,
+                iid=alice.iid,
+                ygg_addr=alice.ygg_addr,
+                trust_level=TrustLevel.TOFU,
+                first_seen=2**53 + 1,
+                last_seen=2**53,
+            )
 
     def test_to_peer_identity(self):
         """TrustEntry.to_peer_identity converts to PeerIdentity."""
@@ -175,6 +238,25 @@ class TestTrustStoreTofu:
 
         assert entry1.pubkey == entry2.pubkey
         assert entry2.last_seen >= entry1.first_seen
+
+    def test_wall_clock_regression_never_decreases_last_seen(self, monkeypatch):
+        alice = Identity.from_seed(SEED_ALICE)
+        store = TrustStore(auto_pin=True)
+        monkeypatch.setattr(trust_module.time, "time", lambda: 100.0)
+        initial = store.verify_or_pin(alice.pubkey, alice.iid)
+
+        monkeypatch.setattr(trust_module.time, "time", lambda: 10.0)
+        verified_tofu = store.verify_or_pin(alice.pubkey, alice.iid)
+        verified_strict = store.verify_peer(alice.pubkey, alice.iid)
+        unchanged_anchor = store.add_trust_anchor(alice.pubkey, TrustLevel.TOFU)
+        upgraded_anchor = store.add_trust_anchor(alice.pubkey, TrustLevel.BR_PROVISIONED)
+
+        assert initial.last_seen == 100.0
+        assert verified_tofu.last_seen == 100.0
+        assert verified_strict.last_seen == 100.0
+        assert unchanged_anchor.last_seen == 100.0
+        assert upgraded_anchor.last_seen == 100.0
+        assert upgraded_anchor.trust_level is TrustLevel.BR_PROVISIONED
 
     def test_reject_key_mismatch(self):
         """TrustStore rejects different pubkey for same IID."""
@@ -385,6 +467,20 @@ class TestTrustStoreKeyRotation:
 
         assert alice.iid in store
         assert alice_new.iid not in store
+
+    @pytest.mark.parametrize("method_name", ["rotate_key", "rotate_key_semantics_for_test"])
+    def test_rotation_rejects_same_key_without_mutation(self, method_name: str):
+        store = TrustStore(auto_pin=True)
+        alice = Identity.from_seed(SEED_ALICE)
+        original = store.verify_or_pin(alice.pubkey, alice.iid)
+        transcript = compute_rotation_transcript(alice.pubkey, alice.pubkey, 1)
+        signature = schnorr_sign(alice.privkey, alice.pubkey, transcript)
+
+        with pytest.raises(TrustError, match="must change"):
+            getattr(store, method_name)(alice.pubkey, alice.pubkey, 1, signature)
+
+        assert store.get(alice.iid) == original
+        assert len(store) == 1
 
     def test_rotate_key_rejects_invalid_signature(self):
         """rotate_key rejects invalid signature."""

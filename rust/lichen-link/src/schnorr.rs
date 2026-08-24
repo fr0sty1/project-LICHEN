@@ -8,7 +8,9 @@
 
 extern crate alloc;
 
-use crate::keys::{PrivateKey, PublicKey};
+#[cfg(any(test, feature = "std"))]
+use crate::keys::PrivateKey;
+use crate::keys::PublicKey;
 use crate::seqnum::LinkSeqNum;
 use alloc::vec::Vec;
 
@@ -18,29 +20,65 @@ pub use schnorr48::{derive_keypair, sign, verify};
 /// Length of a Schnorr48 signature in bytes.
 pub const SIGNATURE_LENGTH: usize = schnorr48::SIGNATURE_LEN;
 
+/// Versioned application-domain prefix for every link-frame signature.
+///
+/// The terminating NUL is part of the domain. It prevents a valid Schnorr48
+/// signature made for another LICHEN profile (or the legacy unprefixed link
+/// transcript) from being accepted as a link MIC.
+pub const LINK_SIGNATURE_DOMAIN: &[u8; 15] = b"LICHEN-LINK-v1\0";
+
+/// LLSec Signer-Identifier-present bit (draft-lichen-link-01 §3.2).
+///
+/// When set in `llsec`, the signed data (draft-lichen-link-01 §4.1) covers
+/// the canonical 8-byte signer EUI-64 placed between DST and PLD; when clear,
+/// no signer identifier bytes are covered.
+pub const LLSEC_SI_BIT: u8 = 1 << 7;
+
+/// Verify a Schnorr48 signature over a caller-domain-separated profile message.
+///
+/// Protocols using this helper MUST include their own fixed, versioned domain
+/// prefix. Link frames use [`LINK_SIGNATURE_DOMAIN`] through [`verify_frame`].
+pub fn verify_profile_message(public_key: &PublicKey, message: &[u8], signature: &[u8]) -> bool {
+    let Ok(signature) = <&[u8; SIGNATURE_LENGTH]>::try_from(signature) else {
+        return false;
+    };
+    verify(public_key, message, signature)
+}
+
 /// Sign a link-layer frame. The returned 48 bytes occupy the MIC field.
 ///
-/// Signed data layout: length || LLSec || epoch || seqnum || dst_addr_len(1)
-/// || dst_addr || [signer_iid (8) if SI=1] || payload (domain separation per j7rk).
+/// Signed data layout (draft-lichen-link-01 §4.1): `LICHEN-LINK-v1\0` ||
+/// LENGTH || LLSec ||
+/// epoch || seqnum || dst_addr_len(1) || dst_addr || [signer_eui64 (8) iff
+/// `llsec` has [`LLSEC_SI_BIT`] set] || payload.
 #[allow(clippy::too_many_arguments)]
-pub fn sign_frame(
+#[cfg(any(test, feature = "std"))]
+pub(crate) fn sign_frame(
     length: u8,
     llsec: u8,
     epoch: u8,
     seqnum: LinkSeqNum,
     dst_addr: &[u8],
-    signer_iid: &[u8],
+    signer_eui64: &[u8],
     inner_payload: &[u8],
     privkey: &PrivateKey,
     pubkey: &PublicKey,
 ) -> [u8; 48] {
+    assert!(
+        dst_addr.len() <= u8::MAX as usize,
+        "link destination too long"
+    );
+    assert!(
+        llsec & LLSEC_SI_BIT == 0 || signer_eui64.len() == 8,
+        "SI-set link signature requires an 8-byte signer EUI-64"
+    );
     let msg = build_signable(
         length,
         llsec,
         epoch,
         seqnum,
         dst_addr,
-        signer_iid,
+        signer_eui64,
         inner_payload,
     );
     sign(privkey, pubkey, &msg)
@@ -48,7 +86,10 @@ pub fn sign_frame(
 
 /// Verify a signed link-layer frame.
 ///
-/// `signature` is the 48-byte MIC and `payload` is the inner payload.
+/// `signature` is the 48-byte MIC and `payload` is the inner payload. The
+/// `llsec`/`signer_eui64` pair MUST match the values used at signing time:
+/// with [`LLSEC_SI_BIT`] set, a different EUI-64 fails verification; with it
+/// clear, the signer identifier argument is ignored entirely.
 #[allow(clippy::too_many_arguments)]
 pub fn verify_frame(
     length: u8,
@@ -56,16 +97,27 @@ pub fn verify_frame(
     epoch: u8,
     seqnum: LinkSeqNum,
     dst_addr: &[u8],
-    signer_iid: &[u8],
+    signer_eui64: &[u8],
     payload: &[u8],
     signature: &[u8],
     sender_pubkey: &PublicKey,
 ) -> bool {
-    if signature.len() != SIGNATURE_LENGTH {
+    if signature.len() != SIGNATURE_LENGTH
+        || dst_addr.len() > u8::MAX as usize
+        || (llsec & LLSEC_SI_BIT != 0 && signer_eui64.len() != 8)
+    {
         return false;
     }
     let sig: [u8; 48] = signature.try_into().unwrap();
-    let msg = build_signable(length, llsec, epoch, seqnum, dst_addr, signer_iid, payload);
+    let msg = build_signable(
+        length,
+        llsec,
+        epoch,
+        seqnum,
+        dst_addr,
+        signer_eui64,
+        payload,
+    );
     verify(sender_pubkey, &msg, &sig)
 }
 
@@ -75,19 +127,22 @@ fn build_signable(
     epoch: u8,
     seqnum: LinkSeqNum,
     dst_addr: &[u8],
-    signer_iid: &[u8],
+    signer_eui64: &[u8],
     inner_payload: &[u8],
 ) -> Vec<u8> {
-    let signer_iid_len = if llsec & 0x80 != 0 { 8usize } else { 0 };
-    let mut buf = Vec::with_capacity(6 + dst_addr.len() + signer_iid_len + inner_payload.len());
+    let signer_eui64_len = if llsec & LLSEC_SI_BIT != 0 { 8usize } else { 0 };
+    let mut buf = Vec::with_capacity(
+        LINK_SIGNATURE_DOMAIN.len() + 6 + dst_addr.len() + signer_eui64_len + inner_payload.len(),
+    );
+    buf.extend_from_slice(LINK_SIGNATURE_DOMAIN);
     buf.push(length);
     buf.push(llsec);
     buf.push(epoch);
     buf.extend_from_slice(&seqnum.to_be_bytes());
-    buf.push(dst_addr.len() as u8);
+    buf.push(u8::try_from(dst_addr.len()).expect("validated link destination length"));
     buf.extend_from_slice(dst_addr);
-    if signer_iid_len > 0 {
-        buf.extend_from_slice(signer_iid);
+    if signer_eui64_len > 0 {
+        buf.extend_from_slice(signer_eui64);
     }
     buf.extend_from_slice(inner_payload);
     buf
@@ -352,16 +407,18 @@ mod tests {
         let dst_addr = [0x00u8, 0x01u8];
         let inner_payload = b"hello";
 
-        // llsec: Short addr (0x01), signature present (0x20)
-        let llsec: u8 = 0x21;
-        let frame_length = 4 + dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
+        // llsec: Short addr, signature present, signer EUI-64 present.
+        let llsec: u8 = 0xa1;
+        let signer_eui64 = [0x42; 8];
+        let frame_length =
+            4 + dst_addr.len() + signer_eui64.len() + inner_payload.len() + SIGNATURE_LENGTH;
         let sig = sign_frame(
             frame_length as u8,
             llsec,
             epoch,
             seqnum,
             &dst_addr,
-            &[], // signer_iid not used in current frame format
+            &signer_eui64,
             inner_payload,
             &priv_a,
             &pub_a,
@@ -372,6 +429,7 @@ mod tests {
             epoch,
             seqnum,
             dst_addr: &dst_addr,
+            signer_eui64: &signer_eui64,
             payload: inner_payload,
             mic: &sig,
             addr_mode: AddrMode::Short,
@@ -381,6 +439,7 @@ mod tests {
         };
         let mut wire = [0u8; 128];
         let n = frame.write_to(&mut wire).unwrap();
+        assert_eq!(usize::from(wire[0]), n - 1);
 
         // Node B: parse and verify
         let rx = LichenFrame::from_bytes(&wire[..n]).unwrap();
@@ -391,12 +450,12 @@ mod tests {
         );
         assert!(
             verify_frame(
-                frame_length as u8,
+                wire[0],
                 llsec,
                 rx.epoch,
                 rx.seqnum,
                 rx.dst_addr,
-                &[],
+                rx.signer_eui64,
                 rx.payload,
                 rx.mic,
                 &pub_a
@@ -456,5 +515,243 @@ mod tests {
             ),
             "truncated signature must not verify"
         );
+    }
+
+    // ── signer EUI-64 coverage (LLSEC_SI_BIT, draft-lichen-link-01 §3.2/§4.1) ──
+
+    const SI_TEST_LLSEC: u8 = 0x21; // Short addr + S=1, SI clear
+
+    fn si_test_keypair() -> (PrivateKey, PublicKey) {
+        derive_keypair(&Seed::new([0x07u8; 32]))
+    }
+
+    #[test]
+    fn public_verifier_rejects_non_frame_address_and_signer_eui64_lengths() {
+        let (_, pubkey) = si_test_keypair();
+        let signature = [0u8; SIGNATURE_LENGTH];
+        assert!(!verify_frame(
+            0,
+            SI_TEST_LLSEC,
+            0,
+            LinkSeqNum::new(0),
+            &[0u8; 256],
+            &[],
+            &[],
+            &signature,
+            &pubkey,
+        ));
+        assert!(!verify_frame(
+            0,
+            SI_TEST_LLSEC | LLSEC_SI_BIT,
+            0,
+            LinkSeqNum::new(0),
+            &[],
+            &[0u8; 7],
+            &[],
+            &signature,
+            &pubkey,
+        ));
+    }
+
+    #[test]
+    fn si_bit_set_covers_signer_eui64() {
+        let (priv_a, pub_a) = si_test_keypair();
+        let llsec_si = SI_TEST_LLSEC | LLSEC_SI_BIT;
+        let sig = sign_frame(
+            60,
+            llsec_si,
+            1,
+            LinkSeqNum::new(9),
+            &[0x00, 0x01],
+            &[0xAAu8; 8],
+            b"payload",
+            &priv_a,
+            &pub_a,
+        );
+
+        // Correct signer EUI-64 verifies.
+        assert!(verify_frame(
+            60,
+            llsec_si,
+            1,
+            LinkSeqNum::new(9),
+            &[0x00, 0x01],
+            &[0xAAu8; 8],
+            b"payload",
+            &sig,
+            &pub_a
+        ));
+        // A different signer EUI-64 must fail: the identifier is signed.
+        assert!(!verify_frame(
+            60,
+            llsec_si,
+            1,
+            LinkSeqNum::new(9),
+            &[0x00, 0x01],
+            &[0xBBu8; 8],
+            b"payload",
+            &sig,
+            &pub_a
+        ));
+        // Clearing the SI bit changes the signed message, so the signature no
+        // longer verifies against it.
+        assert!(!verify_frame(
+            60,
+            SI_TEST_LLSEC,
+            1,
+            LinkSeqNum::new(9),
+            &[0x00, 0x01],
+            &[0xAAu8; 8],
+            b"payload",
+            &sig,
+            &pub_a
+        ));
+    }
+
+    #[test]
+    fn si_bit_clear_excludes_signer_eui64() {
+        let (priv_a, pub_a) = si_test_keypair();
+        let sig_a = sign_frame(
+            60,
+            SI_TEST_LLSEC,
+            1,
+            LinkSeqNum::new(9),
+            &[0x00, 0x01],
+            &[0xAAu8; 8],
+            b"payload",
+            &priv_a,
+            &pub_a,
+        );
+        let sig_b = sign_frame(
+            60,
+            SI_TEST_LLSEC,
+            1,
+            LinkSeqNum::new(9),
+            &[0x00, 0x01],
+            &[0xBBu8; 8],
+            b"payload",
+            &priv_a,
+            &pub_a,
+        );
+
+        // Signing is deterministic: identical signed data means identical
+        // signatures regardless of which signer EUI-64 bytes were passed in.
+        assert_eq!(sig_a.as_ref(), sig_b.as_ref());
+        // Verification likewise ignores the signer EUI-64 when the bit is clear.
+        assert!(verify_frame(
+            60,
+            SI_TEST_LLSEC,
+            1,
+            LinkSeqNum::new(9),
+            &[0x00, 0x01],
+            &[0xCCu8; 8],
+            b"payload",
+            &sig_a,
+            &pub_a
+        ));
+    }
+
+    #[test]
+    fn link_domain_rejects_legacy_and_other_profile_signatures() {
+        let (private_key, public_key) = si_test_keypair();
+        let llsec = SI_TEST_LLSEC | LLSEC_SI_BIT;
+        let signer_eui64 = [0xAA; 8];
+        let payload = b"profile-separated";
+        let length = 4 + 2 + signer_eui64.len() as u8 + payload.len() as u8 + 48;
+
+        let canonical = build_signable(
+            length,
+            llsec,
+            1,
+            LinkSeqNum::new(9),
+            &[0, 1],
+            &signer_eui64,
+            payload,
+        );
+        let legacy = &canonical[LINK_SIGNATURE_DOMAIN.len()..];
+        let legacy_signature = sign(&private_key, &public_key, legacy);
+        assert!(!verify_frame(
+            length,
+            llsec,
+            1,
+            LinkSeqNum::new(9),
+            &[0, 1],
+            &signer_eui64,
+            payload,
+            &legacy_signature,
+            &public_key,
+        ));
+
+        let mut other_profile = b"LICHEN-SOS-v1\0".to_vec();
+        other_profile.extend_from_slice(legacy);
+        let other_signature = sign(&private_key, &public_key, &other_profile);
+        assert!(!verify_frame(
+            length,
+            llsec,
+            1,
+            LinkSeqNum::new(9),
+            &[0, 1],
+            &signer_eui64,
+            payload,
+            &other_signature,
+            &public_key,
+        ));
+    }
+
+    #[test]
+    fn si_frame_serialises_and_verifies() {
+        use crate::frame::{AddrMode, Encryption, LichenFrame, MicLength, Signature};
+
+        let (priv_a, pub_a) = si_test_keypair();
+        let dst_addr = [0x00u8, 0x01];
+        let payload = b"si-frame";
+        // draft-lichen-link-01 §3.4: S=1 frames MUST set SI=1.
+        let llsec = SI_TEST_LLSEC | LLSEC_SI_BIT;
+        let iid = [0x42u8; 8];
+        let frame_length: u8 =
+            4 + dst_addr.len() as u8 + iid.len() as u8 + payload.len() as u8 + 48;
+        let seqnum = LinkSeqNum::new(77);
+
+        let sig = sign_frame(
+            frame_length,
+            llsec,
+            1,
+            seqnum,
+            &dst_addr,
+            &iid,
+            payload,
+            &priv_a,
+            &pub_a,
+        );
+        let frame = LichenFrame {
+            epoch: 1,
+            seqnum,
+            dst_addr: &dst_addr,
+            signer_eui64: &iid,
+            payload,
+            mic: &sig,
+            addr_mode: AddrMode::Short,
+            mic_length: MicLength::Bits32,
+            signature: Signature::Present,
+            encryption: Encryption::Plaintext,
+        };
+        let mut wire = [0u8; 128];
+        let wire_len = frame.write_to(&mut wire).unwrap();
+        assert_eq!(wire[0], frame_length);
+        assert_eq!(wire[1], llsec);
+        let parsed = LichenFrame::from_bytes(&wire[..wire_len]).unwrap();
+
+        // Verify the exact parsed transcript, including the serialized LENGTH.
+        assert!(verify_frame(
+            wire[0],
+            parsed.llsec_byte(),
+            parsed.epoch,
+            parsed.seqnum,
+            parsed.dst_addr,
+            parsed.signer_eui64,
+            parsed.payload,
+            parsed.mic,
+            &pub_a
+        ));
     }
 }

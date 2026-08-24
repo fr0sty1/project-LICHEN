@@ -1,0 +1,20 @@
+{
+  "format_version": 2,
+  "name": "dodag_version_authorization",
+  "description": "Canonical root-owned DODAG version authorization propagated unchanged across link-authenticated RPL relays.",
+  "spec": "spec/05-routing.md Section 8.4.1",
+  "vectors": [
+    {
+      "name": "root_version_one",
+      "seed": "6161616161616161616161616161616161616161616161616161616161616161",
+      "root_pubkey": "af06a3e3291714e4f356c19c9b15cd1951ec6e6662aa77be07547f289383341d",
+      "rpl_instance_id": 1,
+      "dodag_id": "024a67f5b15217784867f5b152177883",
+      "dodag_version": 1,
+      "transcript": "4c494348454e2d52504c2d444f4441472d56455253494f4e2d763101024a67f5b15217784867f5b15217788301",
+      "signature": "21a6969d40e19a63210b0ed7264358f921f16bdc4307d8c5f79368f740ed644d6ef8608062920f92928489cef8946706",
+      "option": "165101af06a3e3291714e4f356c19c9b15cd1951ec6e6662aa77be07547f289383341d21a6969d40e19a63210b0ed7264358f921f16bdc4307d8c5f79368f740ed644d6ef8608062920f92928489cef8946706",
+      "expected_valid": true
+    }
+  ]
+}

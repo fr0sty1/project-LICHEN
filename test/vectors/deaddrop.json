@@ -132,6 +132,143 @@
         "response_code": 69,
         "num_pending": 0
       }
+    },
+    {
+      "name": "request_entity_too_large",
+      "type": "rejection",
+      "description": "POST /deaddrop with payload exceeding 1536 bytes returns 4.13 Request Entity Too Large. Per spec 18.9: 'Max drop size: 1536 B'. Oracle: size check is stateless, independent of content.",
+      "recipient": "node-large",
+      "ciphertext": "0102030405060708",
+      "ttl": 86400,
+      "payload_size": 2048,
+      "encoded": "4402000183deaddropc0",
+      "expected": {
+        "response_code": 141,
+        "error_type": "request_entity_too_large"
+      }
+    },
+    {
+      "name": "storage_full_rejection",
+      "type": "rejection",
+      "description": "POST /deaddrop when storage is exhausted returns 5.03 Service Unavailable with CBOR details. Per spec 18.9: '{reason: storage_full, retry_after: 3600, available_kb: N}'. Oracle: CBOR encoding per RFC 8949.",
+      "recipient": "node-storage",
+      "ciphertext": "0102030405060708",
+      "ttl": 86400,
+      "storage_state": "full",
+      "encoded": "4402000183deaddropc0",
+      "expected": {
+        "response_code": 163,
+        "cbor_payload": {
+          "reason": "storage_full",
+          "retry_after": 3600
+        }
+      }
+    },
+    {
+      "name": "ttl_clamped_to_max",
+      "type": "post_submission",
+      "description": "POST /deaddrop with TTL exceeding 7 days (604800s) is clamped to max. Per spec 18.9: 'Default retention: 24h (max 7d)'. Oracle: TTL clamping is deterministic arithmetic.",
+      "recipient": "node-ttl",
+      "ciphertext": "0102030405060708",
+      "ttl": 1209600,
+      "oscore_option": "091400",
+      "encoded": "4402000183deaddropc0",
+      "senml_payload": "81a26174781a9a14006e747466",
+      "expected": {
+        "response_code": 69,
+        "effective_ttl": 604800,
+        "max_age": 604800
+      }
+    },
+    {
+      "name": "canonical_senml_payload",
+      "type": "post_submission",
+      "description": "POST /deaddrop with canonical SenML payload matching spec 18.9 example. Contains: bn (base name), bt (base time), type, content, lat, lon, ttl, signature. Oracle: RFC 8428 CBOR encoding, coordinates from spec example (37.7749, -122.4194).",
+      "recipient": "eui-0011223344556677",
+      "ciphertext": "f0910ed7295e6ad4",
+      "oscore_option": "091400",
+      "ttl": 86400,
+      "encoded": "4402000183deaddropc0",
+      "senml_payload_decoded": [
+        {"bn": "urn:dev:mac:0011223344556677:", "bt": 1721654321},
+        {"n": "type", "vs": "message"},
+        {"n": "content", "vs": "Supply cache at these coords - do not broadcast"},
+        {"n": "lat", "u": "lat", "v": 37.7749},
+        {"n": "lon", "u": "lon", "v": -122.4194},
+        {"n": "ttl", "v": 86400},
+        {"n": "signature", "vs": "c2lnbmF0dXJl"}
+      ],
+      "senml_payload": "87a2216d75726e3a6465763a6d61633a3030313132323333343435353636373722fb41d99c8f8d100000a2006474797065036776616c7565a200676c617404fb4042c62d50a3d70aa200676c6f6e04fbc05e9ad6872b020ca200637474660219015180a2006973696e617475726503697369676e6174757265",
+      "expected": {
+        "response_code": 69,
+        "location_path_prefix": "/deaddrop/"
+      }
+    },
+    {
+      "name": "oscore_group_context",
+      "type": "oscore_wrapped",
+      "description": "POST /deaddrop with group OSCORE context for multicast-like sharing. Per spec 18.9: 'Supports both pairwise (EDHOC-derived) and group contexts.' Oracle: Group OSCORE context ID encoding per RFC 8613 Appendix C.7.",
+      "recipient": "group-alpha",
+      "ciphertext": "a1b2c3d4e5f6a7b8",
+      "oscore_option": "19100001",
+      "group_context_id": "alpha-group",
+      "ttl": 43200,
+      "encoded": "4402000183deaddropc0",
+      "senml_payload": "81a2006d67726f75702d6d73670365746573742d313233",
+      "expected": {
+        "response_code": 69,
+        "oscore_option": "19100001"
+      }
+    },
+    {
+      "name": "get_single_drop_by_id",
+      "type": "pickup",
+      "description": "GET /deaddrop/7f3a9c returns single drop's SenML payload with Max-Age set to remaining TTL. Per spec 18.9 example: 'Location-Path: /deaddrop/7f3a9c'. Oracle: Path parsing is stateless string match.",
+      "recipient": "eui-0102030405060708",
+      "drop_id": "7f3a9c",
+      "encoded": "4401000186deaddrop7f3a9c",
+      "expected": {
+        "response_code": 69,
+        "content_format": 112,
+        "has_max_age": true
+      }
+    },
+    {
+      "name": "get_nonexistent_drop_id",
+      "type": "pickup",
+      "description": "GET /deaddrop/ffffff for non-existent drop ID returns 4.04 Not Found. Oracle: 404 per RFC 7252 section 5.9.1.4.",
+      "recipient": "any",
+      "drop_id": "ffffff",
+      "encoded": "4401000186deaddropffffff",
+      "expected": {
+        "response_code": 132
+      }
+    },
+    {
+      "name": "eviction_fifo_order",
+      "type": "state_transition",
+      "description": "When storage is full, oldest drops are evicted first (FIFO). Per spec 18.9: 'Eviction: expired first, then oldest.' Oracle: sequence is deterministic given insertion order.",
+      "initial_drops": ["drop-001", "drop-002", "drop-003"],
+      "storage_limit": 256,
+      "new_drop_size": 128,
+      "expected": {
+        "evicted": "drop-001",
+        "remaining": ["drop-002", "drop-003"],
+        "response_code": 69
+      }
+    },
+    {
+      "name": "observe_notification",
+      "type": "observe",
+      "description": "GET /deaddrop with Observe:0 receives notification when new drop arrives. Per spec 18.9: CoAP Observe (RFC 7641) support. Oracle: Observe semantics per RFC 7641 section 3.2.",
+      "recipient": "observer-node",
+      "observe_option": 0,
+      "encoded": "4401000160deaddrop",
+      "expected": {
+        "response_code": 69,
+        "has_observe_option": true,
+        "content_format": 112
+      }
     }
   ]
 }

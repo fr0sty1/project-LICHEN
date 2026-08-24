@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import cbor2
 import pytest
 
 from lichen.crypto.oscore import MemorySecurityContext
@@ -57,6 +58,184 @@ class TestKeyDerivation:
         )
         assert ctx.common_iv == bytes.fromhex(expected["common_iv"]), (
             f"common_iv mismatch for {vector['name']}"
+        )
+
+
+class TestRequestProtection:
+    """Test OSCORE request protection against RFC 8613 Appendix C vectors.
+
+    Cross-validates Python with Rust by testing against the same vectors.
+    Both implementations must produce identical ciphertext for interoperability.
+    """
+
+    @pytest.mark.parametrize(
+        "vector",
+        get_vectors_by_type("request_protection"),
+        ids=lambda v: v["name"],
+    )
+    def test_request_protection(self, vector: dict[str, Any]) -> None:
+        """Verify request protection produces expected ciphertext and OSCORE option."""
+        master_secret = bytes.fromhex(vector["master_secret"])
+        master_salt = (
+            bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
+        )
+        sender_id = (
+            bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
+        )
+        recipient_id = (
+            bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
+        )
+        id_context = (
+            bytes.fromhex(vector["id_context"]) if vector.get("id_context") else None
+        )
+        seq = vector.get("sender_seq", 0)
+
+        # Create context to derive keys
+        ctx = MemorySecurityContext(
+            master_secret=master_secret,
+            master_salt=master_salt,
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+            id_context=id_context,
+        )
+
+        # Construct PIV (partial IV) - variable length, minimum 1 byte
+        piv = seq.to_bytes(5, "big").lstrip(b"\x00") or b"\x00"
+
+        # Use aiocoap's nonce construction (includes sender_id length byte per RFC 8613)
+        nonce = ctx._construct_nonce(piv, sender_id, ctx.alg_aead)
+
+        # Verify nonce matches expected
+        expected = vector["expected"]
+        assert nonce.hex() == expected["nonce"], (
+            f"nonce mismatch for {vector['name']}"
+        )
+
+        # Construct plaintext: code || options || [0xFF || payload]
+        # RFC 8613 Section 8.1: payload marker 0xFF precedes payload when present
+        pt = vector["plaintext"]
+        payload = bytes.fromhex(pt["payload"])
+        plaintext = bytes([pt["code"]]) + bytes.fromhex(pt["options"])
+        if payload:
+            plaintext += b"\xff" + payload
+
+        # Construct AAD per RFC 8613 Section 5.4
+        # external_aad = [oscore_version, [alg_aead], request_kid, request_piv, options]
+        alg_aead = vector.get("algorithm", 10)
+        external_aad = cbor2.dumps([1, [alg_aead], sender_id, piv, b""])
+
+        # Enc_structure = ["Encrypt0", protected, external_aad]
+        enc_structure = cbor2.dumps(["Encrypt0", b"", external_aad])
+
+        # Encrypt using aiocoap's algorithm
+        ciphertext = ctx.alg_aead.encrypt(plaintext, enc_structure, ctx.sender_key, nonce)
+
+        assert ciphertext.hex() == expected["ciphertext"], (
+            f"ciphertext mismatch for {vector['name']}"
+        )
+
+        # Verify OSCORE option encoding
+        # Format: flags || [piv] || [kid_context] || [kid]
+        # For requests: flags always includes k bit (has_kid), even for empty sender_id
+        piv_len = len(piv)
+        flags = piv_len  # n bits = PIV length
+        flags |= 0x08  # k bit = has KID (always present for requests)
+        if id_context is not None:
+            flags |= 0x10  # h bit = has KID context
+
+        oscore_option = bytes([flags]) + piv
+        if id_context is not None:
+            oscore_option += bytes([len(id_context)]) + id_context
+        oscore_option += sender_id  # KID always present (may be empty)
+
+        assert oscore_option.hex() == expected["oscore_option"], (
+            f"OSCORE option mismatch for {vector['name']}"
+        )
+
+
+class TestResponseProtection:
+    """Test OSCORE response protection against RFC 8613 Appendix C vectors.
+
+    Cross-validates Python with Rust by testing against the same vectors.
+    """
+
+    @pytest.mark.parametrize(
+        "vector",
+        get_vectors_by_type("response_protection"),
+        ids=lambda v: v["name"],
+    )
+    def test_response_protection(self, vector: dict[str, Any]) -> None:
+        """Verify response protection produces expected ciphertext and OSCORE option."""
+        master_secret = bytes.fromhex(vector["master_secret"])
+        master_salt = (
+            bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
+        )
+        sender_id = (
+            bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
+        )
+        recipient_id = (
+            bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
+        )
+
+        # Create context to derive keys
+        ctx = MemorySecurityContext(
+            master_secret=master_secret,
+            master_salt=master_salt,
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+        )
+
+        # Response nonce uses request PIV and KID
+        request_piv = bytes.fromhex(vector["request_piv"])
+        request_kid = bytes.fromhex(vector["request_kid"])
+        include_piv = vector["include_piv"]
+
+        if include_piv:
+            # Response includes its own PIV - nonce derived from sender's PIV and ID
+            sender_seq = vector.get("sender_seq", 0)
+            response_piv = sender_seq.to_bytes(5, "big").lstrip(b"\x00") or b"\x00"
+            nonce = ctx._construct_nonce(response_piv, sender_id, ctx.alg_aead)
+        else:
+            # Response echoes request nonce (no fresh PIV)
+            nonce = ctx._construct_nonce(request_piv, request_kid, ctx.alg_aead)
+
+        # Verify nonce matches expected
+        expected = vector["expected"]
+        assert nonce.hex() == expected["nonce"], (
+            f"nonce mismatch for {vector['name']}"
+        )
+
+        # Construct plaintext: code || options || [0xFF || payload]
+        # RFC 8613 Section 8.1: payload marker 0xFF precedes payload when present
+        pt = vector["plaintext"]
+        payload = bytes.fromhex(pt["payload"])
+        plaintext = bytes([pt["code"]]) + bytes.fromhex(pt["options"])
+        if payload:
+            plaintext += b"\xff" + payload
+
+        # Construct AAD for response
+        # For responses, external_aad uses request_kid and request_piv
+        alg_aead = vector.get("algorithm", 10)
+        external_aad = cbor2.dumps([1, [alg_aead], request_kid, request_piv, b""])
+        enc_structure = cbor2.dumps(["Encrypt0", b"", external_aad])
+
+        # Encrypt
+        alg = ctx.alg_aead
+        ciphertext = alg.encrypt(plaintext, enc_structure, ctx.sender_key, nonce)
+
+        assert ciphertext.hex() == expected["ciphertext"], (
+            f"ciphertext mismatch for {vector['name']}"
+        )
+
+        # Verify OSCORE option encoding
+        if include_piv:
+            response_piv = vector.get("sender_seq", 0).to_bytes(5, "big").lstrip(b"\x00") or b"\x00"
+            oscore_option = bytes([len(response_piv)]) + response_piv
+        else:
+            oscore_option = b""  # Empty option for response echoing request nonce
+
+        assert oscore_option.hex() == expected["oscore_option"], (
+            f"OSCORE option mismatch for {vector['name']}"
         )
 
 

@@ -3,6 +3,8 @@
 
 //! OSCORE/secure CoAP methods.
 
+use std::vec::Vec;
+
 use lichen_hal::{NonVolatile, Radio};
 use lichen_ipv6::Addr;
 use lichen_oscore::{Context, SenderStateStore};
@@ -137,9 +139,19 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         store: &mut T,
         now_ms: u64,
     ) -> Result<(), SecureError> {
-        let route = self
-            .route_for(dst.0, now_ms, false)
-            .ok_or(SecureError::Tx(TxError::NoRoute))?;
+        let route = self.route_for(dst.0, now_ms, false).or_else(|| {
+            let peer_matches_destination = dst.0[8..] == peer_iid[..];
+            let authenticated = !matches!(
+                self.stack.link_ref().peer_auth_state(peer_iid),
+                lichen_link::link_layer::PeerAuthState::Unknown
+            );
+            (peer_matches_destination && authenticated && self.direct_neighbors.contains(peer_iid))
+                .then(|| super::RoutePlan {
+                    next_hop: super::util::ipv6_eui64(dst.0),
+                    source_route: Vec::new(),
+                })
+        });
+        let route = route.ok_or(SecureError::Tx(TxError::NoRoute))?;
         self.stack
             .send_secure_response_to(
                 SecureRoute {

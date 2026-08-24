@@ -81,6 +81,7 @@ struct tx_queue_entry {
 	uint8_t data[TX_QUEUE_MAX_PACKET_SIZE]; /**< Packet data */
 	uint16_t len;                           /**< Packet length */
 	uint32_t deadline_ms;                   /**< Absolute deadline (uptime ms) */
+	uint32_t enqueue_ms;                    /**< Enqueue timestamp (uptime ms) */
 	uint8_t priority;                       /**< Priority (0 = highest) */
 	bool valid;                             /**< Entry contains valid packet */
 };
@@ -95,6 +96,7 @@ struct tx_queue_stats {
 	uint32_t packets_dropped_full;   /**< Dropped due to queue full (preemption failure) */
 	uint32_t packets_preempted;      /**< Lower-priority packets preempted */
 	uint32_t max_latency_ms;         /**< Worst-case queue time observed */
+	uint32_t avg_latency_ms;         /**< Smoothed average queue time (EWMA alpha 1/8) */
 };
 
 /**
@@ -105,6 +107,7 @@ struct tx_queue_stats {
 struct tx_queue {
 	struct tx_queue_entry entries[TX_QUEUE_SIZE]; /**< Queue entries */
 	struct tx_queue_stats stats;                   /**< Queue statistics */
+	uint32_t avg_latency_scaled;                   /**< EWMA latency, scaled by 8 (internal) */
 #ifdef __ZEPHYR__
 	struct k_mutex lock;  /**< Protects queue state */
 #else
@@ -169,6 +172,10 @@ int tx_queue_push_default_deadline(struct tx_queue *_Nonnull queue,
  * Returns the highest-priority (lowest priority value) non-expired packet.
  * Expired packets are silently dropped and counted in stats.
  *
+ * Updates the latency statistics: max_latency_ms tracks the worst-case
+ * queue time and avg_latency_ms an EWMA (alpha 1/8) of observed queue
+ * time, computed from each entry's enqueue timestamp.
+ *
  * @param[in,out] queue   TX queue
  * @param[out]    data    Buffer to receive packet data
  * @param[in,out] len     In: buffer size, Out: packet length
@@ -189,17 +196,17 @@ int tx_queue_pop(struct tx_queue *_Nonnull queue,
  * @param[in,out] queue TX queue (non-const due to internal locking)
  * @return Number of packets (>=0), or -EINVAL if queue is NULL
  */
-int tx_queue_count(struct tx_queue *_Nonnull queue);
+int tx_queue_count(struct tx_queue *_Nullable queue);
 
 /**
  * @brief Check if the queue is empty.
  *
  * Thread-safe via lock; returns snapshot of current valid entries.
  *
- * @param[in,out] queue TX queue (non-const due to internal locking)
+ * @param[in,out] queue TX queue (NULL accepted, returns true)
  * @return true if empty, false otherwise (NULL returns true)
  */
-bool tx_queue_empty(struct tx_queue *_Nonnull queue);
+bool tx_queue_empty(struct tx_queue *_Nullable queue);
 
 /**
  * @brief Get a copy of queue statistics.

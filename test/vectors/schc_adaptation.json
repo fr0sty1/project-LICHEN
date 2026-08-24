@@ -47,8 +47,8 @@
       "category": "uncompressed",
       "priority": "P1",
       "description": "Rule 255 (0xFF) uncompressed fallback: full IPv6+UDP packet passes through with 0xFF prefix.",
-      "packet": "6000000000081140fe800000000000000000000000000001fe80000000000000000000000000000216331633000859e7",
-      "compressed": "ff6000000000081140fe800000000000000000000000000001fe80000000000000000000000000000216331633000859e7",
+      "packet": "6000000000081140fe800000000000000000000000000001fe800000000000000000000000000002163316330008d673",
+      "compressed": "ff6000000000081140fe800000000000000000000000000001fe800000000000000000000000000002163316330008d673",
       "rule_id": 255,
       "compressed_size": 49,
       "provenance": "Rule 255: 1-byte prefix (0xFF) + full 48-byte IPv6+UDP packet."
@@ -69,11 +69,11 @@
       "category": "uncompressed",
       "priority": "P1",
       "description": "Rule 255 with minimal valid IPv6 header (no payload).",
-      "packet": "6000000000003a40fe800000000000000000000000000001fe800000000000000000000000000002",
-      "compressed": "ff6000000000003a40fe800000000000000000000000000001fe800000000000000000000000000002",
+      "packet": "6000000000003b40fe800000000000000000000000000001fe800000000000000000000000000002",
+      "compressed": "ff6000000000003b40fe800000000000000000000000000001fe800000000000000000000000000002",
       "rule_id": 255,
       "compressed_size": 41,
-      "provenance": "40-byte IPv6 header only, no payload, plus 1-byte Rule 255 prefix."
+      "provenance": "A zero-payload IPv6 packet uses Next Header 59 (No Next Header); the 40-byte header plus the Rule 255 prefix is 41 bytes."
     },
     {
       "name": "port_5683_coap_default_compress",
@@ -140,21 +140,169 @@
       "name": "port_10883_mqttsn_exact",
       "category": "port_boundary",
       "priority": "P1",
-      "description": "Port 10883 (MQTT-SN) matches Rule 7 with exact port match.",
+      "description": "When both endpoints use MQTT-SN port 10883, specialized Rule 7 sends one direction bit plus the 16-bit other-port field.",
       "src_port": 10883,
       "dst_port": 10883,
-      "port_residue_bits": 0,
+      "port_residue_bits": 17,
       "matches_rule_7": true,
-      "provenance": "10883 = 0x2A83; exact match in Rule 7, no port residue sent."
+      "provenance": "Rule 7 is a specialized codec rather than a generic exact-match descriptor. It always carries PortDirection and OtherPort; the canonical both-10883 case therefore carries 17 semantic port bits."
+    },
+    {
+      "name": "rule7_link_local_unicast_valid",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "description": "Usable link-local unicast endpoints are valid Rule 7 addresses.",
+      "source_ipv6": "fe80::1234",
+      "destination_ipv6": "fe80::5678",
+      "expect_valid": true,
+      "source_encoding": "link_local_iid",
+      "destination_encoding": "link_local_iid",
+      "provenance": "Canonical fe80::/64 endpoints use IID residue mode."
+    },
+    {
+      "name": "rule7_global_to_multicast_valid",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "description": "A usable native unicast source and scope-2 multicast destination are valid.",
+      "source_ipv6": "0200::1234",
+      "destination_ipv6": "ff02::1a",
+      "expect_valid": true,
+      "source_encoding": "full",
+      "destination_encoding": "full",
+      "provenance": "Rule 7 permits multicast destinations in scopes 2 through 14 and never permits multicast sources."
+    },
+    {
+      "name": "rule7_multicast_scope_14_valid",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "description": "The upper permitted multicast scope boundary is valid.",
+      "source_ipv6": "fe80::1234",
+      "destination_ipv6": "ff0e::1",
+      "expect_valid": true,
+      "source_encoding": "full",
+      "destination_encoding": "full",
+      "provenance": "Scope 14 is the inclusive upper boundary of the Rule 7 multicast destination range; multicast forces the shared full-address mode."
+    },
+    {
+      "name": "rule7_noncanonical_link_local_full_mode_valid",
+      "category": "rule7_address_policy",
+      "priority": "P1",
+      "description": "A valid link-local address outside canonical fe80::/64 is accepted only in full-address mode.",
+      "source_ipv6": "fe90::1234",
+      "destination_ipv6": "fe80::5678",
+      "expect_valid": true,
+      "source_encoding": "full",
+      "destination_encoding": "full",
+      "provenance": "The fe80::/10 link-local range is valid, but IID elision is canonical only for fe80::/64."
+    },
+    {
+      "name": "rule7_unspecified_source_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "::",
+      "destination_ipv6": "fe80::5678",
+      "expect_valid": false,
+      "expect_error": "invalid_source_address",
+      "provenance": "The unspecified address is not a usable unicast source."
+    },
+    {
+      "name": "rule7_loopback_source_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "::1",
+      "destination_ipv6": "fe80::5678",
+      "expect_valid": false,
+      "expect_error": "invalid_source_address",
+      "provenance": "Loopback cannot identify a mesh sender."
+    },
+    {
+      "name": "rule7_multicast_source_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "ff02::1",
+      "destination_ipv6": "fe80::5678",
+      "expect_valid": false,
+      "expect_error": "invalid_source_address",
+      "provenance": "IPv6 multicast addresses are never valid packet sources."
+    },
+    {
+      "name": "rule7_ipv4_mapped_source_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "::ffff:192.0.2.1",
+      "destination_ipv6": "fe80::5678",
+      "expect_valid": false,
+      "expect_error": "invalid_source_address",
+      "provenance": "IPv4-mapped IPv6 addresses are outside the native LICHEN Rule 7 profile."
+    },
+    {
+      "name": "rule7_unspecified_destination_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "fe80::1234",
+      "destination_ipv6": "::",
+      "expect_valid": false,
+      "expect_error": "invalid_destination_address",
+      "provenance": "The unspecified address is not a deliverable destination."
+    },
+    {
+      "name": "rule7_loopback_destination_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "fe80::1234",
+      "destination_ipv6": "::1",
+      "expect_valid": false,
+      "expect_error": "invalid_destination_address",
+      "provenance": "Loopback cannot be routed to a mesh peer."
+    },
+    {
+      "name": "rule7_ipv4_mapped_destination_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "fe80::1234",
+      "destination_ipv6": "::ffff:192.0.2.1",
+      "expect_valid": false,
+      "expect_error": "invalid_destination_address",
+      "provenance": "IPv4-mapped IPv6 addresses are outside the native LICHEN Rule 7 profile."
+    },
+    {
+      "name": "rule7_reserved_multicast_scope_zero_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "fe80::1234",
+      "destination_ipv6": "ff00::1",
+      "expect_valid": false,
+      "expect_error": "invalid_destination_scope",
+      "provenance": "Multicast scope 0 is reserved; Rule 7 accepts only scopes 2 through 14."
+    },
+    {
+      "name": "rule7_interface_local_multicast_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "fe80::1234",
+      "destination_ipv6": "ff01::1",
+      "expect_valid": false,
+      "expect_error": "invalid_destination_scope",
+      "provenance": "Interface-local multicast scope 1 cannot traverse the mesh link."
+    },
+    {
+      "name": "rule7_reserved_multicast_scope_rejected",
+      "category": "rule7_address_policy",
+      "priority": "P0",
+      "source_ipv6": "fe80::1234",
+      "destination_ipv6": "ff0f::1",
+      "expect_valid": false,
+      "expect_error": "invalid_destination_scope",
+      "provenance": "Multicast scope 15 is reserved; Rule 7 accepts only scopes 2 through 14."
     },
     {
       "name": "rule0_compressed_size_validation",
       "category": "compressed_size",
       "priority": "P1",
-      "description": "Rule 0 (link-local CoAP): ~26 bytes residue per appendix-schc.md table.",
+      "description": "Rule 0 (link-local CoAP): 174-bit residue, octet-padded to 22 bytes.",
       "rule_id": 0,
-      "residue_bit_length": 200,
-      "residue_byte_length": 25,
+      "residue_bit_length": 174,
+      "residue_byte_length": 22,
       "fields": {
         "IPv6.hop_limit": 8,
         "IPv6.src_iid": 64,
@@ -166,16 +314,16 @@
         "CoAP.code": 8,
         "CoAP.mid": 16
       },
-      "provenance": "Sum: 8+64+64+4+4+2+4+8+16 = 174 bits = 22 bytes; plus rule ID = 23 bytes minimum. Vector says 25 due to IPv6 address encoding (26B incl rule ID)."
+      "provenance": "Sum: 8+64+64+4+4+2+4+8+16 = 174 bits, octet-padded to 22 bytes; plus the one-byte Rule ID gives 23 bytes before the CoAP tail."
     },
     {
       "name": "rule1_compressed_size_validation",
       "category": "compressed_size",
       "priority": "P1",
-      "description": "Rule 1 (global CoAP): ~42 bytes residue for Yggdrasil addresses.",
+      "description": "Rule 1 (global CoAP): 286-bit residue using canonical 0200::/8 Yggdrasil prefixes.",
       "rule_id": 1,
-      "residue_bit_length": 320,
-      "residue_byte_length": 40,
+      "residue_bit_length": 286,
+      "residue_byte_length": 36,
       "fields": {
         "IPv6.hop_limit": 8,
         "IPv6.src_lsb120": 120,
@@ -187,15 +335,17 @@
         "CoAP.code": 8,
         "CoAP.mid": 16
       },
-      "provenance": "Global addresses use MSB(8)/LSB(120): 8+120+120+4+4+2+4+8+16 = 286 bits = 36 bytes; plus rule ID = 37 bytes. Actual observed ~40-42B."
+      "provenance": "Global addresses use MSB(8)/LSB(120): 8+120+120+4+4+2+4+8+16 = 286 bits, octet-padded to 36 bytes; plus the one-byte Rule ID gives 37 bytes before the CoAP tail."
     },
     {
       "name": "rule2_compressed_size_validation",
       "category": "compressed_size",
       "priority": "P1",
-      "description": "Rule 2 (ICMPv6 Echo): 3 bytes compressed per appendix-schc.md.",
+      "description": "Rule 2 (ICMPv6 Echo): exact 23-byte fixed compressed header.",
       "rule_id": 2,
-      "expected_compressed_size_approx": 21,
+      "residue_bit_length": 176,
+      "residue_byte_length": 22,
+      "compressed_size": 23,
       "fields": {
         "IPv6.hop_limit": 8,
         "IPv6.src_iid": 64,
@@ -204,27 +354,49 @@
         "ICMPv6.identifier": 16,
         "ICMPv6.sequence": 16
       },
-      "provenance": "Rule 2: 8+64+64+8+16+16 = 176 bits = 22 bytes; appendix says ~21B compressed (incl rule ID)."
+      "provenance": "Rule 2: 8+64+64+8+16+16 = 176 residue bits = 22 bytes; the Rule ID makes the fixed compressed header exactly 23 bytes."
     },
     {
       "name": "rule3_compressed_size_validation",
       "category": "compressed_size",
       "priority": "P1",
-      "description": "Rule 3 (RPL DIO): 8 bytes compressed per appendix-schc.md.",
+      "description": "Rule 3 (RPL DIO): exact 40-byte fixed compressed header.",
       "rule_id": 3,
-      "expected_compressed_size_approx": 37,
-      "fields_note": "IPv6+ICMPv6+DIO base (instance, version, rank, gmop, dtsn, dodagid)",
-      "provenance": "DIO: hop_limit(8)+IIDs(128)+instance(8)+version(8)+rank(16)+gmop(8)+dtsn(8)+dodagid(128) = 312 bits."
+      "residue_bit_length": 312,
+      "residue_byte_length": 39,
+      "compressed_size": 40,
+      "fields": {
+        "IPv6.hop_limit": 8,
+        "IPv6.src_iid": 64,
+        "IPv6.dst_iid": 64,
+        "RPL.instance": 8,
+        "RPL.version": 8,
+        "RPL.rank": 16,
+        "RPL.gmop": 8,
+        "RPL.dtsn": 8,
+        "RPL.dodag_id": 128
+      },
+      "provenance": "Rule 3 residue is 8+64+64+8+8+16+8+8+128 = 312 bits = 39 bytes; the Rule ID makes the fixed compressed header exactly 40 bytes."
     },
     {
       "name": "rule4_compressed_size_validation",
       "category": "compressed_size",
       "priority": "P1",
-      "description": "Rule 4 (RPL DAO): 6 bytes compressed per appendix-schc.md.",
+      "description": "Rule 4 (RPL DAO with DODAGID): exact 37-byte fixed compressed header.",
       "rule_id": 4,
-      "expected_compressed_size_approx": 35,
-      "fields_note": "IPv6+ICMPv6+DAO base with DODAGID (instance, kd_flags, seq, dodagid)",
-      "provenance": "DAO: hop_limit(8)+IIDs(128)+instance(8)+kd_flags(8)+seq(8)+dodagid(128) = 288 bits."
+      "residue_bit_length": 288,
+      "residue_byte_length": 36,
+      "compressed_size": 37,
+      "fields": {
+        "IPv6.hop_limit": 8,
+        "IPv6.src_iid": 64,
+        "IPv6.dst_iid": 64,
+        "RPL.instance": 8,
+        "RPL.kd_flags": 8,
+        "RPL.dao_sequence": 8,
+        "RPL.dodag_id": 128
+      },
+      "provenance": "Rule 4 residue is 8+64+64+8+8+8+128 = 288 bits = 36 bytes; the Rule ID makes the fixed compressed header exactly 37 bytes."
     },
     {
       "name": "frag_rule79_b_to_a_ack_success_w0",
@@ -287,6 +459,99 @@
       "provenance": "Rule 0x79 Receiver-Abort per spec/03-adaptation.md:158."
     },
     {
+      "name": "frag_endpoint_a_outbound_data",
+      "category": "fragmentation_endpoint_direction",
+      "priority": "P0",
+      "description": "The lexicographically smaller full signer public key is endpoint A and emits outbound data under Rule 0x78.",
+      "local_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+      "peer_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "local_endpoint": "A",
+      "message_origin": "local",
+      "message_type": "data",
+      "rule_id": 120,
+      "expect_accept": true,
+      "expect_state_mutation": true,
+      "provenance": "Endpoint labels compare all 32 public-key octets; A-to-B data uses Rule 0x78."
+    },
+    {
+      "name": "frag_endpoint_b_outbound_data",
+      "category": "fragmentation_endpoint_direction",
+      "priority": "P0",
+      "description": "The lexicographically larger full signer public key is endpoint B and emits outbound data under Rule 0x79.",
+      "local_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "peer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+      "local_endpoint": "B",
+      "message_origin": "local",
+      "message_type": "data",
+      "rule_id": 121,
+      "expect_accept": true,
+      "expect_state_mutation": true,
+      "provenance": "Endpoint labels compare all 32 public-key octets; B-to-A data uses Rule 0x79."
+    },
+    {
+      "name": "frag_endpoint_b_reverse_ack_retains_data_rule",
+      "category": "fragmentation_endpoint_direction",
+      "priority": "P0",
+      "description": "Endpoint B replies to accepted A-to-B data with an ACK that retains the data session's Rule 0x78.",
+      "local_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "peer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+      "local_endpoint": "B",
+      "message_origin": "local",
+      "message_type": "ack",
+      "data_sender_endpoint": "A",
+      "rule_id": 120,
+      "expect_accept": true,
+      "expect_state_mutation": true,
+      "provenance": "ACK direction is reverse traffic, but its Rule ID identifies the data session and therefore remains 0x78."
+    },
+    {
+      "name": "frag_endpoint_b_reverse_receiver_abort_retains_data_rule",
+      "category": "fragmentation_endpoint_direction",
+      "priority": "P0",
+      "description": "Endpoint B replies to A-to-B data with Receiver-Abort under the same data Rule 0x78.",
+      "local_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "peer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+      "local_endpoint": "B",
+      "message_origin": "local",
+      "message_type": "receiver_abort",
+      "data_sender_endpoint": "A",
+      "rule_id": 120,
+      "expect_accept": true,
+      "expect_state_mutation": true,
+      "provenance": "Receiver-Abort retains the Rule ID of the data session it terminates."
+    },
+    {
+      "name": "frag_endpoint_equal_full_keys_rejected",
+      "category": "fragmentation_endpoint_direction",
+      "priority": "P0",
+      "description": "Equal full public keys cannot be assigned distinct A/B endpoints and are rejected before session creation.",
+      "local_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+      "peer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+      "message_origin": "local",
+      "message_type": "data",
+      "rule_id": 120,
+      "expect_accept": false,
+      "expect_error": "equal_endpoint_keys",
+      "expect_state_mutation": false,
+      "provenance": "A/B is a strict full-key ordering; equality has no direction and MUST fail closed."
+    },
+    {
+      "name": "frag_endpoint_wrong_direction_rejected_before_mutation",
+      "category": "fragmentation_endpoint_direction",
+      "priority": "P0",
+      "description": "Inbound data from endpoint A under B-to-A Rule 0x79 is rejected before allocating or mutating reassembly state.",
+      "local_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "peer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+      "local_endpoint": "B",
+      "message_origin": "peer",
+      "message_type": "data",
+      "rule_id": 121,
+      "expect_accept": false,
+      "expect_error": "wrong_direction_rule",
+      "expect_state_mutation": false,
+      "provenance": "Peer A may originate only Rule 0x78 data; direction validation precedes reassembly mutation."
+    },
+    {
       "name": "octet_alignment_padding_3bit",
       "category": "padding",
       "priority": "P1",
@@ -320,15 +585,18 @@
       "provenance": "Per spec/03-adaptation.md:146-148, already-aligned residue needs no padding."
     },
     {
-      "name": "frag_single_active_packet_reset",
+      "name": "frag_duplicate_tile_idempotent_discard",
       "category": "single_active",
       "priority": "P1",
-      "description": "With T=0, new fragment with different tile ordinal on same rule resets reassembly.",
+      "description": "With T=0, an authenticated duplicate of the same tile is discarded idempotently without resetting or mutating reassembly.",
       "rule_id": 120,
       "t_value": 0,
       "scenario": "receive_tile_0_then_tile_0_again",
-      "expect_reassembly_reset": true,
-      "provenance": "Per spec/03-adaptation.md:174, T=0 means only one fragmented packet per signed link and rule ID."
+      "expect_duplicate_discarded": true,
+      "expect_reassembly_reset": false,
+      "expect_tile_state_mutation": false,
+      "expect_high_water_counter_advanced": true,
+      "provenance": "A byte-identical authenticated duplicate is not a distinct packet; it cannot erase accepted tiles, while its fresh link counter still advances the session high-water mark."
     },
     {
       "name": "schc_rule_version_option_v2",
@@ -393,10 +661,13 @@
       "rule_id": 120,
       "window": 0,
       "c_bit": 0,
-      "bitmap_description": "FCN 62 received (1), FCN 61 missing (0), FCN 63 (All-1) received",
+      "bitmap_description": "FCN 62 received, FCN 61 missing, unassigned FCN 60..1 zero, final All-1 received in the rightmost position",
       "assigned_fcns": [62, 61, 63],
-      "wire": "782800000000000000",
-      "provenance": "Bitmap: MSB-first, 1=received, 0=missing. First byte 0x28 = 0b00101000."
+      "received_bitmap_bits": "10",
+      "unassigned_zero_bits": 60,
+      "final_all_1_received": true,
+      "wire": "782000000000000000",
+      "provenance": "The full 63-bit final-window bitmap is 10 + sixty zeroes + 1. Removing the one trailing 1 leaves 62 bitmap bits; W=0 and C=0 make the post-Rule-ID field exactly 64 bits (0x20 followed by seven zero octets)."
     },
     {
       "name": "frag_ack_bitmap_multiple_missing",
@@ -407,8 +678,10 @@
       "window": 0,
       "c_bit": 0,
       "bitmap_description": "FCN 62,61 received; 60 missing; 59 received; 58 missing; rest received up to All-1",
-      "wire": "7830a80000000000",
-      "provenance": "Demonstrates multiple missing tiles across window."
+      "received_bitmap_prefix_bits": "11010",
+      "trailing_received_bits": 58,
+      "wire": "7835",
+      "provenance": "The full bitmap is 11010 followed by 58 ones. Compression removes all 58 trailing ones, then restores one removed 1 so W=0, C=0, and bitmap prefix 11010 end on an octet: 0x35."
     }
   ]
 }

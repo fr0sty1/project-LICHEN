@@ -45,6 +45,11 @@ add_executable(fuzz_frame
 )
 
 target_include_directories(fuzz_frame PRIVATE ${LINK_INCLUDE_DIR})
+target_compile_definitions(fuzz_frame PRIVATE
+  CONFIG_LICHEN_LINK_MAX_NEIGHBORS=16
+  LICHEN_MAX_FRAME_LEN=255
+  LICHEN_MAX_FRAME_BODY_LEN=254
+)
 target_compile_options(fuzz_frame PRIVATE ${FUZZ_FLAGS} ${FUZZ_WARN_FLAGS})
 target_link_options(fuzz_frame PRIVATE ${FUZZ_FLAGS})
 if(FUZZ_STANDALONE_DEF)

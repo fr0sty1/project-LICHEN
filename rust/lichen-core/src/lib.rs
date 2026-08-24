@@ -46,6 +46,7 @@ impl Default for GnssHopConfig {
     }
 }
 
+pub mod access_level;
 pub mod addr;
 pub mod announce;
 pub mod checksum;
@@ -59,10 +60,13 @@ pub mod l2_payload;
 pub mod loadng;
 pub mod neighbor_monitor;
 pub mod rf_health;
+pub mod sf_assignment;
 pub mod tdma_beacon;
 pub mod transport;
 pub mod tx_queue;
 pub mod udp;
+
+pub use access_level::AccessLevel;
 
 #[cfg(feature = "std")]
 extern crate std;

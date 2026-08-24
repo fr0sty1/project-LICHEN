@@ -23,8 +23,12 @@ class NodeInfo(Protocol):
 
     def get_status(self) -> dict[str, Any]: ...
     def get_neighbors(self) -> list[dict[str, Any]]: ...
+    def get_routes(self) -> dict[str, Any]: ...
     def get_config(self) -> dict[str, Any]: ...
     def set_config(self, updates: dict[str, Any]) -> None: ...
+    def get_radio_config(self) -> dict[str, Any]: ...
+    def set_radio_config(self, updates: dict[str, Any]) -> None: ...
+    def get_identity(self) -> dict[str, Any]: ...
 
 
 @dataclass
@@ -33,13 +37,22 @@ class StaticNodeInfo:
 
     status: dict[str, Any] = field(default_factory=dict)
     neighbors: list[dict[str, Any]] = field(default_factory=list)
+    routes: dict[str, Any] = field(default_factory=lambda: {"routes": [], "default_route": None})
     config: dict[str, Any] = field(default_factory=dict)
+    radio_config: dict[str, Any] = field(default_factory=dict)
+    identity: dict[str, Any] = field(default_factory=dict)
 
     def get_status(self) -> dict[str, Any]:
         return dict(self.status)
 
     def get_neighbors(self) -> list[dict[str, Any]]:
         return [dict(n) for n in self.neighbors]
+
+    def get_routes(self) -> dict[str, Any]:
+        return {
+            "routes": [dict(r) for r in self.routes.get("routes", [])],
+            "default_route": self.routes.get("default_route"),
+        }
 
     def get_config(self) -> dict[str, Any]:
         return dict(self.config)
@@ -51,6 +64,20 @@ class StaticNodeInfo:
         candidate = dict(self.config)
         candidate.update(updates)
         self.config = candidate
+
+    def get_radio_config(self) -> dict[str, Any]:
+        return dict(self.radio_config)
+
+    def set_radio_config(self, updates: dict[str, Any]) -> None:
+        unknown = set(updates) - set(self.radio_config)
+        if unknown:
+            raise ValueError(f"unknown radio config keys: {sorted(unknown)}")
+        candidate = dict(self.radio_config)
+        candidate.update(updates)
+        self.radio_config = candidate
+
+    def get_identity(self) -> dict[str, Any]:
+        return dict(self.identity)
 
 
 def _cbor_response(value: Any) -> Message:

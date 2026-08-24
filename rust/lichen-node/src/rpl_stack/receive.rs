@@ -10,14 +10,11 @@ use lichen_core::announce::Announce;
 use lichen_core::constants::L2_DISPATCH_ROUTING;
 use lichen_core::icmpv6::hdr_field;
 use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
-use lichen_core::l2_payload::{
-    body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
-};
+use lichen_core::l2_payload::{classify as classify_l2_payload, L2PayloadKind};
 use lichen_hal::{NonVolatile, Radio};
 use lichen_ipv6::Ipv6Header;
 use lichen_link::identity::iid_from_pubkey;
 use lichen_link::link_layer::{AuthenticatedFrame, LinkRxError};
-use lichen_schc::codec;
 
 use crate::announce::AnnounceRejectReason;
 use crate::node::{
@@ -33,9 +30,112 @@ use super::util::{
     eui64_link_local, ipv6_eui64, link_local_from_iid, multicast_dis_jitter, routing_announce,
     rpl_ipv6_multicast_is_allowed, wire_is_for_local,
 };
-use super::{RplReceiveOutcome, RplRole, RplStack};
+use super::{RplBorderIngressOutcome, RplReceiveOutcome, RplRole, RplStack};
 
 impl<R: Radio, S: NonVolatile> RplStack<R, S> {
+    /// Authenticate and admit one complete link-layer wire frame received by
+    /// an external border-router transport.
+    ///
+    /// Unlike the normal node receive loop, non-RPL IPv6 is returned to the
+    /// border router instead of being locally delivered or mesh-forwarded.
+    /// Routing announcements and RPL control remain owned by this stack so no
+    /// caller can substitute an IPv6 source IID for the authenticated sender.
+    pub async fn ingest_border_frame(
+        &mut self,
+        wire: &[u8],
+        rssi: Option<i16>,
+        snr: Option<i8>,
+        now_ms: u64,
+    ) -> Result<Option<RplBorderIngressOutcome>, RplReceiveError> {
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
+        let now_ms = self.routing_now_ms;
+        if !wire_is_for_local(wire, self.stack.node_id().0)
+            .map_err(|error| RplReceiveError::Receive(RxError::Link(error)))?
+        {
+            return Ok(None);
+        }
+
+        let (frame, bootstrapped) = match self.stack.link().receive_frame_at(wire, now_ms) {
+            Ok(frame) => (frame, false),
+            Err(LinkRxError::UnknownSender) => {
+                // The sole unknown-key bootstrap is a self-authenticating
+                // Announce.  Arbitrary SCHC/RPL frames never install a key.
+                let peer = bootstrap_announce_peer(wire).ok_or(RplReceiveError::Receive(
+                    RxError::Link(LinkRxError::UnknownSender),
+                ))?;
+                if !matches!(
+                    self.stack.link().peer_auth_state(&peer.iid),
+                    lichen_link::link_layer::PeerAuthState::Unknown
+                ) {
+                    return Err(RplReceiveError::Receive(RxError::Link(
+                        LinkRxError::KeyChange,
+                    )));
+                }
+                self.stack.add_peer(peer.clone());
+                match self.stack.link().receive_frame_at(wire, now_ms) {
+                    Ok(frame) => (frame, true),
+                    Err(error) => {
+                        self.stack.forget_peer(&peer.iid);
+                        return Err(RplReceiveError::Receive(RxError::Link(error)));
+                    }
+                }
+            }
+            Err(error) => return Err(RplReceiveError::Receive(RxError::Link(error))),
+        };
+        self.direct_neighbors.insert(frame.sender().iid);
+
+        match classify_l2_payload(frame.payload()) {
+            L2PayloadKind::Routing => self
+                .process_announce(frame, bootstrapped, now_ms)
+                .await
+                .map(|outcome| Some(RplBorderIngressOutcome::Control(outcome))),
+            L2PayloadKind::Schc => {
+                let mut ipv6 = vec![0u8; 256];
+                let len = self
+                    .stack
+                    .decompress_authenticated_frame(&frame, &mut ipv6)
+                    .map_err(|_| RplReceiveError::Receive(RxError::SchcDecompress))?;
+                ipv6.truncate(len);
+                let claims_rpl = claims_rpl_ipv6(&ipv6);
+                if !valid_ipv6_envelope(&ipv6) {
+                    return if claims_rpl {
+                        Ok(Some(RplBorderIngressOutcome::Control(
+                            RplReceiveOutcome::RplRejected,
+                        )))
+                    } else {
+                        Err(RplReceiveError::Receive(RxError::SchcDecompress))
+                    };
+                }
+                if claims_rpl && !is_rpl_ipv6(&ipv6) {
+                    return Ok(Some(RplBorderIngressOutcome::Control(
+                        RplReceiveOutcome::RplRejected,
+                    )));
+                }
+                let received = ReceivedIpv6 {
+                    ipv6,
+                    sender_iid: frame.sender().iid,
+                    rssi,
+                    snr,
+                };
+                if !is_rpl_ipv6(&received.ipv6) {
+                    return Ok(Some(RplBorderIngressOutcome::Ipv6(received)));
+                }
+                if !rpl_ipv6_multicast_is_allowed(&received.ipv6)
+                    || !valid_rpl_ipv6(&received.ipv6)
+                    || !dio_dis_destination_is_allowed(&received.ipv6, self.local_rpl_addr)
+                {
+                    return Ok(Some(RplBorderIngressOutcome::Control(
+                        RplReceiveOutcome::RplRejected,
+                    )));
+                }
+                self.process_rpl(frame, received, now_ms)
+                    .await
+                    .map(|outcome| Some(RplBorderIngressOutcome::Control(outcome)))
+            }
+            L2PayloadKind::Unknown => Err(RplReceiveError::Receive(RxError::SchcDecompress)),
+        }
+    }
+
     /// Receive using a caller-provided packet-processing timestamp.
     ///
     /// The timestamp must be sampled after the radio wait. Production loops
@@ -76,7 +176,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         {
             return Ok(None);
         }
-        let (frame, bootstrapped) = match self.stack.link().receive_frame(wire) {
+        let (frame, bootstrapped) = match self.stack.link().receive_frame_at(wire, now_ms) {
             Ok(frame) => (frame, false),
             Err(LinkRxError::UnknownSender) => {
                 let peer = bootstrap_announce_peer(wire).ok_or(RplReceiveError::Receive(
@@ -91,26 +191,28 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     )));
                 }
                 self.stack.add_peer(peer.clone());
-                match self.stack.link().receive_frame(wire) {
+                match self.stack.link().receive_frame_at(wire, now_ms) {
                     Ok(frame) => (frame, true),
                     Err(error) => {
-                        self.stack.link().forget_peer(&peer.iid);
+                        self.stack.forget_peer(&peer.iid);
                         return Err(RplReceiveError::Receive(RxError::Link(error)));
                     }
                 }
             }
             Err(error) => return Err(RplReceiveError::Receive(RxError::Link(error))),
         };
-        self.direct_neighbors.insert(frame.sender.iid);
+        self.direct_neighbors.insert(frame.sender().iid);
 
-        match classify_l2_payload(&frame.payload) {
+        match classify_l2_payload(frame.payload()) {
             L2PayloadKind::Routing => self
                 .process_announce(frame, bootstrapped, now_ms)
                 .await
                 .map(Some),
             L2PayloadKind::Schc => {
                 let mut ipv6 = vec![0u8; 256];
-                let len = codec::decompress(l2_payload_body(&frame.payload), &mut ipv6)
+                let len = self
+                    .stack
+                    .decompress_authenticated_frame(&frame, &mut ipv6)
                     .map_err(|_| RplReceiveError::Receive(RxError::SchcDecompress))?;
                 ipv6.truncate(len);
                 let claims_rpl = claims_rpl_ipv6(&ipv6);
@@ -126,7 +228,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 }
                 let received = ReceivedIpv6 {
                     ipv6,
-                    sender_iid: frame.sender.iid,
+                    sender_iid: frame.sender().iid,
                     rssi: packet.rssi,
                     snr: packet.snr,
                 };
@@ -135,7 +237,9 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                         .map_err(|_| RplReceiveError::Receive(RxError::SchcDecompress))?;
                     secure_datagram_from_received(&received).map_err(RplReceiveError::Receive)?;
                     if header.next_header == 43 {
-                        return self.process_source_route(received, frame.sender.iid).await;
+                        return self
+                            .process_source_route(received, frame.sender().iid)
+                            .await;
                     }
                     let local_link_addr = self.stack.local_addr().0;
                     if header.dst.0 != self.local_rpl_addr
@@ -148,12 +252,12 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                         let from_parent = self
                             .rpl
                             .preferred_parent()
-                            .is_some_and(|parent| parent[8..] == frame.sender.iid);
+                            .is_some_and(|parent| parent[8..] == frame.sender().iid);
                         let next_hop = self
                             .route_for(header.dst.0, now_ms, from_parent)
                             .map(|route| route.next_hop)
                             .ok_or(RplReceiveError::Transmit(crate::stack::TxError::NoRoute))?;
-                        if next_hop == ipv6_eui64(link_local_from_iid(frame.sender.iid)) {
+                        if next_hop == ipv6_eui64(link_local_from_iid(frame.sender().iid)) {
                             return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
                         }
                         let mut forwarded = received.ipv6;
@@ -181,9 +285,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 if !dio_dis_destination_is_allowed(&received.ipv6, self.local_rpl_addr) {
                     return Ok(Some(RplReceiveOutcome::RplRejected));
                 }
-                self.process_rpl(frame.payload, received, now_ms)
-                    .await
-                    .map(Some)
+                self.process_rpl(frame, received, now_ms).await.map(Some)
             }
             L2PayloadKind::Unknown => Err(RplReceiveError::Receive(RxError::SchcDecompress)),
         }
@@ -239,11 +341,11 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         bootstrapped: bool,
         now_ms: u64,
     ) -> Result<RplReceiveOutcome, RplReceiveError> {
-        let announce_wire = match routing_announce(&frame.payload) {
+        let announce_wire = match routing_announce(frame.payload()) {
             Ok(body) => body.to_vec(),
             Err(_) => {
                 if bootstrapped {
-                    self.stack.link().forget_peer(&frame.sender.iid);
+                    self.stack.forget_peer(&frame.sender().iid);
                 }
                 return Ok(RplReceiveOutcome::AnnouncementRejected(
                     AnnounceRejectReason::Malformed,
@@ -254,20 +356,20 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             Ok(announce) => {
                 if *announce.originator_iid == iid_from_pubkey(&self.stack.local_public_key()) {
                     if bootstrapped {
-                        self.stack.link().forget_peer(&frame.sender.iid);
+                        self.stack.forget_peer(&frame.sender().iid);
                     }
                     return Ok(RplReceiveOutcome::AnnouncementRejected(
                         AnnounceRejectReason::StaleSeqNum,
                     ));
                 }
-                let from_neighbor = link_local_from_iid(frame.sender.iid);
+                let from_neighbor = link_local_from_iid(frame.sender().iid);
                 let mut staged = self.announces.clone();
                 let result = staged.process(&announce, from_neighbor, now_ms as u32);
                 (staged, result)
             }
             Err(_) => {
                 if bootstrapped {
-                    self.stack.link().forget_peer(&frame.sender.iid);
+                    self.stack.forget_peer(&frame.sender().iid);
                 }
                 return Ok(RplReceiveOutcome::AnnouncementRejected(
                     AnnounceRejectReason::Malformed,
@@ -284,7 +386,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                 payload.extend_from_slice(&relay);
                 if let Err(error) = self.stack.send_l2_payload_to(&payload, &[]).await {
                     if bootstrapped {
-                        self.stack.link().forget_peer(&frame.sender.iid);
+                        self.stack.forget_peer(&frame.sender().iid);
                     }
                     return Err(RplReceiveError::Transmit(error));
                 }
@@ -300,10 +402,10 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     .position(|tracked| *tracked == evicted)
                 {
                     self.bootstrap_peers.remove(position);
-                    self.stack.link().forget_peer(&evicted);
+                    self.stack.forget_peer(&evicted);
                 }
             }
-            if peer.iid == frame.sender.iid {
+            if peer.iid == frame.sender().iid {
                 let announce_peer_is_new = matches!(
                     self.stack.link().peer_auth_state(&peer.iid),
                     lichen_link::link_layer::PeerAuthState::Unknown
@@ -322,7 +424,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             })
         } else {
             if bootstrapped {
-                self.stack.link().forget_peer(&frame.sender.iid);
+                self.stack.forget_peer(&frame.sender().iid);
             }
             Ok(RplReceiveOutcome::AnnouncementRejected(
                 result
@@ -334,14 +436,48 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     pub(crate) async fn process_rpl(
         &mut self,
-        l2_payload: Vec<u8>,
+        frame: AuthenticatedFrame,
         received: ReceivedIpv6,
         now_ms: u64,
     ) -> Result<RplReceiveOutcome, RplReceiveError> {
+        if received.ipv6.get(IPV6_HEADER_LEN + 1).copied() == Some(rpl_code::DIO) {
+            let body_offset = IPV6_HEADER_LEN + hdr_field::BODY_OFFSET;
+            let Ok(_dio) = lichen_rpl::message::Dio::from_bytes(
+                received.ipv6.get(body_offset..).unwrap_or_default(),
+            ) else {
+                return Ok(RplReceiveOutcome::RplRejected);
+            };
+            let rssi = received
+                .rssi
+                .and_then(|value| i8::try_from(value).ok())
+                .unwrap_or(i8::MIN);
+            let outcome = self.rpl.router.process_authenticated_dio(
+                self.stack.link_ref(),
+                frame,
+                1.0,
+                rssi,
+                now_ms,
+            );
+            return Ok(match outcome {
+                crate::routing::DioProcessOutcome::Rejected => RplReceiveOutcome::RplRejected,
+                crate::routing::DioProcessOutcome::Consistent => {
+                    self.rpl.router.trickle_consistent();
+                    RplReceiveOutcome::Rpl(RplEvent::DioReceived {
+                        inconsistent: false,
+                    })
+                }
+                crate::routing::DioProcessOutcome::Inconsistent => {
+                    RplReceiveOutcome::Rpl(RplEvent::DioReceived { inconsistent: true })
+                }
+            });
+        }
         let mut output = [0u8; 260];
-        let (output_len, event) =
-            self.rpl
-                .handle_frame_rpl(&l2_payload, received.sender_iid, &mut output, now_ms);
+        let (output_len, event) = self.rpl.handle_frame_rpl_internal(
+            frame.payload(),
+            received.sender_iid,
+            &mut output,
+            now_ms,
+        );
         match event {
             RplEvent::DaoReceived => {
                 let Some((source, dao)) = dao_parts(&received.ipv6) else {
@@ -412,60 +548,5 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             RplEvent::None => Ok(RplReceiveOutcome::RplRejected),
             event => Ok(RplReceiveOutcome::Rpl(event)),
         }
-    }
-
-    /// Complete full DAO processing (signature verification, admission check,
-    /// route-table update) from a compressed L2 frame payload.
-    ///
-    /// Call after [`RplNode::handle_frame_rpl`] returns `DaoReceived` when the
-    /// stack is acting as a root.
-    pub fn complete_dao_from_frame(
-        &mut self,
-        frame: &[u8],
-        sender_iid: [u8; 8],
-        now_ms: u64,
-    ) -> Option<DaoHandlingOutcome> {
-        if classify_l2_payload(frame) != L2PayloadKind::Schc {
-            return None;
-        }
-        let mut ipv6 = [0u8; 256];
-        let n = match codec::decompress(l2_payload_body(frame), &mut ipv6) {
-            Ok(n) if n >= IPV6_HEADER_LEN + hdr_field::BODY_OFFSET + 4 => n,
-            _ => return None,
-        };
-        if !valid_rpl_ipv6(&ipv6[..n]) || ipv6[IPV6_HEADER_LEN + 1] != rpl_code::DAO {
-            return None;
-        }
-        let source: [u8; 16] = ipv6[field::SRC_OFFSET..field::DST_OFFSET].try_into().ok()?;
-        let dao = &ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..n];
-
-        let origin_iid: [u8; 8] = source[8..].try_into().unwrap();
-        let admitted = self
-            .announces
-            .pinned_pubkey_for(&origin_iid)
-            .is_some_and(|key| {
-                self.dao_admissions
-                    .as_ref()
-                    .is_some_and(|admissions| admissions.contains(key.as_bytes()))
-            });
-        if !admitted {
-            // Origin not admitted - return None to indicate no DAO processing occurred
-            return None;
-        }
-        let RplRole::Root(rx) = &mut self.role else {
-            return None;
-        };
-        let admissions = self.dao_admissions.as_ref()?;
-        let outcome = self.rpl.handle_dao(
-            dao,
-            source,
-            sender_iid,
-            &self.announces,
-            rx,
-            &mut self.storage,
-            now_ms,
-            admissions,
-        );
-        Some(outcome)
     }
 }

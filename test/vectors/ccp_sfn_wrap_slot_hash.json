@@ -1,7 +1,7 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "LICHEN CCP slot assignment with SFN wraparound test vectors (spec section 14.7). Tests slot_for(eui64, sfn, num_slots) = (hash_32(eui64) + (sfn & 0xFFFFFFFF)) % num_slots and sfn_delta(curr, last) = (curr - last) & 0xFFFFFFFF. Critical for ensuring slot rotation continues correctly across SFN u32 wrap boundary. HIGH divergence risk: Rust TdmaScheduler::slot_for currently ignores SFN parameter.",
+  "description": "LICHEN CCP slot assignment with SFN wraparound test vectors (spec section 14.7). Tests slot_for(eui64, sfn, num_slots) = ((hash_32(eui64) + (sfn & 0xFFFFFFFF)) & 0xFFFFFFFF) % num_slots and sfn_delta(curr, last) = (curr - last) & 0xFFFFFFFF. Critical for ensuring slot rotation continues correctly across the SFN u32 wrap boundary in every implementation.",
   "vectors": [
     {
       "name": "hash_32_reference",
@@ -37,7 +37,20 @@
       "sfn_hex": "0xffffffff",
       "num_slots": 16,
       "expected_slot": 12,
-      "formula": "(0x2804678d + 0xFFFFFFFF) % 16 = (671377293 + 4294967295) % 16 = 12"
+      "formula": "((0x2804678d + 0xFFFFFFFF) & 0xFFFFFFFF) % 16 = 0x2804678c % 16 = 12"
+    },
+    {
+      "name": "slot_for_wrapping_sum_before_non_power_of_two_modulus",
+      "description": "The u32 addition must wrap before a non-power-of-two slot modulus; masking only SFN gives the wrong slot.",
+      "eui64_hex": "0102030405060708",
+      "sfn": 4294967295,
+      "sfn_hex": "0xffffffff",
+      "num_slots": 3,
+      "expected_hash_32": "0x2804678d",
+      "expected_wrapped_sum": "0x2804678c",
+      "expected_slot": 2,
+      "unwrapped_wrong_slot": 0,
+      "formula": "((0x2804678d + 0xFFFFFFFF) & 0xFFFFFFFF) % 3 = 0x2804678c % 3 = 2"
     },
     {
       "name": "slot_for_sfn_after_wrap",

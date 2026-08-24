@@ -26,6 +26,7 @@ from lichen.ipv6 import to_ipv6
 
 MAX_ENTRIES = 64
 GRADIENT_TIMEOUT_MS = 600_000  # announce/rrep gradients (spec section 9)
+DATA_GRADIENT_TIMEOUT_MS = 60_000  # passive-learning gradients (spec 11.2)
 
 # Sequence number constants for RFC 1982 comparison
 SEQ_BITS = 16

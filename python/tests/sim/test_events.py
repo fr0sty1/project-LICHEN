@@ -5,6 +5,7 @@
 import pytest
 
 from lichen.sim.events import (
+    DelayedRxReadyEvent,
     Event,
     EventQueue,
     RxTimeoutEvent,
@@ -184,6 +185,31 @@ class TestEventQueueTieBreaking:
         assert queue.pop() == event_earlier
         assert queue.peek() == event_later
 
+    def test_delayed_rx_ready_beats_rx_timeout_at_same_tick(self) -> None:
+        """DelayedRxReadyEvent pops before RxTimeoutEvent at equal time_us."""
+        queue = EventQueue()
+        timeout = RxTimeoutEvent(time_us=100, node_id="rx")
+        ready = DelayedRxReadyEvent(time_us=100, node_id="rx")
+        queue.push(timeout)
+        queue.push(ready)
+        assert queue.pop() == ready
+        assert queue.pop() == timeout
+
+        queue.push(ready)
+        queue.push(timeout)
+        assert queue.pop() == ready
+        assert queue.pop() == timeout
+
+    def test_same_type_same_tick_still_fifo(self) -> None:
+        """Equal-time same-type events remain insertion-order FIFO."""
+        queue = EventQueue()
+        t1 = RxTimeoutEvent(time_us=50, node_id="a")
+        t2 = RxTimeoutEvent(time_us=50, node_id="b")
+        queue.push(t1)
+        queue.push(t2)
+        assert queue.pop() == t1
+        assert queue.pop() == t2
+
 
 class TestEventQueueIteration:
     """Test EventQueue iteration."""
@@ -265,6 +291,22 @@ class TestEventQueueIteration:
 
         assert removed == 0
         assert len(queue) == 1
+
+    def test_remove_events_for_node_of_type_keeps_tx(self) -> None:
+        """RX teardown removes RxTimeoutEvent only, not TxEndEvent."""
+        queue = EventQueue()
+        queue.push(TxEndEvent(time_us=100, node_id="node1", transmission_id="tx1"))
+        queue.push(RxTimeoutEvent(time_us=200, node_id="node1"))
+        queue.push(RxTimeoutEvent(time_us=300, node_id="node2"))
+
+        removed = queue.remove_events_for_node_of_type("node1", RxTimeoutEvent)
+
+        assert removed == 1
+        remaining = [queue.pop() for _ in range(len(queue))]
+        assert isinstance(remaining[0], TxEndEvent)
+        assert remaining[0].node_id == "node1"
+        assert isinstance(remaining[1], RxTimeoutEvent)
+        assert remaining[1].node_id == "node2"
 
 
 # ============================================================================

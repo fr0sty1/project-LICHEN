@@ -138,10 +138,19 @@ struct lora_l2_data {
     uint8_t rx_channel;
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     struct lichen_duty_cycle_ctx duty;
+    uint8_t density;
 #endif
 };
 
 extern struct lora_l2_data lora_data;
+
+/**
+ * @brief Duty region for the configured operating class (CCP-4 duty_region)
+ *
+ * @return 0 for strictly duty-cycle-limited regions (EU, AU/NZ),
+ *         1 for lenient regions (US/CA)
+ */
+uint8_t lora_l2_duty_region(void);
 
 /* --------------------------------------------------------------------------
  * Internal functions

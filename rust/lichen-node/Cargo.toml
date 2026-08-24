@@ -13,6 +13,7 @@ meshtastic = ["dep:lichen-meshtastic", "lichen-meshtastic/alloc"]
 # Logging: defmt takes precedence when both are enabled
 defmt = ["dep:defmt", "lichen-core/defmt", "lichen-hal/defmt", "lichen-link/defmt", "lichen-schc/defmt", "lichen-coap/defmt", "lichen-ipv6/defmt", "lichen-rpl?/defmt", "lichen-oscore?/defmt"]
 log = ["dep:log", "lichen-core/log", "lichen-hal/log", "lichen-link/log", "lichen-schc/log", "lichen-coap/log", "lichen-ipv6/log", "lichen-rpl?/log", "lichen-oscore?/log"]
+raw-rpl-test-api = []
 
 [dependencies]
 lichen-core = { path = "../lichen-core" }
@@ -37,7 +38,7 @@ tokio = { version = "1", features = ["time"], optional = true }
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
 # Integration tests need std features
-lichen-node = { path = ".", features = ["std"] }
+lichen-node = { path = ".", features = ["std", "raw-rpl-test-api"] }
 lichen-hal = { path = "../lichen-hal", features = ["std"] }
 lichen-rpl = { path = "../lichen-rpl", features = ["std"] }
 # Vector-driven test dependencies

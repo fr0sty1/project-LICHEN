@@ -17,20 +17,52 @@
 //! *encodings* — bijective transformations with no information reduction.
 //! The verb choice signals that SCHC requires matching rules on both ends.
 
+use crate::context::RuleVersionFailureTracker;
+use crate::rules::{versions_compatible, RULE_SET_VERSION};
+use core::sync::atomic::{AtomicU32, Ordering};
 use lichen_core::constants::{
     PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_GLOBAL_OSCORE, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP,
     RULE_LINK_LOCAL_OSCORE, RULE_MQTT_SN, RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED,
-    SCHC_MAX_DECOMPRESSED,
+    SCHC_FRAG_MAX_PACKET_SIZE, SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
+use lichen_core::ipv6::IPV6_HEADER_LEN;
 
 /// IPv6 link-local prefix (fe80::/64) as a u128 with the prefix in the high 64 bits.
 /// To reconstruct a full link-local address, OR this with a 64-bit Interface Identifier (IID).
 /// See RFC 4291 Section 2.5.6: Link-Local addresses have the format fe80::<IID>/10.
 const LINK_LOCAL_PREFIX: u128 = 0xFE80_0000_0000_0000_u128 << 64;
 
-/// ULA prefix fd00::/64 for LICHEN global addresses.
-const ULA_PREFIX: u128 = 0xFD00_0000_0000_0000_u128 << 64;
+/// Stable authenticated-DIO rejection categories used by interop vectors and
+/// operator diagnostics.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DioAdmissionError {
+    MissingRuleVersion,
+    MalformedRuleVersionLength0,
+    MalformedRuleVersionLength2,
+    MalformedRuleVersion,
+    DuplicateRuleVersion,
+    DodagScopeMismatch,
+    RoleScopeMismatch,
+    SourceSignerMismatch,
+    RootKeyDodagMismatch,
+}
+
+impl DioAdmissionError {
+    pub const fn token(self) -> &'static str {
+        match self {
+            Self::MissingRuleVersion => "missing_rule_version",
+            Self::MalformedRuleVersionLength0 => "malformed_rule_version_length_0",
+            Self::MalformedRuleVersionLength2 => "malformed_rule_version_length_2",
+            Self::MalformedRuleVersion => "malformed_rule_version",
+            Self::DuplicateRuleVersion => "duplicate_rule_version",
+            Self::DodagScopeMismatch => "dodag_scope_mismatch",
+            Self::RoleScopeMismatch => "role_scope_mismatch",
+            Self::SourceSignerMismatch => "source_signer_mismatch",
+            Self::RootKeyDodagMismatch => "root_key_dodag_mismatch",
+        }
+    }
+}
 
 /// Error returned by compression/decompression.
 #[derive(Debug, PartialEq, Eq)]
@@ -44,6 +76,18 @@ pub enum SchcError {
     UnknownRuleId(u8),
     /// The compressed data is too short.
     TooShort(TooShort),
+    /// The input packet is structurally invalid and must be dropped.
+    InvalidPacket(&'static str),
+    /// The compressed residue has a non-canonical representation.
+    NonCanonicalResidue(&'static str),
+    /// A new authenticated signer cannot be tracked without unsafe eviction.
+    FailureTrackerFull,
+    /// Authenticated peer capability is stale, foreign, or retired.
+    InvalidPeerEvidence,
+    /// A bounded no-std peer-evidence authority has no free entry.
+    PeerAuthorityFull,
+    /// Authenticated DIO failed one stable admission guard.
+    DioAdmission(DioAdmissionError),
 }
 
 impl core::fmt::Display for SchcError {
@@ -53,6 +97,14 @@ impl core::fmt::Display for SchcError {
             Self::BufferTooSmall(e) => write!(f, "SCHC {}", e),
             Self::UnknownRuleId(id) => write!(f, "unknown rule ID: {}", id),
             Self::TooShort(e) => write!(f, "SCHC {}", e),
+            Self::InvalidPacket(reason) => write!(f, "invalid packet: {}", reason),
+            Self::NonCanonicalResidue(reason) => {
+                write!(f, "non-canonical SCHC residue: {}", reason)
+            }
+            Self::FailureTrackerFull => write!(f, "SCHC failure tracker source capacity is full"),
+            Self::InvalidPeerEvidence => write!(f, "stale or foreign authenticated peer evidence"),
+            Self::PeerAuthorityFull => write!(f, "authenticated peer authority capacity is full"),
+            Self::DioAdmission(error) => write!(f, "authenticated DIO rejected: {}", error.token()),
         }
     }
 }
@@ -88,9 +140,7 @@ struct BitWriter<'a> {
 
 impl<'a> BitWriter<'a> {
     fn new(buf: &'a mut [u8]) -> Self {
-        for b in buf.iter_mut() {
-            *b = 0;
-        }
+        buf.fill(0);
         Self { buf, nbits: 0 }
     }
 
@@ -151,17 +201,152 @@ impl<'a> BitReader<'a> {
     fn residue_byte_end(&self) -> usize {
         self.pos.div_ceil(8)
     }
+
+    fn padding_is_zero(&self) -> bool {
+        let used_in_last_byte = self.pos % 8;
+        if used_in_last_byte == 0 {
+            return true;
+        }
+        let padding_bits = 8 - used_in_last_byte;
+        self.buf[self.pos / 8] & ((1u8 << padding_bits) - 1) == 0
+    }
 }
 
 // ─── address helpers ─────────────────────────────────────────────────────────
 
+#[cfg(test)]
 fn is_link_local(addr: &[u8]) -> bool {
     addr.len() == 16 && addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80
 }
 
-/// Check if address is ULA fd00::/64 (upper 64 bits match fd00::).
-fn is_ula_64(addr: &[u8]) -> bool {
-    addr.len() == 16 && addr[0] == 0xFD && addr[1..8] == [0, 0, 0, 0, 0, 0, 0]
+/// Rule-profile canonical link-local prefix: exactly fe80::/64, not fe80::/10.
+fn is_link_local_64(addr: &[u8]) -> bool {
+    addr.len() == 16 && addr[..8] == [0xFE, 0x80, 0, 0, 0, 0, 0, 0]
+}
+
+fn is_unspecified_address(address: &[u8]) -> bool {
+    address.len() == 16 && address.iter().all(|&byte| byte == 0)
+}
+
+fn is_loopback_address(address: &[u8]) -> bool {
+    address.len() == 16 && address[..15].iter().all(|&byte| byte == 0) && address[15] == 1
+}
+
+fn is_ipv4_mapped_address(address: &[u8]) -> bool {
+    address.len() == 16
+        && address[..10].iter().all(|&byte| byte == 0)
+        && address[10..12] == [0xff, 0xff]
+}
+
+fn validate_address_policy(src: &[u8], dst: &[u8]) -> Result<(), SchcError> {
+    if src.len() != 16
+        || is_unspecified_address(src)
+        || is_loopback_address(src)
+        || src.first() == Some(&0xff)
+        || is_ipv4_mapped_address(src)
+    {
+        return Err(SchcError::InvalidPacket("invalid IPv6 source address"));
+    }
+    if dst.len() != 16
+        || is_unspecified_address(dst)
+        || is_loopback_address(dst)
+        || is_ipv4_mapped_address(dst)
+    {
+        return Err(SchcError::InvalidPacket("invalid IPv6 destination address"));
+    }
+    if dst.first() == Some(&0xff) && !(2..=14).contains(&(dst[1] & 0x0f)) {
+        return Err(SchcError::InvalidPacket(
+            "invalid IPv6 destination multicast scope",
+        ));
+    }
+    Ok(())
+}
+
+/// Validate the complete IPv6 packet accepted by the LICHEN SCHC profile.
+pub fn validate_full_ipv6(packet: &[u8]) -> Result<(), SchcError> {
+    if packet.len() < 40 {
+        return Err(SchcError::InvalidPacket("truncated IPv6 header"));
+    }
+    if packet[0] >> 4 != 6 {
+        return Err(SchcError::InvalidPacket("IPv6 version is not 6"));
+    }
+    let payload_len = u16::from_be_bytes([packet[4], packet[5]]) as usize;
+    if packet.len() != 40usize.saturating_add(payload_len) {
+        return Err(SchcError::InvalidPacket("IPv6 payload length mismatch"));
+    }
+    let src = &packet[8..24];
+    let dst = &packet[24..40];
+    validate_address_policy(src, dst)?;
+
+    let mut next_header = packet[6];
+    let mut offset = 40usize;
+    let mut upper_layer_destination = dst;
+    loop {
+        match next_header {
+            0 | 43 | 60 => {
+                if offset.saturating_add(2) > packet.len() {
+                    return Err(SchcError::InvalidPacket("truncated IPv6 extension header"));
+                }
+                let ext_len = (packet[offset + 1] as usize + 1).saturating_mul(8);
+                let end = offset.saturating_add(ext_len);
+                if end > packet.len() {
+                    return Err(SchcError::InvalidPacket(
+                        "IPv6 extension header exceeds packet",
+                    ));
+                }
+                if next_header == 43 {
+                    if ext_len < 24
+                        || packet[offset + 2] != 3
+                        || packet[offset + 4] != 0
+                        || packet[offset + 5] != 0
+                    {
+                        return Err(SchcError::InvalidPacket(
+                            "unsupported RPL source-routing header",
+                        ));
+                    }
+                    let address_count = (ext_len - 8) / 16;
+                    let segments_left = usize::from(packet[offset + 3]);
+                    if segments_left > address_count {
+                        return Err(SchcError::InvalidPacket(
+                            "invalid RPL source-routing segments-left",
+                        ));
+                    }
+                    if segments_left != 0 {
+                        upper_layer_destination = &packet[end - 16..end];
+                    }
+                }
+                next_header = packet[offset];
+                offset = end;
+            }
+            44 => {
+                return Err(SchcError::InvalidPacket(
+                    "IPv6 Fragment header is unsupported",
+                ))
+            }
+            _ => break,
+        }
+    }
+
+    if next_header == 17 {
+        let udp = &packet[offset..];
+        if udp.len() < 8 {
+            return Err(SchcError::InvalidPacket("truncated IPv6/UDP datagram"));
+        }
+        let udp_len = u16::from_be_bytes([udp[4], udp[5]]) as usize;
+        if udp_len < 8 || udp_len != udp.len() {
+            return Err(SchcError::InvalidPacket("UDP length mismatch"));
+        }
+        let checksum = u16::from_be_bytes([udp[6], udp[7]]);
+        if checksum == 0 {
+            return Err(SchcError::InvalidPacket("IPv6 UDP checksum is zero"));
+        }
+        let src_port = u16::from_be_bytes([udp[0], udp[1]]);
+        let dst_port = u16::from_be_bytes([udp[2], udp[3]]);
+        if checksum != udp_checksum(src, upper_layer_destination, src_port, dst_port, &udp[8..])? {
+            return Err(SchcError::InvalidPacket("IPv6 UDP checksum is invalid"));
+        }
+    }
+    Ok(())
 }
 
 /// Check if CoAP payload contains OSCORE option (option number 9).
@@ -273,7 +458,7 @@ fn pseudo_sum(src: &[u8], dst: &[u8], next_header: u8, length: u16) -> u32 {
     oc_add(sum, next_header as u32)
 }
 
-fn finalize(sum: u32) -> u16 {
+fn ones_complement_sum(sum: u32) -> u16 {
     let mut s = sum;
     while s >> 16 != 0 {
         s = (s & 0xFFFF) + (s >> 16);
@@ -303,14 +488,14 @@ fn udp_checksum(
     sum = oc_add(sum, dst_port as u32);
     sum = oc_add(sum, udp_len as u32);
     sum = oc_add(sum, checksum_bytes(payload));
-    Ok(finalize(sum))
+    Ok(ones_complement_sum(sum))
 }
 
 fn icmpv6_checksum(src: &[u8], dst: &[u8], icmpv6_payload: &[u8]) -> u16 {
     let length = icmpv6_payload.len() as u16;
     let mut sum = pseudo_sum(src, dst, 58, length);
     sum = oc_add(sum, checksum_bytes(icmpv6_payload));
-    finalize(sum)
+    ones_complement_sum(sum)
 }
 
 /// Write a 40-byte IPv6 header into `out`.
@@ -369,11 +554,13 @@ fn ensure_ipv6(packet: &[u8]) -> Result<(), SchcError> {
 }
 
 /// Rules 0/5 (link-local) and 1/6 (global): IPv6 + UDP + CoAP/OSCORE.
-/// Link-local and ULA (fd00::/64) addresses are compressed to 64-bit IIDs.
-/// Other global addresses are sent in full (128 bits).
+/// Link-local uses exact fe80::/64; global uses canonical Yggdrasil 0200::/8.
 fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
     ensure_ipv6(packet)?;
     if packet.len() < 40 + 8 + 4 {
+        return Err(SchcError::NoMatchingRule);
+    }
+    if packet[0] != 0x60 || packet[1] != 0 || packet[2] != 0 || packet[3] != 0 {
         return Err(SchcError::NoMatchingRule);
     }
     // IPv6 header fields (see layout comment above)
@@ -387,6 +574,9 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let coap = &udp[8..];
     let coap_type = (coap[0] >> 4) & 0x3;
     let coap_tkl = coap[0] & 0x0F;
+    if coap[0] >> 6 != 1 || coap_tkl > 8 || 4usize.saturating_add(coap_tkl as usize) > coap.len() {
+        return Err(SchcError::NoMatchingRule);
+    }
     let coap_code = coap[1];
     let coap_mid = u16::from_be_bytes([coap[2], coap[3]]);
     let tail = &coap[4..];
@@ -399,23 +589,47 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
 
-    // Link-local (fe80::/64) and ULA (fd00::/64) addresses compress to 64-bit IIDs.
-    // Other global addresses are sent in full.
-    let use_iid = (is_link_local(src) && is_link_local(dst)) || (is_ula_64(src) && is_ula_64(dst));
-    if use_iid {
-        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
-        w.write(src_iid as u128, 64)?;
-        w.write(dst_iid as u128, 64)?;
-    } else {
-        let src_int = u128::from_be_bytes(src.try_into().unwrap());
-        let dst_int = u128::from_be_bytes(dst.try_into().unwrap());
-        w.write(src_int, 128)?;
-        w.write(dst_int, 128)?;
+    // Address compression is rule-specific:
+    // - Rules 0/5 (link-local): require both fe80::/64, send 64-bit IID
+    // - Rules 1/6 (Yggdrasil): require both 0200::/8, send 120 bits
+    let both_link_local = is_link_local_64(src) && is_link_local_64(dst);
+    let both_yggdrasil = src[0] == 0x02 && dst[0] == 0x02;
+
+    match rule_id {
+        RULE_LINK_LOCAL_COAP | RULE_LINK_LOCAL_OSCORE => {
+            if !both_link_local {
+                return Err(SchcError::NoMatchingRule);
+            }
+            let src_iid = u64::from_be_bytes(src[8..16].try_into().expect("IID is 8 bytes"));
+            let dst_iid = u64::from_be_bytes(dst[8..16].try_into().expect("IID is 8 bytes"));
+            w.write(src_iid as u128, 64)?;
+            w.write(dst_iid as u128, 64)?;
+        }
+        RULE_GLOBAL_COAP | RULE_GLOBAL_OSCORE => {
+            if !both_yggdrasil {
+                return Err(SchcError::NoMatchingRule);
+            }
+            // Yggdrasil: MSB-match 8 bits (0x02), send low 120 bits
+            let src_int = u128::from_be_bytes(src.try_into().expect("IPv6 addr is 16 bytes"));
+            let dst_int = u128::from_be_bytes(dst.try_into().expect("IPv6 addr is 16 bytes"));
+            w.write(src_int & ((1u128 << 120) - 1), 120)?;
+            w.write(dst_int & ((1u128 << 120) - 1), 120)?;
+        }
+        _ => return Err(SchcError::NoMatchingRule),
     }
 
-    w.write(src_port as u128, 16)?;
-    w.write(dst_port as u128, 16)?;
+    // UDP ports use LSB compression: MSB-match 12 bits against CoAP default 5683,
+    // send only the low 4 bits.
+    const COAP_PORT: u16 = 5683;
+    const PORT_LSB_BITS: usize = 4;
+    let src_msb = src_port >> PORT_LSB_BITS;
+    let dst_msb = dst_port >> PORT_LSB_BITS;
+    let expected_msb = COAP_PORT >> PORT_LSB_BITS;
+    if src_msb != expected_msb || dst_msb != expected_msb {
+        return Err(SchcError::NoMatchingRule);
+    }
+    w.write((src_port & 0xF) as u128, PORT_LSB_BITS)?;
+    w.write((dst_port & 0xF) as u128, PORT_LSB_BITS)?;
     w.write(coap_type as u128, 2)?;
     w.write(coap_tkl as u128, 4)?;
     w.write(coap_code as u128, 8)?;
@@ -455,8 +669,8 @@ fn compress_icmpv6_echo(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     out[0] = RULE_ICMPV6_ECHO;
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
-    let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-    let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+    let src_iid = u64::from_be_bytes(src[8..16].try_into().expect("IID is 8 bytes"));
+    let dst_iid = u64::from_be_bytes(dst[8..16].try_into().expect("IID is 8 bytes"));
     w.write(src_iid as u128, 64)?;
     w.write(dst_iid as u128, 64)?;
     w.write(icmp_type as u128, 8)?;
@@ -492,7 +706,10 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let gmop = rpl[4];
     let dtsn = rpl[5];
     // flags (rpl[6]) and reserved (rpl[7]) are NOT_SENT (both expected to be 0)
-    let dodagid = u128::from_be_bytes(rpl[8..24].try_into().unwrap());
+    if rpl[6] != 0 || rpl[7] != 0 {
+        return Err(SchcError::NoMatchingRule);
+    }
+    let dodagid = u128::from_be_bytes(rpl[8..24].try_into().expect("DODAGID is 16 bytes"));
     let tail = &rpl[24..];
 
     if out.is_empty() {
@@ -501,8 +718,8 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     out[0] = RULE_RPL_DIO;
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
-    let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-    let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+    let src_iid = u64::from_be_bytes(src[8..16].try_into().expect("IID is 8 bytes"));
+    let dst_iid = u64::from_be_bytes(dst[8..16].try_into().expect("IID is 8 bytes"));
     w.write(src_iid as u128, 64)?;
     w.write(dst_iid as u128, 64)?;
     w.write(instance as u128, 8)?;
@@ -538,8 +755,11 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let instance = rpl[0];
     let kd_flags = rpl[1];
     // reserved (rpl[2]) is NOT_SENT
+    if kd_flags & 0x40 == 0 || rpl[2] != 0 {
+        return Err(SchcError::NoMatchingRule);
+    }
     let seq = rpl[3];
-    let dodagid = u128::from_be_bytes(rpl[4..20].try_into().unwrap());
+    let dodagid = u128::from_be_bytes(rpl[4..20].try_into().expect("DODAGID is 16 bytes"));
     let tail = &rpl[20..];
 
     if out.is_empty() {
@@ -548,8 +768,8 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     out[0] = RULE_RPL_DAO;
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
-    let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-    let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+    let src_iid = u64::from_be_bytes(src[8..16].try_into().expect("IID is 8 bytes"));
+    let dst_iid = u64::from_be_bytes(dst[8..16].try_into().expect("IID is 8 bytes"));
     w.write(src_iid as u128, 64)?;
     w.write(dst_iid as u128, 64)?;
     w.write(instance as u128, 8)?;
@@ -567,7 +787,7 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(needed)
 }
 
-/// Rule 5: IPv6 + UDP with port 10883 (MQTT-SN).
+/// Rule 7: IPv6 + UDP with port 10883 (MQTT-SN).
 ///
 /// Matches when either source or destination port is 10883. IPv6 addresses
 /// are compressed the same as Rule 0/1 (link-local IID only vs full global).
@@ -576,19 +796,44 @@ fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     ensure_ipv6(packet)?;
     // 40 (IPv6) + 8 (UDP header) minimum
     if packet.len() < 40 + 8 {
-        return Err(SchcError::NoMatchingRule);
+        return Err(SchcError::InvalidPacket("truncated IPv6/UDP datagram"));
+    }
+    if packet[6] != 17 {
+        return Err(SchcError::InvalidPacket("Rule 7 requires UDP next header"));
+    }
+    let available_udp_len = packet.len() - 40;
+    let ipv6_payload_len = u16::from_be_bytes([packet[4], packet[5]]) as usize;
+    if ipv6_payload_len != available_udp_len {
+        return Err(SchcError::InvalidPacket("IPv6 payload length mismatch"));
     }
     // IPv6 header fields
     let hop_limit = packet[7];
     let src = &packet[8..24];
     let dst = &packet[24..40];
+    validate_address_policy(src, dst)?;
     // UDP header starts immediately after IPv6
     let udp = &packet[40..];
     let src_port = u16::from_be_bytes([udp[0], udp[1]]);
     let dst_port = u16::from_be_bytes([udp[2], udp[3]]);
+    let udp_len = u16::from_be_bytes([udp[4], udp[5]]) as usize;
+    if udp_len < 8 || udp_len != available_udp_len {
+        return Err(SchcError::InvalidPacket("UDP length mismatch"));
+    }
 
     // Must match port 10883 on at least one side
     if src_port != PORT_MQTT_SN && dst_port != PORT_MQTT_SN {
+        return Err(SchcError::NoMatchingRule);
+    }
+
+    let wire_checksum = u16::from_be_bytes([udp[6], udp[7]]);
+    if wire_checksum == 0 {
+        return Err(SchcError::InvalidPacket("IPv6 UDP checksum is zero"));
+    }
+    let expected_checksum = udp_checksum(src, dst, src_port, dst_port, &udp[8..])?;
+    if wire_checksum != expected_checksum {
+        return Err(SchcError::InvalidPacket("IPv6 UDP checksum is invalid"));
+    }
+    if packet[0] != 0x60 || packet[1] != 0 || packet[2] != 0 || packet[3] != 0 {
         return Err(SchcError::NoMatchingRule);
     }
 
@@ -612,15 +857,15 @@ fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     w.write(hop_limit as u128, 8)?;
 
     // Address compression: same logic as CoAP rules
-    if is_link_local(src) && is_link_local(dst) {
-        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
-        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+    if is_link_local_64(src) && is_link_local_64(dst) {
+        let src_iid = u64::from_be_bytes(src[8..16].try_into().expect("IID is 8 bytes"));
+        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().expect("IID is 8 bytes"));
         w.write(0, 1)?; // Address mode: 0 = link-local
         w.write(src_iid as u128, 64)?;
         w.write(dst_iid as u128, 64)?;
     } else {
-        let src_int = u128::from_be_bytes(src.try_into().unwrap());
-        let dst_int = u128::from_be_bytes(dst.try_into().unwrap());
+        let src_int = u128::from_be_bytes(src.try_into().expect("IPv6 addr is 16 bytes"));
+        let dst_int = u128::from_be_bytes(dst.try_into().expect("IPv6 addr is 16 bytes"));
         w.write(1, 1)?; // Address mode: 1 = full
         w.write(src_int, 128)?;
         w.write(dst_int, 128)?;
@@ -647,26 +892,39 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
     let hop_limit = r.read(8)? as u8;
 
+    // Yggdrasil prefix (0200::/8) as a 128-bit value with only top 8 bits set
+    const YGGDRASIL_PREFIX: u128 = 0x02_u128 << 120;
+
     let (src_int, dst_int) = match rule_id {
         RULE_LINK_LOCAL_COAP | RULE_LINK_LOCAL_OSCORE => {
+            // Link-local: fe80::/64 prefix + 64-bit IID
             let src_iid = r.read(64)?;
             let dst_iid = r.read(64)?;
             (LINK_LOCAL_PREFIX | src_iid, LINK_LOCAL_PREFIX | dst_iid)
         }
-        RULE_GLOBAL_OSCORE => {
-            let src_iid = r.read(64)?;
-            let dst_iid = r.read(64)?;
-            (ULA_PREFIX | src_iid, ULA_PREFIX | dst_iid)
+        RULE_GLOBAL_COAP | RULE_GLOBAL_OSCORE => {
+            // Yggdrasil (0200::/8): read 120 bits, add 0x02 prefix
+            let src_lsb = r.read(120)?;
+            let dst_lsb = r.read(120)?;
+            (YGGDRASIL_PREFIX | src_lsb, YGGDRASIL_PREFIX | dst_lsb)
         }
         _ => (r.read(128)?, r.read(128)?),
     };
 
-    let src_port = r.read(16)? as u16;
-    let dst_port = r.read(16)? as u16;
+    // UDP ports use LSB compression: read 4 bits and add CoAP default port MSB
+    const COAP_PORT_MSB: u16 = 5683 & 0xFFF0; // High 12 bits of 5683
+    let src_port = COAP_PORT_MSB | (r.read(4)? as u16);
+    let dst_port = COAP_PORT_MSB | (r.read(4)? as u16);
     let coap_type = r.read(2)? as u8;
     let coap_tkl = r.read(4)? as u8;
     let coap_code = r.read(8)? as u8;
     let coap_mid = r.read(16)? as u16;
+
+    if !r.padding_is_zero() {
+        return Err(SchcError::NonCanonicalResidue(
+            "nonzero generic rule residue padding",
+        ));
+    }
 
     let tail = &data[1 + r.residue_byte_end()..];
 
@@ -719,6 +977,12 @@ fn decompress_icmpv6_echo(data: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     let icmp_type = r.read(8)? as u8;
     let icmp_id = r.read(16)? as u16;
     let icmp_seq = r.read(16)? as u16;
+
+    if !r.padding_is_zero() {
+        return Err(SchcError::NonCanonicalResidue(
+            "nonzero generic rule residue padding",
+        ));
+    }
 
     let tail = &data[1 + r.residue_byte_end()..];
 
@@ -779,6 +1043,12 @@ fn decompress_rpl_dio(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let dtsn = r.read(8)? as u8;
     let dodagid = r.read(128)?;
 
+    if !r.padding_is_zero() {
+        return Err(SchcError::NonCanonicalResidue(
+            "nonzero generic rule residue padding",
+        ));
+    }
+
     let tail = &data[1 + r.residue_byte_end()..];
 
     let src = (LINK_LOCAL_PREFIX | src_iid).to_be_bytes();
@@ -833,6 +1103,12 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let kd_flags = r.read(8)? as u8;
     let seq = r.read(8)? as u8;
     let dodagid = r.read(128)?;
+
+    if !r.padding_is_zero() {
+        return Err(SchcError::NonCanonicalResidue(
+            "nonzero generic rule residue padding",
+        ));
+    }
 
     let tail = &data[1 + r.residue_byte_end()..];
 
@@ -895,12 +1171,26 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize,
         (src_int.to_be_bytes(), dst_int.to_be_bytes())
     };
 
-    if (addr_mode == 0) != (is_link_local(&src) && is_link_local(&dst)) {
-        return Err(SchcError::NoMatchingRule);
+    validate_address_policy(&src, &dst)?;
+
+    if addr_mode == 1 && is_link_local_64(&src) && is_link_local_64(&dst) {
+        return Err(SchcError::NonCanonicalResidue(
+            "full-address mode used for two fe80::/64 addresses",
+        ));
     }
 
     let direction = r.read(1)? as u8;
     let other_port = r.read(16)? as u16;
+    if direction == 1 && other_port == PORT_MQTT_SN {
+        return Err(SchcError::NonCanonicalResidue(
+            "both MQTT-SN ports require direction zero",
+        ));
+    }
+    if !r.padding_is_zero() {
+        return Err(SchcError::NonCanonicalResidue(
+            "nonzero Rule 7 residue padding",
+        ));
+    }
 
     let (src_port, dst_port) = if direction == 0 {
         (PORT_MQTT_SN, other_port)
@@ -937,96 +1227,18 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize,
 
 // ─── public API ──────────────────────────────────────────────────────────────
 
-/// Compress a full IPv6 `packet` into `out` using the best matching SCHC rule.
-///
-/// Falls back to rule 255 (uncompressed: rule byte + raw packet) if no rule
-/// matches. Returns the number of bytes written to `out`.
-pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
-    if packet.len() < 40 || packet[0] >> 4 != 6 {
-        // Not IPv6 — uncompressed fallback (saturating_add prevents usize overflow)
-        let needed = packet.len().saturating_add(1);
-        if out.len() < needed {
-            return Err(BufferTooSmall::new(needed, out.len()).into());
-        }
-        out[0] = RULE_UNCOMPRESSED;
-        out[1..needed].copy_from_slice(packet);
-        return Ok(needed);
-    }
-
-    let nh = packet[6];
-    let src = &packet[8..24];
-    let dst = &packet[24..40];
-
-    if nh == 17 {
-        // UDP — try MQTT-SN (rule 7) first if port matches, then OSCORE/CoAP
-        if packet.len() >= 40 + 8 {
-            let src_port = u16::from_be_bytes([packet[40], packet[41]]);
-            let dst_port = u16::from_be_bytes([packet[42], packet[43]]);
-            if src_port == PORT_MQTT_SN || dst_port == PORT_MQTT_SN {
-                if let Ok(n) = compress_mqtt_sn(packet, out) {
-                    return Ok(n);
-                }
-            }
-        }
-        // Check for OSCORE (CoAP option 9) to select rules 5/6 vs 0/1
-        let coap = &packet[48..]; // UDP header is 8 bytes after IPv6
-        let is_oscore = packet.len() >= 52 && has_oscore_option(coap);
-
-        if is_link_local(src) && is_link_local(dst) {
-            let rule = if is_oscore {
-                RULE_LINK_LOCAL_OSCORE
-            } else {
-                RULE_LINK_LOCAL_COAP
-            };
-            if let Ok(n) = compress_coap(packet, out, rule) {
-                return Ok(n);
-            }
-        }
-        // ULA fd00::/64 addresses use OSCORE rule 6 (IID compression)
-        if is_ula_64(src) && is_ula_64(dst) && is_oscore {
-            if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_OSCORE) {
-                return Ok(n);
-            }
-        }
-        // Other global addresses use rule 1 (full addresses)
-        if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_COAP) {
-            return Ok(n);
-        }
-    } else if nh == 58 && packet.len() >= 40 + 4 {
-        // ICMPv6
-        let icmp_type = packet[40];
-        let icmp_code = packet[41];
-
-        if (icmp_type == 128 || icmp_type == 129)
-            && icmp_code == 0
-            && is_link_local(src)
-            && is_link_local(dst)
-            && packet.len() >= 40 + 8
-        {
-            if let Ok(n) = compress_icmpv6_echo(packet, out) {
-                return Ok(n);
-            }
-        } else if icmp_type == 155 && is_link_local(src) && is_link_local(dst) {
-            if icmp_code == 1 && packet.len() >= 40 + 4 + 24 {
-                // DIO
-                if let Ok(n) = compress_rpl_dio(packet, out) {
-                    return Ok(n);
-                }
-            } else if icmp_code == 2 && packet.len() >= 40 + 4 + 20 {
-                // DAO — only rule 4 if D flag set
-                // packet[45] = offset 40 (IPv6) + 4 (ICMPv6 header) + 1 (instance) = K/D/flags byte
-                let kd_flags = packet[45];
-                if kd_flags & 0x40 != 0 {
-                    if let Ok(n) = compress_rpl_dao(packet, out) {
-                        return Ok(n);
-                    }
-                }
-            }
-        }
-    }
-
-    // Uncompressed fallback (saturating_add prevents usize overflow)
+/// Encode sender-selected Rule 255 after validating the complete IPv6 packet.
+pub fn encode_rule255(
+    packet: &[u8],
+    out: &mut [u8],
+    single_frame_limit: usize,
+) -> Result<usize, SchcError> {
+    validate_full_ipv6(packet)?;
     let needed = packet.len().saturating_add(1);
+    let profile_limit = single_frame_limit.min(SCHC_FRAG_MAX_PACKET_SIZE);
+    if needed > profile_limit {
+        return Err(BufferTooSmall::new(needed, profile_limit).into());
+    }
     if out.len() < needed {
         return Err(BufferTooSmall::new(needed, out.len()).into());
     }
@@ -1035,12 +1247,810 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(needed)
 }
 
+/// Decode Rule 255 without accepting arbitrary or fragmented IPv6 bytes.
+pub fn decode_rule255(
+    data: &[u8],
+    out: &mut [u8],
+    single_frame_limit: usize,
+) -> Result<usize, SchcError> {
+    if data.first() != Some(&RULE_UNCOMPRESSED) {
+        return Err(SchcError::InvalidPacket(
+            "version mismatch accepts Rule 255 only",
+        ));
+    }
+    let profile_limit = single_frame_limit.min(SCHC_FRAG_MAX_PACKET_SIZE);
+    if data.len() > profile_limit {
+        return Err(BufferTooSmall::new(data.len(), profile_limit).into());
+    }
+    let packet = &data[1..];
+    validate_full_ipv6(packet)?;
+    if out.len() < packet.len() {
+        return Err(BufferTooSmall::new(packet.len(), out.len()).into());
+    }
+    out[..packet.len()].copy_from_slice(packet);
+    Ok(packet.len())
+}
+
+/// Decompress one live authenticated link frame with bounded signer tracking.
+#[cfg(feature = "std")]
+pub fn decompress_authenticated_frame_tracked<const MAX_SOURCES: usize>(
+    link: &lichen_link::link_layer::LinkLayer,
+    frame: &lichen_link::link_layer::AuthenticatedFrame,
+    out: &mut [u8],
+    tracker: &mut RuleVersionFailureTracker<MAX_SOURCES>,
+    mut notify_operator: impl FnMut(&[u8; 32]),
+) -> Result<usize, SchcError> {
+    if !link.accepts_authenticated_frame(frame) {
+        return Err(SchcError::InvalidPacket(
+            "stale or foreign authenticated link evidence",
+        ));
+    }
+    if frame.payload().first().copied() != Some(lichen_core::constants::L2_DISPATCH_SCHC) {
+        return Err(SchcError::InvalidPacket("missing SCHC L2 dispatch"));
+    }
+    let source = *frame.sender().pubkey.as_bytes();
+    match decompress(&frame.payload()[1..], out) {
+        Ok(length) => {
+            tracker.record_success(&source);
+            Ok(length)
+        }
+        Err(error @ SchcError::BufferTooSmall(_)) => Err(error),
+        Err(error) => {
+            let notify = tracker.record_failure(source).unwrap_or(false);
+            if notify {
+                notify_operator(&source);
+            }
+            Err(error)
+        }
+    }
+}
+
+/// Immutable peer policy issued after an authenticated DIO is parsed.
+#[derive(Debug)]
+pub struct AuthenticatedPeerSchcContext {
+    remote_version: u8,
+    signer_identity: [u8; 32],
+    authenticated_counter: u32,
+    key_generation: lichen_link::PeerKeyGeneration,
+    durable_key_generation: lichen_link::DurablePeerKeyGeneration,
+    authority_owner: u32,
+    authority_slot: u16,
+    authority_generation: u32,
+    receipt_clock_domain: u64,
+    receipt_ticks: u64,
+    #[cfg(feature = "std")]
+    evidence: Option<lichen_link::link_layer::AuthenticatedFrame>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PeerAuthorityEntry {
+    signer: [u8; 32],
+    counter: u32,
+    key_generation: lichen_link::PeerKeyGeneration,
+    durable_key_generation: lichen_link::DurablePeerKeyGeneration,
+    generation: u32,
+    receipt_clock_domain: u64,
+    receipt_ticks: u64,
+}
+
+static NEXT_PEER_AUTHORITY_OWNER: AtomicU32 = AtomicU32::new(1);
+
+/// Bounded no-std owner of link-verified peer capabilities.
+///
+/// The link integration owns this object and calls
+/// [`Self::issue_from_authenticated_dio`]
+/// only after signature, replay, DIO-structure, and local-role validation.
+/// Contexts are opaque and every operation revalidates their generation.
+pub struct PeerContextAuthority<const MAX_PEERS: usize> {
+    owner: u32,
+    local_signer: [u8; 32],
+    local_eui64: [u8; 8],
+    entries: [Option<PeerAuthorityEntry>; MAX_PEERS],
+}
+
+impl<const MAX_PEERS: usize> PeerContextAuthority<MAX_PEERS> {
+    pub fn new(local_signer: [u8; 32]) -> Result<Self, SchcError> {
+        if MAX_PEERS == 0 || MAX_PEERS > u16::MAX as usize {
+            return Err(SchcError::PeerAuthorityFull);
+        }
+        let owner = NEXT_PEER_AUTHORITY_OWNER
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+                current.checked_add(1).filter(|next| *next != 0)
+            })
+            .map_err(|_| SchcError::PeerAuthorityFull)?;
+        let mut local_eui64 = lichen_core::addr::iid_from_pubkey_bytes(&local_signer);
+        local_eui64[0] ^= 0x02;
+        Ok(Self {
+            owner,
+            local_signer,
+            local_eui64,
+            entries: [None; MAX_PEERS],
+        })
+    }
+
+    /// Issue a capability from opaque evidence produced by the link TCB.
+    pub fn issue_from_authenticated_dio(
+        &mut self,
+        evidence: lichen_link::AuthenticatedLinkFrame<'_>,
+        expected_rpl_instance_id: u8,
+        expected_dodag_id: &[u8; 16],
+        expected_mop: u8,
+        expected_role: ExpectedDioRole,
+    ) -> Result<AuthenticatedPeerSchcContext, SchcError> {
+        if !evidence.is_current()
+            || evidence.receipt().monotonic_millis().is_none()
+            || !authenticated_dio_destination_is_local(evidence, &self.local_eui64)
+        {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        let mut context = AuthenticatedPeerSchcContext::parse_authenticated_dio_evidence(
+            evidence,
+            expected_rpl_instance_id,
+            expected_dodag_id,
+            expected_mop,
+            expected_role,
+        )?;
+        let signer = context.signer_identity;
+        let authenticated_counter = context.authenticated_counter;
+        let receipt_clock_domain = context.receipt_clock_domain;
+        let receipt_ticks = context.receipt_ticks;
+        let existing = self
+            .entries
+            .iter()
+            .position(|entry| entry.is_some_and(|entry| entry.signer == signer));
+        let slot = existing
+            .or_else(|| self.entries.iter().position(Option::is_none))
+            .ok_or(SchcError::PeerAuthorityFull)?;
+        let key_generation = evidence.peer_key_generation();
+        let durable_key_generation = evidence.durable_peer_key_generation();
+        if self.entries[slot].is_some_and(|entry| {
+            entry.key_generation == key_generation
+                && entry.durable_key_generation == durable_key_generation
+                && authenticated_counter <= entry.counter
+        }) {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        if self.entries[slot].is_some_and(|entry| {
+            entry.receipt_clock_domain != receipt_clock_domain
+                || receipt_ticks < entry.receipt_ticks
+        }) {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        let generation =
+            self.entries[slot].map_or(1, |entry| entry.generation.checked_add(1).unwrap_or(0));
+        if generation == 0 {
+            self.entries[slot] = None;
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        self.entries[slot] = Some(PeerAuthorityEntry {
+            signer,
+            counter: authenticated_counter,
+            key_generation,
+            durable_key_generation,
+            generation,
+            receipt_clock_domain,
+            receipt_ticks,
+        });
+        context.authority_owner = self.owner;
+        context.authority_slot = slot as u16;
+        context.authority_generation = generation;
+        context.key_generation = key_generation;
+        context.durable_key_generation = durable_key_generation;
+        Ok(context)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn issue_test_peer(
+        &mut self,
+        signer: [u8; 32],
+        authenticated_counter: u32,
+        remote_version: u8,
+        receipt_clock_domain: u64,
+        receipt_ticks: u64,
+    ) -> Result<AuthenticatedPeerSchcContext, SchcError> {
+        self.issue_test_peer_for_generation(
+            signer,
+            authenticated_counter,
+            remote_version,
+            receipt_clock_domain,
+            receipt_ticks,
+            lichen_link::PeerKeyGeneration::from_test_value(1).unwrap(),
+            lichen_link::DurablePeerKeyGeneration::from_test_value(1).unwrap(),
+        )
+    }
+
+    #[cfg(test)]
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn issue_test_peer_for_generation(
+        &mut self,
+        signer: [u8; 32],
+        authenticated_counter: u32,
+        remote_version: u8,
+        receipt_clock_domain: u64,
+        receipt_ticks: u64,
+        key_generation: lichen_link::PeerKeyGeneration,
+        durable_key_generation: lichen_link::DurablePeerKeyGeneration,
+    ) -> Result<AuthenticatedPeerSchcContext, SchcError> {
+        let slot = self
+            .entries
+            .iter()
+            .position(|entry| entry.is_some_and(|entry| entry.signer == signer))
+            .or_else(|| self.entries.iter().position(Option::is_none))
+            .ok_or(SchcError::PeerAuthorityFull)?;
+        if self.entries[slot].is_some_and(|entry| {
+            entry.key_generation == key_generation
+                && entry.durable_key_generation == durable_key_generation
+                && authenticated_counter <= entry.counter
+        }) {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        let generation =
+            self.entries[slot].map_or(1, |entry| entry.generation.checked_add(1).unwrap_or(0));
+        if generation == 0 {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        self.entries[slot] = Some(PeerAuthorityEntry {
+            signer,
+            counter: authenticated_counter,
+            key_generation,
+            durable_key_generation,
+            generation,
+            receipt_clock_domain,
+            receipt_ticks,
+        });
+        Ok(AuthenticatedPeerSchcContext {
+            remote_version,
+            signer_identity: signer,
+            authenticated_counter,
+            key_generation,
+            durable_key_generation,
+            authority_owner: self.owner,
+            authority_slot: slot as u16,
+            authority_generation: generation,
+            receipt_clock_domain,
+            receipt_ticks,
+            #[cfg(feature = "std")]
+            evidence: None,
+        })
+    }
+
+    /// Retire every capability issued for `signer`.
+    pub fn retire(&mut self, signer: &[u8; 32]) {
+        for entry in &mut self.entries {
+            if entry.is_some_and(|entry| &entry.signer == signer) {
+                *entry = None;
+            }
+        }
+    }
+
+    pub fn is_current(&self, peer: &AuthenticatedPeerSchcContext) -> bool {
+        peer.authority_owner == self.owner
+            && self
+                .entries
+                .get(peer.authority_slot as usize)
+                .is_some_and(|entry| {
+                    entry.is_some_and(|entry| {
+                        entry.signer == peer.signer_identity
+                            && entry.counter == peer.authenticated_counter
+                            && entry.key_generation == peer.key_generation
+                            && entry.durable_key_generation == peer.durable_key_generation
+                            && entry.generation == peer.authority_generation
+                    })
+                })
+    }
+
+    pub(crate) const fn local_eui64(&self) -> &[u8; 8] {
+        &self.local_eui64
+    }
+
+    pub(crate) const fn local_signer(&self) -> &[u8; 32] {
+        &self.local_signer
+    }
+}
+
+/// Expected sender role bound during authenticated DIO admission.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExpectedDioRole {
+    Root,
+    Peer,
+}
+
+impl AuthenticatedPeerSchcContext {
+    /// Bind exactly one canonical version option to a link-authenticated,
+    /// replay-accepted DIO frame. The DIO body begins with its 24-byte base.
+    fn parse_authenticated_dio_evidence(
+        frame: lichen_link::AuthenticatedLinkFrame<'_>,
+        expected_rpl_instance_id: u8,
+        expected_dodag_id: &[u8; 16],
+        expected_mop: u8,
+        expected_role: ExpectedDioRole,
+    ) -> Result<Self, SchcError> {
+        if !frame.is_current()
+            || frame.payload().first().copied() != Some(lichen_core::constants::L2_DISPATCH_SCHC)
+        {
+            return Err(SchcError::InvalidPacket("DIO missing SCHC L2 dispatch"));
+        }
+        let mut ipv6 = [0u8; 512];
+        let ipv6_len = decompress(&frame.payload()[1..], &mut ipv6)?;
+        let ipv6 = &ipv6[..ipv6_len];
+        if ipv6.len() < IPV6_HEADER_LEN + 4 + 24 || ipv6[6] != 58 {
+            return Err(SchcError::InvalidPacket(
+                "authenticated SCHC payload is not a valid RPL DIO",
+            ));
+        }
+        let src: &[u8; 16] = ipv6[8..24]
+            .try_into()
+            .map_err(|_| SchcError::InvalidPacket("invalid DIO IPv6 source"))?;
+        let dst: &[u8; 16] = ipv6[24..40]
+            .try_into()
+            .map_err(|_| SchcError::InvalidPacket("invalid DIO IPv6 destination"))?;
+        let mut signer_iid = frame.signer_eui64();
+        signer_iid[0] ^= 0x02;
+        if src[..8] != [0xfe, 0x80, 0, 0, 0, 0, 0, 0] || src[8..] != signer_iid {
+            return Err(SchcError::DioAdmission(
+                DioAdmissionError::SourceSignerMismatch,
+            ));
+        }
+        if ipv6[40] != 155
+            || ipv6[41] != 1
+            || lichen_core::checksum::upper_layer_checksum(src, dst, 58, &ipv6[40..]) != 0
+        {
+            return Err(SchcError::InvalidPacket(
+                "authenticated SCHC payload is not a valid RPL DIO",
+            ));
+        }
+        let payload = &ipv6[44..];
+        if payload[7] != 0 {
+            return Err(SchcError::InvalidPacket("malformed authenticated DIO"));
+        }
+        if payload[0] != expected_rpl_instance_id {
+            return Err(SchcError::InvalidPacket(
+                "authenticated DIO instance mismatch",
+            ));
+        }
+        if &payload[8..24] != expected_dodag_id {
+            return Err(SchcError::DioAdmission(
+                DioAdmissionError::DodagScopeMismatch,
+            ));
+        }
+        if (payload[4] >> 3) & 0x07 != expected_mop {
+            return Err(SchcError::InvalidPacket("authenticated DIO MOP mismatch"));
+        }
+        let is_root = u16::from_be_bytes([payload[2], payload[3]]) == 256;
+        if is_root != matches!(expected_role, ExpectedDioRole::Root) {
+            return Err(SchcError::DioAdmission(
+                DioAdmissionError::RoleScopeMismatch,
+            ));
+        }
+        if is_root && lichen_core::addr::ygg_addr_from_pubkey(&frame.signer()) != *expected_dodag_id
+        {
+            return Err(SchcError::DioAdmission(
+                DioAdmissionError::RootKeyDodagMismatch,
+            ));
+        }
+        let mut cursor = 24usize;
+        let mut version = None;
+        while cursor < payload.len() {
+            if payload[cursor] == 0 {
+                cursor += 1;
+                continue;
+            }
+            if cursor + 2 > payload.len() {
+                return Err(SchcError::InvalidPacket(
+                    "truncated authenticated DIO option",
+                ));
+            }
+            let option_type = payload[cursor];
+            let option_len = payload[cursor + 1] as usize;
+            let end = cursor
+                .checked_add(2 + option_len)
+                .ok_or(SchcError::InvalidPacket("DIO option length overflow"))?;
+            if end > payload.len() {
+                return Err(SchcError::InvalidPacket(
+                    "truncated authenticated DIO option",
+                ));
+            }
+            if option_type == crate::rules::SCHC_RULE_VERSION_TYPE {
+                if option_len != 1 {
+                    return Err(SchcError::DioAdmission(match option_len {
+                        0 => DioAdmissionError::MalformedRuleVersionLength0,
+                        2 => DioAdmissionError::MalformedRuleVersionLength2,
+                        _ => DioAdmissionError::MalformedRuleVersion,
+                    }));
+                }
+                if version.replace(payload[cursor + 2]).is_some() {
+                    return Err(SchcError::DioAdmission(
+                        DioAdmissionError::DuplicateRuleVersion,
+                    ));
+                }
+            }
+            cursor = end;
+        }
+        let remote_version = version.ok_or(SchcError::DioAdmission(
+            DioAdmissionError::MissingRuleVersion,
+        ))?;
+        let signer_identity = frame.signer();
+        Ok(Self {
+            remote_version,
+            signer_identity,
+            authenticated_counter: frame.authenticated_counter(),
+            key_generation: frame.peer_key_generation(),
+            durable_key_generation: frame.durable_peer_key_generation(),
+            authority_owner: 0,
+            authority_slot: 0,
+            authority_generation: 0,
+            receipt_clock_domain: frame.receipt().clock_domain(),
+            receipt_ticks: frame.receipt().monotonic_ticks(),
+            #[cfg(feature = "std")]
+            evidence: None,
+        })
+    }
+
+    /// Consume authenticated frame evidence into a current owner-bound peer context.
+    #[cfg(feature = "std")]
+    pub fn from_authenticated_dio_frame(
+        frame: lichen_link::link_layer::AuthenticatedFrame,
+        expected_rpl_instance_id: u8,
+        expected_dodag_id: &[u8; 16],
+        expected_mop: u8,
+        expected_role: ExpectedDioRole,
+    ) -> Result<Self, SchcError> {
+        if !authenticated_dio_destination_is_local(frame.link_evidence(), &frame.receiving_eui64())
+        {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        let mut context = Self::parse_authenticated_dio_evidence(
+            frame.link_evidence(),
+            expected_rpl_instance_id,
+            expected_dodag_id,
+            expected_mop,
+            expected_role,
+        )?;
+        context.evidence = Some(frame);
+        Ok(context)
+    }
+
+    #[cfg(feature = "std")]
+    pub(crate) fn is_current_for(&self, link: &lichen_link::link_layer::LinkLayer) -> bool {
+        self.evidence
+            .as_ref()
+            .is_some_and(|frame| link.accepts_authenticated_frame(frame))
+    }
+
+    #[cfg(feature = "std")]
+    fn retained_evidence_is_current(&self) -> bool {
+        self.evidence
+            .as_ref()
+            .is_some_and(|frame| frame.is_current())
+    }
+
+    #[cfg(not(feature = "std"))]
+    const fn retained_evidence_is_current(&self) -> bool {
+        false
+    }
+
+    pub(crate) const fn authenticated_counter(&self) -> u32 {
+        self.authenticated_counter
+    }
+
+    /// Borrow the immutable authenticated frame retained by this capability.
+    #[cfg(feature = "std")]
+    pub fn authenticated_frame(&self) -> Option<&lichen_link::link_layer::AuthenticatedFrame> {
+        self.evidence.as_ref()
+    }
+
+    pub const fn remote_version(&self) -> u8 {
+        self.remote_version
+    }
+
+    pub const fn signer_identity(&self) -> &[u8; 32] {
+        &self.signer_identity
+    }
+
+    /// Opaque identity of the exact installed remote key generation.
+    pub const fn key_generation(&self) -> lichen_link::PeerKeyGeneration {
+        self.key_generation
+    }
+
+    /// Stable trust-store identity of the installed remote key generation.
+    pub const fn durable_key_generation(&self) -> lichen_link::DurablePeerKeyGeneration {
+        self.durable_key_generation
+    }
+
+    pub const fn receipt_clock_domain(&self) -> u64 {
+        self.receipt_clock_domain
+    }
+
+    pub const fn receipt_ticks(&self) -> u64 {
+        self.receipt_ticks
+    }
+
+    /// A DODAG is admissible only for the sole implemented v3 registry.
+    pub const fn allows_dodag_join(&self) -> bool {
+        versions_compatible(RULE_SET_VERSION, self.remote_version)
+    }
+
+    pub fn compress(
+        &self,
+        packet: &[u8],
+        out: &mut [u8],
+        single_frame_limit: usize,
+    ) -> Result<usize, SchcError> {
+        if !self.retained_evidence_is_current() {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        if self.allows_dodag_join() {
+            compress(packet, out)
+        } else {
+            encode_rule255(packet, out, single_frame_limit)
+        }
+    }
+
+    pub fn decompress(
+        &self,
+        data: &[u8],
+        out: &mut [u8],
+        single_frame_limit: usize,
+    ) -> Result<usize, SchcError> {
+        if !self.retained_evidence_is_current() {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        if self.allows_dodag_join() {
+            decompress(data, out)
+        } else {
+            decode_rule255(data, out, single_frame_limit)
+        }
+    }
+
+    /// no-std operation gated by the current authority generation.
+    pub fn compress_with_authority<const MAX_PEERS: usize>(
+        &self,
+        authority: &PeerContextAuthority<MAX_PEERS>,
+        packet: &[u8],
+        out: &mut [u8],
+        single_frame_limit: usize,
+    ) -> Result<usize, SchcError> {
+        if !authority.is_current(self) {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        if self.allows_dodag_join() {
+            compress(packet, out)
+        } else {
+            encode_rule255(packet, out, single_frame_limit)
+        }
+    }
+
+    /// no-std ingress gated by the current authority generation.
+    pub fn decompress_with_authority<const MAX_PEERS: usize>(
+        &self,
+        authority: &PeerContextAuthority<MAX_PEERS>,
+        data: &[u8],
+        out: &mut [u8],
+        single_frame_limit: usize,
+    ) -> Result<usize, SchcError> {
+        if !authority.is_current(self) {
+            return Err(SchcError::InvalidPeerEvidence);
+        }
+        if self.allows_dodag_join() {
+            decompress(data, out)
+        } else {
+            decode_rule255(data, out, single_frame_limit)
+        }
+    }
+
+    /// no-std tracked ingress gated by the current authority generation.
+    pub fn decompress_tracked_with_authority<const MAX_PEERS: usize, const MAX_SOURCES: usize>(
+        &self,
+        authority: &PeerContextAuthority<MAX_PEERS>,
+        data: &[u8],
+        out: &mut [u8],
+        single_frame_limit: usize,
+        tracker: &mut RuleVersionFailureTracker<MAX_SOURCES>,
+        mut notify_operator: impl FnMut(&[u8; 32]),
+    ) -> Result<usize, SchcError> {
+        match self.decompress_with_authority(authority, data, out, single_frame_limit) {
+            Ok(length) => {
+                tracker.record_success(&self.signer_identity);
+                Ok(length)
+            }
+            Err(error @ SchcError::BufferTooSmall(_)) => Err(error),
+            Err(error @ SchcError::InvalidPeerEvidence) => Err(error),
+            Err(error) => {
+                let notify = tracker
+                    .record_failure(self.signer_identity)
+                    .unwrap_or(false);
+                if notify {
+                    notify_operator(&self.signer_identity);
+                }
+                Err(error)
+            }
+        }
+    }
+
+    /// Production ingress with bounded per-signer failure tracking.
+    ///
+    /// Malformed SCHC input records one consecutive failure; output-capacity
+    /// errors do not. A validated decompression clears the signer run. The
+    /// callback fires exactly once when the configured threshold is crossed.
+    pub fn decompress_tracked<const MAX_SOURCES: usize>(
+        &self,
+        data: &[u8],
+        out: &mut [u8],
+        single_frame_limit: usize,
+        tracker: &mut RuleVersionFailureTracker<MAX_SOURCES>,
+        mut notify_operator: impl FnMut(&[u8; 32]),
+    ) -> Result<usize, SchcError> {
+        match self.decompress(data, out, single_frame_limit) {
+            Ok(length) => {
+                tracker.record_success(&self.signer_identity);
+                Ok(length)
+            }
+            Err(error @ SchcError::BufferTooSmall(_)) => Err(error),
+            Err(error @ SchcError::InvalidPeerEvidence) => Err(error),
+            Err(error) => {
+                let notify = tracker
+                    .record_failure(self.signer_identity)
+                    .unwrap_or(false);
+                if notify {
+                    notify_operator(&self.signer_identity);
+                }
+                Err(error)
+            }
+        }
+    }
+}
+
+fn authenticated_dio_destination_is_local(
+    frame: lichen_link::AuthenticatedLinkFrame<'_>,
+    local_eui64: &[u8; 8],
+) -> bool {
+    const ALL_RPL_NODES: [u8; 16] = [0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a];
+
+    let mut ipv6 = [0u8; 512];
+    let Ok(length) = decompress(frame.payload().get(1..).unwrap_or_default(), &mut ipv6) else {
+        return false;
+    };
+    if length < IPV6_HEADER_LEN {
+        return false;
+    }
+    let destination = &ipv6[24..40];
+    let mut local_iid = *local_eui64;
+    local_iid[0] ^= 0x02;
+    let local_link = [
+        0xfe,
+        0x80,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        local_iid[0],
+        local_iid[1],
+        local_iid[2],
+        local_iid[3],
+        local_iid[4],
+        local_iid[5],
+        local_iid[6],
+        local_iid[7],
+    ];
+
+    if destination == ALL_RPL_NODES {
+        return frame.payload().get(1).copied() == Some(RULE_UNCOMPRESSED)
+            && matches!(
+                frame.destination_mode(),
+                lichen_link::frame::AddrMode::None | lichen_link::frame::AddrMode::Elided
+            );
+    }
+    destination == local_link
+        && frame.destination_mode() == lichen_link::frame::AddrMode::Extended
+        && frame.destination() == local_eui64
+}
+
+/// Compress a full IPv6 `packet` into `out` using the best matching SCHC rule.
+///
+/// Falls back to rule 255 (uncompressed: rule byte + raw packet) if no rule
+/// matches. Returns the number of bytes written to `out`.
+pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+    validate_full_ipv6(packet)?;
+
+    // Every v3 compressed rule elides Traffic Class and Flow Label as zero.
+    // A structurally valid packet with different values is a non-match, not a
+    // malformed packet: preserve it byte-for-byte with Rule 255.
+    if packet[0] != 0x60 || packet[1] != 0 || packet[2] != 0 || packet[3] != 0 {
+        return encode_rule255(packet, out, usize::MAX);
+    }
+
+    let nh = packet[6];
+    let src = &packet[8..24];
+    let dst = &packet[24..40];
+
+    if nh == 17 && packet.len() >= 48 {
+        // UDP — need at least 48 bytes (40 IPv6 + 8 UDP) for port/CoAP access
+        let src_port = u16::from_be_bytes([packet[40], packet[41]]);
+        let dst_port = u16::from_be_bytes([packet[42], packet[43]]);
+
+        // Try MQTT-SN (rule 7) first if port matches
+        if src_port == PORT_MQTT_SN || dst_port == PORT_MQTT_SN {
+            match compress_mqtt_sn(packet, out) {
+                Ok(n) => return enforce_encoded_profile_limit(n),
+                Err(SchcError::NoMatchingRule) => {}
+                Err(error) => return Err(error),
+            }
+        }
+
+        // Check for OSCORE (CoAP option 9) to select rules 5/6 vs 0/1
+        let coap = &packet[48..]; // UDP header is 8 bytes after IPv6
+        let is_oscore = packet.len() >= 52 && has_oscore_option(coap);
+
+        if is_link_local_64(src) && is_link_local_64(dst) {
+            let rule = if is_oscore {
+                RULE_LINK_LOCAL_OSCORE
+            } else {
+                RULE_LINK_LOCAL_COAP
+            };
+            if let Ok(n) = compress_coap(packet, out, rule) {
+                return enforce_encoded_profile_limit(n);
+            }
+        }
+        // Yggdrasil (02xx::/8) addresses use rules 1/6 (120-bit compression)
+        // OSCORE -> rule 6, plaintext CoAP -> rule 1
+        // ULA and other global addresses fall through to uncompressed.
+        let rule = if is_oscore {
+            RULE_GLOBAL_OSCORE
+        } else {
+            RULE_GLOBAL_COAP
+        };
+        if let Ok(n) = compress_coap(packet, out, rule) {
+            return enforce_encoded_profile_limit(n);
+        }
+    } else if nh == 58 && packet.len() >= 40 + 4 {
+        // ICMPv6
+        let icmp_type = packet[40];
+        let icmp_code = packet[41];
+
+        if (icmp_type == 128 || icmp_type == 129)
+            && icmp_code == 0
+            && is_link_local_64(src)
+            && is_link_local_64(dst)
+            && packet.len() >= 40 + 8
+        {
+            if let Ok(n) = compress_icmpv6_echo(packet, out) {
+                return enforce_encoded_profile_limit(n);
+            }
+        } else if icmp_type == 155 && is_link_local_64(src) && is_link_local_64(dst) {
+            if icmp_code == 1 && packet.len() >= 40 + 4 + 24 {
+                // DIO
+                if let Ok(n) = compress_rpl_dio(packet, out) {
+                    return enforce_encoded_profile_limit(n);
+                }
+            } else if icmp_code == 2 && packet.len() >= 40 + 4 + 20 {
+                // DAO — only rule 4 if D flag set
+                // packet[45] = offset 40 (IPv6) + 4 (ICMPv6 header) + 1 (instance) = K/D/flags byte
+                let kd_flags = packet[45];
+                if kd_flags & 0x40 != 0 {
+                    if let Ok(n) = compress_rpl_dao(packet, out) {
+                        return enforce_encoded_profile_limit(n);
+                    }
+                }
+            }
+        }
+    }
+
+    encode_rule255(packet, out, usize::MAX)
+}
+
 /// Decompress a SCHC packet back into a full IPv6 datagram.
 ///
 /// Returns the number of bytes written to `out`.
 pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     if data.is_empty() {
         return Err(TooShort::new(1, 0).into());
+    }
+    if data.len() > SCHC_FRAG_MAX_PACKET_SIZE {
+        return Err(SchcError::InvalidPacket(
+            "SCHC packet exceeds profile limit",
+        ));
     }
     match data[0] {
         RULE_LINK_LOCAL_COAP => decompress_coap(data, out, RULE_LINK_LOCAL_COAP),
@@ -1051,15 +2061,18 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         RULE_LINK_LOCAL_OSCORE => decompress_coap(data, out, RULE_LINK_LOCAL_OSCORE),
         RULE_GLOBAL_OSCORE => decompress_coap(data, out, RULE_GLOBAL_OSCORE),
         RULE_MQTT_SN => decompress_mqtt_sn(data, out, RULE_MQTT_SN),
-        RULE_UNCOMPRESSED => {
-            let payload = &data[1..];
-            if out.len() < payload.len() {
-                return Err(BufferTooSmall::new(payload.len(), out.len()).into());
-            }
-            out[..payload.len()].copy_from_slice(payload);
-            Ok(payload.len())
-        }
+        RULE_UNCOMPRESSED => decode_rule255(data, out, usize::MAX),
         id => Err(SchcError::UnknownRuleId(id)),
+    }
+}
+
+fn enforce_encoded_profile_limit(length: usize) -> Result<usize, SchcError> {
+    if length > SCHC_FRAG_MAX_PACKET_SIZE {
+        Err(SchcError::InvalidPacket(
+            "SCHC packet exceeds profile limit",
+        ))
+    } else {
+        Ok(length)
     }
 }
 
@@ -1068,7 +2081,7 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 #[cfg(test)]
 mod tests {
     extern crate std;
-    use std::vec::Vec;
+    use std::{vec, vec::Vec};
 
     use super::*;
 
@@ -1077,6 +2090,30 @@ mod tests {
             .step_by(2)
             .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
             .collect()
+    }
+
+    fn mqtt_packet(
+        src: &[u8],
+        dst: &[u8],
+        src_port: u16,
+        dst_port: u16,
+        payload: &[u8],
+    ) -> Vec<u8> {
+        let udp_len = 8 + payload.len();
+        let mut packet = vec![0u8; 40 + udp_len];
+        packet[0] = 0x60;
+        packet[4..6].copy_from_slice(&(udp_len as u16).to_be_bytes());
+        packet[6] = 17;
+        packet[7] = 64;
+        packet[8..24].copy_from_slice(src);
+        packet[24..40].copy_from_slice(dst);
+        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
+        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[44..46].copy_from_slice(&(udp_len as u16).to_be_bytes());
+        packet[48..].copy_from_slice(payload);
+        let checksum = udp_checksum(src, dst, src_port, dst_port, payload).unwrap();
+        packet[46..48].copy_from_slice(&checksum.to_be_bytes());
+        packet
     }
 
     fn round_trip(packet_hex: &str, compressed_hex: &str, rule_id: u8) {
@@ -1103,11 +2140,12 @@ mod tests {
 
     #[test]
     fn vector_coap_linklocal() {
+        // From shared test vectors: link-local with 4-bit LSB port compression
         round_trip(
             "6000000000131140fe800000000000000000000000000001\
              fe80000000000000000000000000000216331633001328dd\
              40011234ff737461747573",
-            "00400000000000000001000000000000000216331633000448d0\
+            "00400000000000000001000000000000000233000448d0\
              ff737461747573",
             0,
         );
@@ -1115,12 +2153,13 @@ mod tests {
 
     #[test]
     fn vector_coap_global() {
+        // From shared test vectors: Yggdrasil (02xx) with 120-bit address compression
         round_trip(
-            "600000000013114020010db8000000000000000000000001\
-             20010db800000000000000000000000216331633001\
-             3ca6c40011234ff737461747573",
-            "014020010db800000000000000000000000120010db8000000\
-             00000000000000000216331633000448d0ff737461747573",
+            "6000000000131140027dd5cfc679ab637dd5cfc679ab6342\
+             02f77a7baa1226b5f57a7baa1226b50c1633163300132a9b\
+             40011234ff737461747573",
+            "01407dd5cfc679ab637dd5cfc679ab6342f77a7baa1226b5\
+             f57a7baa1226b50c33000448d0ff737461747573",
             1,
         );
     }
@@ -1198,12 +2237,40 @@ mod tests {
         // Compress
         let mut comp_buf = [0u8; 256];
         let n = compress(packet, &mut comp_buf).unwrap();
-        assert_eq!(comp_buf[0], RULE_MQTT_SN, "should use rule 5 for MQTT-SN");
+        assert_eq!(comp_buf[0], RULE_MQTT_SN, "should use Rule 7 for MQTT-SN");
 
         // Decompress
         let mut decomp_buf = [0u8; 256];
         let m = decompress(&comp_buf[..n], &mut decomp_buf).unwrap();
         assert_eq!(&decomp_buf[..m], packet, "round-trip should match");
+    }
+
+    #[test]
+    fn mqtt_sn_shared_vectors_are_byte_exact() {
+        for (packet, compressed) in [
+            (
+                "60000000000c1140fe800000000000000000000000000001fe8000000000000000000000000000022a831388000cdcec74657374",
+                "07400000000000000000800000000000000104e20074657374",
+            ),
+            (
+                "60000000000f1140fe800000000000000000000000000001fe80000000000000000000000000000213882a83000f197f636f6e6e656374",
+                "07400000000000000000800000000000000144e200636f6e6e656374",
+            ),
+            (
+                "6000000000091140fe800000000000000000000000000001fe8000000000000000000000000000022a832a83000935d178",
+                "0740000000000000000080000000000000010aa0c078",
+            ),
+            (
+                "60000000000b114020010db800000000000000000000000120010db80000000000000000000000022a8322b8000b84b2707562",
+                "0740900086dc000000000000000000000000900086dc00000000000000000000000108ae00707562",
+            ),
+            (
+                "6000000000091140fe80000000000000000000000000000120010db80000000000000000000000022a831388000928946d",
+                "0740ff400000000000000000000000000000900086dc00000000000000000000000104e2006d",
+            ),
+        ] {
+            round_trip(packet, compressed, RULE_MQTT_SN);
+        }
     }
 
     #[test]
@@ -1245,6 +2312,34 @@ mod tests {
     }
 
     #[test]
+    fn mqtt_sn_profile_size_boundary() {
+        let src = hex("fe800000000000000000000000000001");
+        let dst = hex("fe800000000000000000000000000002");
+        // Link-local Rule 7 has a canonical 21-byte encoded prefix, so the
+        // largest SCHC packet carries 22,533 payload bytes and reconstructs a
+        // 22,581-byte IPv6 packet.
+        let payload = vec![0u8; SCHC_FRAG_MAX_PACKET_SIZE - 21];
+        let packet = mqtt_packet(&src, &dst, PORT_MQTT_SN, 5000, &payload);
+        assert_eq!(packet.len(), SCHC_FRAG_MAX_PACKET_SIZE + 27);
+
+        let mut compressed = vec![0u8; SCHC_FRAG_MAX_PACKET_SIZE];
+        let compressed_len = compress(&packet, &mut compressed).unwrap();
+        assert_eq!(compressed_len, SCHC_FRAG_MAX_PACKET_SIZE);
+        compressed.truncate(compressed_len);
+        let mut restored = vec![0u8; packet.len()];
+        let restored_len = decompress(&compressed, &mut restored).unwrap();
+        assert_eq!(&restored[..restored_len], packet.as_slice());
+
+        compressed.push(0);
+        assert!(matches!(
+            decompress(&compressed, &mut restored),
+            Err(SchcError::InvalidPacket(
+                "SCHC packet exceeds profile limit"
+            ))
+        ));
+    }
+
+    #[test]
     fn mqtt_sn_global_addresses() {
         // Test MQTT-SN with global addresses (uses full 128-bit addresses)
         let src_addr = hex("20010db8000000000000000000000001");
@@ -1283,24 +2378,152 @@ mod tests {
     }
 
     #[test]
-    fn uncompressed_fallback() {
-        let packet = hex("deadbeef");
-        let mut buf = [0u8; 8];
-        let n = compress(&packet, &mut buf).unwrap();
-        assert_eq!(buf[0], 255);
-        assert_eq!(&buf[1..n], packet.as_slice());
+    fn mqtt_sn_fe80_slash10_outside_slash64_uses_full_addresses() {
+        let src = hex("fe800000000000010000000000000001");
+        let dst = hex("fe800000000000020000000000000002");
+        assert!(is_link_local(&src) && is_link_local(&dst));
+        assert!(!is_link_local_64(&src) && !is_link_local_64(&dst));
+        let packet = mqtt_packet(&src, &dst, PORT_MQTT_SN, 5000, b"test");
 
-        let mut out = [0u8; 8];
-        let m = decompress(&buf[..n], &mut out).unwrap();
-        assert_eq!(&out[..m], packet.as_slice());
+        let mut compressed = [0u8; 512];
+        let n = compress(&packet, &mut compressed).unwrap();
+        assert_eq!(compressed[0], RULE_MQTT_SN);
+        assert_eq!(compressed[2] & 0x80, 0x80, "AddressMode must be full");
+
+        let mut decompressed = [0u8; 512];
+        let m = decompress(&compressed[..n], &mut decompressed).unwrap();
+        assert_eq!(&decompressed[..m], packet);
     }
 
     #[test]
-    fn non_ipv6_falls_back_to_rule_255() {
+    fn mqtt_sn_rejects_invalid_elided_ipv6_udp_fields() {
+        let src = hex("fe800000000000000000000000000001");
+        let dst = hex("fe800000000000000000000000000002");
+        let valid = mqtt_packet(&src, &dst, PORT_MQTT_SN, 5000, b"test");
+        let mut out = [0u8; 256];
+
+        for mutation in 0..6 {
+            let mut packet = valid.clone();
+            match mutation {
+                0 => packet[0] |= 0x01,
+                1 => packet[2] = 1,
+                2 => packet[5] = packet[5].wrapping_add(1),
+                3 => packet[45] = packet[45].wrapping_add(1),
+                4 => packet[46..48].fill(0),
+                5 => packet[47] ^= 1,
+                _ => unreachable!(),
+            }
+            let result = compress(&packet, &mut out);
+            if mutation < 2 {
+                let length = result.expect("valid descriptor non-match must fall back");
+                assert_eq!(out[0], RULE_UNCOMPRESSED);
+                assert_eq!(&out[1..length], packet.as_slice());
+            } else {
+                assert!(
+                    matches!(result, Err(SchcError::InvalidPacket(_))),
+                    "mutation {mutation} must be dropped"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn mqtt_sn_non_udp_does_not_match_rule_7() {
+        let src = hex("fe800000000000000000000000000001");
+        let dst = hex("fe800000000000000000000000000002");
+        let mut packet = mqtt_packet(&src, &dst, PORT_MQTT_SN, 5000, b"test");
+        packet[6] = 59;
+        let mut out = [0u8; 256];
+        let n = compress(&packet, &mut out).unwrap();
+        assert_eq!(out[0], RULE_UNCOMPRESSED);
+        assert_eq!(&out[1..n], packet);
+    }
+
+    #[test]
+    fn mqtt_sn_rejects_noncanonical_residues() {
+        let src = hex("fe800000000000000000000000000001");
+        let dst = hex("fe800000000000000000000000000002");
+        let packet = mqtt_packet(&src, &dst, PORT_MQTT_SN, PORT_MQTT_SN, b"x");
+        let mut compressed = [0u8; 512];
+        let n = compress(&packet, &mut compressed).unwrap();
+
+        let mut nonzero_padding = compressed[..n].to_vec();
+        nonzero_padding[20] |= 1;
+        let mut out = [0u8; 512];
+        assert!(matches!(
+            decompress(&nonzero_padding, &mut out),
+            Err(SchcError::NonCanonicalResidue(_))
+        ));
+
+        let mut noncanonical_direction = compressed[..n].to_vec();
+        noncanonical_direction[18] |= 0x40;
+        assert!(matches!(
+            decompress(&noncanonical_direction, &mut out),
+            Err(SchcError::NonCanonicalResidue(_))
+        ));
+
+        let mut full = [0u8; 512];
+        full[0] = RULE_MQTT_SN;
+        let residue_end = {
+            let mut writer = BitWriter::new(&mut full[1..]);
+            writer.write(64, 8).unwrap();
+            writer.write(1, 1).unwrap();
+            writer
+                .write(u128::from_be_bytes(src.as_slice().try_into().unwrap()), 128)
+                .unwrap();
+            writer
+                .write(u128::from_be_bytes(dst.as_slice().try_into().unwrap()), 128)
+                .unwrap();
+            writer.write(0, 1).unwrap();
+            writer.write(PORT_MQTT_SN as u128, 16).unwrap();
+            1 + writer.byte_len()
+        };
+        full[residue_end] = b'x';
+        assert!(matches!(
+            decompress(&full[..residue_end + 1], &mut out),
+            Err(SchcError::NonCanonicalResidue(_))
+        ));
+    }
+
+    #[test]
+    fn mqtt_sn_checksum_zero_is_serialized_as_ffff() {
+        let src = hex("fe800000000000000000000000000001");
+        let dst = hex("fe800000000000000000000000000002");
+        let payload = (0u16..=u16::MAX)
+            .map(u16::to_be_bytes)
+            .find(|candidate| {
+                udp_checksum(&src, &dst, PORT_MQTT_SN, 5000, candidate).unwrap() == 0xFFFF
+            })
+            .expect("a two-byte checksum-zero payload exists");
+        let packet = mqtt_packet(&src, &dst, PORT_MQTT_SN, 5000, &payload);
+        assert_eq!(&packet[46..48], &[0xFF, 0xFF]);
+
+        let mut compressed = [0u8; 512];
+        let n = compress(&packet, &mut compressed).unwrap();
+        let mut decompressed = [0u8; 512];
+        let m = decompress(&compressed[..n], &mut decompressed).unwrap();
+        assert_eq!(&decompressed[..m], packet);
+        assert_eq!(&decompressed[46..48], &[0xFF, 0xFF]);
+    }
+
+    #[test]
+    fn uncompressed_fallback_requires_full_ipv6() {
+        let packet = hex("deadbeef");
+        let mut buf = [0u8; 8];
+        assert!(matches!(
+            compress(&packet, &mut buf),
+            Err(SchcError::InvalidPacket(_))
+        ));
+    }
+
+    #[test]
+    fn non_ipv6_is_rejected_before_rule_255() {
         let raw = hex("deadbeef");
         let mut buf = [0u8; 8];
-        compress(&raw, &mut buf).unwrap();
-        assert_eq!(buf[0], RULE_UNCOMPRESSED);
+        assert!(matches!(
+            compress(&raw, &mut buf),
+            Err(SchcError::InvalidPacket(_))
+        ));
     }
 
     #[test]
@@ -1311,5 +2534,31 @@ mod tests {
             decompress(&data, &mut out),
             Err(SchcError::UnknownRuleId(0x7e))
         );
+    }
+
+    #[test]
+    fn authenticated_peer_version_mismatch_allows_only_single_frame_rule255() {
+        let packet =
+            hex("6000000000003a40fe800000000000000000000000000001fe800000000000000000000000000002");
+        let mut authority = PeerContextAuthority::<1>::new([0x24; 32]).unwrap();
+        let peer = authority.issue_test_peer([0x42; 32], 1, 2, 7, 1).unwrap();
+        assert!(!peer.allows_dodag_join());
+        let mut encoded = [0u8; 64];
+        let length = peer
+            .compress_with_authority(&authority, &packet, &mut encoded, 64)
+            .unwrap();
+        assert_eq!(encoded[0], RULE_UNCOMPRESSED);
+        let mut decoded = [0u8; 64];
+        assert_eq!(
+            peer.decompress_with_authority(&authority, &encoded[..length], &mut decoded, 64)
+                .unwrap(),
+            packet.len()
+        );
+        assert!(peer
+            .compress_with_authority(&authority, &packet, &mut encoded, 40)
+            .is_err());
+        assert!(peer
+            .decompress_with_authority(&authority, &[RULE_MQTT_SN; 21], &mut decoded, 64)
+            .is_err());
     }
 }

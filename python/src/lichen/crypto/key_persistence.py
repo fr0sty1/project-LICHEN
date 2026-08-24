@@ -20,10 +20,12 @@ SECURITY: The Python runtime cannot guarantee secure memory erasure
 (GC copies, no mlock, immutable bytes). For memory-forensics threat
 models, use Rust/C implementations or HSMs.
 """
+
 from __future__ import annotations
 
 import fcntl
 import hashlib
+import hmac
 import json
 import math
 import os
@@ -32,10 +34,17 @@ import struct
 import tempfile
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
+
+from lichen.rollback_anchor import (
+    AnchoredState,
+    StateRevisionAnchor,
+    advance_anchor,
+    read_anchor,
+)
 
 from .identity import Identity
 from .trust import (
@@ -57,9 +66,12 @@ _MAX_METADATA_KEY_LEN: Final[int] = 128
 _MAX_METADATA_VALUE_LEN: Final[int] = 1024
 _MAX_METADATA_TOTAL_LEN: Final[int] = 8192
 _MAX_TRUST_FILE_SIZE: Final[int] = 4 * 1024 * 1024
-_TRUST_FORMAT_VERSION: Final[int] = 1
+_TRUST_FORMAT_VERSION: Final[int] = 2
 _MAX_U32: Final[int] = (1 << 32) - 1
 _NOFOLLOW: Final[int] = getattr(os, "O_NOFOLLOW", 0)
+_SEED_ANCHOR_DOMAIN: Final[bytes] = b"LICHEN-SEED-ANCHOR-v1\x00"
+_TRUST_ANCHOR_DOMAIN: Final[bytes] = b"LICHEN-TRUST-ANCHOR-v1\x00"
+_TRUST_AUTH_DOMAIN: Final[bytes] = b"LICHEN-TRUST-STATE-v1\x00"
 
 
 def _prepare_private_directory(path: Path, error_type: type[Exception]) -> None:
@@ -92,15 +104,23 @@ def _exclusive_file_lock(path: Path, error_type: type[Exception]) -> Iterator[No
             raise error_type(f"lock is not an owned regular file: {path}")
         os.fchmod(fd, 0o600)
         fcntl.flock(fd, fcntl.LOCK_EX)
-        yield
     except OSError as exc:
-        raise error_type(f"cannot lock persistence state: {exc}") from exc
-    finally:
         if "fd" in locals():
-            try:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-            finally:
+            with suppress(OSError):
                 os.close(fd)
+        raise error_type(f"cannot lock persistence state: {exc}") from exc
+    except BaseException:
+        if "fd" in locals():
+            with suppress(OSError):
+                os.close(fd)
+        raise
+    try:
+        yield
+    finally:
+        with suppress(OSError):
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        with suppress(OSError):
+            os.close(fd)
 
 
 class KeyPersistenceError(Exception):
@@ -109,6 +129,12 @@ class KeyPersistenceError(Exception):
 
 class TrustStorePersistenceError(Exception):
     """Raised when trust store state is corrupt or tampered."""
+
+
+class TrustStorePersistenceIndeterminateError(TrustStorePersistenceError):
+    """A new trust snapshot may already be durable; the backend is terminal."""
+
+    durable_state_may_have_advanced = True
 
 
 @dataclass(frozen=True)
@@ -227,7 +253,15 @@ class FileKeyStore(KeyStore):
         """Two-slot file storage IS crash-safe."""
         return True
 
-    def __init__(self, base_dir: Path, *, fail_closed: bool = True) -> None:
+    def __init__(
+        self,
+        base_dir: Path,
+        *,
+        revision_anchor: StateRevisionAnchor,
+        anchor_key: bytes,
+        allow_bootstrap: bool,
+        fail_closed: bool = True,
+    ) -> None:
         """Initialize key storage.
 
         Args:
@@ -237,8 +271,15 @@ class FileKeyStore(KeyStore):
         Raises:
             KeyPersistenceError: If base_dir exists and is not a directory.
         """
+        if type(fail_closed) is not bool or type(allow_bootstrap) is not bool:
+            raise ValueError("fail_closed and allow_bootstrap must be exact booleans")
+        if type(anchor_key) is not bytes or len(anchor_key) != 32:
+            raise ValueError("anchor_key must be exact 32-byte bytes")
         self._base_dir = Path(base_dir)
         self._fail_closed = fail_closed
+        self._allow_bootstrap = allow_bootstrap
+        self._revision_anchor = revision_anchor
+        self._anchor_key = hashlib.sha256(_SEED_ANCHOR_DOMAIN + anchor_key).digest()
         _prepare_private_directory(self._base_dir, KeyPersistenceError)
         self._lock_path = self._base_dir / ".node_seed.lock"
 
@@ -272,10 +313,11 @@ class FileKeyStore(KeyStore):
             os.replace(tmp_path, path)
             os.chmod(path, 0o600)
         except BaseException:
-            try:
+            with suppress(OSError):
+                os.close(fd)
+            with suppress(OSError):
                 tmp_path.unlink(missing_ok=True)
-            finally:
-                raise
+            raise
 
         # Sync directory to ensure rename is durable
         dir_fd = os.open(str(path.parent), os.O_RDONLY | os.O_DIRECTORY)
@@ -336,6 +378,56 @@ class FileKeyStore(KeyStore):
         """Check if any slot file exists (for distinguishing missing vs corrupt)."""
         return os.path.lexists(self._slot_path(0)) or os.path.lexists(self._slot_path(1))
 
+    @staticmethod
+    def _slot_anchor(slot: tuple[int, bytes]) -> AnchoredState:
+        generation, seed = slot
+        return AnchoredState(generation, hashlib.sha256(seed).digest())
+
+    def _best_slot_locked(self) -> tuple[int, bytes] | None:
+        slot0 = self._read_slot(self._slot_path(0))
+        slot1 = self._read_slot(self._slot_path(1))
+        external = read_anchor(self._revision_anchor, self._anchor_key, KeyPersistenceError)
+        if slot0 is None and slot1 is None:
+            if external is not None:
+                raise KeyPersistenceError("initialized seed state was deleted")
+            if self._fail_closed and self._any_slot_exists():
+                raise KeyPersistenceError("seed state corrupt")
+            if not self._allow_bootstrap:
+                raise KeyPersistenceError("seed state requires explicit bootstrap")
+            return None
+        if (
+            slot0 is not None
+            and slot1 is not None
+            and slot0[0] == slot1[0]
+            and slot0[1] != slot1[1]
+        ):
+            raise KeyPersistenceError("seed slots have conflicting generations")
+        if external is not None:
+            for candidate in (slot0, slot1):
+                if candidate is not None and self._slot_anchor(candidate) == external:
+                    return candidate
+            raise KeyPersistenceError("seed state rollback or substitution detected")
+        if slot0 is not None and slot1 is not None and slot0[0] == slot1[0]:
+            best = slot0
+        elif slot0 is None:
+            assert slot1 is not None
+            best = slot1
+        elif slot1 is None or slot0[0] > slot1[0]:
+            best = slot0
+        else:
+            best = slot1
+        state = self._slot_anchor(best)
+        if not self._allow_bootstrap or state.revision != 1:
+            raise KeyPersistenceError("seed state is missing its rollback anchor")
+        advance_anchor(
+            self._revision_anchor,
+            self._anchor_key,
+            None,
+            state,
+            KeyPersistenceError,
+        )
+        return best
+
     def store_seed(self, seed: bytes) -> None:
         if type(seed) is not bytes:
             raise TypeError("seed must be bytes")
@@ -344,52 +436,34 @@ class FileKeyStore(KeyStore):
         with _exclusive_file_lock(self._lock_path, KeyPersistenceError):
             path0 = self._slot_path(0)
             path1 = self._slot_path(1)
-            slot0 = self._read_slot(path0)
             slot1 = self._read_slot(path1)
-            if (
-                self._fail_closed
-                and slot0 is None
-                and slot1 is None
-                and self._any_slot_exists()
-            ):
-                raise KeyPersistenceError("refusing to overwrite corrupt seed state")
+            current = self._best_slot_locked()
 
-            gen0 = slot0[0] if slot0 else 0
-            gen1 = slot1[0] if slot1 else 0
-            current_generation = max(gen0, gen1)
+            current_generation = 0 if current is None else current[0]
             if current_generation == _MAX_U32:
                 raise KeyPersistenceError("seed generation exhausted")
 
             new_gen = current_generation + 1
-            if gen0 <= gen1:
+            if current is None or current == slot1:
                 self._write_slot(path0, new_gen, seed)
             else:
                 self._write_slot(path1, new_gen, seed)
+            previous = read_anchor(self._revision_anchor, self._anchor_key, KeyPersistenceError)
+            advance_anchor(
+                self._revision_anchor,
+                self._anchor_key,
+                previous,
+                AnchoredState(new_gen, hashlib.sha256(seed).digest()),
+                KeyPersistenceError,
+            )
 
     def load_seed(self) -> bytes | None:
         with _exclusive_file_lock(self._lock_path, KeyPersistenceError):
             return self._load_seed_locked()
 
     def _load_seed_locked(self) -> bytes | None:
-        path0 = self._slot_path(0)
-        path1 = self._slot_path(1)
-        slot0 = self._read_slot(path0)
-        slot1 = self._read_slot(path1)
-
-        if slot0 is None and slot1 is None:
-            # Distinguish missing (fresh node) from corrupt
-            if self._fail_closed and self._any_slot_exists():
-                raise KeyPersistenceError("seed state corrupt")
-            return None
-
-        # Return seed from slot with higher generation
-        if slot0 is None:
-            return slot1[1] if slot1 else None
-        if slot1 is None:
-            return slot0[1]
-        if slot1[0] > slot0[0]:
-            return slot1[1]
-        return slot0[1]
+        best = self._best_slot_locked()
+        return None if best is None else best[1]
 
 
 class TrustStorePersistence:
@@ -402,13 +476,32 @@ class TrustStorePersistence:
     implementations may use more efficient binary formats.
     """
 
-    def __init__(self, base_dir: Path) -> None:
+    def __init__(
+        self,
+        base_dir: Path,
+        *,
+        authentication_key: bytes,
+        revision_anchor: StateRevisionAnchor,
+        anchor_key: bytes,
+        allow_bootstrap: bool,
+    ) -> None:
         """Initialize trust store persistence.
 
         Args:
             base_dir: Directory for trust store file.
         """
+        if type(authentication_key) is not bytes or len(authentication_key) != 32:
+            raise ValueError("authentication_key must be exact 32-byte bytes")
+        if type(anchor_key) is not bytes or len(anchor_key) != 32:
+            raise ValueError("anchor_key must be exact 32-byte bytes")
+        if type(allow_bootstrap) is not bool:
+            raise ValueError("allow_bootstrap must be an exact boolean")
         self._base_dir = Path(base_dir)
+        self._authentication_key = authentication_key
+        self._revision_anchor = revision_anchor
+        self._anchor_key = hashlib.sha256(_TRUST_ANCHOR_DOMAIN + anchor_key).digest()
+        self._allow_bootstrap = allow_bootstrap
+        self._terminal_error: TrustStorePersistenceError | None = None
         _prepare_private_directory(self._base_dir, TrustStorePersistenceError)
         self._file_path = self._base_dir / "trust_store.json"
         self._lock_path = self._base_dir / ".trust_store.lock"
@@ -428,7 +521,8 @@ class TrustStorePersistence:
             store: TrustStore to persist.
         """
         with _exclusive_file_lock(self._lock_path, TrustStorePersistenceError):
-            existing_data = self._read_json_locked(missing_ok=True)
+            self._raise_if_terminal()
+            existing_data = self._read_and_validate_locked(missing_ok=True)
             current_revision = 0
             if existing_data is not None:
                 current_revision = self._decode_document(existing_data)._persistence_revision
@@ -442,28 +536,63 @@ class TrustStorePersistence:
 
             entries = []
             for entry in store.list_entries(include_revoked=True):
-                entries.append({
-                    "pubkey_hex": entry.pubkey.hex(),
-                    "iid_hex": entry.iid.hex(),
-                    "ygg_addr_hex": entry.ygg_addr.hex(),
-                    "trust_level": entry.trust_level.name,
-                    "first_seen": entry.first_seen,
-                    "last_seen": entry.last_seen,
-                    "revoked": entry.revoked,
-                    "metadata": dict(entry.metadata),
-                    "rotation_sequence": entry.rotation_sequence,
-                })
+                entries.append(
+                    {
+                        "pubkey_hex": entry.pubkey.hex(),
+                        "iid_hex": entry.iid.hex(),
+                        "ygg_addr_hex": entry.ygg_addr.hex(),
+                        "trust_level": entry.trust_level.name,
+                        "first_seen": entry.first_seen,
+                        "last_seen": entry.last_seen,
+                        "revoked": entry.revoked,
+                        "metadata": dict(entry.metadata),
+                        "rotation_sequence": entry.rotation_sequence,
+                    }
+                )
             new_revision = current_revision + 1
-            data = {
+            body: dict[str, object] = {
                 "format_version": _TRUST_FORMAT_VERSION,
                 "revision": new_revision,
                 "auto_pin": store.auto_pin,
                 "entries": entries,
             }
-            encoded = (json.dumps(data, indent=2, allow_nan=False) + "\n").encode("utf-8")
+            authentication = hmac.new(
+                self._authentication_key,
+                _TRUST_AUTH_DOMAIN + self._canonical(body),
+                hashlib.sha256,
+            ).hexdigest()
+            document = {**body, "authentication": authentication}
+            encoded = (
+                json.dumps(document, indent=2, sort_keys=True, allow_nan=False) + "\n"
+            ).encode("utf-8")
             if len(encoded) > _MAX_TRUST_FILE_SIZE:
                 raise TrustStorePersistenceError("trust store exceeds size limit")
-            self._write_json_locked(encoded)
+            previous_anchor = read_anchor(
+                self._revision_anchor,
+                self._anchor_key,
+                TrustStorePersistenceError,
+            )
+            state = AnchoredState(new_revision, hashlib.sha256(encoded).digest())
+            written = False
+            try:
+                self._write_json_locked(encoded)
+                written = True
+                advance_anchor(
+                    self._revision_anchor,
+                    self._anchor_key,
+                    previous_anchor,
+                    state,
+                    TrustStorePersistenceError,
+                )
+            except BaseException as exc:
+                if isinstance(exc, TrustStorePersistenceIndeterminateError) or written:
+                    store._persistence_revision = new_revision
+                    terminal = TrustStorePersistenceIndeterminateError(
+                        "trust-store persistence transition is indeterminate"
+                    )
+                    self._terminal_error = terminal
+                    raise terminal from exc
+                raise
             store._persistence_revision = new_revision
 
     def load(self) -> TrustStore | None:
@@ -476,10 +605,63 @@ class TrustStorePersistence:
             TrustStorePersistenceError: If file is corrupt, tampered, or invalid.
         """
         with _exclusive_file_lock(self._lock_path, TrustStorePersistenceError):
-            data = self._read_json_locked(missing_ok=True)
+            self._raise_if_terminal()
+            data = self._read_and_validate_locked(missing_ok=True)
             if data is None:
                 return None
             return self._decode_document(data)
+
+    def _raise_if_terminal(self) -> None:
+        if self._terminal_error is not None:
+            raise self._terminal_error
+
+    @staticmethod
+    def _canonical(document: object) -> bytes:
+        return json.dumps(document, sort_keys=True, separators=(",", ":"), allow_nan=False).encode(
+            "utf-8"
+        )
+
+    def _read_and_validate_locked(self, *, missing_ok: bool) -> object | None:
+        document = self._read_json_locked(missing_ok=missing_ok)
+        external = read_anchor(
+            self._revision_anchor,
+            self._anchor_key,
+            TrustStorePersistenceError,
+        )
+        if document is None:
+            if external is not None:
+                raise TrustStorePersistenceError("initialized trust store was deleted")
+            if not self._allow_bootstrap:
+                raise TrustStorePersistenceError("trust store requires explicit bootstrap")
+            return None
+        decoded = self._decode_document(document)
+        encoded = (json.dumps(document, indent=2, sort_keys=True, allow_nan=False) + "\n").encode(
+            "utf-8"
+        )
+        state = AnchoredState(decoded._persistence_revision, hashlib.sha256(encoded).digest())
+        if external is None:
+            if not self._allow_bootstrap or state.revision != 1:
+                raise TrustStorePersistenceError("trust store is missing its rollback anchor")
+            advance_anchor(
+                self._revision_anchor,
+                self._anchor_key,
+                None,
+                state,
+                TrustStorePersistenceError,
+            )
+        elif state == external:
+            pass
+        elif state.revision == external.revision + 1:
+            advance_anchor(
+                self._revision_anchor,
+                self._anchor_key,
+                external,
+                state,
+                TrustStorePersistenceError,
+            )
+        else:
+            raise TrustStorePersistenceError("trust-store rollback or substitution detected")
+        return document
 
     def _read_json_locked(self, *, missing_ok: bool) -> object | None:
         try:
@@ -504,14 +686,13 @@ class TrustStorePersistence:
         try:
             document: object = json.loads(raw)
             return document
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        except (ValueError, UnicodeDecodeError) as exc:
             raise TrustStorePersistenceError(f"corrupt JSON: {exc}") from exc
 
     def _write_json_locked(self, encoded: bytes) -> None:
-        fd, tmp_name = tempfile.mkstemp(
-            prefix=".trust_store.", suffix=".tmp", dir=self._base_dir
-        )
+        fd, tmp_name = tempfile.mkstemp(prefix=".trust_store.", suffix=".tmp", dir=self._base_dir)
         tmp_path = Path(tmp_name)
+        replaced = False
         try:
             os.fchmod(fd, 0o600)
             with os.fdopen(fd, "wb", closefd=True) as file:
@@ -519,14 +700,22 @@ class TrustStorePersistence:
                 file.flush()
                 os.fsync(file.fileno())
             os.replace(tmp_path, self._file_path)
+            replaced = True
             os.chmod(self._file_path, 0o600)
             dir_fd = os.open(self._base_dir, os.O_RDONLY | os.O_DIRECTORY)
             try:
                 os.fsync(dir_fd)
             finally:
                 os.close(dir_fd)
-        except BaseException:
-            tmp_path.unlink(missing_ok=True)
+        except BaseException as exc:
+            with suppress(OSError):
+                os.close(fd)
+            with suppress(OSError):
+                tmp_path.unlink(missing_ok=True)
+            if replaced:
+                raise TrustStorePersistenceIndeterminateError(
+                    "trust-store replacement completed before persistence failure"
+                ) from exc
             raise
 
     def _decode_document(self, data: object) -> TrustStore:
@@ -534,7 +723,13 @@ class TrustStorePersistence:
         if not isinstance(data, dict):
             raise TrustStorePersistenceError("root must be object")
 
-        expected_root = {"format_version", "revision", "auto_pin", "entries"}
+        expected_root = {
+            "format_version",
+            "revision",
+            "auto_pin",
+            "entries",
+            "authentication",
+        }
         if set(data) != expected_root:
             raise TrustStorePersistenceError("root fields must match exact versioned schema")
         if (
@@ -542,6 +737,21 @@ class TrustStorePersistence:
             or data["format_version"] != _TRUST_FORMAT_VERSION
         ):
             raise TrustStorePersistenceError("unsupported trust-store format_version")
+        authentication = data["authentication"]
+        if type(authentication) is not str:
+            raise TrustStorePersistenceError("authentication must be hex")
+        try:
+            supplied_authentication = bytes.fromhex(authentication)
+        except ValueError:
+            raise TrustStorePersistenceError("authentication must be hex") from None
+        body = {key: value for key, value in data.items() if key != "authentication"}
+        expected_authentication = hmac.new(
+            self._authentication_key,
+            _TRUST_AUTH_DOMAIN + self._canonical(body),
+            hashlib.sha256,
+        ).digest()
+        if not hmac.compare_digest(supplied_authentication, expected_authentication):
+            raise TrustStorePersistenceError("trust store authentication failed")
         revision = data["revision"]
         if type(revision) is not int or not 1 <= revision <= (1 << 64) - 1:
             raise TrustStorePersistenceError("revision must be a nonzero u64")
@@ -565,8 +775,15 @@ class TrustStorePersistence:
             if not isinstance(entry_data, dict):
                 raise TrustStorePersistenceError(f"entry[{i}] must be object")
             expected_entry = {
-                "pubkey_hex", "iid_hex", "ygg_addr_hex", "trust_level",
-                "first_seen", "last_seen", "revoked", "metadata", "rotation_sequence",
+                "pubkey_hex",
+                "iid_hex",
+                "ygg_addr_hex",
+                "trust_level",
+                "first_seen",
+                "last_seen",
+                "revoked",
+                "metadata",
+                "rotation_sequence",
             }
             if set(entry_data) != expected_entry:
                 raise TrustStorePersistenceError(f"entry[{i}]: fields do not match schema")
@@ -580,13 +797,9 @@ class TrustStorePersistence:
 
             # SECURITY: Verify derivation bindings - pubkey must derive to iid/ygg_addr
             if not verify_pubkey_derivation(pubkey, iid):
-                raise TrustStorePersistenceError(
-                    f"entry[{i}]: pubkey does not derive to iid"
-                )
+                raise TrustStorePersistenceError(f"entry[{i}]: pubkey does not derive to iid")
             if not verify_pubkey_to_ygg_addr(pubkey, ygg_addr):
-                raise TrustStorePersistenceError(
-                    f"entry[{i}]: pubkey does not derive to ygg_addr"
-                )
+                raise TrustStorePersistenceError(f"entry[{i}]: pubkey does not derive to ygg_addr")
 
             # Duplicate detection
             if iid in seen_iids:
@@ -596,9 +809,7 @@ class TrustStorePersistence:
             # Trust level
             trust_level_name = entry_data["trust_level"]
             if type(trust_level_name) is not str:
-                raise TrustStorePersistenceError(
-                    f"entry[{i}]: trust_level must be string"
-                )
+                raise TrustStorePersistenceError(f"entry[{i}]: trust_level must be string")
             try:
                 trust_level = TrustLevel[trust_level_name]
             except KeyError:
@@ -609,22 +820,22 @@ class TrustStorePersistence:
             # Timestamps
             first_seen = entry_data["first_seen"]
             last_seen = entry_data["last_seen"]
-            if type(first_seen) not in (int, float) or not math.isfinite(first_seen):
-                raise TrustStorePersistenceError(
-                    f"entry[{i}]: first_seen must be number"
-                )
-            if type(last_seen) not in (int, float) or not math.isfinite(last_seen):
-                raise TrustStorePersistenceError(
-                    f"entry[{i}]: last_seen must be number"
-                )
+            if type(first_seen) not in (int, float):
+                raise TrustStorePersistenceError(f"entry[{i}]: first_seen must be number")
+            if type(last_seen) not in (int, float):
+                raise TrustStorePersistenceError(f"entry[{i}]: last_seen must be number")
+            if (type(first_seen) is int and first_seen > (1 << 64) - 1) or (
+                type(last_seen) is int and last_seen > (1 << 64) - 1
+            ):
+                raise TrustStorePersistenceError(f"entry[{i}]: timestamps must be finite")
+            if (type(first_seen) is float and not math.isfinite(first_seen)) or (
+                type(last_seen) is float and not math.isfinite(last_seen)
+            ):
+                raise TrustStorePersistenceError(f"entry[{i}]: timestamps must be finite")
             if first_seen < 0 or last_seen < 0:
-                raise TrustStorePersistenceError(
-                    f"entry[{i}]: timestamps must be non-negative"
-                )
+                raise TrustStorePersistenceError(f"entry[{i}]: timestamps must be non-negative")
             if last_seen < first_seen:
-                raise TrustStorePersistenceError(
-                    f"entry[{i}]: last_seen < first_seen"
-                )
+                raise TrustStorePersistenceError(f"entry[{i}]: last_seen < first_seen")
 
             # Revoked flag
             revoked = entry_data["revoked"]
@@ -636,9 +847,7 @@ class TrustStorePersistence:
             if not isinstance(metadata, dict):
                 raise TrustStorePersistenceError(f"entry[{i}]: metadata must be object")
             if len(metadata) > _MAX_METADATA_KEYS:
-                raise TrustStorePersistenceError(
-                    f"entry[{i}]: too many metadata keys"
-                )
+                raise TrustStorePersistenceError(f"entry[{i}]: too many metadata keys")
             metadata_total = 0
             for k, v in metadata.items():
                 if type(k) is not str or type(v) is not str:
@@ -646,9 +855,7 @@ class TrustStorePersistence:
                         f"entry[{i}]: metadata keys/values must be strings"
                     )
                 if len(k) > _MAX_METADATA_KEY_LEN or len(v) > _MAX_METADATA_VALUE_LEN:
-                    raise TrustStorePersistenceError(
-                        f"entry[{i}]: metadata key/value too long"
-                    )
+                    raise TrustStorePersistenceError(f"entry[{i}]: metadata key/value too long")
                 metadata_total += len(k.encode("utf-8")) + len(v.encode("utf-8"))
             if metadata_total > _MAX_METADATA_TOTAL_LEN:
                 raise TrustStorePersistenceError(f"entry[{i}]: metadata exceeds size limit")
@@ -656,9 +863,7 @@ class TrustStorePersistence:
             # Rotation sequence (anti-replay for key rotation)
             rotation_sequence = entry_data["rotation_sequence"]
             if type(rotation_sequence) is not int:
-                raise TrustStorePersistenceError(
-                    f"entry[{i}]: rotation_sequence must be integer"
-                )
+                raise TrustStorePersistenceError(f"entry[{i}]: rotation_sequence must be integer")
             if not 0 <= rotation_sequence <= (1 << 64) - 1:
                 raise TrustStorePersistenceError(
                     f"entry[{i}]: rotation_sequence must be non-negative"
@@ -670,8 +875,8 @@ class TrustStorePersistence:
                     iid=iid,
                     ygg_addr=ygg_addr,
                     trust_level=trust_level,
-                    first_seen=float(first_seen),
-                    last_seen=float(last_seen),
+                    first_seen=first_seen,
+                    last_seen=last_seen,
                     revoked=revoked,
                     metadata=metadata,
                     rotation_sequence=rotation_sequence,
@@ -684,9 +889,7 @@ class TrustStorePersistence:
         return store
 
     @staticmethod
-    def _parse_hex_field(
-        data: dict[str, object], key: str, expected_len: int, idx: int
-    ) -> bytes:
+    def _parse_hex_field(data: dict[str, object], key: str, expected_len: int, idx: int) -> bytes:
         """Parse and validate a hex-encoded bytes field."""
         value = data.get(key)
         if value is None:

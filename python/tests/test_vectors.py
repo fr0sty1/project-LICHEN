@@ -4,30 +4,48 @@
 
 These guard against drift between the reference implementation and the JSON
 vectors that the Rust/C implementations validate against (test/vectors/, issue
-ajr / gate ijj). If a vector changes intentionally, regenerate with
-``PYTHONPATH=python/src python3 test/vectors/generate.py``.
+ajr / gate ijj). For a supported generated target, use for example
+``PYTHONPATH=python/src python3 test/vectors/generate.py schc_fragment.json``.
+The curated ``schc_compression.json`` corpus is intentionally not emitted by
+that generator.
 """
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
+import re
 import sys
+import threading
 import zlib
+from ipaddress import IPv6Address
 from pathlib import Path
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 from jsonschema import Draft7Validator
 
 from lichen.announce.coords import decode_coords, encode_coords
-from lichen.crypto.identity import Identity
+from lichen.channel_plan import ChannelEntry, ChannelPlan
+from lichen.channel_plan import hash_32 as channel_plan_hash_32
+from lichen.constants import PORT_MQTT_SN
+from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
+from lichen.ipv6.addr import iid_to_eui64
 from lichen.ipv6.icmpv6 import Icmpv6Error, Icmpv6Message, handle_icmpv6
 from lichen.ipv6.packet import IPv6Header, IPv6Packet, NextHeader, PacketError
 from lichen.ipv6.udp import UdpDatagram, UdpError
-from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
+from lichen.l2_payload import (
+    L2PayloadKind,
+    classify_l2_payload,
+    l2_payload_body,
+    wrap_schc_payload,
+)
+from lichen.link.adaptive_sf import adaptive_sf_for_metrics
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
+from lichen.link.link_layer import MAX_SINGLE_FRAME_SCHC_PACKET, LinkLayer, RxFrame
 from lichen.link.short_addr import (
     SHORT_ADDR_RESERVED,
     SHORT_ADDR_RESERVED_BROADCAST,
@@ -49,18 +67,35 @@ from lichen.link.short_addr import (
 )
 from lichen.loadng.messages import RERR, RREP, RREQ
 from lichen.rpl.dao import RplTarget, TransitInformation
-from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
+from lichen.rpl.dao_manager import DaoManager
+from lichen.rpl.dao_origin import DaoOriginRejectReason, DaoOriginValidator
+from lichen.rpl.dao_persistence import MemoryPersistence, compute_dao_digest
+from lichen.rpl.dao_types import DaoError
+from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, RplError, RplOption, _parse_options
+from lichen.schc.codec import BitWriter, SchcError
 from lichen.schc.fragment import (
     MAX_PACKET_SIZE,
+    TILE_SIZE,
+    WINDOW_SIZE,
     Ack,
     Fragment,
     FragmentError,
     FragmentSender,
     ack_request,
+    fragmentation_message_is_response,
+    fragmentation_rule_for_sender,
     receiver_abort,
     sender_abort,
 )
-from lichen.schc.headers import compress_packet, decompress_packet
+
+if TYPE_CHECKING:
+    from lichen.gradient import GradientEntry
+from lichen.schc.headers import (
+    MQTT_SN_PROFILE,
+    compress_packet,
+    decompress_packet,
+    validate_rule7_addresses,
+)
 from lichen.schc.reassembly import FragmentReceiver
 from lichen.sim.tdma import TDMAScheduler
 
@@ -77,6 +112,8 @@ from generate import (  # noqa: E402
     loadng_discovery_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
+    rpl_messages_vectors,
+    rpl_multi_instance_vectors,
 )
 from generate_rpl_route_state import build_document as build_route_state_document  # noqa: E402
 
@@ -113,6 +150,13 @@ def test_vectors_directory_exists() -> None:
         "ccp9-rendezvous.json",
         "l2_payload.json",
         "ipv6_malformed.json",
+        # GCP family: per-vector name/type/description key presence is enforced
+        # by the gateway_coordination branch (project-LICHEN-worker6-jo3q/hik5),
+        # so structural divergence fails this Python gate instead of surfacing
+        # as a Rust consumer panic.
+        "gateway_coordination.json",
+        "gcp6_slot_coordination.json",
+        "rpl_multi_instance.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -125,14 +169,362 @@ def test_vector_file_schema(filename: str) -> None:
 def _schc_cases():
     doc = _load("schc_compression.json")
     assert doc["format_version"] == 2
-    return [(v["name"], v) for v in doc["vectors"] if v.get("category") != "malformed"]
+    return [(v["name"], v) for v in doc["vectors"]]
 
+
+def _rule_versioning_cases():
+    doc = _load("rule_versioning.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _fragmentation_cases():
     doc = _load("schc_fragmentation.json")
     assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
+
+
+class _FragmentVectorRadio:
+    def __init__(self) -> None:
+        self.tx: list[bytes] = []
+        self.rx: list[tuple[bytes, int, int]] = []
+
+    async def transmit(self, data: bytes) -> bool:
+        self.tx.append(data)
+        return True
+
+    async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
+        del timeout_ms
+        return self.rx.pop(0) if self.rx else None
+
+    async def cad(self, timeout_ms: int) -> bool:
+        del timeout_ms
+        return False
+
+
+def _fragment_vector_links() -> tuple[
+    LinkLayer,
+    LinkLayer,
+    _FragmentVectorRadio,
+    _FragmentVectorRadio,
+]:
+    local_identity = Identity.from_seed(bytes(range(32)))
+    remote_identity = Identity.from_seed(bytes(range(32, 64)))
+    return _fragment_vector_links_for(local_identity, remote_identity)
+
+
+def _fragment_vector_links_for(
+    local_identity: Identity,
+    remote_identity: Identity,
+) -> tuple[
+    LinkLayer,
+    LinkLayer,
+    _FragmentVectorRadio,
+    _FragmentVectorRadio,
+]:
+    local_peer = PeerIdentity.from_pubkey(local_identity.pubkey)
+    remote_peer = PeerIdentity.from_pubkey(remote_identity.pubkey)
+    local_radio = _FragmentVectorRadio()
+    remote_radio = _FragmentVectorRadio()
+    local_link = LinkLayer(
+        local_radio,  # type: ignore[arg-type]
+        local_identity,
+        lambda _hint: remote_peer,
+        peer_lookup_all=lambda: [remote_peer],
+        cad_enabled=False,
+    )
+    remote_link = LinkLayer(
+        remote_radio,  # type: ignore[arg-type]
+        remote_identity,
+        lambda _hint: local_peer,
+        peer_lookup_all=lambda: [local_peer],
+        cad_enabled=False,
+    )
+    remote_link._pinned_keys[local_peer.iid] = local_identity.pubkey
+    remote_link._key_generations.setdefault(local_identity.pubkey, object())
+    return local_link, remote_link, local_radio, remote_radio
+
+
+def _endpoint_vector_identity(public_key: bytes) -> Identity:
+    """Recover the two deterministic signer fixtures committed in the vectors."""
+    for seed in (bytes(32), bytes([1]) * 32):
+        identity = Identity.from_seed(seed)
+        if identity.pubkey == public_key:
+            return identity
+    raise AssertionError("endpoint-direction vector uses an unknown signer fixture")
+
+
+def _receive_signed_fragment_vector_frame(
+    local_link: LinkLayer,
+    sender: Identity,
+    local_radio: _FragmentVectorRadio,
+    payload: bytes,
+    *,
+    epoch: int,
+    seqnum: int,
+) -> RxFrame:
+    local_eui64 = iid_to_eui64(PeerIdentity.from_pubkey(local_link.identity.pubkey).iid)
+    signer_eui64 = iid_to_eui64(sender.iid)
+    frame_length = 4 + len(local_eui64) + len(signer_eui64) + len(payload) + 48
+    llsec = int(AddrMode.EXTENDED) | (1 << 5) | (1 << 7)
+    signable = local_link._build_signable_data(
+        epoch,
+        seqnum,
+        local_eui64,
+        payload,
+        frame_length,
+        llsec,
+        signer_eui64,
+    )
+    wire = LichenFrame(
+        epoch=epoch,
+        seqnum=seqnum,
+        dst_addr=local_eui64,
+        payload=payload,
+        mic=schnorr_sign(sender.privkey, sender.pubkey, signable),
+        addr_mode=AddrMode.EXTENDED,
+        signature_present=True,
+        signer_eui64=signer_eui64,
+    ).to_bytes()
+    local_radio.rx.append((wire, -90, 4))
+    received = asyncio.run(local_link.receive(100))
+    assert isinstance(received, RxFrame)
+    return received
+
+
+def _fragment_admission_state(link: LinkLayer, signer: bytes) -> tuple[object, ...]:
+    """Snapshot every bounded SCHC owner changed by fragment admission."""
+    sessions = link._schc_session_manager
+    reassembly = link._schc_reassembly_manager
+    return (
+        link.replay_protector.highest(signer),
+        tuple(
+            (
+                key,
+                record.high_water,
+                record.status,
+                record.active,
+                tuple(record.pending),
+            )
+            for key, record in sessions._records.items()
+        ),
+        tuple(sessions._tombstones),
+        tuple(sessions._prepared),
+        tuple(
+            (key, context.high_water, tuple(sorted(context.receiver._tiles.items())))
+            for key, context in reassembly._contexts.items()
+        ),
+        tuple(reassembly._tombstones.items()),
+        tuple(reassembly._rejections.items()),
+    )
+
+
+def _assert_endpoint_direction_production(vector: dict) -> None:
+    local_public_key = bytes.fromhex(vector["local_public_key_hex"])
+    peer_public_key = bytes.fromhex(vector["peer_public_key_hex"])
+    local_identity = _endpoint_vector_identity(local_public_key)
+    peer_identity = _endpoint_vector_identity(peer_public_key)
+    local_link, peer_link, local_radio, peer_radio = _fragment_vector_links_for(
+        local_identity, peer_identity
+    )
+
+    if vector.get("expect_error") == "equal_endpoint_keys":
+        before = _fragment_admission_state(local_link, peer_public_key)
+        with pytest.raises(FragmentError, match="distinct signer identities"):
+            local_link.create_fragment_sender(_canonical_fragment_schc(), peer_public_key)
+        assert _fragment_admission_state(local_link, peer_public_key) == before
+        return
+
+    _admit_fragment_version(local_link, peer_link, local_radio, peer_radio, 3)
+    message_type = vector["message_type"]
+    if vector["expect_accept"] and message_type == "data":
+        before = _fragment_admission_state(local_link, peer_public_key)
+        sender = local_link.create_fragment_sender(_canonical_fragment_schc(), peer_public_key)
+        assert sender.rule_id == vector["rule_id"]
+        sender.start()
+        after = _fragment_admission_state(local_link, peer_public_key)
+        assert after != before
+        assert vector["expect_state_mutation"] is True
+        return
+
+    if vector["expect_accept"]:
+        _admit_fragment_version(peer_link, local_link, peer_radio, local_radio, 3)
+        peer_sender = peer_link.create_fragment_sender(_canonical_fragment_schc(), local_public_key)
+        peer_sender.start()
+        assert peer_sender.rule_id == vector["rule_id"]
+        payload = (
+            Ack(vector["rule_id"], 0, complete=True).to_bytes()
+            if message_type == "ack"
+            else receiver_abort(vector["rule_id"])
+        )
+        received = _receive_fragment_vector_frame(
+            peer_link, local_link, peer_radio, local_radio, payload
+        )
+        before = _fragment_admission_state(peer_link, local_public_key)
+        assert peer_link.accept_authenticated_schc_sender_control(received) == []
+        after = _fragment_admission_state(peer_link, local_public_key)
+        assert after != before
+        assert peer_sender.status == ("succeeded" if message_type == "ack" else "aborted")
+        assert vector["expect_state_mutation"] is True
+        return
+
+    epoch, seqnum = peer_link.get_sequence()
+    wrong = Fragment(vector["rule_id"], 0, 62, bytes(TILE_SIZE)).to_bytes()
+    received = _receive_signed_fragment_vector_frame(
+        local_link,
+        peer_identity,
+        local_radio,
+        wrong,
+        epoch=epoch,
+        seqnum=seqnum,
+    )
+    assert local_link.accept_authenticated_schc_sender_control(received) is None
+    before = _fragment_admission_state(local_link, peer_public_key)
+    with pytest.raises(ValueError, match="endpoint direction"):
+        local_link.accept_authenticated_schc_fragment(received)
+    assert _fragment_admission_state(local_link, peer_public_key) == before
+    assert vector["expect_state_mutation"] is False
+
+
+def _assert_duplicate_tile_production(vector: dict) -> None:
+    peer_identity = Identity.from_seed(bytes(32))
+    local_identity = Identity.from_seed(bytes([1]) * 32)
+    local_link, peer_link, local_radio, peer_radio = _fragment_vector_links_for(
+        local_identity, peer_identity
+    )
+    _admit_fragment_version(local_link, peer_link, local_radio, peer_radio, 3)
+    epoch, seqnum = peer_link.get_sequence()
+    original = Fragment(vector["rule_id"], 0, 62, bytes(TILE_SIZE)).to_bytes()
+
+    first = _receive_signed_fragment_vector_frame(
+        local_link,
+        peer_identity,
+        local_radio,
+        original,
+        epoch=epoch,
+        seqnum=seqnum,
+    )
+    first_result, _ = local_link.accept_authenticated_schc_fragment(first)
+    assert first_result.response is None
+    contexts = local_link._schc_reassembly_manager._contexts
+    assert len(contexts) == 1
+    context = next(iter(contexts.values()))
+    tiles_before = dict(context.receiver._tiles)
+    high_water_before = context.high_water
+
+    duplicate = _receive_signed_fragment_vector_frame(
+        local_link,
+        peer_identity,
+        local_radio,
+        original,
+        epoch=epoch,
+        seqnum=seqnum + 1,
+    )
+    duplicate_result, _ = local_link.accept_authenticated_schc_fragment(duplicate)
+    assert duplicate_result.response is None
+    assert dict(context.receiver._tiles) == tiles_before
+    assert context.high_water > high_water_before
+    assert local_link.replay_protector.highest(peer_identity.pubkey) == context.high_water
+    assert vector["expect_duplicate_discarded"] is True
+    assert vector["expect_reassembly_reset"] is False
+    assert vector["expect_tile_state_mutation"] is False
+    assert vector["expect_high_water_counter_advanced"] is True
+
+
+def _receive_fragment_vector_frame(
+    local_link: LinkLayer,
+    remote_link: LinkLayer,
+    local_radio: _FragmentVectorRadio,
+    remote_radio: _FragmentVectorRadio,
+    payload: bytes,
+) -> RxFrame:
+    if payload and payload[0] in (0x78, 0x79):
+        epoch, seqnum = remote_link.get_sequence()
+        received = _receive_signed_fragment_vector_frame(
+            local_link,
+            remote_link.identity,
+            local_radio,
+            bytes(payload),
+            epoch=epoch,
+            seqnum=seqnum,
+        )
+        remote_link._next_seqnum()
+        return received
+    assert asyncio.run(remote_link.send(payload))
+    local_radio.rx.append((remote_radio.tx[-1], -90, 4))
+    received = asyncio.run(local_link.receive(100))
+    assert isinstance(received, RxFrame)
+    return received
+
+
+def _admit_fragment_version(
+    local_link: LinkLayer,
+    remote_link: LinkLayer,
+    local_radio: _FragmentVectorRadio,
+    remote_radio: _FragmentVectorRadio,
+    version: int,
+) -> tuple[object, object]:
+    payload, _ = _dio_link_payload(
+        [RplOption(0x13, bytes([version]))],
+        source_identity=remote_link.identity,
+    )
+    received = _receive_fragment_vector_frame(
+        local_link, remote_link, local_radio, remote_radio, payload
+    )
+    return local_link.accept_authenticated_schc_dio(
+        received,
+        expected_rpl_instance_id=0,
+        expected_dodag_id=IPv6Address("0200::1"),
+        expected_mop=1,
+        expected_role="peer",
+    )
+
+
+def _dio_link_payload(
+    options: list[RplOption],
+    *,
+    rpl_instance_id: int = 0,
+    dodag_id: str = "0200::1",
+    mop: int = 1,
+    rank: int = 512,
+    source_identity: Identity | None = None,
+) -> tuple[bytes, DIO]:
+    """Build an actual SCHC/IPv6/ICMPv6 DIO L2 payload for admission tests."""
+    dio = DIO(
+        rpl_instance_id=rpl_instance_id,
+        version=1,
+        rank=rank,
+        dtsn=0,
+        dodag_id=dodag_id,
+        mode_of_operation=mop,
+        options=options,
+    )
+    return _dio_wire_link_payload(dio.to_bytes(), source_identity=source_identity), dio
+
+
+def _dio_wire_link_payload(
+    dio_wire: bytes,
+    *,
+    source_identity: Identity | None = None,
+) -> bytes:
+    """Wrap deliberately noncanonical DIO bytes without normalizing them."""
+    signer = (
+        Identity.from_seed(bytes(range(32, 64))) if source_identity is None else source_identity
+    )
+    src = IPv6Address(IPv6Address("fe80::").packed[:8] + signer.iid)
+    dst = IPv6Address("ff02::1a")
+    icmp = Icmpv6Message(155, 1, dio_wire).to_bytes(src, dst)
+    ipv6 = (
+        IPv6Header(
+            src_addr=src,
+            dst_addr=dst,
+            next_header=NextHeader.ICMPV6,
+            payload_length=len(icmp),
+            hop_limit=255,
+        ).to_bytes()
+        + icmp
+    )
+    return wrap_schc_payload(compress_packet(ipv6))
 
 
 def _expand_vector_bytes(value: str | dict) -> bytes:
@@ -145,6 +537,22 @@ def _expand_vector_bytes(value: str | dict) -> bytes:
         else:
             output.extend(bytes.fromhex(part["repeat_byte"]) * part["count"])
     return bytes(output)
+
+
+def _canonical_fragment_schc(rule_id: int = 0) -> bytes:
+    """Return one byte-exact canonical whole packet for sender-policy tests."""
+    names = {
+        0: "coap_linklocal",
+        7: "mqtt_sn_source_port_linklocal",
+        255: "mqtt_sn_traffic_class_nonmatch",
+    }
+    name = names[rule_id]
+    vector = next(
+        item for item in _load("schc_compression.json")["vectors"] if item["name"] == name
+    )
+    compressed = bytes.fromhex(vector["compressed"])
+    assert compressed[0] == rule_id
+    return compressed
 
 
 def _frame_cases():
@@ -206,11 +614,504 @@ def test_ipv6_malformed_vector(name: str, vector: dict) -> None:
 
 @pytest.mark.parametrize("name,vector", _schc_cases())
 def test_schc_vector(name: str, vector: dict) -> None:
-    packet = bytes.fromhex(vector["packet"])
+    if vector.get("category") == "malformed_input":
+        with pytest.raises(SchcError):
+            compress_packet(bytes.fromhex(vector["packet"]))
+        return
+    if vector.get("category") == "size_boundary":
+        compressed = (
+            bytes.fromhex(vector["compressed_prefix"])
+            + bytes([vector["tail_byte"]]) * vector["tail_length"]
+        )
+        if "expect_error" in vector:
+            with pytest.raises(SchcError, match="profile limit"):
+                decompress_packet(compressed)
+        else:
+            assert len(decompress_packet(compressed)) == vector["expected_packet_size"], name
+        return
     compressed = bytes.fromhex(vector["compressed"])
+    if vector.get("category") == "malformed":
+        with pytest.raises((SchcError, ValueError)):
+            decompress_packet(compressed)
+        return
+    packet = bytes.fromhex(vector["packet"])
     assert compress_packet(packet) == compressed, f"compress drift: {name}"
     assert decompress_packet(compressed) == packet, f"decompress drift: {name}"
     assert compressed[0] == vector["rule_id"]
+
+
+@pytest.mark.parametrize("name,vector", _rule_versioning_cases())
+def test_rule_versioning_vector(name: str, vector: dict) -> None:
+    """Execute every versioning oracle; no category is metadata-only/skipped."""
+    from lichen.schc.context import (
+        RuleVersionFailureTracker,
+        RuleVersionFailureTrackerFull,
+        SchcContext,
+        versions_compatible,
+    )
+    from lichen.schc.headers import decode_rule255, encode_rule255
+    from lichen.schc.rules import (
+        MO,
+        RULE_SET_VERSION,
+        SchcRuleVersionOption,
+        rule_set_v3_descriptor_hash,
+    )
+
+    category = vector["category"]
+    if category == "registry":
+        context = SchcContext(version=vector["registry_version"])
+        assert [rule.rule_id for rule in context.rules] == vector["rule_ids"]
+        assert f"{rule_set_v3_descriptor_hash():016x}" == vector["descriptor_hash"]
+        for rule_id in vector["get_present"]:
+            assert context.get(rule_id) is not None, f"{name}: missing Rule {rule_id}"
+        for rule_id in vector["get_absent"]:
+            assert context.get(rule_id) is None, f"{name}: unexpected Rule {rule_id}"
+        for selection in vector["default_selection"]:
+            descriptor_rule = context.get(selection["fields_from_rule"])
+            assert descriptor_rule is not None
+            fields = {
+                descriptor.field_id: (
+                    descriptor.mapping[0]
+                    if descriptor.mo is MO.MATCH_MAPPING and descriptor.mapping is not None
+                    else descriptor.target_value
+                )
+                for descriptor in descriptor_rule.fields
+            }
+            selected = context.select_rule(fields)
+            assert selected is not None
+            assert selected.rule_id == selection["selected_rule"], name
+        return
+    elif category == "rule_version":
+        if "wire" in vector:
+            wire = bytes.fromhex(vector["wire"])
+            if vector.get("expect_error") in {
+                "truncated",
+                "wrong_type",
+                "wrong_length",
+                "trailing_bytes",
+            }:
+                with pytest.raises(ValueError):
+                    SchcRuleVersionOption.from_bytes(wire)
+            else:
+                option = SchcRuleVersionOption.from_bytes(wire)
+                assert option.version == vector["version"]
+                assert option.to_bytes() == wire
+                if option.version == RULE_SET_VERSION:
+                    assert SchcRuleVersionOption.local(option.version) == option
+                else:
+                    with pytest.raises(ValueError):
+                        SchcRuleVersionOption.local(option.version)
+        if "local_version" in vector and "remote_version" in vector:
+            assert (
+                versions_compatible(vector["local_version"], vector["remote_version"])
+                is vector["expect_compatible"]
+            )
+        if "dio_version" in vector:
+            local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+            link_payload, dio = _dio_link_payload([RplOption(0x13, bytes([vector["dio_version"]]))])
+            received = _receive_fragment_vector_frame(
+                local_link, remote_link, local_radio, remote_radio, link_payload
+            )
+            authenticated, peer = local_link.accept_authenticated_schc_dio(
+                received,
+                expected_rpl_instance_id=0,
+                expected_dodag_id=IPv6Address("0200::1"),
+                expected_mop=1,
+                expected_role="peer",
+            )
+            assert authenticated.dio == dio
+            assert peer.allows_dodag_join is vector["expect_join"]
+        if "failure_tracker_capacity" in vector:
+            tracker = RuleVersionFailureTracker(
+                vector["failure_threshold"],
+                max_sources=vector["failure_tracker_capacity"],
+            )
+            results: list[str] = []
+            for source_hex in vector["sources"]:
+                try:
+                    notify = tracker.record_failure(bytes.fromhex(source_hex))
+                except RuleVersionFailureTrackerFull:
+                    results.append("tracker_full")
+                else:
+                    results.append("notify_operator" if notify else "below_threshold")
+            assert results == vector["expected_results"]
+            assert vector["capacity_policy"] == "fail_closed_no_eviction"
+        elif "failure_threshold" in vector:
+            assert vector["action"] == "notify_operator"
+            tracker = RuleVersionFailureTracker(vector["failure_threshold"], max_sources=1)
+            source = bytes.fromhex(vector["source"])
+            notifications = [
+                tracker.record_failure(source) for _ in vector["expected_notifications"]
+            ]
+            assert notifications == vector["expected_notifications"]
+            tracker.record_success(source)
+            assert tracker.record_failure(source) is (vector["failure_threshold"] == 1)
+            other = bytes(reversed(source))
+            with pytest.raises(RuleVersionFailureTrackerFull):
+                tracker.record_failure(other)
+            # Capacity rejection cannot evict or reset the established source.
+            remaining = vector["failure_threshold"] - 1
+            observed = [tracker.record_failure(source) for _ in range(remaining)]
+            if observed:
+                assert observed[-1] is True
+        if vector.get("packet_requires_fragmentation"):
+            local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+            payload, _ = _dio_link_payload([RplOption(0x13, bytes([vector["remote_version"]]))])
+            receipt = _receive_fragment_vector_frame(
+                local_link, remote_link, local_radio, remote_radio, payload
+            )
+            local_link.accept_authenticated_schc_dio(
+                receipt,
+                expected_rpl_instance_id=0,
+                expected_dodag_id=IPv6Address("0200::1"),
+                expected_mop=1,
+                expected_role="peer",
+            )
+            with pytest.raises(ValueError, match="version-compatible"):
+                local_link.create_fragment_sender(
+                    b"\xff" + bytes.fromhex("6000000000003a40") + bytes(300),
+                    remote_link.identity.pubkey,
+                )
+        return
+
+    if category == "uncompressed":
+        if "packet" in vector:
+            packet = bytes.fromhex(vector["packet"])
+            encoded = encode_rule255(packet)
+            assert encoded == bytes.fromhex(vector["compressed"])
+            assert decode_rule255(encoded) == packet
+        elif "max_single_frame_packet" in vector:
+            packet = bytearray(vector["max_single_frame_packet"])
+            packet[0] = 0x60
+            packet[4:6] = (len(packet) - 40).to_bytes(2, "big")
+            packet[6] = 59
+            packet[8:24] = IPv6Address("fe80::1").packed
+            packet[24:40] = IPv6Address("fe80::2").packed
+            assert len(packet) == vector["max_single_frame_packet"]
+            assert vector["schc_packet_limit"] == MAX_SINGLE_FRAME_SCHC_PACKET
+            assert vector["l2_payload_limit"] == MAX_SINGLE_FRAME_SCHC_PACKET + 1
+            encoded = encode_rule255(
+                bytes(packet),
+                single_frame_limit=MAX_SINGLE_FRAME_SCHC_PACKET,
+            )
+            assert len(encoded) == MAX_SINGLE_FRAME_SCHC_PACKET
+        elif vector.get("scenario") == "version_mismatch":
+            packet = bytes.fromhex(
+                "6000000000003b40fe800000000000000000000000000001fe800000000000000000000000000002"
+            )
+            local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+            payload, _ = _dio_link_payload([RplOption(0x13, bytes([vector["remote_version"]]))])
+            receipt = _receive_fragment_vector_frame(
+                local_link, remote_link, local_radio, remote_radio, payload
+            )
+            _, peer = local_link.accept_authenticated_schc_dio(
+                receipt,
+                expected_rpl_instance_id=0,
+                expected_dodag_id=IPv6Address("0200::1"),
+                expected_mop=1,
+                expected_role="peer",
+            )
+            assert (
+                peer.compress_packet(
+                    packet,
+                    single_frame_limit=MAX_SINGLE_FRAME_SCHC_PACKET,
+                )
+                == b"\xff" + packet
+            )
+        else:
+            packet = bytearray(vector["packet_size"])
+            packet[0] = 0x60
+            packet[4:6] = (len(packet) - 40).to_bytes(2, "big")
+            packet[6] = 59
+            packet[8:24] = IPv6Address("fe80::1").packed
+            packet[24:40] = IPv6Address("fe80::2").packed
+            with pytest.raises(SchcError):
+                encode_rule255(bytes(packet), single_frame_limit=vector["single_frame_limit"])
+        return
+
+    assert category == "rejection", f"{name}: unhandled category {category}"
+    wire = bytes.fromhex(vector.get("wire", ""))
+    if vector.get("expect_error") in {"empty_packet", "unknown_rule_id"}:
+        with pytest.raises(ValueError):
+            decompress_packet(wire)
+    elif vector.get("expect_error") == "truncated_residue":
+        with pytest.raises((SchcError, ValueError)):
+            decompress_packet(wire)
+    else:
+        invalid = b"\x40" + bytes(39)
+        with pytest.raises(SchcError):
+            decode_rule255(b"\xff" + invalid)
+
+
+@pytest.mark.parametrize(
+    "raw_option",
+    [
+        b"\x13\x00",
+        b"\x13\x02\x03\x03",
+    ],
+)
+def test_authenticated_dio_admission_rejects_noncanonical_options(
+    raw_option: bytes,
+) -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    _, canonical = _dio_link_payload([RplOption(0x13, b"\x03")])
+    payload = _dio_wire_link_payload(canonical.to_bytes()[:24] + raw_option)
+    received = _receive_fragment_vector_frame(
+        local_link, remote_link, local_radio, remote_radio, payload
+    )
+    with pytest.raises((ValueError, SchcError)):
+        local_link.accept_authenticated_schc_dio(
+            received,
+            expected_rpl_instance_id=0,
+            expected_dodag_id=IPv6Address("0200::1"),
+            expected_mop=1,
+            expected_role="peer",
+        )
+
+
+def test_dio_serializer_rejects_duplicate_rule_version_options() -> None:
+    with pytest.raises(RplError, match="at most one"):
+        _dio_link_payload([RplOption(0x13, b"\x03"), RplOption(0x13, b"\x03")])
+
+
+@pytest.mark.parametrize("raw_options", [b"", b"\x13\x01\x03\x13\x01\x03"])
+def test_authenticated_dio_admission_rejects_raw_missing_or_duplicate_version(
+    raw_options: bytes,
+) -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    _, canonical = _dio_link_payload([RplOption(0x13, b"\x03")])
+    raw_payload = _dio_wire_link_payload(canonical.to_bytes()[:24] + raw_options)
+    received = _receive_fragment_vector_frame(
+        local_link, remote_link, local_radio, remote_radio, raw_payload
+    )
+    with pytest.raises((ValueError, SchcError)):
+        local_link.accept_authenticated_schc_dio(
+            received,
+            expected_rpl_instance_id=0,
+            expected_dodag_id=IPv6Address("0200::1"),
+            expected_mop=1,
+            expected_role="peer",
+        )
+    with pytest.raises(ValueError, match="unconsumed verified receipt"):
+        local_link.accept_authenticated_schc_dio(
+            received,
+            expected_rpl_instance_id=0,
+            expected_dodag_id=IPv6Address("0200::1"),
+            expected_mop=1,
+            expected_role="peer",
+        )
+
+
+@pytest.mark.parametrize("data_rule", [0, 7, 255])
+def test_unknown_peer_blocks_all_versioned_data_rule_fragmentation(data_rule: int) -> None:
+    local_link, remote_link, *_ = _fragment_vector_links()
+    with pytest.raises(ValueError, match="version-compatible"):
+        local_link.create_fragment_sender(
+            bytes([data_rule]) + b"payload", remote_link.identity.pubkey
+        )
+
+
+@pytest.mark.parametrize("data_rule", [0, 7, 255])
+def test_version_mismatch_blocks_all_versioned_data_rule_fragmentation(data_rule: int) -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    payload, _ = _dio_link_payload([RplOption(0x13, b"\x02")])
+    received = _receive_fragment_vector_frame(
+        local_link, remote_link, local_radio, remote_radio, payload
+    )
+    _, peer = local_link.accept_authenticated_schc_dio(
+        received,
+        expected_rpl_instance_id=0,
+        expected_dodag_id=IPv6Address("0200::1"),
+        expected_mop=1,
+        expected_role="peer",
+    )
+    assert not peer.allows_dodag_join
+    with pytest.raises(ValueError, match="version-compatible"):
+        local_link.create_fragment_sender(
+            bytes([data_rule]) + b"payload",
+            remote_link.identity.pubkey,
+        )
+
+
+@pytest.mark.parametrize("data_rule", [0, 7, 255])
+def test_version_match_allows_all_versioned_data_rule_fragmentation(data_rule: int) -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    payload, _ = _dio_link_payload([RplOption(0x13, b"\x03")])
+    received = _receive_fragment_vector_frame(
+        local_link, remote_link, local_radio, remote_radio, payload
+    )
+    _, peer = local_link.accept_authenticated_schc_dio(
+        received,
+        expected_rpl_instance_id=0,
+        expected_dodag_id=IPv6Address("0200::1"),
+        expected_mop=1,
+        expected_role="peer",
+    )
+    assert peer.allows_dodag_join
+    sender = local_link.create_fragment_sender(
+        _canonical_fragment_schc(data_rule),
+        remote_link.identity.pubkey,
+    )
+    assert sender.status == "ready"
+
+
+@pytest.mark.parametrize("unknown_rule", [8, 127, 128, 254])
+def test_unknown_data_rule_rejects_before_session_manager_mutation(unknown_rule: int) -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 3)
+    with pytest.raises(ValueError, match="unknown SCHC data Rule ID"):
+        local_link.create_fragment_sender(
+            bytes([unknown_rule]) + b"payload", remote_link.identity.pubkey
+        )
+    valid = local_link.create_fragment_sender(
+        _canonical_fragment_schc(7), remote_link.identity.pubkey
+    )
+    assert valid.status == "ready"
+
+
+def test_policy_mismatch_invalidates_prepared_sender_and_compatible_refresh_recovers() -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 3)
+    prepared = local_link.create_fragment_sender(
+        _canonical_fragment_schc(), remote_link.identity.pubkey
+    )
+    _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 2)
+    assert prepared.status == "invalidated"
+    with pytest.raises(FragmentError, match="not link-issued"):
+        prepared.start()
+
+    _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 3)
+    recovered = local_link.create_fragment_sender(
+        _canonical_fragment_schc(7), remote_link.identity.pubkey
+    )
+    assert recovered.start()
+
+
+def test_policy_mismatch_atomically_invalidates_active_sender() -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 3)
+    active = local_link.create_fragment_sender(
+        _canonical_fragment_schc(), remote_link.identity.pubkey
+    )
+    active.start()
+    _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 2)
+    assert active.status == "invalidated"
+    assert active.timeout() == b""
+
+
+def test_same_policy_refresh_preserves_active_sender_generation() -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 3)
+    active = local_link.create_fragment_sender(
+        _canonical_fragment_schc(), remote_link.identity.pubkey
+    )
+    active.start()
+
+    _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 3)
+
+    assert active.status == "active"
+    assert active.timeout() == bytes.fromhex("7800")
+
+
+@pytest.mark.parametrize("transition", ["start", "ack", "timeout"])
+def test_policy_mismatch_serializes_with_sender_transitions(transition: str) -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 3)
+    sender = local_link.create_fragment_sender(
+        _canonical_fragment_schc(), remote_link.identity.pubkey
+    )
+    ack: RxFrame | None = None
+    if transition != "start":
+        sender.start()
+    if transition == "ack":
+        ack = _receive_fragment_vector_frame(
+            local_link,
+            remote_link,
+            local_radio,
+            remote_radio,
+            bytes.fromhex("7840"),
+        )
+    mismatch_payload, _ = _dio_link_payload([RplOption(0x13, b"\x02")])
+    mismatch = _receive_fragment_vector_frame(
+        local_link,
+        remote_link,
+        local_radio,
+        remote_radio,
+        mismatch_payload,
+    )
+    barrier = threading.Barrier(3)
+    errors: list[BaseException] = []
+
+    def change_policy() -> None:
+        try:
+            barrier.wait()
+            local_link.accept_authenticated_schc_dio(
+                mismatch,
+                expected_rpl_instance_id=0,
+                expected_dodag_id=IPv6Address("0200::1"),
+                expected_mop=1,
+                expected_role="peer",
+            )
+        except BaseException as exc:  # pragma: no cover - diagnostic capture
+            errors.append(exc)
+
+    def transition_sender() -> None:
+        try:
+            barrier.wait()
+            if transition == "start":
+                sender.start()
+            elif transition == "ack":
+                assert ack is not None
+                sender.handle_ack_frame(ack)
+            else:
+                sender.timeout()
+        except FragmentError as exc:
+            if transition != "start":
+                errors.append(exc)
+        except BaseException as exc:  # pragma: no cover - diagnostic capture
+            errors.append(exc)
+
+    threads = [threading.Thread(target=change_policy), threading.Thread(target=transition_sender)]
+    for thread in threads:
+        thread.start()
+    barrier.wait()
+    for thread in threads:
+        thread.join(2)
+
+    assert all(not thread.is_alive() for thread in threads)
+    assert not errors
+    assert sender.status == "invalidated"
+    assert sender.timeout() == b""
+
+
+@pytest.mark.parametrize(
+    ("expected_instance", "expected_dodag", "expected_mop", "expected_role"),
+    [
+        (1, IPv6Address("0200::1"), 1, "peer"),
+        (0, IPv6Address("0200::2"), 1, "peer"),
+        (0, IPv6Address("0200::1"), 2, "peer"),
+        (0, IPv6Address("0200::1"), 1, "root"),
+    ],
+)
+def test_authenticated_dio_admission_binds_dodag_scope(
+    expected_instance: int,
+    expected_dodag: IPv6Address,
+    expected_mop: int,
+    expected_role: Literal["root", "peer"],
+) -> None:
+    local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+    payload, _ = _dio_link_payload([RplOption(0x13, b"\x03")])
+    received = _receive_fragment_vector_frame(
+        local_link, remote_link, local_radio, remote_radio, payload
+    )
+    with pytest.raises(ValueError, match="mismatch"):
+        local_link.accept_authenticated_dio(
+            received,
+            expected_rpl_instance_id=expected_instance,
+            expected_dodag_id=expected_dodag,
+            expected_mop=expected_mop,
+            expected_role=expected_role,
+        )
 
 
 def test_schc_fragmentation_vector_coverage() -> None:
@@ -263,9 +1164,9 @@ def test_schc_fragmentation_vector_integrity(name: str, vector: dict) -> None:
             assert (wire[1] >> 1) & 0x3F == fragment["fcn"], fragment["name"]
             assert wire[-1] & 1 == 0, fragment["name"]
             if fragment["kind"] in ("regular", "all0"):
-                assert len(wire) == 189, fragment["name"]
+                assert len(wire) == TILE_SIZE + 2, fragment["name"]
             else:
-                assert 7 <= len(wire) <= 193, fragment["name"]
+                assert 7 <= len(wire) <= TILE_SIZE + 6, fragment["name"]
 
         ack_failure = _expand_vector_bytes(vector["loss"]["ack_failure"])
         ack_success = _expand_vector_bytes(vector["loss"]["ack_success"])
@@ -285,7 +1186,11 @@ def test_schc_fragmentation_vector_integrity(name: str, vector: dict) -> None:
 
     if category == "retry_exhaustion":
         assert vector["attempts_before"] == 4
-        assert _expand_vector_bytes(vector["trigger"])[0] == vector["rule_id"]
+        if vector["name"] == "sender_retry_exhaustion":
+            assert vector["trigger_event"] == "timeout"
+            assert _expand_vector_bytes(vector["pre_exhaustion_message"])[0] == vector["rule_id"]
+        else:
+            assert _expand_vector_bytes(vector["trigger"])[0] == vector["rule_id"]
         expected_message = _expand_vector_bytes(vector["expected_message"])
         assert expected_message[0] == vector["rule_id"]
         assert expected_message.hex() in ("78fe", "78ffff")
@@ -301,20 +1206,50 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
     category = vector["category"]
     if category in ("recovery", "window_transition"):
         packet = _expand_vector_bytes(vector["packet"])
-        sender = FragmentSender(packet, vector["rule_id"], MAX_PACKET_SIZE)
+        local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+        version_payload, _ = _dio_link_payload([RplOption(0x13, b"\x03")])
+        version_receipt = _receive_fragment_vector_frame(
+            local_link, remote_link, local_radio, remote_radio, version_payload
+        )
+        local_link.accept_authenticated_schc_dio(
+            version_receipt,
+            expected_rpl_instance_id=0,
+            expected_dodag_id=IPv6Address("0200::1"),
+            expected_mop=1,
+            expected_role="peer",
+        )
+        # These mechanism vectors intentionally use opaque packet octets (for
+        # example 0xa5) rather than a SCHC data Rule ID. Exercise the exact
+        # fragmentation state machine here; LinkLayer's production data-rule
+        # admission is covered independently by the Rule 0/7/255 gate tests.
+        sender = local_link._schc_session_manager.create_sender(
+            packet,
+            remote_link.identity.pubkey,
+            local_link._key_generations[remote_link.identity.pubkey],
+            rule_id=vector["rule_id"],
+            receiver_limit=MAX_PACKET_SIZE,
+        )
         fragments = sender.all_fragments()
         for expected in vector["fragments"]:
             ordinal = expected["tile_ordinal"]
             wire = _expand_vector_bytes(expected["wire"])
             assert fragments[ordinal].to_bytes() == wire, f"{name}: {expected['name']}"
             assert Fragment.from_bytes(wire) == fragments[ordinal]
-        sender.start()
+        initial_batch = sender.start()
+        assert initial_batch == [fragment.to_bytes() for fragment in fragments]
         failure = _expand_vector_bytes(vector["loss"]["ack_failure"])
         expected_messages = [
             _expand_vector_bytes(vector["loss"]["retransmission"]),
             _expand_vector_bytes(vector["loss"]["ack_req"]),
         ]
-        assert sender.handle_ack_bytes(failure) == expected_messages
+        authenticated_ack = _receive_fragment_vector_frame(
+            local_link,
+            remote_link,
+            local_radio,
+            remote_radio,
+            failure,
+        )
+        assert sender.handle_ack_frame(authenticated_ack) == expected_messages
         receiver = FragmentReceiver(max_size=len(packet))
         if category == "recovery":
             result = None
@@ -367,11 +1302,34 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
 
     if category == "retry_exhaustion":
         if name == "sender_retry_exhaustion":
-            sender = FragmentSender(b"x", vector["rule_id"])
+            local_link, remote_link, local_radio, remote_radio = _fragment_vector_links()
+            _admit_fragment_version(local_link, remote_link, local_radio, remote_radio, 3)
+            sender = local_link.create_fragment_sender(
+                _canonical_fragment_schc(),
+                remote_link.identity.pubkey,
+            )
+            assert sender.rule_id == vector["rule_id"]
             sender.start()
-            sender.attempts = vector["attempts_before"]
+            missing_all_1 = Ack(
+                vector["rule_id"],
+                0,
+                (False,) * WINDOW_SIZE,
+            ).to_bytes()
+            for _ in range(vector["attempts_before"] - 2):
+                received = _receive_fragment_vector_frame(
+                    local_link,
+                    remote_link,
+                    local_radio,
+                    remote_radio,
+                    missing_all_1,
+                )
+                assert sender.handle_ack_frame(received) == [sender.all_fragments()[-1].to_bytes()]
+            assert vector["trigger_event"] == "timeout"
+            assert sender.timeout() == _expand_vector_bytes(vector["pre_exhaustion_message"])
+            assert sender.attempts == vector["attempts_before"]
             assert sender.timeout() == _expand_vector_bytes(vector["expected_message"])
             assert sender.status == vector["expect_status"]
+            assert sender.timeout() == b""
         else:
             receiver = FragmentReceiver()
             receiver.attempts = vector["attempts_before"]
@@ -387,7 +1345,7 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
             sender = FragmentSender(packet, receiver_limit=limit)
             assert sender.fragment_count == vector["fragment_count"]
             fragments = []
-            tiles = [packet[i : i + 187] for i in range(0, len(packet), 187)]
+            tiles = [packet[i : i + TILE_SIZE] for i in range(0, len(packet), TILE_SIZE)]
             for ordinal, tile in enumerate(tiles):
                 final = ordinal == len(tiles) - 1
                 fragments.append(
@@ -442,6 +1400,13 @@ def test_l2_payload_vector(name: str, vector: dict) -> None:
     assert classify_l2_payload(wrapped) is expected, f"classify drift: {name}"
 
 
+_FRAME_ERROR_MESSAGES = {
+    # Canonical rejection categories from link_frame.json `expect.error`.
+    "signed_encrypted_unsupported": "encrypted frames are unsupported",
+    "encryption_unsupported": "encrypted frames are unsupported",
+}
+
+
 @pytest.mark.parametrize("name,vector", _frame_cases())
 def test_frame_vector(name: str, vector: dict) -> None:
     f = vector["fields"]
@@ -455,10 +1420,19 @@ def test_frame_vector(name: str, vector: dict) -> None:
         mic_length=MicLength(f["mic_length"]),
         signature_present=f["signature_present"],
         encrypted=f["encrypted"],
+        signer_eui64=bytes.fromhex(f["signer_eui64"]),
     )
     encoded = bytes.fromhex(vector["encoded"])
-    if vector.get("expect", {}).get("error"):
-        with pytest.raises(FrameError):
+    expected_error = vector.get("expect", {}).get("error")
+    if expected_error:
+        # Negative vectors must reject with their intended canonical category.
+        message = _FRAME_ERROR_MESSAGES.get(expected_error)
+        raises = (
+            pytest.raises(FrameError, match=re.escape(message))
+            if message is not None
+            else pytest.raises(FrameError)
+        )
+        with raises:
             LichenFrame.from_bytes(encoded)
         with pytest.raises(FrameError):
             frame.to_bytes()
@@ -475,6 +1449,7 @@ def test_frame_vector(name: str, vector: dict) -> None:
     assert int(decoded.mic_length) == f["mic_length"]
     assert decoded.signature_present == f["signature_present"]
     assert decoded.encrypted == f["encrypted"]
+    assert decoded.signer_eui64 == bytes.fromhex(f["signer_eui64"])
 
 
 @pytest.mark.parametrize("name,vector", _announce_coords_cases())
@@ -507,19 +1482,17 @@ def test_node_address_vectors_match_python_implementation() -> None:
 
         iid = _pubkey_to_iid(pubkey)
         assert iid == expected_iid, (
-            f"IID mismatch for {v['name']}: "
-            f"got {iid.hex()}, expected {expected_iid.hex()}"
+            f"IID mismatch for {v['name']}: got {iid.hex()}, expected {expected_iid.hex()}"
         )
 
         human = iid_to_human_address(iid)
         assert human == expected_human, (
-            f"human_address mismatch for {v['name']}: "
-            f"got {human}, expected {expected_human}"
+            f"human_address mismatch for {v['name']}: got {human}, expected {expected_human}"
         )
 
 
 def test_all_schc_rules_covered() -> None:
-    rule_ids = {v["rule_id"] for _, v in _schc_cases()}
+    rule_ids = {v["rule_id"] for _, v in _schc_cases() if "rule_id" in v}
     assert {0, 1, 2, 3, 4} <= rule_ids  # every whole-packet rule has a vector
 
 
@@ -558,6 +1531,20 @@ def test_ccp9_vectors_match_generator() -> None:
     assert doc["vectors"] == ccp9_vectors()
 
 
+def test_rpl_multi_instance_vectors_match_generator() -> None:
+    """Canonical GCP-5 vectors reproduce byte-identical from generate.py."""
+    doc = _load("rpl_multi_instance.json")
+    assert doc["format_version"] == 2
+    assert doc["name"] == "rpl_multi_instance"
+    assert doc["spec"] == "spec/08-gateway-coordination.md#GCP-5"
+    assert doc["vectors"] == rpl_multi_instance_vectors()
+
+
+def test_rpl_messages_vectors_match_generator() -> None:
+    """Canonical full-DIO vectors reproduce byte-identically from generate.py."""
+    assert _load("rpl_messages.json")["vectors"] == rpl_messages_vectors()
+
+
 def _ccp9_rendezvous_cases():
     doc = _load("ccp9-rendezvous.json")
     assert doc["format_version"] == 2
@@ -594,35 +1581,55 @@ def _ccp16_cases():
     return [(v["description"], v) for v in doc["vectors"]]
 
 
+def _ccp16_vector_plan() -> ChannelPlan:
+    """3-channel plan matching the channel count baked into ccp16.json vectors."""
+    return ChannelPlan(
+        plan_id=0,
+        version=1,
+        name="ccp16-vectors",
+        channels=tuple(ChannelEntry(frequency_hz=867_100_000 + i * 200_000) for i in range(3)),
+    )
+
+
 @pytest.mark.parametrize("desc,vector", _ccp16_cases())
 def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
-    i = vector.get("input", vector)
-    o = vector.get("output", vector)
-    eui_hex = i.get("eui64") or i.get("eui64_hex", "")
-    if isinstance(eui_hex, (int, float)):
-        eui = int(eui_hex).to_bytes(8, "big")
-    else:
-        eui = bytes.fromhex(str(eui_hex).replace("0x", ""))
-    epoch = i.get("epoch", 0)
-    h = _hop_hash(eui, epoch)
-    assert h == o.get("hash_32", o.get("expected_hash", h))
+    """ccp16.json is the independent oracle; the implementation must match it.
+
+    Assertions call lichen.channel_plan.select_channel / hash_32 and
+    lichen.link.adaptive_sf.adaptive_sf_for_metrics directly and compare
+    against the committed canonical values. Channel/SF/hash math is NOT
+    recomputed inline here -- the previous locally-recomputed assertions were
+    self-referential (same formulas as the generator) and gave false coverage
+    (project-LICHEN-worker6-cmj5).
+    """
+    del desc  # only exists to give pytest a readable failure id
+    i = vector["input"]
+    o = vector["output"]
+    name = vector["name"]
+    eui = bytes.fromhex(i["eui64"])
+    epoch = i["epoch"]
+    density = i["density"]
+
+    # FNV-1a32 primitive vs oracle (preimage layout is spec-defined:
+    # eui64 || epoch u32 little-endian, spec/02a-coordinated-capacity.md).
+    preimage = eui + (epoch & 0xFFFFFFFF).to_bytes(4, "little")
+    assert channel_plan_hash_32(preimage) == o["hash_32"], f"hash_32 drift: {name}"
+
+    # select_channel implementation vs oracle (density>8 forces CH0,
+    # otherwise 1 + hash % num_channels over the vector plan).
+    selected = _ccp16_vector_plan().select_channel(eui, epoch, density)
+    assert selected == o["channel"], f"select_channel drift: {name}"
+
+    # Canonical pins inside the vector must agree with each other.
+    assert o["select_channel"] == o["channel"], f"pin disagreement: {name}"
+    assert o["expected_channel"] == o["channel"], f"pin disagreement: {name}"
+    assert o["now"] == i["now"], f"now pin drift: {name}"
+
+    # SF table implementation vs oracle.
     snr_ema = i.get("snr_ema", i.get("snr_db", 5.0))
     load_factor = i.get("load_factor", 0.0)
-    if i["density"] > 20 or snr_ema < -5.0:
-        sf = 12
-    elif i["density"] > 8 or snr_ema < 0 or load_factor > 0.8:
-        sf = 11
-    elif i["density"] < 5 and snr_ema > 8.0:
-        sf = 9
-    else:
-        sf = 10
-    assert sf == o.get("sf", 10)
-    n = i.get("n_channels", 3)
-    ch = 0 if i["density"] > 8 else (1 + (h % n))
-    assert ch == o.get("select_channel", o.get("expected_channel", o.get("channel", ch)))
-    assert ch == o.get("channel", ch)
-    now = i.get("now", 0)
-    assert now == o.get("now", now)
+    sf = adaptive_sf_for_metrics(density, snr_ema, load_factor)
+    assert sf == o["sf"], f"adaptive_sf drift: {name}"
 
 
 def _read_varint(data: bytes, offset: int) -> tuple[int, int]:
@@ -970,6 +1977,47 @@ def test_schnorr_vector(desc: str, vector: dict) -> None:
         assert computed == sig, f"sign() output mismatch: {desc}"
 
 
+def _x25519_cases():
+    doc = _load("x25519.json")
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _x25519_cases())
+def test_x25519_key_derivation_vector(name: str, vector: dict) -> None:
+    """Validate X25519/Ed25519 key derivation against cross-implementation vectors.
+
+    These vectors verify RFC 8032 clamping is correctly applied during key generation.
+    The clamped_scalar/private_key is used for both Ed25519 signing and X25519 ECDH.
+    """
+    from hashlib import sha512
+
+    from lichen.crypto.identity import Identity
+    from lichen.crypto.schnorr48 import clamp
+
+    seed = bytes.fromhex(vector["seed"])
+    expected = vector["expected"]
+
+    # Verify clamped scalar derivation (if present in vector)
+    if "clamped_scalar" in expected:
+        h = sha512(seed).digest()[:32]
+        computed_clamped = clamp(h)
+        assert computed_clamped.hex() == expected["clamped_scalar"], (
+            f"{name}: clamped_scalar mismatch"
+        )
+
+    # Verify private key derivation (should match clamped scalar)
+    if "private_key" in expected:
+        identity = Identity.from_seed(seed)
+        assert identity.privkey.hex() == expected["private_key"], f"{name}: private_key mismatch"
+
+    # Verify Ed25519 public key derivation
+    if "public_key" in expected:
+        identity = Identity.from_seed(seed)
+        assert identity.pubkey.hex() == expected["public_key"], (
+            f"{name}: Ed25519 public_key mismatch"
+        )
+
+
 def _rpl_messages_cases():
     doc = _load("rpl_messages.json")
     assert doc["format_version"] == 2
@@ -1018,7 +2066,7 @@ def _dao_structure(wire: bytes) -> tuple[str | None, list[tuple[int, bytes]], in
         end = offset + 2 + length
         if end > len(wire):
             return "truncated", options, origin_offset
-        data = wire[offset + 2:end]
+        data = wire[offset + 2 : end]
         if option_type == 0x12:
             if length != 56:
                 return "bad_option_length", options, origin_offset
@@ -1053,7 +2101,7 @@ def _dao_semantics(options: list[tuple[int, bytes]], source: bytes) -> str | Non
         return "non128_target"
     if targets[0][1] != source:
         return "target_mismatch"
-    if any(data[0] not in (0x00, 0x80) for data in transits):
+    if any(data[0] != 0x00 for data in transits):
         return "unsupported_transit_e"
     if len({(data[2], data[3]) for data in transits}) != 1:
         return "inconsistent_transit"
@@ -1090,7 +2138,7 @@ def _assert_dao_relations(vector: dict) -> None:
 
 @pytest.mark.parametrize("name,vector", _dao_origin_signature_cases())
 def test_dao_origin_signature_vector(name: str, vector: dict) -> None:
-    """Secondary oracle: no production Python DAO-origin codec currently exists."""
+    """Independent secondary oracle for the DAO-origin vector contract."""
     _assert_dao_relations(vector)
     source = bytes.fromhex(vector["source_ipv6"])
     dodag = bytes.fromhex(vector["effective_dodag_id"])
@@ -1109,9 +2157,11 @@ def test_dao_origin_signature_vector(name: str, vector: dict) -> None:
         assert identity.pubkey == public_key
         assert schnorr_sign(identity.privkey, identity.pubkey, expected_digest) == option[10:]
 
-    iid = bytearray(hashlib.sha512(public_key).digest()[:8])
+    key_digest = hashlib.sha512(public_key).digest()
+    iid = bytearray(key_digest[:8])
     iid[0] &= 0xFD
-    iid_matches = source[8:] == bytes(iid)
+    canonical_source = b"\x02" + key_digest[:7] + bytes(iid)
+    source_matches = source == canonical_source
     base_reason, base_stage = _dao_base_context(signed, vector)
     structural_reason, options, _ = (None, [], None)
     base_length = 20 if len(signed) >= 2 and signed[1] & 0x40 else 4
@@ -1145,7 +2195,7 @@ def test_dao_origin_signature_vector(name: str, vector: dict) -> None:
         reason, stage = structural_reason, "structural"
     elif not vector["key_available"]:
         reason, stage = "unknown_key", "identity"
-    elif not iid_matches:
+    elif not source_matches:
         reason, stage = "iid_mismatch", "identity"
     elif not signature_valid:
         reason, stage = "invalid_signature", "identity"
@@ -1173,19 +2223,150 @@ def test_dao_origin_signature_vector(name: str, vector: dict) -> None:
     assert vector["expected"]["replay_persisted"] is (reason == "accepted")
 
 
+def _production_dao_reason(
+    wire: bytes,
+    error: DaoError,
+) -> tuple[str, str]:
+    identity = {
+        "origin_not_pinned": "unknown_key",
+        "iid_mismatch": "iid_mismatch",
+        "signature_invalid": "invalid_signature",
+    }
+    replay = {
+        "origin_sequence_replay": "replay",
+        "origin_sequence_mutation": "sequence_conflict",
+    }
+    structural = {
+        "signature_missing": "missing_signature",
+        "signature_duplicate": "duplicate_option",
+        "signature_not_final": "nonterminal_option",
+        "signature_invalid_length": "bad_option_length",
+        "zero_sequence": "zero_sequence",
+    }
+    if error.reason in identity:
+        return identity[error.reason], "identity"
+    if error.reason in replay:
+        return replay[error.reason], "replay"
+    if error.reason in structural:
+        return structural[error.reason], "structural"
+    if error.reason in {
+        "unsupported_flags",
+        "nonzero_reserved",
+        "malformed_dao",
+        "truncated",
+    }:
+        return error.reason, "structural"
+    if error.reason == "malformed_option":
+        reason, _options, _offset = _dao_structure(wire)
+        assert reason is not None
+        return reason, "structural"
+    if error.reason in {"instance_mismatch", "dodag_mismatch"}:
+        return error.reason, "context"
+    return error.reason, "semantic"
+
+
+@pytest.mark.parametrize("name,vector", _dao_origin_signature_cases())
+def test_every_dao_origin_vector_executes_production_validator_and_manager(
+    name: str, vector: dict
+) -> None:
+    """Run all canonical cases through the production parse/auth/apply path."""
+    wire = bytes.fromhex(vector["signed_dao"])
+    expected = vector["expected"]
+    public_key = bytes.fromhex(vector["public_key"])
+
+    class VectorPinTable:
+        def pinned_pubkey_for(self, _iid: bytes) -> bytes | None:
+            return public_key if vector["key_available"] else None
+
+    persistence = MemoryPersistence()
+    validator = DaoOriginValidator(VectorPinTable(), replay_store=persistence)
+    active_dodag = IPv6Address(bytes.fromhex(vector["active_dodag_id"]))
+    manager = DaoManager(
+        node_address=active_dodag,
+        is_root=True,
+        rpl_instance_id=vector["effective_instance_id"],
+        dodag_id=active_dodag,
+        persistence=persistence,
+        origin_validator=validator,
+    )
+    prior = vector["prior"]
+    if prior is not None:
+        prior_wire = bytes.fromhex(prior["signed_dao"])
+        if prior["route_present"]:
+            manager.validate_and_process_dao_at(
+                DAO.from_bytes(prior_wire),
+                IPv6Address(bytes.fromhex(prior["source_ipv6"])),
+                0.0,
+            )
+        else:
+            persistence.store_rx_floor(
+                public_key,
+                prior["sequence"],
+                compute_dao_digest(prior_wire),
+            )
+
+    state_before = manager.route_state_snapshot(active_dodag)
+    floor_before = persistence.load_rx_floor(public_key)
+    try:
+        manager.validate_and_process_dao_wire_at(
+            wire,
+            IPv6Address(bytes.fromhex(vector["source_ipv6"])),
+            1.0,
+        )
+    except DaoError as error:
+        reason, stage = _production_dao_reason(wire, error)
+        accepted = False
+    else:
+        accepted = True
+        route_changed = manager.route_state_snapshot(active_dodag) != state_before
+        if prior is not None and not route_changed:
+            reason, stage = "idempotent", "replay"
+        elif prior is not None and not prior["route_present"]:
+            reason, stage = "reconciled", "semantic"
+        else:
+            reason, stage = "accepted", "applied"
+    state_after = manager.route_state_snapshot(active_dodag)
+    floor_after = persistence.load_rx_floor(public_key)
+
+    assert accepted is expected["accepted"], name
+    assert (reason, stage) == (expected["reason"], expected["decision_stage"]), name
+    assert (state_after != state_before) is expected["route_changed"], name
+    replay_persisted = floor_after != floor_before
+    assert replay_persisted is expected["replay_persisted"], name
+
+
 def test_dao_origin_signature_coverage_and_dodag_rules() -> None:
     vectors = [vector for _, vector in _dao_origin_signature_cases()]
     coverage = {vector["coverage"] for vector in vectors}
     assert len(vectors) == len(coverage) == 51
     assert {
-        "d1", "d0_effective_dodag", "identical_retransmission", "reconcile_after_crash",
-        "replay_target_mismatch", "replay_malformed_semantics", "replay_structural",
-        "missing_signature", "zero_sequence", "bad_option_length", "truncated_option",
-        "malformed_base", "truncated_dodag", "unsupported_flags", "nonzero_reserved",
-        "d1_active_dodag_mismatch", "missing_target", "missing_transit", "duplicate_target",
-        "inconsistent_transit_sequence", "inconsistent_transit_lifetime",
-        "unsupported_transit_e", "cross_prefix_equal", "cross_prefix_lower",
-        "fresh_cross_prefix_target", "multiple_distinct_targets", "replay_non128_target",
+        "d1",
+        "d0_effective_dodag",
+        "identical_retransmission",
+        "reconcile_after_crash",
+        "replay_target_mismatch",
+        "replay_malformed_semantics",
+        "replay_structural",
+        "missing_signature",
+        "zero_sequence",
+        "bad_option_length",
+        "truncated_option",
+        "malformed_base",
+        "truncated_dodag",
+        "unsupported_flags",
+        "nonzero_reserved",
+        "d1_active_dodag_mismatch",
+        "missing_target",
+        "missing_transit",
+        "duplicate_target",
+        "inconsistent_transit_sequence",
+        "inconsistent_transit_lifetime",
+        "unsupported_transit_e",
+        "cross_prefix_equal",
+        "cross_prefix_lower",
+        "fresh_cross_prefix_target",
+        "multiple_distinct_targets",
+        "replay_non128_target",
         "context_malformed_option",
     } <= coverage
     for vector in vectors:
@@ -1193,10 +2374,43 @@ def test_dao_origin_signature_coverage_and_dodag_rules() -> None:
         if len(unsigned) >= 20 and unsigned[1] & 0x40:
             assert unsigned[4:20].hex() == vector["effective_dodag_id"]
         if vector["expected"]["reason"] == "accepted":
-            assert _dao_semantics(
-                _dao_structure(bytes.fromhex(vector["signed_dao"]))[1],
-                bytes.fromhex(vector["source_ipv6"]),
-            ) is None
+            assert (
+                _dao_semantics(
+                    _dao_structure(bytes.fromhex(vector["signed_dao"]))[1],
+                    bytes.fromhex(vector["source_ipv6"]),
+                )
+                is None
+            )
+
+
+def test_dao_origin_production_enforces_canonical_source_vectors() -> None:
+    vectors = {vector["name"]: vector for _, vector in _dao_origin_signature_cases()}
+    selected = [
+        vectors["valid_d1_self_128"],
+        vectors["reject_source_mutation"],
+        vectors["reject_fresh_cross_prefix_target"],
+        vectors["reject_cross_prefix_equal_sequence"],
+        vectors["reject_cross_prefix_lower_sequence"],
+    ]
+    public_key = bytes.fromhex(selected[0]["public_key"])
+    canonical_iid = bytes.fromhex(selected[0]["source_ipv6"])[8:]
+
+    class VectorPinTable:
+        def pinned_pubkey_for(self, iid: bytes) -> bytes | None:
+            return public_key if iid == canonical_iid else None
+
+    validator = DaoOriginValidator(VectorPinTable())
+    for vector in selected:
+        result = validator.validate(
+            DAO.from_bytes(bytes.fromhex(vector["signed_dao"])),
+            IPv6Address(bytes.fromhex(vector["source_ipv6"])),
+            IPv6Address(bytes.fromhex(vector["effective_dodag_id"])),
+        )
+        if vector["name"] == "valid_d1_self_128":
+            assert result.valid
+        else:
+            assert not result.valid
+            assert result.reject_reason is DaoOriginRejectReason.IID_MISMATCH
 
 
 def test_dao_origin_signature_schema_is_closed_and_relational() -> None:
@@ -1262,20 +2476,13 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
                 IPv6Packet.from_bytes(wire)
         return
 
-    encoded = bytes.fromhex(vector["encoded"])
     msg_type = vector["type"]
 
     if msg_type == "dio":
         fields = vector["fields"]
-        dio = DIO.from_bytes(encoded)
-        assert dio.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
-        assert dio.version == fields["version"], f"{name}: version"
-        assert dio.rank == fields["rank"], f"{name}: rank"
-        assert dio.grounded == fields["grounded"], f"{name}: grounded"
-        assert dio.mode_of_operation == fields["mode_of_operation"], f"{name}: mop"
-        assert dio.preference == fields["preference"], f"{name}: preference"
-        assert dio.dtsn == fields["dtsn"], f"{name}: dtsn"
-        assert str(dio.dodag_id) == fields["dodag_id"], f"{name}: dodag_id"
+        mode = vector["schc_version_mode"]
+        supplied_options = bytes.fromhex(vector["options_hex"])
+        options = _parse_options(supplied_options)
         rebuilt = DIO(
             rpl_instance_id=fields["rpl_instance_id"],
             version=fields["version"],
@@ -1286,10 +2493,68 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
             dtsn=fields["dtsn"],
             flags=fields["flags"],
             dodag_id=fields["dodag_id"],
+            options=options,
         )
-        assert rebuilt.to_bytes() == encoded, f"{name}: encode"
+        if mode in {"malformed", "duplicate"}:
+            assert vector["expect_error"] == "invalid_schc_version_option"
+            # Build the deliberately malformed full DIO from a canonical base;
+            # parsing preserves its exact option bytes, while production
+            # serialization must reject rather than normalize them.
+            base = DIO(
+                rpl_instance_id=fields["rpl_instance_id"],
+                version=fields["version"],
+                rank=fields["rank"],
+                grounded=fields["grounded"],
+                mode_of_operation=fields["mode_of_operation"],
+                preference=fields["preference"],
+                dtsn=fields["dtsn"],
+                flags=fields["flags"],
+                dodag_id=fields["dodag_id"],
+            ).to_bytes()[:-3]
+            parsed = DIO.from_bytes(base + supplied_options)
+            assert parsed.options == options, f"{name}: malformed option parse"
+            with pytest.raises(RplError, match="SCHC Rule Version|at most one"):
+                parsed.to_bytes()
+            with pytest.raises(RplError, match="SCHC Rule Version|at most one"):
+                rebuilt.to_bytes()
+            return
 
-    elif msg_type == "dao":
+        assert mode in {"insert_current", "explicit", "propagate_root"}, (
+            f"{name}: unknown version mode"
+        )
+        encoded = bytes.fromhex(vector["encoded"])
+        dio = DIO.from_bytes(encoded)
+        assert dio.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
+        assert dio.version == fields["version"], f"{name}: version"
+        assert dio.rank == fields["rank"], f"{name}: rank"
+        assert dio.grounded == fields["grounded"], f"{name}: grounded"
+        assert dio.mode_of_operation == fields["mode_of_operation"], f"{name}: mop"
+        assert dio.preference == fields["preference"], f"{name}: preference"
+        assert dio.dtsn == fields["dtsn"], f"{name}: dtsn"
+        assert str(dio.dodag_id) == fields["dodag_id"], f"{name}: dodag_id"
+        assert rebuilt.to_bytes() == encoded, f"{name}: encode"
+        if mode == "insert_current":
+            assert supplied_options == b""
+            assert [option for option in dio.options if option.type == 0x13] == [
+                RplOption(0x13, b"\x03")
+            ]
+        elif mode == "explicit":
+            advertised = vector["advertised_schc_version"]
+            assert supplied_options == bytes((0x13, 1, advertised))
+            assert [option for option in dio.options if option.type == 0x13] == [
+                RplOption(0x13, bytes([advertised]))
+            ]
+        else:
+            advertised = vector["root_originated_schc_version"]
+            assert supplied_options == bytes((0x13, 1, advertised))
+            assert [option for option in dio.options if option.type == 0x13] == [
+                RplOption(0x13, bytes([advertised]))
+            ]
+        return
+
+    encoded = bytes.fromhex(vector["encoded"])
+
+    if msg_type == "dao":
         fields = vector["fields"]
         dao = DAO.from_bytes(encoded)
         assert dao.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
@@ -1297,6 +2562,9 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         assert dao.dao_sequence == fields["dao_sequence"], f"{name}: dao_sequence"
         dodag_str = str(dao.dodag_id) if dao.dodag_id else None
         assert dodag_str == fields["dodag_id"], f"{name}: dodag_id"
+        if "matches_rule_4" in vector:
+            assert bool(encoded[1] & 0x40) is vector["matches_rule_4"]
+            assert vector["schc_expected_rule_id"] == 255
         rebuilt = DAO(
             rpl_instance_id=fields["rpl_instance_id"],
             ack_requested=fields["ack_requested"],
@@ -1335,15 +2603,11 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         opt_type = vector["option_type"]
         fields = vector["fields"]
         if opt_type == 5:  # RPL Target
-            from lichen.rpl.messages import RplOption
-
             opt = RplOption(5, encoded[2 : 2 + encoded[1]])
             target = RplTarget.from_option(opt)
             assert target.prefix_length == fields["prefix_length"], f"{name}: prefix_length"
             assert target.target == IPv6Address(fields["prefix"]), f"{name}: prefix"
         elif opt_type == 6:  # Transit Information
-            from lichen.rpl.messages import RplOption
-
             opt = RplOption(6, encoded[2 : 2 + encoded[1]])
             ti = TransitInformation.from_option(opt)
             assert ti.path_control == fields["path_control"], f"{name}: path_control"
@@ -1656,6 +2920,14 @@ def test_loadng_discovery_vector(name: str, vector: dict) -> None:
             assert entry is not None, f"{name}: expected cache entry"
             assert str(entry.next_hop) == ce["next_hop"]
             assert entry.hop_count == ce["hop_count"]
+        elif exp.get("cache_unchanged"):
+            # Verify the pre-existing cache entry was NOT updated or replaced
+            # (stale-rejected case; mirrors gradient_unchanged above).
+            ce_state = state["cache_entries"][0]
+            entry = cache.lookup(IPv6Address(ce_state["destination"]), now_ms)
+            assert entry is not None
+            assert entry.seq_num == ce_state["seq_num"]
+            assert str(entry.next_hop) == ce_state["next_hop"]
 
 
 def test_loadng_discovery_vectors_match_generator() -> None:
@@ -1663,10 +2935,12 @@ def test_loadng_discovery_vectors_match_generator() -> None:
     doc = _load("loadng_discovery.json")
     generated = loadng_discovery_vectors()
     assert len(doc["vectors"]) == len(generated), "vector count mismatch"
-    for i, (committed, gen) in enumerate(zip(doc["vectors"], generated)):
+    for i, (committed, gen) in enumerate(zip(doc["vectors"], generated, strict=True)):
         assert committed["name"] == gen["name"], f"name mismatch at index {i}"
         assert committed["type"] == gen["type"], f"type mismatch at {committed['name']}"
-        assert committed["description"] == gen["description"], f"desc mismatch at {committed['name']}"
+        assert committed["description"] == gen["description"], (
+            f"desc mismatch at {committed['name']}"
+        )
 
 
 def _epoch_rollover_cases():
@@ -1725,7 +2999,6 @@ def test_epoch_rollover_vector(name: str, vector: dict) -> None:
         received = vector["received"]
         expected = vector["expected"]
 
-        last_counter = _epoch_counter(state["last_epoch"], state["last_seqnum"])
         recv_counter = _epoch_counter(received["epoch"], received["seqnum"])
 
         # Verify counter computation
@@ -1794,9 +3067,7 @@ def test_epoch_rollover_vector(name: str, vector: dict) -> None:
             computed = _epoch_counter(epoch, example["seqnum"])
             assert computed == example["counter"]
             in_range = epoch_range["min"] <= epoch <= epoch_range["max"]
-            assert in_range == example["valid_init"], (
-                f"{name}: epoch {epoch} valid_init mismatch"
-            )
+            assert in_range == example["valid_init"], f"{name}: epoch {epoch} valid_init mismatch"
 
 
 def test_epoch_rollover_counter_math() -> None:
@@ -2191,9 +3462,7 @@ def test_short_addr_incremental_retry_wraparound_vector() -> None:
     expected_result = vector["result"]
 
     result = dad_retry_incremental(start, existing)
-    assert result == expected_result, (
-        f"incremental_retry_wraparound: {result} != {expected_result}"
-    )
+    assert result == expected_result, f"incremental_retry_wraparound: {result} != {expected_result}"
 
 
 def test_short_addr_incremental_retry_exhausted_vector() -> None:
@@ -2212,9 +3481,7 @@ def test_short_addr_incremental_retry_exhausted_vector() -> None:
     expected_result = vector["result"]
 
     result = dad_retry_incremental(start, existing)
-    assert result is expected_result, (
-        f"incremental_retry_exhausted: expected None, got {result}"
-    )
+    assert result is expected_result, f"incremental_retry_exhausted: expected None, got {result}"
 
 
 def test_short_addr_dad_jitter_vector() -> None:
@@ -2538,13 +3805,9 @@ def test_handle_dao_ack_rejects_mismatched_identity() -> None:
     result = node_table.handle_dao_ack(spoofed_ack, self_eui64=node_eui)
 
     # Node MUST reject DAO-ACKs for different identities
-    assert result is False, (
-        "handle_dao_ack should reject DAO-ACK for different identity"
-    )
+    assert result is False, "handle_dao_ack should reject DAO-ACK for different identity"
     # Verify the spoofed entry was not stored
-    assert node_table.lookup_by_eui(attacker_eui) is None, (
-        "spoofed identity should not be stored"
-    )
+    assert node_table.lookup_by_eui(attacker_eui) is None, "spoofed identity should not be stored"
     assert node_table.lookup_by_short(assigned_addr) is None, (
         "address from spoofed DAO-ACK should not be stored"
     )
@@ -2729,6 +3992,18 @@ def _schc_adaptation_cases():
     return [(v["name"], v) for v in doc["vectors"]]
 
 
+def _rule7_full_address_wire(source: IPv6Address, destination: IPv6Address) -> bytes:
+    """Encode a full-address Rule 7 residue for decoder-policy tests."""
+    writer = BitWriter()
+    writer.write(64, 8)  # Hop Limit
+    writer.write(1, 1)  # Full-address mode
+    writer.write(int(source), 128)
+    writer.write(int(destination), 128)
+    writer.write(0, 1)  # MQTT-SN is the source port
+    writer.write(5000, 16)
+    return bytes((7,)) + writer.to_bytes() + b"mqtt"
+
+
 @pytest.mark.parametrize("name,vector", _schc_adaptation_cases())
 def test_schc_adaptation_vector(name: str, vector: dict) -> None:
     """Validate SCHC adaptation layer vectors per spec/03-adaptation.md.
@@ -2738,7 +4013,7 @@ def test_schc_adaptation_vector(name: str, vector: dict) -> None:
     """
     from lichen.schc.context import NoMatchingRuleError, SchcContext
     from lichen.schc.fragment import Ack, ack_request, receiver_abort, sender_abort
-    from lichen.schc.rules import RULE_SET_VERSION, SchcRuleVersionOption
+    from lichen.schc.rules import SchcRuleVersionOption
 
     category = vector["category"]
 
@@ -2767,12 +4042,13 @@ def test_schc_adaptation_vector(name: str, vector: dict) -> None:
 
     elif category == "port_boundary":
         # Port compression boundary tests
-        from lichen.schc.rules import LINK_LOCAL_COAP_RULE, UDP_PORT_RULE
-
         src_port = vector["src_port"]
         dst_port = vector["dst_port"]
 
-        if vector["matches_rule_0_1"]:
+        if vector.get("matches_rule_7"):
+            assert src_port == dst_port == 10883, name
+            assert vector["port_residue_bits"] == 17, name
+        elif vector["matches_rule_0_1"]:
             # MSB(12) match: top 12 bits must equal 0x163 (5683 >> 4)
             assert (src_port >> 4) == (5683 >> 4), f"{name}: src port MSB mismatch"
             assert (dst_port >> 4) == (5683 >> 4), f"{name}: dst port MSB mismatch"
@@ -2784,6 +4060,50 @@ def test_schc_adaptation_vector(name: str, vector: dict) -> None:
         else:
             # Outside compressible range: MSB(12) does not match
             assert (src_port >> 4) != (5683 >> 4), f"{name}: should NOT match MSB(12)"
+
+    elif category == "rule7_address_policy":
+        source = IPv6Address(vector["source_ipv6"])
+        destination = IPv6Address(vector["destination_ipv6"])
+        udp = UdpDatagram(PORT_MQTT_SN, 5000, b"mqtt").to_bytes(source, destination)
+        raw = (
+            IPv6Header(
+                src_addr=source,
+                dst_addr=destination,
+                next_header=NextHeader.UDP,
+                payload_length=len(udp),
+                hop_limit=64,
+            ).to_bytes()
+            + udp
+        )
+
+        if vector["expect_valid"]:
+            validate_rule7_addresses(source, destination)
+            compressed = compress_packet(raw)
+            assert compressed[0] == 7, name
+            expected_full_mode = not (
+                source.packed[:8] == IPv6Address("fe80::").packed[:8]
+                and destination.packed[:8] == IPv6Address("fe80::").packed[:8]
+            )
+            assert bool(compressed[2] >> 7) is expected_full_mode, name
+            assert decompress_packet(compressed) == raw, name
+        else:
+            error_pattern = {
+                "invalid_source_address": "source address",
+                "invalid_destination_address": "destination address",
+                "invalid_destination_scope": "destination scope",
+            }[vector["expect_error"]]
+            with pytest.raises(SchcError, match=error_pattern):
+                validate_rule7_addresses(source, destination)
+            assert MQTT_SN_PROFILE.compress_if_matching(raw) is None
+            with pytest.raises(SchcError, match=error_pattern):
+                decompress_packet(_rule7_full_address_wire(source, destination))
+            if source.is_unspecified or source.is_multicast or destination.is_unspecified:
+                with pytest.raises(SchcError):
+                    compress_packet(raw)
+            else:
+                fallback = compress_packet(raw)
+                assert fallback[0] == 255, name
+                assert decompress_packet(fallback) == raw, name
 
     elif category == "fragmentation_direction":
         # Rule 0x79 B-to-A direction vectors
@@ -2810,6 +4130,48 @@ def test_schc_adaptation_vector(name: str, vector: dict) -> None:
         elif msg_type == "receiver_abort":
             expected = receiver_abort(rule_id)
             assert wire == expected, f"{name}: receiver abort mismatch"
+
+    elif category == "fragmentation_endpoint_direction":
+        local = bytes.fromhex(vector["local_public_key_hex"])
+        peer = bytes.fromhex(vector["peer_public_key_hex"])
+        rule_id = vector["rule_id"]
+        if vector.get("expect_error") == "equal_endpoint_keys":
+            with pytest.raises(FragmentError, match="distinct signer identities"):
+                fragmentation_rule_for_sender(local, peer)
+            assert vector["expect_accept"] is False
+            assert vector["expect_state_mutation"] is False
+        else:
+            assert vector["local_endpoint"] == ("A" if local < peer else "B")
+            message_origin = vector["message_origin"]
+            assert message_origin in {"local", "peer"}
+            sender, receiver = (local, peer) if message_origin == "local" else (peer, local)
+            message_type = vector["message_type"]
+            if message_type == "data":
+                expected_rule = fragmentation_rule_for_sender(sender, receiver)
+                wire = Fragment(rule_id, 0, 62, bytes(TILE_SIZE)).to_bytes()
+                assert not fragmentation_message_is_response(
+                    wire,
+                    sender_identity=sender,
+                    receiver_identity=receiver,
+                )
+            else:
+                expected_rule = fragmentation_rule_for_sender(receiver, sender)
+                data_sender_endpoint = "A" if receiver < sender else "B"
+                assert vector["data_sender_endpoint"] == data_sender_endpoint
+                wire = (
+                    Ack(rule_id, 0, complete=True).to_bytes()
+                    if message_type == "ack"
+                    else receiver_abort(rule_id)
+                )
+                assert fragmentation_message_is_response(
+                    wire,
+                    sender_identity=sender,
+                    receiver_identity=receiver,
+                )
+            assert (rule_id == expected_rule) is vector["expect_accept"]
+            if not vector["expect_accept"]:
+                assert vector["expect_error"] == "wrong_direction_rule"
+        _assert_endpoint_direction_production(vector)
 
     elif category == "compressed_size":
         # Validate compressed size calculations
@@ -2856,12 +4218,8 @@ def test_schc_adaptation_vector(name: str, vector: dict) -> None:
                 check_version_compatibility(vector["local_version"], vector["remote_version"])
 
     elif category == "single_active":
-        # T=0 single active packet constraint tests
-        rule_id = vector["rule_id"]
-        t_value = vector["t_value"]
-        assert t_value == 0, f"{name}: T must be 0 for single-active constraint"
-        assert vector["expect_reassembly_reset"] is True, f"{name}: expect reset"
-        # This is a behavioral constraint - validated by fragmentation implementation
+        assert vector["t_value"] == 0, f"{name}: T must be 0"
+        _assert_duplicate_tile_production(vector)
 
     elif category == "ack_bitmap":
         # ACK bitmap format tests
@@ -2889,7 +4247,9 @@ def test_schc_adaptation_vector_coverage() -> None:
         "rejection",
         "uncompressed",
         "port_boundary",
+        "rule7_address_policy",
         "fragmentation_direction",
+        "fragmentation_endpoint_direction",
         "compressed_size",
         "padding",
         "single_active",
@@ -3119,10 +4479,33 @@ def test_mic_length_selector_vector(name: str, vector: dict) -> None:
             LichenFrame.from_bytes(wire)
     else:
         frame = LichenFrame.from_bytes(wire)
-        assert int(frame.mic_length) == expected["mic_length_selector"], f"{name}: selector mismatch"
+        assert int(frame.mic_length) == expected["mic_length_selector"], (
+            f"{name}: selector mismatch"
+        )
         assert frame.signature_present == expected["signature_present"], f"{name}: sig mismatch"
+        expected_mic_bytes = expected.get("mic_bytes")
+        if expected_mic_bytes is None:
+            # Legacy address-mode cases predate the explicit byte-count field,
+            # but are all unsigned and therefore have an unambiguous zero-byte MIC.
+            assert expected["signature_present"] is False, f"{name}: missing MIC byte oracle"
+            expected_mic_bytes = 0
+        assert len(frame.mic) == expected_mic_bytes, f"{name}: MIC byte count"
+        assert frame.to_bytes() == wire, f"{name}: exact frame round trip"
+        assert expected["valid"] is True, f"{name}: valid oracle"
+        if frame.signature_present:
+            assert frame.signer_eui64 == bytes.fromhex(vector["crypto"]["signer_eui64"]), (
+                f"{name}: signer EUI-64 mismatch"
+            )
         if "addr_mode" in expected:
             assert int(frame.addr_mode) == expected["addr_mode"], f"{name}: addr_mode mismatch"
+        if "epoch" in expected:
+            assert frame.epoch == expected["epoch"], f"{name}: epoch mismatch"
+        if "seqnum" in expected:
+            assert frame.seqnum == expected["seqnum"], f"{name}: sequence mismatch"
+        if "dst_addr_hex" in expected:
+            assert frame.dst_addr.hex() == expected["dst_addr_hex"], f"{name}: destination mismatch"
+        if "payload_hex" in expected:
+            assert frame.payload.hex() == expected["payload_hex"], f"{name}: payload mismatch"
 
 
 def test_mic_length_selector_coverage() -> None:
@@ -3135,3 +4518,133 @@ def test_mic_length_selector_coverage() -> None:
     assert any("selector_1" in n or "mic_length_1" in n for n in names)
     # Must test reserved rejection
     assert any("reserved" in n for n in names)
+
+
+def _replay_window_cases():
+    """Load replay window test vectors for cross-validation."""
+    doc = _load("replay_window.json")
+    assert doc["format_version"] == 2
+    assert doc["window_size"] == 32
+    return [(v["name"], v) for v in doc["vectors"] if "sequence" in v]
+
+
+@pytest.mark.parametrize("name,vector", _replay_window_cases())
+def test_replay_window_sequence_vector(name: str, vector: dict) -> None:
+    """Cross-validate Python replay window against shared test vectors (spec 4.4).
+
+    These vectors ensure Python, Rust, and C implementations produce identical
+    accept/reject decisions for the same (epoch, seqnum) sequence.
+    """
+    import warnings
+
+    from lichen.link.replay import ReplayWindow
+
+    window = ReplayWindow()
+    for i, step in enumerate(vector["sequence"]):
+        epoch = step["epoch"]
+        seqnum = step["seqnum"]
+        expected = step["accept"]
+
+        # Suppress expected warning for terminal counter
+        with warnings.catch_warnings():
+            if step.get("terminal"):
+                warnings.filterwarnings("ignore", message=".*approaching 24-bit limit.*")
+            result = window.check_and_update(epoch, seqnum)
+
+        assert result == expected, (
+            f"{name} step {i}: ({epoch}, {seqnum}) expected "
+            f"{'accept' if expected else 'reject'}, got {'accept' if result else 'reject'}"
+        )
+
+
+def test_replay_window_receiver_state_vectors() -> None:
+    """Test replay window with pre-initialized receiver state (spec 4.4).
+
+    These vectors test edge cases where the receiver has already seen frames
+    and we're checking if new frames are accepted or rejected.
+    """
+    import warnings
+
+    from lichen.link.replay import ReplayWindow
+
+    doc = _load("replay_window.json")
+    for vector in doc["vectors"]:
+        if "receiver_state" not in vector:
+            continue
+
+        name = vector["name"]
+        state = vector["receiver_state"]
+        received = vector["received"]
+        expected = vector["expected"]
+
+        # Initialize window to the receiver state
+        window = ReplayWindow()
+        # First, advance the window to the receiver's highest seen position
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*approaching 24-bit limit.*")
+            window.check_and_update(state["last_epoch"], state["last_seqnum"])
+
+        # Now check the received frame
+        result = window.check_and_update(received["epoch"], received["seqnum"])
+        assert result == expected["accept"], (
+            f"{name}: ({received['epoch']}, {received['seqnum']}) expected "
+            f"{'accept' if expected['accept'] else 'reject'}, "
+            f"got {'accept' if result else 'reject'}"
+        )
+
+
+def test_replay_window_per_peer_isolation() -> None:
+    """Test per-peer replay isolation against shared vectors (spec 4.4).
+
+    Replay windows are per-sender: the same (epoch, seqnum) from different
+    senders must both be accepted independently.
+    """
+    from lichen.link.replay import ReplayProtector
+
+    doc = _load("replay_window.json")
+    vector = next(v for v in doc["vectors"] if v["name"] == "per_peer_isolation")
+
+    # Test interleaved sequence from multiple peers
+    protector = ReplayProtector()
+    for step in vector["peers"]["interleaved"]:
+        sender = step["sender"]
+        epoch = step["epoch"]
+        seqnum = step["seqnum"]
+        expected = step["accept"]
+
+        result = protector.check_and_update(sender.encode(), epoch, seqnum)
+        assert result == expected, (
+            f"per_peer_isolation: sender={sender} ({epoch}, {seqnum}) expected "
+            f"{'accept' if expected else 'reject'}, got {'accept' if result else 'reject'}"
+        )
+
+
+def test_replay_window_logical_counter_vectors() -> None:
+    """Validate logical counter formula against shared vectors.
+
+    Logical counter = (epoch << 16) | seqnum, using ordinary unsigned ordering.
+    """
+    from lichen.link.replay import logical_counter
+
+    doc = _load("replay_window.json")
+    vector = next(v for v in doc["vectors"] if v["name"] == "logical_counter_combine")
+
+    for case in vector["cases"]:
+        computed = logical_counter(case["epoch"], case["seqnum"])
+        assert computed == case["counter"], (
+            f"logical_counter({case['epoch']}, {case['seqnum']}) = {computed}, "
+            f"expected {case['counter']}"
+        )
+        # Verify hex representation
+        computed_hex = computed.to_bytes(3, "big").hex()
+        assert computed_hex == case["hex"], (
+            f"logical_counter hex mismatch: got {computed_hex}, expected {case['hex']}"
+        )
+
+        # Verify ordering if present
+        if "greater_than" in case:
+            other = case["greater_than"]
+            other_counter = logical_counter(other["epoch"], other["seqnum"])
+            assert computed > other_counter, (
+                f"Ordering violation: {computed} should be > {other_counter}"
+            )

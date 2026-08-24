@@ -13,9 +13,11 @@ from aiocoap.numbers.codes import SERVICE_UNAVAILABLE
 from aiocoap.numbers.types import CON, NON
 
 from lichen.coap.params import (
+    APP_PRIORITY,
     CongestionError,
     CongestionLevel,
     CongestionState,
+    app_priority,
     check_congestion_allows,
     congestion_level,
     congestion_service_unavailable,
@@ -498,3 +500,68 @@ class TestBuildSiteCongestionProvider:
         # Should be a CongestionAwareSite
         assert type(site).__name__ == "CongestionAwareSite"
         assert site._congestion_provider is provider
+
+
+class TestAppPriority:
+    """Test application-to-priority mapping (spec 07 section 10.2.3)."""
+
+    def test_cot_alert_is_sos(self) -> None:
+        """CoT alert (subtype 0x20) maps to SOS (P0)."""
+        assert app_priority(5681, "alert") == Priority.SOS
+
+    def test_cot_chat_is_urgent(self) -> None:
+        """CoT chat (subtype 0x01) maps to URGENT (P2)."""
+        assert app_priority(5681, "chat") == Priority.URGENT
+
+    def test_cot_pli_is_normal(self) -> None:
+        """CoT PLI (subtypes 0x02-0x05) maps to NORMAL (P3)."""
+        assert app_priority(5681, "pli") == Priority.NORMAL
+
+    def test_cot_marker_is_normal(self) -> None:
+        """CoT marker (subtype 0x10) maps to NORMAL (P3)."""
+        assert app_priority(5681, "marker") == Priority.NORMAL
+
+    def test_senml_is_normal(self) -> None:
+        """SenML (port 5682) maps to NORMAL (P3)."""
+        assert app_priority(5682, "senml") == Priority.NORMAL
+
+    def test_coap_con_is_urgent(self) -> None:
+        """CoAP CON (port 5683) maps to URGENT (P2)."""
+        assert app_priority(5683, "con") == Priority.URGENT
+
+    def test_coap_non_is_normal(self) -> None:
+        """CoAP NON (port 5683) maps to NORMAL (P3)."""
+        assert app_priority(5683, "non") == Priority.NORMAL
+
+    def test_cayenne_is_normal(self) -> None:
+        """Cayenne (port 5685) maps to NORMAL (P3)."""
+        assert app_priority(5685, "cayenne") == Priority.NORMAL
+
+    def test_aprs_is_normal(self) -> None:
+        """APRS (port 5686) maps to NORMAL (P3)."""
+        assert app_priority(5686, "aprs") == Priority.NORMAL
+
+    def test_nmea_is_normal(self) -> None:
+        """NMEA (port 5687) maps to NORMAL (P3)."""
+        assert app_priority(5687, "nmea") == Priority.NORMAL
+
+    def test_mqtt_qos1_is_urgent(self) -> None:
+        """MQTT-SN QoS1 (port 10883) maps to URGENT (P2)."""
+        assert app_priority(10883, "qos1") == Priority.URGENT
+
+    def test_mqtt_qos0_is_normal(self) -> None:
+        """MQTT-SN QoS0 (port 10883) maps to NORMAL (P3)."""
+        assert app_priority(10883, "qos0") == Priority.NORMAL
+
+    def test_unknown_port_defaults_to_normal(self) -> None:
+        """Unknown port/subtype combinations default to NORMAL (P3)."""
+        assert app_priority(9999, "unknown") == Priority.NORMAL
+
+    def test_unknown_subtype_defaults_to_normal(self) -> None:
+        """Known port with unknown subtype defaults to NORMAL (P3)."""
+        assert app_priority(5681, "unknown_subtype") == Priority.NORMAL
+
+    def test_all_defined_mappings_covered(self) -> None:
+        """All entries in APP_PRIORITY are accessible via app_priority()."""
+        for (port, subtype), expected in APP_PRIORITY.items():
+            assert app_priority(port, subtype) == expected

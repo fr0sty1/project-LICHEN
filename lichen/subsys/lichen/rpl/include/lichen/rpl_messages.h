@@ -63,6 +63,7 @@ extern "C" {
 #define LICHEN_RPL_OPT_TRANSIT_INFO  6
 #define LICHEN_RPL_OPT_PREFIX_INFO   8
 #define LICHEN_RPL_OPT_RPL_TARGET_DESCRIPTOR 9
+#define LICHEN_RPL_OPT_DIO_TIME      0  /**< DIO Time Option (type TBD) */
 
 /* ── ICMPv6 codes for RPL messages ────────────────────────────────────────── */
 
@@ -347,6 +348,45 @@ int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *_Nonnull ti,
  */
 int lichen_rpl_transit_info_write(const struct lichen_rpl_transit_info *_Nonnull ti,
 				  uint8_t *_Nonnull buf, size_t len);
+
+/* ── DIO Time Option (type TBD) ────────────────────────────────────────────── */
+
+/** DIO Time Option data length (excluding type/length bytes) */
+#define LICHEN_RPL_DIO_TIME_DATA_LEN  6
+
+/**
+ * @brief DIO Time Option for time synchronization.
+ *
+ * Wire format: Type(1) + Length(1) + Stratum(1) + Reserved(1) + Timestamp(4).
+ * Total 8 bytes. Timestamp is Unix epoch seconds (big-endian).
+ */
+struct lichen_rpl_dio_time {
+	uint8_t stratum;      /**< Time stratum (0=no sync, 4=GNSS) */
+	uint32_t timestamp;   /**< Unix epoch seconds */
+};
+
+/**
+ * @brief Parse DIO Time Option from option data (after type/length bytes).
+ *
+ * @param dt   Output structure
+ * @param data Option data (6 bytes: stratum + reserved + timestamp)
+ * @param len  Length of data
+ * @return 0 on success, negative error code on failure
+ */
+LICHEN_WARN_UNUSED_RESULT
+int lichen_rpl_dio_time_parse(struct lichen_rpl_dio_time *_Nonnull dt,
+			      const uint8_t *_Nonnull data, size_t len);
+
+/**
+ * @brief Serialize DIO Time Option as a complete TLV option.
+ *
+ * @param dt  DIO Time Option to serialize
+ * @param buf Output buffer (at least 8 bytes)
+ * @param len Buffer size
+ * @return Bytes written (8 = 2 + 6), or negative error code
+ */
+int lichen_rpl_dio_time_write(const struct lichen_rpl_dio_time *_Nonnull dt,
+			      uint8_t *_Nonnull buf, size_t len);
 
 /* ── TLV option iterator ───────────────────────────────────────────────────── */
 

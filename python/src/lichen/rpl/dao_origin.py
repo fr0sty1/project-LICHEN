@@ -9,7 +9,7 @@ a pre-pinned Announce identity before any route state mutation.
 The validation requires:
 1. The verification key MUST be from an already authenticated and pinned
    Announce identity (not self-certified or caller-supplied)
-2. The preserved source address IID MUST equal the identity's bound IID
+2. The preserved source address MUST equal the identity's key-derived 02xx address
 3. The DAO Origin Signature MUST be valid
 
 Per spec: "Receipt of a DAO MUST NOT create or replace an Announce pin."
@@ -25,11 +25,11 @@ from enum import Enum, auto
 from ipaddress import IPv6Address
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-logger = logging.getLogger(__name__)
-
-from lichen.crypto.identity import _pubkey_to_iid
+from lichen.crypto.identity import yggdrasil_address
 from lichen.crypto.schnorr48 import verify
-from lichen.rpl.messages import DAO, RplOption
+from lichen.rpl.messages import DAO, RplOption, _exact_received_dao_wire
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     pass
@@ -46,12 +46,15 @@ class DaoOriginRejectReason(Enum):
     """Rejection reasons for DAO origin validation."""
 
     ORIGIN_NOT_PINNED = auto()
+    RAW_WIRE_UNAVAILABLE = auto()
     IID_MISMATCH = auto()
     SIGNATURE_MISSING = auto()
     SIGNATURE_DUPLICATE = auto()
     SIGNATURE_NOT_FINAL = auto()
     SIGNATURE_INVALID_LENGTH = auto()
     SIGNATURE_INVALID = auto()
+    ZERO_SEQUENCE = auto()
+    MALFORMED_OPTIONS = auto()
     SEQUENCE_REPLAY = auto()
     SEQUENCE_EQUAL_DIFFERENT_BYTES = auto()
 
@@ -69,8 +72,12 @@ class DaoOriginSignature:
     signature: bytes
 
     def __post_init__(self) -> None:
+        if type(self.origin_sequence) is not int:
+            raise TypeError("origin_sequence must be an exact integer")
         if not 0 <= self.origin_sequence <= 0xFFFFFFFFFFFFFFFF:
             raise ValueError("origin_sequence must fit in 64 bits")
+        if type(self.signature) is not bytes:
+            raise TypeError("signature must be exact bytes")
         if len(self.signature) != 48:
             raise ValueError(f"signature must be 48 bytes, got {len(self.signature)}")
 
@@ -113,6 +120,7 @@ class DaoOriginResult:
     pubkey: bytes | None = None
     origin_sequence: int | None = None
     dao_digest: bytes | None = None
+    signed_dao_bytes: bytes | None = None
     is_fresh: bool = True
 
 
@@ -158,7 +166,16 @@ def extract_unsigned_dao_bytes(dao: DAO) -> bytes:
     Returns:
         The byte sequence to include in the signature transcript.
     """
-    # Find the signature option and exclude it
+    provenance = _exact_received_dao_wire(dao)
+    if provenance is not None:
+        raw, spans = provenance
+        for option, (start, _end) in zip(dao.options, spans, strict=True):
+            if option.type == DAO_ORIGIN_SIGNATURE_TYPE:
+                return raw[:start]
+
+    # Construction-time signing helper: caller-built DAOs have no received
+    # provenance and are serialized canonically.  Validation below never uses
+    # this fallback for authoritative receive transcripts.
     options_without_sig = []
     for opt in dao.options:
         if opt.type == DAO_ORIGIN_SIGNATURE_TYPE:
@@ -224,7 +241,7 @@ class DaoOriginValidator:
 
     This validator checks:
     1. Source IID has a pinned pubkey from a prior announce
-    2. Key-to-IID binding is valid
+    2. The full source is the key-derived 02xx address
     3. DAO Origin Signature Option is present, final, and valid
     4. Origin sequence passes replay protection
 
@@ -254,6 +271,47 @@ class DaoOriginValidator:
         Returns:
             DaoOriginResult with validation outcome.
         """
+        provenance = _exact_received_dao_wire(dao)
+        if provenance is None:
+            return DaoOriginResult(
+                valid=False,
+                reject_reason=DaoOriginRejectReason.RAW_WIRE_UNAVAILABLE,
+            )
+        signed_dao_bytes, option_spans = provenance
+        # Consume only a detached parse of the exact wire snapshot whose
+        # provenance was validated above.  The caller still owns ``dao`` and
+        # may mutate its option list after the provenance check; consulting it
+        # again would create a signature-substitution TOCTOU.
+        dao = DAO.from_bytes(signed_dao_bytes)
+
+        # Structural framing is decided from the detached exact wire before
+        # key lookup, signature verification, or replay classification. Keep
+        # semantic ownership checks (self /128 Target) for the manager stage.
+        sig_indexes: list[int] = []
+        for index, option in enumerate(dao.options):
+            if option.type == 5:  # RPL Target
+                # The current .44.7 profile uses an exact 18-byte Target data
+                # field. Prefix Length and self-address ownership remain
+                # semantic checks after authenticated replay classification.
+                if len(option.data) != 18 or option.data[0] != 0:
+                    return DaoOriginResult(False, DaoOriginRejectReason.MALFORMED_OPTIONS)
+            elif option.type == 6:  # Transit Information, current /128 profile
+                if len(option.data) != 20:
+                    return DaoOriginResult(False, DaoOriginRejectReason.MALFORMED_OPTIONS)
+            elif option.type == DAO_ORIGIN_SIGNATURE_TYPE:
+                sig_indexes.append(index)
+                if len(option.data) != DAO_ORIGIN_SIGNATURE_LENGTH:
+                    return DaoOriginResult(False, DaoOriginRejectReason.SIGNATURE_INVALID_LENGTH)
+            else:
+                return DaoOriginResult(False, DaoOriginRejectReason.MALFORMED_OPTIONS)
+
+        if not sig_indexes:
+            return DaoOriginResult(False, DaoOriginRejectReason.SIGNATURE_MISSING)
+        if len(sig_indexes) != 1:
+            return DaoOriginResult(False, DaoOriginRejectReason.SIGNATURE_DUPLICATE)
+        if sig_indexes[0] != len(dao.options) - 1:
+            return DaoOriginResult(False, DaoOriginRejectReason.SIGNATURE_NOT_FINAL)
+
         # Extract source IID from address (bytes 8-16)
         source_iid = source_address.packed[8:16]
 
@@ -264,13 +322,14 @@ class DaoOriginValidator:
                 valid=False, reject_reason=DaoOriginRejectReason.ORIGIN_NOT_PINNED
             )
 
-        # Step 2: Validate key-to-IID binding
-        # Catch ValueError from _pubkey_to_iid if pubkey is malformed (wrong length)
+        # Step 2: Validate the exact key-derived 02xx source binding.  Comparing
+        # only the low 64-bit IID would admit link-local and other prefix aliases.
+        # Catch ValueError from yggdrasil_address if pubkey is malformed (wrong length)
         # or TypeError if pubkey is completely wrong type (None, int, etc).
         # (corrupted storage, buggy implementation). Treat as IID_MISMATCH since
         # an invalid pinned pubkey cannot bind to any IID.
         try:
-            expected_iid = _pubkey_to_iid(pubkey)
+            expected_source = yggdrasil_address(pubkey)
         except (ValueError, TypeError) as e:
             # SECURITY: Log corrupted pin table data for diagnostics
             # Per spec 05-routing.md: "Missing, corrupt, or unavailable state
@@ -280,18 +339,12 @@ class DaoOriginValidator:
                 source_iid.hex(),
                 e,
             )
-            return DaoOriginResult(
-                valid=False, reject_reason=DaoOriginRejectReason.IID_MISMATCH
-            )
-        if source_iid != expected_iid:
-            return DaoOriginResult(
-                valid=False, reject_reason=DaoOriginRejectReason.IID_MISMATCH
-            )
+            return DaoOriginResult(valid=False, reject_reason=DaoOriginRejectReason.IID_MISMATCH)
+        if source_address != expected_source:
+            return DaoOriginResult(valid=False, reject_reason=DaoOriginRejectReason.IID_MISMATCH)
 
         # Step 3: Find and validate DAO Origin Signature Option
-        sig_options = [
-            opt for opt in dao.options if opt.type == DAO_ORIGIN_SIGNATURE_TYPE
-        ]
+        sig_options = [opt for opt in dao.options if opt.type == DAO_ORIGIN_SIGNATURE_TYPE]
 
         if not sig_options:
             return DaoOriginResult(
@@ -323,9 +376,15 @@ class DaoOriginValidator:
                 valid=False,
                 reject_reason=DaoOriginRejectReason.SIGNATURE_INVALID_LENGTH,
             )
+        if origin_sig.origin_sequence == 0:
+            return DaoOriginResult(
+                valid=False,
+                reject_reason=DaoOriginRejectReason.ZERO_SEQUENCE,
+            )
 
         # Step 4: Verify Schnorr48 signature
-        unsigned_dao_bytes = extract_unsigned_dao_bytes(dao)
+        signature_index = dao.options.index(sig_opt)
+        unsigned_dao_bytes = signed_dao_bytes[: option_spans[signature_index][0]]
         transcript = compute_signature_transcript(
             source_address,
             effective_dodag_id,
@@ -343,7 +402,6 @@ class DaoOriginValidator:
         # The floor is committed at step 7 (after semantic parsing and Target validation)
         # by the caller (DaoManager). This prevents premature floor commits that would
         # incorrectly block retransmissions when steps 5-6 fail.
-        signed_dao_bytes = dao.to_bytes()
         dao_digest = compute_dao_digest(signed_dao_bytes)
 
         is_fresh = True
@@ -371,6 +429,7 @@ class DaoOriginValidator:
             pubkey=pubkey,
             origin_sequence=origin_sig.origin_sequence,
             dao_digest=dao_digest,
+            signed_dao_bytes=signed_dao_bytes,
             is_fresh=is_fresh,
         )
 

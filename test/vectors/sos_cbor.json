@@ -1,0 +1,161 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "sos_cbor",
+  "description": "SOS CBOR encoding test vectors per spec Section 18.4.2. All fields: type, node, ts, lat, lon, msg, seq.",
+  "spec": "spec/12-apps.md Section 18.4.2",
+  "vectors": [
+    {
+      "name": "sos_full_all_fields",
+      "description": "Full SOS with all fields: type, node, ts, lat, lon, msg, seq.",
+      "cbor_payload": {
+        "type": "sos",
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lat": 37.774929,
+        "lon": -122.419416,
+        "msg": "Injured, need evac",
+        "seq": 1
+      },
+      "cbor_hex": "a7647479706563736f73646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4042e330df9bdc6a636c6f6efbc05e9ad7b634dad3636d736772496e6a757265642c206e65656420657661636373657101",
+      "cbor_length": 118,
+      "expected": {
+        "decode_success": true,
+        "fields_present": ["type", "node", "ts", "lat", "lon", "msg", "seq"]
+      }
+    },
+    {
+      "name": "sos_minimal_required_fields",
+      "description": "Minimal SOS with only required fields (no optional lat/lon/msg).",
+      "cbor_payload": {
+        "type": "medical",
+        "node": "0200:0000:0000:0000:aabb:ccdd:eeff:0011",
+        "ts": 1716742900,
+        "seq": 2
+      },
+      "cbor_hex": "a46474797065676d65646963616c646e6f64657827303230303a303030303a303030303a303030303a616162623a636364643a656566663a303031316274731a66536af46373657102",
+      "cbor_length": 73,
+      "expected": {
+        "decode_success": true,
+        "fields_present": ["type", "node", "ts", "seq"],
+        "fields_absent": ["lat", "lon", "msg"]
+      }
+    },
+    {
+      "name": "sos_cancel",
+      "description": "Cancel SOS message to revoke previous emergency.",
+      "cbor_payload": {
+        "type": "cancel",
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716743000,
+        "seq": 2
+      },
+      "cbor_hex": "a464747970656663616e63656c646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536b586373657102",
+      "cbor_length": 72,
+      "expected": {
+        "decode_success": true,
+        "type_value": "cancel",
+        "note": "seq incremented from original SOS"
+      }
+    },
+    {
+      "name": "sos_security_threat",
+      "description": "Security threat alert type.",
+      "cbor_payload": {
+        "type": "security",
+        "node": "0200:0000:0000:0000:ffff:ffff:ffff:ffff",
+        "ts": 0,
+        "lat": 0.0,
+        "lon": 0.0,
+        "msg": "",
+        "seq": 255
+      },
+      "cbor_hex": "a76474797065687365637572697479646e6f64657827303230303a303030303a303030303a303030303a666666663a666666663a666666663a6666666662747300636c6174fb0000000000000000636c6f6efb0000000000000000636d7367606373657118ff",
+      "cbor_length": 102,
+      "expected": {
+        "decode_success": true,
+        "note": "ts=0 means unknown wall clock, empty msg, max uint8 seq"
+      }
+    },
+    {
+      "name": "sos_fire_emergency",
+      "description": "Fire emergency with location (Sydney coordinates).",
+      "cbor_payload": {
+        "type": "fire",
+        "node": "0200:0000:0000:0000:1234:5678:9abc:def0",
+        "ts": 1716744000,
+        "lat": -33.8688,
+        "lon": 151.2093,
+        "msg": "Building fire, evacuating",
+        "seq": 1
+      },
+      "cbor_hex": "a764747970656466697265646e6f64657827303230303a303030303a303030303a303030303a313233343a353637383a396162633a646566306274731a66536f40636c6174fbc040ef34d6a161e5636c6f6efb4062e6b295e9e1b1636d736778194275696c64696e6720666972652c2065766163756174696e676373657101",
+      "cbor_length": 127,
+      "expected": {
+        "decode_success": true,
+        "lat_negative": true,
+        "note": "Southern hemisphere latitude is negative"
+      }
+    },
+    {
+      "name": "sos_type_validation",
+      "description": "Valid SOS type values per spec.",
+      "valid_types": ["sos", "medical", "security", "fire", "cancel"],
+      "expected": {
+        "unknown_type_handling": "reject_or_log_unknown",
+        "note": "Implementations may extend types but must accept these five"
+      }
+    },
+    {
+      "name": "sos_seq_rollover",
+      "description": "Sequence number wraps from 255 to 0 for updates.",
+      "previous_seq": 255,
+      "new_seq": 0,
+      "expected": {
+        "rollover_valid": true,
+        "note": "Receivers must handle uint8 wraparound"
+      }
+    },
+    {
+      "name": "sos_lat_lon_range",
+      "description": "Valid coordinate ranges for position fields.",
+      "lat_range": {
+        "min": -90.0,
+        "max": 90.0
+      },
+      "lon_range": {
+        "min": -180.0,
+        "max": 180.0
+      },
+      "expected": {
+        "out_of_range_handling": "clamp_or_reject"
+      }
+    },
+    {
+      "name": "sos_node_format",
+      "description": "Node field is full IPv6 address in colon-hex notation.",
+      "valid_node_examples": [
+        "0200:0000:0000:0000:0011:2233:4455:6677",
+        "fe80:0000:0000:0000:0200:00ff:fe00:0001"
+      ],
+      "invalid_node_examples": [
+        "192.168.1.1",
+        "0011:2233:4455:6677",
+        ""
+      ],
+      "expected": {
+        "format": "IPv6 full notation (8 groups, colon-separated)"
+      }
+    },
+    {
+      "name": "sos_ts_semantics",
+      "description": "Timestamp is Unix epoch seconds per spec 18.4.2.",
+      "ts_example": 1716742800,
+      "ts_zero_meaning": "wall_clock_unavailable",
+      "expected": {
+        "ts_type": "uint",
+        "note": "Senders should omit ts or set ts=0 when wall clock invalid"
+      }
+    }
+  ]
+}

@@ -169,7 +169,10 @@ int lichen_lora_l2_init(void)
     }
     lora_data.rx_channel = 0;
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    lichen_duty_cycle_init(&lora_data.duty, LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE);
+    lora_data.density = 0;
+    lichen_duty_cycle_init(&lora_data.duty,
+                           adaptive_duty_permille(lora_data.density,
+                                                  lora_l2_duty_region()));
 #endif
 
     if (!device_is_ready(lora_data.lora_dev)) {

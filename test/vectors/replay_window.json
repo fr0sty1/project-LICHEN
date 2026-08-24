@@ -186,6 +186,238 @@
         {"epoch": 1, "seqnum": 0, "last_epoch": 0, "last_seq": 5000, "accept": true},
         {"epoch": 0, "seqnum": 0, "last_epoch": 7, "last_seq": 65535, "accept": false}
       ]
+    },
+    {
+      "name": "out_of_order_burst_reordering",
+      "description": "Multiple packets arrive in shuffled order within a burst",
+      "sequence": [
+        {"epoch": 0, "seqnum": 10, "accept": true, "comment": "highest=10"},
+        {"epoch": 0, "seqnum": 8, "accept": true, "reason": "within_window", "offset": 2},
+        {"epoch": 0, "seqnum": 7, "accept": true, "reason": "within_window", "offset": 3},
+        {"epoch": 0, "seqnum": 9, "accept": true, "reason": "within_window", "offset": 1},
+        {"epoch": 0, "seqnum": 6, "accept": true, "reason": "within_window", "offset": 4},
+        {"epoch": 0, "seqnum": 11, "accept": true, "reason": "advances_window", "comment": "highest=11"},
+        {"epoch": 0, "seqnum": 8, "accept": false, "reason": "duplicate_in_window"},
+        {"epoch": 0, "seqnum": 10, "accept": false, "reason": "duplicate_in_window"}
+      ]
+    },
+    {
+      "name": "out_of_order_complete_reverse",
+      "description": "Packets 0-31 arrive in complete reverse order",
+      "sequence": [
+        {"epoch": 0, "seqnum": 31, "accept": true, "comment": "highest=31"},
+        {"epoch": 0, "seqnum": 30, "accept": true, "reason": "within_window", "offset": 1},
+        {"epoch": 0, "seqnum": 29, "accept": true, "reason": "within_window", "offset": 2},
+        {"epoch": 0, "seqnum": 28, "accept": true, "reason": "within_window", "offset": 3},
+        {"epoch": 0, "seqnum": 27, "accept": true, "reason": "within_window", "offset": 4},
+        {"epoch": 0, "seqnum": 26, "accept": true, "reason": "within_window", "offset": 5},
+        {"epoch": 0, "seqnum": 25, "accept": true, "reason": "within_window", "offset": 6},
+        {"epoch": 0, "seqnum": 24, "accept": true, "reason": "within_window", "offset": 7},
+        {"epoch": 0, "seqnum": 23, "accept": true, "reason": "within_window", "offset": 8},
+        {"epoch": 0, "seqnum": 22, "accept": true, "reason": "within_window", "offset": 9},
+        {"epoch": 0, "seqnum": 21, "accept": true, "reason": "within_window", "offset": 10},
+        {"epoch": 0, "seqnum": 20, "accept": true, "reason": "within_window", "offset": 11},
+        {"epoch": 0, "seqnum": 19, "accept": true, "reason": "within_window", "offset": 12},
+        {"epoch": 0, "seqnum": 18, "accept": true, "reason": "within_window", "offset": 13},
+        {"epoch": 0, "seqnum": 17, "accept": true, "reason": "within_window", "offset": 14},
+        {"epoch": 0, "seqnum": 16, "accept": true, "reason": "within_window", "offset": 15},
+        {"epoch": 0, "seqnum": 15, "accept": true, "reason": "within_window", "offset": 16},
+        {"epoch": 0, "seqnum": 14, "accept": true, "reason": "within_window", "offset": 17},
+        {"epoch": 0, "seqnum": 13, "accept": true, "reason": "within_window", "offset": 18},
+        {"epoch": 0, "seqnum": 12, "accept": true, "reason": "within_window", "offset": 19},
+        {"epoch": 0, "seqnum": 11, "accept": true, "reason": "within_window", "offset": 20},
+        {"epoch": 0, "seqnum": 10, "accept": true, "reason": "within_window", "offset": 21},
+        {"epoch": 0, "seqnum": 9, "accept": true, "reason": "within_window", "offset": 22},
+        {"epoch": 0, "seqnum": 8, "accept": true, "reason": "within_window", "offset": 23},
+        {"epoch": 0, "seqnum": 7, "accept": true, "reason": "within_window", "offset": 24},
+        {"epoch": 0, "seqnum": 6, "accept": true, "reason": "within_window", "offset": 25},
+        {"epoch": 0, "seqnum": 5, "accept": true, "reason": "within_window", "offset": 26},
+        {"epoch": 0, "seqnum": 4, "accept": true, "reason": "within_window", "offset": 27},
+        {"epoch": 0, "seqnum": 3, "accept": true, "reason": "within_window", "offset": 28},
+        {"epoch": 0, "seqnum": 2, "accept": true, "reason": "within_window", "offset": 29},
+        {"epoch": 0, "seqnum": 1, "accept": true, "reason": "within_window", "offset": 30},
+        {"epoch": 0, "seqnum": 0, "accept": true, "reason": "within_window", "offset": 31, "comment": "last slot in window"}
+      ]
+    },
+    {
+      "name": "out_of_order_window_boundary_32",
+      "description": "Verify offset=31 accepted but offset=32 rejected",
+      "sequence": [
+        {"epoch": 0, "seqnum": 63, "accept": true, "comment": "highest=63"},
+        {"epoch": 0, "seqnum": 32, "accept": true, "reason": "within_window", "offset": 31, "comment": "last valid slot"},
+        {"epoch": 0, "seqnum": 31, "accept": false, "reason": "below_window_floor", "offset": 32, "comment": "exactly at boundary"},
+        {"epoch": 0, "seqnum": 30, "accept": false, "reason": "below_window_floor", "offset": 33}
+      ]
+    },
+    {
+      "name": "out_of_order_gap_then_fill",
+      "description": "Receive with gaps, then fill in missing packets",
+      "sequence": [
+        {"epoch": 0, "seqnum": 0, "accept": true},
+        {"epoch": 0, "seqnum": 5, "accept": true, "comment": "gap: 1-4 missing"},
+        {"epoch": 0, "seqnum": 10, "accept": true, "comment": "gap: 6-9 missing"},
+        {"epoch": 0, "seqnum": 3, "accept": true, "reason": "within_window", "comment": "fill gap"},
+        {"epoch": 0, "seqnum": 7, "accept": true, "reason": "within_window", "comment": "fill gap"},
+        {"epoch": 0, "seqnum": 1, "accept": true, "reason": "within_window", "comment": "fill gap"},
+        {"epoch": 0, "seqnum": 2, "accept": true, "reason": "within_window", "comment": "fill gap"},
+        {"epoch": 0, "seqnum": 4, "accept": true, "reason": "within_window", "comment": "fill gap"},
+        {"epoch": 0, "seqnum": 6, "accept": true, "reason": "within_window", "comment": "fill gap"},
+        {"epoch": 0, "seqnum": 8, "accept": true, "reason": "within_window", "comment": "fill gap"},
+        {"epoch": 0, "seqnum": 9, "accept": true, "reason": "within_window", "comment": "fill gap"},
+        {"epoch": 0, "seqnum": 7, "accept": false, "reason": "duplicate_in_window", "comment": "already filled"}
+      ]
+    },
+    {
+      "name": "out_of_order_progressive_window_slide",
+      "description": "Window slides forward while out-of-order packets continue arriving; bitmap bits shift with highest",
+      "sequence": [
+        {"epoch": 0, "seqnum": 10, "accept": true, "comment": "highest=10, bit0 set"},
+        {"epoch": 0, "seqnum": 5, "accept": true, "reason": "within_window", "comment": "bit5 set"},
+        {"epoch": 0, "seqnum": 20, "accept": true, "comment": "highest=20, bitmap shifts left 10, bits at 0,10,15"},
+        {"epoch": 0, "seqnum": 15, "accept": true, "reason": "within_window", "comment": "bit5 set"},
+        {"epoch": 0, "seqnum": 30, "accept": true, "comment": "highest=30, bitmap shifts left 10, bits at 0,5,10,15,20,25"},
+        {"epoch": 0, "seqnum": 25, "accept": true, "reason": "within_window", "comment": "bit5 set"},
+        {"epoch": 0, "seqnum": 5, "accept": false, "reason": "duplicate_in_window", "offset": 25, "comment": "bit25 set from original seqnum 5 shifted twice"},
+        {"epoch": 0, "seqnum": 10, "accept": false, "reason": "duplicate_in_window", "offset": 20, "comment": "bit20 set from original seqnum 10 shifted twice"},
+        {"epoch": 0, "seqnum": 15, "accept": false, "reason": "duplicate_in_window", "offset": 15, "comment": "bit15 set from seqnum 15"},
+        {"epoch": 0, "seqnum": 0, "accept": true, "reason": "within_window", "offset": 30, "comment": "offset=30 < 32, bit30 not set, fresh"}
+      ]
+    },
+    {
+      "name": "out_of_order_interleaved_epochs",
+      "description": "Out-of-order within same epoch, then epoch advances, old epoch rejected",
+      "sequence": [
+        {"epoch": 3, "seqnum": 100, "accept": true},
+        {"epoch": 3, "seqnum": 95, "accept": true, "reason": "within_window"},
+        {"epoch": 3, "seqnum": 90, "accept": true, "reason": "within_window"},
+        {"epoch": 4, "seqnum": 0, "accept": true, "comment": "epoch advances, resets window"},
+        {"epoch": 3, "seqnum": 105, "accept": false, "reason": "epoch_stale", "comment": "old epoch rejected even with higher seqnum"},
+        {"epoch": 4, "seqnum": 5, "accept": true, "reason": "within_window"}
+      ]
+    },
+    {
+      "name": "out_of_order_zigzag_pattern",
+      "description": "Alternating high-low pattern stressing window bitmap updates",
+      "sequence": [
+        {"epoch": 0, "seqnum": 50, "accept": true, "comment": "highest=50"},
+        {"epoch": 0, "seqnum": 20, "accept": true, "reason": "within_window", "offset": 30},
+        {"epoch": 0, "seqnum": 51, "accept": true, "comment": "highest=51"},
+        {"epoch": 0, "seqnum": 21, "accept": true, "reason": "within_window", "offset": 30},
+        {"epoch": 0, "seqnum": 52, "accept": true, "comment": "highest=52"},
+        {"epoch": 0, "seqnum": 22, "accept": true, "reason": "within_window", "offset": 30},
+        {"epoch": 0, "seqnum": 53, "accept": true, "comment": "highest=53"},
+        {"epoch": 0, "seqnum": 23, "accept": true, "reason": "within_window", "offset": 30},
+        {"epoch": 0, "seqnum": 20, "accept": false, "reason": "duplicate_in_window"},
+        {"epoch": 0, "seqnum": 21, "accept": false, "reason": "below_window_floor", "comment": "window slid past"}
+      ]
+    },
+    {
+      "name": "out_of_order_exactly_window_size_gap",
+      "description": "Gap of exactly window_size resets bitmap completely",
+      "sequence": [
+        {"epoch": 0, "seqnum": 0, "accept": true, "comment": "highest=0, bitmap=0x00000001"},
+        {"epoch": 0, "seqnum": 32, "accept": true, "comment": "highest=32, gap=32, bitmap resets to 0x00000001"},
+        {"epoch": 0, "seqnum": 0, "accept": false, "reason": "below_window_floor", "offset": 32, "comment": "exactly at boundary"},
+        {"epoch": 0, "seqnum": 1, "accept": true, "reason": "within_window", "offset": 31, "comment": "just inside window"},
+        {"epoch": 0, "seqnum": 31, "accept": true, "reason": "within_window", "offset": 1}
+      ]
+    },
+    {
+      "name": "out_of_order_bitmap_full_coverage",
+      "description": "Fill entire 32-slot window with out-of-order arrivals",
+      "sequence": [
+        {"epoch": 0, "seqnum": 31, "accept": true, "comment": "highest=31"},
+        {"epoch": 0, "seqnum": 15, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 0, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 16, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 8, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 24, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 4, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 20, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 12, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 28, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 2, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 18, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 10, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 26, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 6, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 22, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 14, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 30, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 1, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 17, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 9, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 25, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 5, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 21, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 13, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 29, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 3, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 19, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 11, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 27, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 7, "accept": true, "reason": "within_window"},
+        {"epoch": 0, "seqnum": 23, "accept": true, "reason": "within_window", "comment": "all 32 slots now filled"},
+        {"epoch": 0, "seqnum": 0, "accept": false, "reason": "duplicate_in_window"},
+        {"epoch": 0, "seqnum": 15, "accept": false, "reason": "duplicate_in_window"},
+        {"epoch": 0, "seqnum": 31, "accept": false, "reason": "duplicate_in_window"}
+      ],
+      "final_bitmap": "0xFFFFFFFF",
+      "comment": "All 32 bits set after filling every slot"
+    },
+    {
+      "name": "out_of_order_near_seqnum_max",
+      "description": "Out-of-order near sequence number maximum (65535)",
+      "sequence": [
+        {"epoch": 5, "seqnum": 65535, "accept": true, "comment": "highest=65535"},
+        {"epoch": 5, "seqnum": 65510, "accept": true, "reason": "within_window", "offset": 25},
+        {"epoch": 5, "seqnum": 65504, "accept": true, "reason": "within_window", "offset": 31, "comment": "last valid slot"},
+        {"epoch": 5, "seqnum": 65503, "accept": false, "reason": "below_window_floor", "offset": 32},
+        {"epoch": 6, "seqnum": 0, "accept": true, "comment": "epoch advance"},
+        {"epoch": 5, "seqnum": 65520, "accept": false, "reason": "epoch_stale"}
+      ]
+    }
+  ],
+  "security_domain_vectors": [
+    {
+      "name": "unauthenticated_high_counter_cannot_poison_window",
+      "description": "An invalid signature at the terminal counter is rejected before replay lookup or mutation; a later authenticated low counter for the same signer generation is fresh.",
+      "replay_key": {"signer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29", "key_generation": 7},
+      "events": [
+        {"counter": 16777215, "authenticated": false, "expect_accept": false, "expect_state_mutation": false, "expect_delivery": false},
+        {"counter": 1, "authenticated": true, "expect_accept": true, "expect_state_mutation": true, "expect_delivery": true}
+      ],
+      "provenance": "Signature and trust-generation validation precede all replay-state reads and writes."
+    },
+    {
+      "name": "same_iid_alias_full_keys_are_isolated",
+      "description": "Two distinct full signer keys that share a lookup IID retain independent replay windows.",
+      "shared_lookup_iid_hex": "0102030405060708",
+      "events": [
+        {"signer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29", "key_generation": 2, "counter": 9, "authenticated": true, "expect_accept": true},
+        {"signer_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c", "key_generation": 2, "counter": 9, "authenticated": true, "expect_accept": true},
+        {"signer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29", "key_generation": 2, "counter": 9, "authenticated": true, "expect_accept": false, "reason": "duplicate"}
+      ],
+      "provenance": "The replay security domain is (full signer public key, trust generation), never a truncated IID or address."
+    },
+    {
+      "name": "key_rotation_starts_new_generation_and_retires_old",
+      "description": "A newly trusted key generation starts a fresh window while frames under the retired generation fail trust before replay mutation.",
+      "events": [
+        {"signer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29", "key_generation": 3, "counter": 500, "authenticated": true, "generation_active": true, "expect_accept": true},
+        {"action": "retire_generation", "signer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29", "key_generation": 3},
+        {"signer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29", "key_generation": 3, "counter": 501, "authenticated": true, "generation_active": false, "expect_accept": false, "expect_state_mutation": false, "reason": "retired_generation"},
+        {"signer_public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c", "key_generation": 4, "counter": 0, "authenticated": true, "generation_active": true, "expect_accept": true}
+      ],
+      "provenance": "Trust generation is part of the replay key and retirement is enforced before replay admission."
+    },
+    {
+      "name": "durable_replay_rollback_fails_closed",
+      "description": "Restoring a replay record whose authenticated monotonic generation predates the durable trust generation fails closed and delivers nothing.",
+      "durable_trust_generation": 12,
+      "restored_record": {"signer_public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29", "key_generation": 11, "highest_counter": 100, "bitmap": 1},
+      "expected": {"restore": "reject", "fail_closed": true, "expect_state_mutation": false, "expect_delivery": false, "requires_rekey_or_authenticated_recovery": true},
+      "provenance": "Replay persistence is integrity protected and rollback-bound to the durable trust generation."
     }
   ],
   "epoch_persistence": {

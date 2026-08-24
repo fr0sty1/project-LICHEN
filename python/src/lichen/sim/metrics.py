@@ -9,16 +9,18 @@ and the derived delivery and collision rates.
 The recording methods are deduplicated by design. The simulation polls
 ``Simulation.get_rx_result`` on a ~1 ms interval while a node waits, so the
 same physical delivery or collision is observed many times; each is counted
-once via the ``(receiver, transmission)`` and ``(receiver, frozenset of
-overlapping transmissions)`` keys.
+once via the ``(receiver, transmission)`` key and a radio-layer collision
+epoch. Dedup sets and CSV series are capped so long runs cannot grow without
+bound.
 """
 
 from __future__ import annotations
 
 import csv
 import logging
-from collections import defaultdict, deque
-from collections.abc import Iterable
+import random
+from collections import OrderedDict, defaultdict, deque
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar
@@ -30,12 +32,17 @@ logger = logging.getLogger(__name__)
 class NodeMetrics:
     """Per-node telemetry metrics for cross-implementation tracking.
 
-    Tracks transmission/reception counts, byte totals, unique peers seen,
-    and packet hashes for verifying cross-implementation interoperability.
+    Tracks transmission/reception counts, byte totals, airtime usage,
+    unique peers seen, and packet hashes for verifying cross-implementation
+    interoperability.
 
     The packet hash sets are capped at ``_PACKET_HASH_SET_MAX_SIZE`` to prevent
     unbounded memory growth in long-running simulations. Once the cap is reached,
     no new hashes are added, but counts (tx_count, rx_count) remain accurate.
+
+    Airtime tracking: ``airtime_us`` accumulates actual TX airtime for duty
+    cycle enforcement. After each TX, the airtime is deducted from the node's
+    duty cycle budget.
     """
 
     # Maximum entries in packet_hashes_sent and packet_hashes_received.
@@ -47,20 +54,23 @@ class NodeMetrics:
     rx_count: int = 0
     tx_bytes: int = 0
     rx_bytes: int = 0
+    airtime_us: int = 0  # Accumulated TX airtime in microseconds
     unique_peers: set[str] = field(default_factory=set)
     errors: set[str] = field(default_factory=set)
     packet_hashes_sent: set[str] = field(default_factory=set)
     packet_hashes_received: set[str] = field(default_factory=set)
 
-    def record_tx(self, payload: bytes, packet_hash: str) -> None:
+    def record_tx(self, payload: bytes, packet_hash: str, airtime_us: int = 0) -> None:
         """Record a transmission.
 
         Args:
             payload: The transmitted payload bytes.
             packet_hash: SHA256[:16] hash of the payload.
+            airtime_us: Actual airtime in microseconds (for duty cycle tracking).
         """
         self.tx_count += 1
         self.tx_bytes += len(payload)
+        self.airtime_us += airtime_us
         if len(self.packet_hashes_sent) < self._PACKET_HASH_SET_MAX_SIZE:
             self.packet_hashes_sent.add(packet_hash)
 
@@ -99,6 +109,7 @@ class NodeMetrics:
             "rx_count": self.rx_count,
             "tx_bytes": self.tx_bytes,
             "rx_bytes": self.rx_bytes,
+            "airtime_us": self.airtime_us,
             "unique_peers": sorted(self.unique_peers),
             "errors": sorted(self.errors),
             "packet_hashes_sent": sorted(self.packet_hashes_sent),
@@ -285,20 +296,27 @@ class Metrics:
     totals.
     """
 
-    # Max age for _tx_start_times entries (60 seconds in microseconds).
-    # Entries older than this are pruned to prevent unbounded memory growth.
+    # Max age for delivered _tx_start_times entries (60 seconds).
     _TX_START_TIMES_MAX_AGE_US = 60_000_000
+    # Undelivered start times live long enough for LatencyRule / 90s hops.
+    _TX_START_TIMES_UNDELIVERED_MAX_AGE_US = 180_000_000
     # Only prune when dict exceeds this size (avoids overhead for small runs).
     _TX_START_TIMES_PRUNE_THRESHOLD = 1000
     # Max latency samples to store for percentile calculation.
     # Reservoir sampling kicks in beyond this limit.
     _MAX_LATENCY_SAMPLES = 10000
+    _DELIVERED_MAX_SIZE = 10000
+    _COLLISION_KEYS_MAX_SIZE = 10000
+    _TIME_SERIES_MAX_SIZE = 10000
 
-    def __init__(self) -> None:
+    def __init__(self, rng: random.Random | None = None) -> None:
+        self._rng = rng if rng is not None else random.Random()
         self._transmissions = 0
         self._tx_start_times: dict[str, int] = {}  # tx_id -> start_time_us
-        self._delivered: set[tuple[str, str]] = set()  # (rx_node_id, tx_id)
-        self._collision_keys: set[tuple[str, frozenset[str]]] = set()
+        self._tx_latency_recorded: set[str] = set()
+        self._delivered: OrderedDict[tuple[str, str], None] = OrderedDict()
+        self._receptions = 0
+        self._collision_keys: OrderedDict[tuple[str, frozenset[str]], None] = OrderedDict()
         self._collisions = 0
         # Running statistics for latency (O(1) memory vs unbounded list).
         self._latency_count = 0
@@ -312,12 +330,18 @@ class Metrics:
         self._collisions_by_channel: dict[int, int] = defaultdict(int)
         # Per-node collision tracking.
         self._collisions_by_node: dict[str, int] = defaultdict(int)
-        # Time-series data for CSV export: list of (time_us, event_type, details).
-        self._time_series: list[tuple[int, str, dict[str, Any]]] = []
+        # Time-series data for CSV export: capped so long runs cannot OOM.
+        self._time_series: deque[tuple[int, str, dict[str, Any]]] = deque(
+            maxlen=self._TIME_SERIES_MAX_SIZE
+        )
         # Time-series for real-time dashboard visualization.
         self._dashboard_time_series = MetricsTimeSeries()
         # Current duty cycle value (set externally by simulation).
         self._duty_cycle: float = 0.0
+
+    def set_rng(self, rng: random.Random) -> None:
+        """Replace the RNG used for latency reservoir sampling."""
+        self._rng = rng
 
     def record_transmission_start(self, tx_id: str, start_time_us: int) -> None:
         """Record that a transmission has started.
@@ -332,18 +356,28 @@ class Metrics:
         self._tx_start_times[tx_id] = start_time_us
         self._transmissions += 1
 
-        # Prune old entries to prevent unbounded memory growth.
+        # Prune by age, but keep undelivered starts through delayed-RX windows.
         if len(self._tx_start_times) > self._TX_START_TIMES_PRUNE_THRESHOLD:
-            cutoff = start_time_us - self._TX_START_TIMES_MAX_AGE_US
-            old_keys = [k for k, v in self._tx_start_times.items() if v < cutoff]
-            for k in old_keys:
-                del self._tx_start_times[k]
+            delivered_cutoff = start_time_us - self._TX_START_TIMES_MAX_AGE_US
+            undelivered_cutoff = start_time_us - self._TX_START_TIMES_UNDELIVERED_MAX_AGE_US
+            old_keys = []
+            for k, v in self._tx_start_times.items():
+                if k == tx_id:
+                    continue
+                if k in self._tx_latency_recorded:
+                    if v < delivered_cutoff:
+                        old_keys.append(k)
+                elif v < undelivered_cutoff:
+                    old_keys.append(k)
+            self._forget_tx_ids(old_keys)
 
-    def record_reception(self, rx_node_id: str, tx_id: str, time_us: int) -> None:
+    def record_reception(self, rx_node_id: str, tx_id: str, time_us: int) -> bool:
         """Record a successful reception of a transmission by a node.
 
         Idempotent per ``(rx_node_id, tx_id)``: repeated calls for the same
         delivery are ignored, so polling does not inflate the count.
+        Returns ``True`` only for the first observation, matching
+        ``record_collision``.
 
         Args:
             rx_node_id: ID of the receiving node.
@@ -353,8 +387,15 @@ class Metrics:
         """
         key = (rx_node_id, tx_id)
         if key in self._delivered:
-            return
-        self._delivered.add(key)
+            self._delivered.move_to_end(key)
+            return False
+        self._evict_stale_identities(
+            self._delivered,
+            self._DELIVERED_MAX_SIZE,
+            lambda k: k[1] not in self._tx_start_times,
+        )
+        self._delivered[key] = None
+        self._receptions += 1
         start = self._tx_start_times.get(tx_id)
         if start is not None:
             if time_us >= start:
@@ -365,14 +406,17 @@ class Metrics:
                     self._latency_min_us = latency
                 if self._latency_max_us is None or latency > self._latency_max_us:
                     self._latency_max_us = latency
+                self._tx_latency_recorded.add(tx_id)
                 # Store latency sample for percentile calculation.
                 self._add_latency_sample(latency)
                 # Record time-series event.
-                self._time_series.append((
-                    time_us,
-                    "reception",
-                    {"rx_node": rx_node_id, "tx_id": tx_id, "latency_us": latency},
-                ))
+                self._time_series.append(
+                    (
+                        time_us,
+                        "reception",
+                        {"rx_node": rx_node_id, "tx_id": tx_id, "latency_us": latency},
+                    )
+                )
             else:
                 logger.warning(
                     "record_reception: time_us=%d < start=%d for tx_id=%s "
@@ -383,18 +427,64 @@ class Metrics:
                     rx_node_id,
                     start - time_us,
                 )
+        else:
+            logger.warning(
+                "record_reception: missing tx start for tx_id=%s rx_node=%s "
+                "time_us=%d; reception counted, latency not recorded",
+                tx_id,
+                rx_node_id,
+                time_us,
+            )
+        return True
+
+    def has_reception(self, rx_node_id: str, tx_id: str) -> bool:
+        """Return True if this receiver has already counted tx_id."""
+        return (rx_node_id, tx_id) in self._delivered
+
+    def _forget_tx_ids(self, tx_ids: list[str]) -> None:
+        """Drop start times and companion identity caches for pruned TXs."""
+        if not tx_ids:
+            return
+        forgotten = set(tx_ids)
+        for tx_id in forgotten:
+            self._tx_start_times.pop(tx_id, None)
+            self._tx_latency_recorded.discard(tx_id)
+        for key in list(self._delivered):
+            if key[1] in forgotten:
+                self._delivered.pop(key, None)
+        for key in list(self._collision_keys):
+            if key[1] & forgotten:
+                self._collision_keys.pop(key, None)
+
+    def _evict_stale_identities(
+        self,
+        store: OrderedDict[Any, None],
+        max_size: int,
+        is_stale: Callable[[Any], bool],
+    ) -> None:
+        """Evict oldest identities that can no longer be polled.
+
+        Live (in-window) keys are never evicted: LRU of a still-in-flight
+        (rx, tx) pair would re-inflate poll counts. If every entry is still
+        live the store may grow past ``max_size`` until start-time prune.
+        """
+        if len(store) < max_size:
+            return
+        stale_keys = [key for key in store if is_stale(key)]
+        for key in stale_keys:
+            if len(store) < max_size:
+                break
+            store.pop(key, None)
 
     def _add_latency_sample(self, latency_us: int) -> None:
         """Add a latency sample using reservoir sampling if at capacity."""
-        import random
-
         if len(self._latency_samples) < self._MAX_LATENCY_SAMPLES:
             self._latency_samples.append(latency_us)
             self._latency_samples_sorted = False
         else:
             # Reservoir sampling: replace random element with probability.
             # This maintains a uniform random sample of all observations.
-            idx = random.randint(0, self._latency_count - 1)
+            idx = self._rng.randint(0, self._latency_count - 1)
             if idx < self._MAX_LATENCY_SAMPLES:
                 self._latency_samples[idx] = latency_us
                 self._latency_samples_sorted = False
@@ -409,10 +499,10 @@ class Metrics:
     ) -> bool:
         """Record a collision at a receiver among overlapping transmissions.
 
-        Idempotent per ``(rx_node_id, frozenset(tx_ids))``: while a given set
-        of transmissions overlaps at a receiver, the polling loop observes the
-        same collision repeatedly; it is counted once. Returns ``True`` only
-        for the first observation of a collision identity.
+        Idempotent per ``(rx_node_id, frozenset(tx_ids))`` at this API.
+        The radio layer additionally holds a collision epoch so an evolving
+        overlap is one event. Returns ``True`` only for the first observation
+        of a collision identity.
 
         Args:
             rx_node_id: ID of the receiving node experiencing the collision.
@@ -423,8 +513,14 @@ class Metrics:
         tx_ids_frozen = frozenset(tx_ids)
         key = (rx_node_id, tx_ids_frozen)
         if key in self._collision_keys:
+            self._collision_keys.move_to_end(key)
             return False
-        self._collision_keys.add(key)
+        self._evict_stale_identities(
+            self._collision_keys,
+            self._COLLISION_KEYS_MAX_SIZE,
+            lambda k: not any(tid in self._tx_start_times for tid in k[1]),
+        )
+        self._collision_keys[key] = None
         self._collisions += 1
         # Track per-node collision.
         self._collisions_by_node[rx_node_id] += 1
@@ -433,15 +529,17 @@ class Metrics:
             self._collisions_by_channel[channel] += 1
         # Record time-series event.
         if time_us is not None:
-            self._time_series.append((
-                time_us,
-                "collision",
-                {
-                    "rx_node": rx_node_id,
-                    "tx_ids": sorted(tx_ids_frozen),
-                    "channel": channel,
-                },
-            ))
+            self._time_series.append(
+                (
+                    time_us,
+                    "collision",
+                    {
+                        "rx_node": rx_node_id,
+                        "tx_ids": sorted(tx_ids_frozen),
+                        "channel": channel,
+                    },
+                )
+            )
         return True
 
     @property
@@ -452,7 +550,7 @@ class Metrics:
     @property
     def receptions(self) -> int:
         """Number of distinct successful deliveries (receiver, transmission)."""
-        return len(self._delivered)
+        return self._receptions
 
     @property
     def collisions(self) -> int:
@@ -644,7 +742,9 @@ class Metrics:
         """Clear all counters and statistics."""
         self._transmissions = 0
         self._tx_start_times.clear()
+        self._tx_latency_recorded.clear()
         self._delivered.clear()
+        self._receptions = 0
         self._collision_keys.clear()
         self._collisions = 0
         self._latency_count = 0
@@ -680,12 +780,12 @@ class Metrics:
             writer.writerow(["collisions", self.collisions])
             writer.writerow(["delivery_rate", f"{self.delivery_rate:.6f}"])
             writer.writerow(["collision_rate", f"{self.collision_rate:.6f}"])
-            writer.writerow(["latency_min_us", stats.min_us or ""])
-            writer.writerow(["latency_max_us", stats.max_us or ""])
-            writer.writerow(["latency_mean_us", f"{stats.mean_us:.2f}" if stats.mean_us else ""])
-            writer.writerow(["latency_p50_us", stats.p50_us or ""])
-            writer.writerow(["latency_p95_us", stats.p95_us or ""])
-            writer.writerow(["latency_p99_us", stats.p99_us or ""])
+            writer.writerow(["latency_min_us", _csv_number(stats.min_us)])
+            writer.writerow(["latency_max_us", _csv_number(stats.max_us)])
+            writer.writerow(["latency_mean_us", _csv_number(stats.mean_us, precision=2)])
+            writer.writerow(["latency_p50_us", _csv_number(stats.p50_us)])
+            writer.writerow(["latency_p95_us", _csv_number(stats.p95_us)])
+            writer.writerow(["latency_p99_us", _csv_number(stats.p99_us)])
             writer.writerow([])
             # Write per-channel collision summary.
             writer.writerow(["# Collisions by Channel"])
@@ -707,7 +807,7 @@ class Metrics:
                     time_us,
                     event_type,
                     details.get("rx_node", ""),
-                    details.get("tx_id", ""),
+                    _csv_tx_id(details),
                     details.get("latency_us", ""),
                     details.get("channel", ""),
                 ]
@@ -789,6 +889,28 @@ class MetricsDiff:
         return "\n".join(lines)
 
 
+def _csv_number(value: int | float | None, *, precision: int | None = None) -> str:
+    """Serialize a metric for CSV. None is empty; 0 is "0" not blank."""
+    if value is None:
+        return ""
+    if precision is not None:
+        return f"{value:.{precision}f}"
+    return str(value)
+
+
+def _csv_tx_id(details: dict[str, Any]) -> str:
+    """CSV tx_id cell: receptions use tx_id; collisions use joined tx_ids."""
+    tx_id = details.get("tx_id")
+    if tx_id is not None and tx_id != "":
+        return str(tx_id)
+    tx_ids = details.get("tx_ids")
+    if tx_ids is None or tx_ids == "":
+        return ""
+    if isinstance(tx_ids, str):
+        return tx_ids
+    return ",".join(str(t) for t in tx_ids)
+
+
 def _compute_pct_change(baseline: float, variant: float) -> float | None:
     """Compute percentage change, handling zero baseline."""
     if baseline == 0:
@@ -796,26 +918,35 @@ def _compute_pct_change(baseline: float, variant: float) -> float | None:
     return ((variant - baseline) / baseline) * 100
 
 
-def _is_significant(baseline: float, variant: float, threshold: float = 0.05) -> bool:
+_RATE_METRICS = frozenset({"delivery_rate", "collision_rate"})
+
+
+def _is_significant(
+    baseline: float,
+    variant: float,
+    threshold: float = 0.05,
+    *,
+    rate: bool = False,
+) -> bool:
     """Determine if a change is significant based on relative threshold.
 
     Uses a simple threshold-based approach: a change is significant if
     the relative change exceeds the threshold (default 5%).
 
-    For count-based metrics, also requires the absolute change to be >= 1.
+    For count-based metrics, a jump from zero requires |variant| >= 1.
+    For rates in [0, 1+], that floor would hide 0 → 0.9; use ``threshold``.
     """
     if baseline == 0 and variant == 0:
         return False
     if baseline == 0:
-        # Any non-zero value from zero is significant.
+        if rate:
+            return abs(variant) >= threshold
         return abs(variant) >= 1
-    rel_change = abs(variant - baseline) / baseline
+    rel_change = abs(variant - baseline) / abs(baseline)
     return rel_change >= threshold
 
 
-def _rate_direction(
-    name: str, baseline: float, variant: float
-) -> str:
+def _rate_direction(name: str, baseline: float, variant: float) -> str:
     """Determine if a metric change is an improvement or degradation.
 
     Higher-is-better metrics: delivery_rate
@@ -875,17 +1006,19 @@ def compare_metrics(
         v_val = float(variant.get(key, 0))
         delta = v_val - b_val
         pct = _compute_pct_change(b_val, v_val)
-        sig = _is_significant(b_val, v_val, threshold)
+        sig = _is_significant(b_val, v_val, threshold, rate=key in _RATE_METRICS)
         direction = _rate_direction(key, b_val, v_val)
-        changes.append(MetricChange(
-            name=key,
-            baseline=b_val,
-            variant=v_val,
-            delta=delta,
-            pct_change=pct,
-            significant=sig,
-            direction=direction,
-        ))
+        changes.append(
+            MetricChange(
+                name=key,
+                baseline=b_val,
+                variant=v_val,
+                delta=delta,
+                pct_change=pct,
+                significant=sig,
+                direction=direction,
+            )
+        )
 
     # Latency metrics (nested under latency_us).
     b_lat = baseline.get("latency_us", {})
@@ -895,25 +1028,28 @@ def compare_metrics(
         for key in lat_keys:
             b_val = b_lat.get(key)
             v_val = v_lat.get(key)
-            # Skip if both are None.
-            if b_val is None and v_val is None:
+            # Missing samples are not 0 µs. Skip when either side has no value
+            # so None→0 cannot be scored as a latency win.
+            if b_val is None or v_val is None:
                 continue
-            b_val = float(b_val) if b_val is not None else 0.0
-            v_val = float(v_val) if v_val is not None else 0.0
+            b_val = float(b_val)
+            v_val = float(v_val)
             metric_name = f"latency_{key}_us"
             delta = v_val - b_val
             pct = _compute_pct_change(b_val, v_val)
             sig = _is_significant(b_val, v_val, threshold)
             direction = _rate_direction(metric_name, b_val, v_val)
-            changes.append(MetricChange(
-                name=metric_name,
-                baseline=b_val,
-                variant=v_val,
-                delta=delta,
-                pct_change=pct,
-                significant=sig,
-                direction=direction,
-            ))
+            changes.append(
+                MetricChange(
+                    name=metric_name,
+                    baseline=b_val,
+                    variant=v_val,
+                    delta=delta,
+                    pct_change=pct,
+                    significant=sig,
+                    direction=direction,
+                )
+            )
 
     # Count significant improvements and degradations.
     improvements = sum(1 for c in changes if c.significant and c.direction == "improved")

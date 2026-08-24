@@ -6,8 +6,10 @@
     {
       "name": "dio_base",
       "type": "dio",
-      "description": "Base RPL DIO (RFC 6550). Hardcoded wire format from spec.",
-      "encoded": "0001010091000000fd000000000000000000000000000001",
+      "description": "LICHEN root RPL DIO whose DODAGID is AddrForKey for the deterministic all-zero identity seed, with the mandatory current SCHC Rule Version option.",
+      "schc_version_mode": "insert_current",
+      "options_hex": "",
+      "encoded": "0001010091000000027dd5cfc679ab637dd5cfc679ab6342130103",
       "fields": {
         "rpl_instance_id": 0,
         "version": 1,
@@ -17,14 +19,113 @@
         "preference": 1,
         "dtsn": 0,
         "flags": 0,
-        "dodag_id": "fd00::1"
+        "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342"
+      }
+    },
+    {
+      "name": "dio_non_root",
+      "type": "dio",
+      "description": "LICHEN non-root parent DIO propagates the root's AddrForKey DODAGID and mandatory current SCHC Rule Version unchanged.",
+      "schc_version_mode": "propagate_root",
+      "root_originated_schc_version": 3,
+      "options_hex": "130103",
+      "encoded": "0001020091000000027dd5cfc679ab637dd5cfc679ab6342130103",
+      "fields": {
+        "rpl_instance_id": 0,
+        "version": 1,
+        "rank": 512,
+        "grounded": true,
+        "mode_of_operation": 2,
+        "preference": 1,
+        "dtsn": 0,
+        "flags": 0,
+        "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342"
+      }
+    },
+    {
+      "name": "dio_explicit_version_2",
+      "type": "dio",
+      "description": "An explicit single canonical version option is preserved byte-for-byte so admission can reject a genuine remote mismatch.",
+      "schc_version_mode": "explicit",
+      "advertised_schc_version": 2,
+      "options_hex": "130102",
+      "encoded": "0001020091000000027dd5cfc679ab637dd5cfc679ab6342130102",
+      "fields": {
+        "rpl_instance_id": 0,
+        "version": 1,
+        "rank": 512,
+        "grounded": true,
+        "mode_of_operation": 2,
+        "preference": 1,
+        "dtsn": 0,
+        "flags": 0,
+        "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342"
+      }
+    },
+    {
+      "name": "dio_malformed_version_length_zero",
+      "type": "dio",
+      "description": "A Type 0x13 option with Length zero is not canonical and cannot be serialized.",
+      "schc_version_mode": "malformed",
+      "options_hex": "1300",
+      "expect_error": "invalid_schc_version_option",
+      "fields": {
+        "rpl_instance_id": 0,
+        "version": 1,
+        "rank": 512,
+        "grounded": true,
+        "mode_of_operation": 2,
+        "preference": 1,
+        "dtsn": 0,
+        "flags": 0,
+        "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342"
+      }
+    },
+    {
+      "name": "dio_malformed_version_length_two",
+      "type": "dio",
+      "description": "A Type 0x13 option with Length two is not canonical and cannot be serialized.",
+      "schc_version_mode": "malformed",
+      "options_hex": "13020203",
+      "expect_error": "invalid_schc_version_option",
+      "fields": {
+        "rpl_instance_id": 0,
+        "version": 1,
+        "rank": 512,
+        "grounded": true,
+        "mode_of_operation": 2,
+        "preference": 1,
+        "dtsn": 0,
+        "flags": 0,
+        "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342"
+      }
+    },
+    {
+      "name": "dio_duplicate_version_option",
+      "type": "dio",
+      "description": "Two otherwise canonical Type 0x13 options are rejected rather than collapsed or rewritten.",
+      "schc_version_mode": "duplicate",
+      "options_hex": "130103130103",
+      "expect_error": "invalid_schc_version_option",
+      "fields": {
+        "rpl_instance_id": 0,
+        "version": 1,
+        "rank": 512,
+        "grounded": true,
+        "mode_of_operation": 2,
+        "preference": 1,
+        "dtsn": 0,
+        "flags": 0,
+        "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342"
       }
     },
     {
       "name": "dao_base",
       "type": "dao",
-      "description": "Base RPL DAO with DODAGID (RFC 6550).",
+      "description": "Base RPL DAO without DODAGID: D flag is clear, so Rule 4 does not match and the packet uses uncompressed fallback.",
       "encoded": "00000005",
+      "matches_rule_4": false,
+      "schc_expected_rule_id": 255,
       "fields": {
         "rpl_instance_id": 0,
         "dao_sequence": 5,

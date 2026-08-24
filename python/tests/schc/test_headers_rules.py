@@ -6,11 +6,15 @@ from __future__ import annotations
 
 from ipaddress import IPv6Address
 
+import pytest
+
 from lichen.ipv6.icmpv6 import Icmpv6Message
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader
 from lichen.ipv6.udp import UdpDatagram
 from lichen.rpl.messages import DAO, DIO, to_icmpv6
-from lichen.schc.headers import compress_packet, decompress_packet
+from lichen.schc.codec import SchcError
+from lichen.schc.fragment import MAX_PACKET_SIZE
+from lichen.schc.headers import compress_packet, decompress_packet, encode_rule255
 
 LL_SRC = IPv6Address("fe80::1")
 LL_DST = IPv6Address("fe80::2")
@@ -65,6 +69,56 @@ def test_icmpv6_echo_reply_round_trip() -> None:
     raw = _icmpv6_ipv6(LL_SRC, LL_DST, rep.to_message())
     assert compress_packet(raw)[0] == 2
     assert decompress_packet(compress_packet(raw)) == raw
+
+
+def test_rule255_maximum_is_encoded_schc_size() -> None:
+    from lichen.ipv6.icmpv6 import EchoRequest
+
+    raw_limit = MAX_PACKET_SIZE - 1
+    data_len = raw_limit - HEADER_LENGTH - 8
+    raw = _icmpv6_ipv6(
+        LL_SRC,
+        LL_DST,
+        EchoRequest(identifier=1, sequence=1, data=bytes(data_len)).to_message(),
+    )
+    assert len(raw) == raw_limit
+    assert len(encode_rule255(raw)) == MAX_PACKET_SIZE
+
+    too_large = _icmpv6_ipv6(
+        LL_SRC,
+        LL_DST,
+        EchoRequest(identifier=1, sequence=1, data=bytes(data_len + 1)).to_message(),
+    )
+    with pytest.raises(SchcError, match="Rule 255 raw IPv6 packet exceeds"):
+        encode_rule255(too_large)
+
+
+@pytest.mark.parametrize("profile", ["rule2", "rule7"])
+def test_compressed_packet_ceiling_applies_after_encoding(profile: str) -> None:
+    from lichen.ipv6.icmpv6 import EchoRequest
+
+    if profile == "rule2":
+        encoded_overhead = 23
+        make_raw = lambda data_len: _icmpv6_ipv6(  # noqa: E731
+            LL_SRC,
+            LL_DST,
+            EchoRequest(identifier=1, sequence=1, data=bytes(data_len)).to_message(),
+        )
+    else:
+        encoded_overhead = 21
+
+        def make_raw(data_len: int) -> bytes:
+            udp = UdpDatagram(10883, 20000, bytes(data_len)).to_bytes(LL_SRC, LL_DST)
+            header = IPv6Header(LL_SRC, LL_DST, NextHeader.UDP, payload_length=len(udp)).to_bytes()
+            return header + udp
+
+    exact = compress_packet(make_raw(MAX_PACKET_SIZE - encoded_overhead))
+    assert len(exact) == MAX_PACKET_SIZE
+    assert exact[0] == (2 if profile == "rule2" else 7)
+    assert decompress_packet(exact) == make_raw(MAX_PACKET_SIZE - encoded_overhead)
+
+    with pytest.raises(SchcError, match="profile limit"):
+        compress_packet(make_raw(MAX_PACKET_SIZE - encoded_overhead + 1))
 
 
 def test_rpl_dio_rule3_round_trip() -> None:
@@ -124,10 +178,11 @@ def test_dio_options_travel_as_tail() -> None:
     assert parsed.options[0].data == b"\x00\x00"
 
 
-def test_rpl_with_trailing_bytes_falls_back() -> None:
+def test_rpl_with_trailing_bytes_is_rejected() -> None:
     dio = DIO(rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id="fe80::1")
     raw = _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio)) + b"junk"
-    assert compress_packet(raw)[0] == 255
+    with pytest.raises(SchcError, match="trailing byte"):
+        compress_packet(raw)
 
 
 def test_rpl_with_invalid_checksum_falls_back() -> None:
@@ -137,10 +192,11 @@ def test_rpl_with_invalid_checksum_falls_back() -> None:
     assert compress_packet(bytes(raw))[0] == 255
 
 
-def test_icmpv6_echo_with_trailing_bytes_falls_back() -> None:
+def test_icmpv6_echo_with_trailing_bytes_is_rejected() -> None:
     message = Icmpv6Message(128, 0, bytes.fromhex("abcd0007") + b"ping")
     raw = _icmpv6_ipv6(LL_SRC, LL_DST, message) + b"junk"
-    assert compress_packet(raw)[0] == 255
+    with pytest.raises(SchcError, match="trailing byte"):
+        compress_packet(raw)
 
 
 def test_icmpv6_echo_with_invalid_checksum_falls_back() -> None:

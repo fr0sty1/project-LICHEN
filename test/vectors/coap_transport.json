@@ -311,8 +311,8 @@
         "fcn_bits": 6,
         "tiles_per_window": 63,
         "windows": 2,
-        "tile_size": 187,
-        "ceiling": 23562,
+        "tile_size": 179,
+        "ceiling": 22554,
         "mandatory_receiver": 1281
       },
       "chunking_protocol": "Application-level chunking with POST /firmware/upload {chunk, total, data}"

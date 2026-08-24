@@ -448,4 +448,59 @@ ZTEST(ping_l2, test_udp_payload_reaches_socket_after_l2_injection)
 		     "UDP packet was not observed through full L2 injection path");
 }
 
+ZTEST(ping_l2, test_adaptive_duty_permille_matches_ccp13_vectors)
+{
+	static const struct {
+		const char *name;
+		uint8_t density;
+		uint8_t region;
+		uint16_t expected_permille;
+	} vectors[] = {
+		{ "sparse_region0", 0, 0, 20 },
+		{ "sparse_boundary_region0", 2, 0, 20 },
+		{ "moderate_start_region0", 3, 0, 10 },
+		{ "moderate_end_region0", 8, 0, 10 },
+		{ "dense_start_region0", 9, 0, 5 },
+		{ "dense_extreme_region0", 255, 0, 5 },
+		{ "sparse_region1", 0, 1, 50 },
+		{ "moderate_region1", 5, 1, 20 },
+		{ "dense_start_region1", 9, 1, 10 },
+		{ "dense_extreme_region1", 200, 1, 10 },
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(vectors); i++) {
+		zassert_equal(adaptive_duty_permille(vectors[i].density,
+						     vectors[i].region),
+			      vectors[i].expected_permille,
+			      "vector %s failed", vectors[i].name);
+	}
+}
+
+ZTEST(ping_l2, test_adaptive_duty_wiring_tracks_density)
+{
+	if (!IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)) {
+		ztest_test_skip();
+	}
+
+	uint16_t at_boot;
+	uint16_t dense;
+	uint16_t moderate;
+
+	/* Default CONFIG_LICHEN_OP_CLASS_ID=0 is US/CA (duty_region 1);
+	 * boot density 0 is sparse -> 50 permille per ccp13.json. */
+	at_boot = lichen_lora_l2_current_duty_permille();
+
+	lichen_lora_l2_set_density(9);
+	dense = lichen_lora_l2_current_duty_permille();
+	lichen_lora_l2_set_density(5);
+	moderate = lichen_lora_l2_current_duty_permille();
+	lichen_lora_l2_set_density(0);
+
+	zassert_equal(at_boot, 50, "boot budget should be sparse US 50 permille");
+	zassert_equal(dense, 10, "density 9 must shrink budget to 10 permille");
+	zassert_equal(moderate, 20, "density 5 must yield 20 permille");
+	zassert_equal(lichen_lora_l2_current_duty_permille(), 50,
+		      "restore to sparse budget failed");
+}
+
 ZTEST_SUITE(ping_l2, NULL, ping_l2_setup, NULL, NULL, NULL);

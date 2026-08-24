@@ -41,8 +41,6 @@ pub(crate) const DAO_RX_MAGIC: [u8; 4] = *b"DRX2";
 // Provisional, unshipped scope-bound format. There is intentionally no migration
 // or admission-removal path: an operator must explicitly reprovision invalid state.
 pub(crate) const DAO_ADMISSION_MAGIC: [u8; 4] = *b"DAD1";
-#[cfg(all(feature = "std", test))]
-pub(crate) const DAO_RX_LEGACY_MAGIC: [u8; 4] = *b"DRX1";
 #[cfg(feature = "std")]
 pub(crate) const HIGH_WATER_ENTRY_LEN: usize = 72;
 #[cfg(feature = "std")]

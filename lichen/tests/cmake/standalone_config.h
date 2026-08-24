@@ -24,13 +24,14 @@
 #define CONFIG_LICHEN_LINK_MAX_NEIGHBORS 16
 #endif
 
-/* link.h: maximum frame length for LoRa */
+/* link.h: maximum total serialized frame length (255 bytes on LoRa) */
 #ifndef LICHEN_MAX_FRAME_LEN
-#define LICHEN_MAX_FRAME_LEN 254
+#define LICHEN_MAX_FRAME_LEN 255
 #endif
 
+/* link.h: maximum frame body length represented by the LENGTH field */
 #ifndef LICHEN_MAX_FRAME_BODY_LEN
-#define LICHEN_MAX_FRAME_BODY_LEN 250
+#define LICHEN_MAX_FRAME_BODY_LEN 254
 #endif
 
 #endif /* !__ZEPHYR__ */

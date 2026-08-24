@@ -20,6 +20,10 @@ pub const STATUS_NEIGHBORS: &str = "/status/neighbors";
 /// Routing table (GET). §17.5.3.
 pub const STATUS_ROUTES: &str = "/status/routes";
 
+/// Queue latency/drop statistics (GET, Observable).
+/// Per spec/appendix-bufferbloat.md "Measuring Queue Latency".
+pub const STATUS_QUEUES: &str = "/status/queues";
+
 /// Read the inbox (GET, Observable).
 pub const MSG_INBOX: &str = "/msg/inbox";
 

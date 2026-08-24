@@ -150,6 +150,14 @@ enum lichen_coordination_mechanism {
 	(LICHEN_FRAME_FIXED_HEADER_LEN + (size_t)(addr_len))
 
 /**
+ * Maximum inner payload of any valid frame. The serialized total is at most
+ * LICHEN_MAX_FRAME_LEN including the LENGTH byte, so the largest unsigned
+ * broadcast/elided payload is 250 bytes.
+ */
+#define LICHEN_FRAME_PAYLOAD_MAX \
+	(LICHEN_MAX_FRAME_LEN - LICHEN_FRAME_FIXED_HEADER_LEN)
+
+/**
  * @brief LICHEN frame structure for parsing/building frames
  */
 struct lichen_frame {
@@ -157,9 +165,9 @@ struct lichen_frame {
 	uint16_t seqnum;         /**< Sequence number (replay protection) */
 	uint8_t dst_addr[8];     /**< Destination address (0-8 bytes) */
 	uint8_t dst_addr_len;    /**< Destination address length */
-	uint8_t signer_iid[8];   /**< Signer IID (0-8 bytes) */
-	uint8_t signer_iid_len;  /**< Signer IID length (0 or 8) */
-	bool signer_iid_present; /**< Signer IID present in frame */
+	uint8_t signer_iid[8];   /**< Signer IID (not carried on the wire; reserved) */
+	uint8_t signer_iid_len;  /**< Always 0; no SIID field in current profile */
+	bool signer_iid_present; /**< Always false; LLSec bit 7 is reserved */
 	const uint8_t *_Nullable payload;  /**< Inner payload */
 	size_t payload_len;      /**< Inner payload length */
 	size_t inner_payload_len; /**< Same as payload_len; signature is in MIC */
@@ -352,7 +360,7 @@ int lichen_link_rx(struct lichen_link_rx_ctx *_Nonnull ctx,
 int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, struct lichen_link_ctx *_Nonnull ctx);
 int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn);
 bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
-uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t epoch, uint8_t num_slots);
+uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t sfn, uint8_t num_slots);
 #endif
 
 uint32_t lichen_hash_32(const uint8_t *_Nonnull data, size_t len);

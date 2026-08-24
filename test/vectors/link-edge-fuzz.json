@@ -16,8 +16,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "0414000000",
       "expect": {
@@ -37,8 +37,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "0418000000",
       "expect": {
@@ -58,8 +58,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "041c000000",
       "expect": {
@@ -79,8 +79,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "",
       "expect": {
@@ -100,8 +100,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "0500000000",
       "expect": {
@@ -121,8 +121,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "03000000",
       "expect": {
@@ -142,8 +142,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "0011223344556677",
-        "signer_iid_present": true
+        "signer_eui64": "0011223344556677",
+        "signer_eui64_present": true
       },
       "encoded": "0880011234deadbeef",
       "expect": {
@@ -163,8 +163,8 @@
         "mic_length": 0,
         "signature_present": true,
         "encrypted": true,
-        "signer_iid": "0011223344556677",
-        "signer_iid_present": true
+        "signer_eui64": "0011223344556677",
+        "signer_eui64_present": true
       },
       "encoded": "3de0030004001122334455667778000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "expect": {
@@ -184,10 +184,10 @@
         "mic_length": 0,
         "signature_present": true,
         "encrypted": false,
-        "signer_iid": "7dd5cfc679ab6342",
-        "signer_iid_present": true
+        "signer_eui64": "7fd5cfc679ab6342",
+        "signer_eui64_present": true
       },
-      "encoded": "2ea00100017dd5cfc679ab634268690000000000000000000000000000000000000000000000000000000000000000",
+      "encoded": "2ea00100017fd5cfc679ab634268690000000000000000000000000000000000000000000000000000000000000000",
       "expect": {
         "error": "truncated_mic"
       }
@@ -205,8 +205,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "0401000000",
       "expect": {
@@ -226,8 +226,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "expect": {
@@ -247,8 +247,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "fe00010001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
@@ -265,14 +265,14 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": true,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "0740010002616263"
     },
     {
-      "name": "edge_signer_iid_truncated",
-      "description": "Signer IID truncated to 4 bytes must be rejected",
+      "name": "edge_signer_eui64_truncated",
+      "description": "Signer Identifier EUI-64 truncated to 4 bytes must be rejected",
       "fields": {
         "epoch": 1,
         "seqnum": 1,
@@ -283,12 +283,12 @@
         "mic_length": 0,
         "signature_present": true,
         "encrypted": false,
-        "signer_iid": "00112233",
-        "signer_iid_present": true
+        "signer_eui64": "00112233",
+        "signer_eui64_present": true
       },
       "encoded": "2aa00100010011223368690000000000000000000000000000000000000000000000000000000000000000",
       "expect": {
-        "error": "truncated_signer_iid"
+        "error": "truncated_signer_eui64"
       }
     },
     {
@@ -304,8 +304,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "00",
       "expect": {
@@ -325,10 +325,10 @@
         "mic_length": 0,
         "signature_present": true,
         "encrypted": false,
-        "signer_iid": "7dd5cfc679ab6342",
-        "signer_iid_present": true
+        "signer_eui64": "7fd5cfc679ab6342",
+        "signer_eui64_present": true
       },
-      "encoded": "43a1010002abcd7dd5cfc679ab634268656c6c6f111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+      "encoded": "43a1010002abcd7fd5cfc679ab634268656c6c6f111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
     },
     {
       "name": "edge_fuzz_random_ffff",
@@ -343,8 +343,8 @@
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false,
-        "signer_iid": "",
-        "signer_iid_present": false
+        "signer_eui64": "",
+        "signer_eui64_present": false
       },
       "encoded": "ffff00",
       "expect": {

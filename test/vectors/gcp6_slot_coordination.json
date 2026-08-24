@@ -1,0 +1,380 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "gcp6_slot_coordination",
+  "description": "GCP-6 Slot Coordination test vectors per spec/08-gateway-coordination.md Section 6. Covers superframe synchronization, slot allocation (interleaved/contiguous), conflict resolution, and CoAP message formats for /slots and /channels resources.",
+  "spec": "spec/08-gateway-coordination.md Section 6",
+  "vectors": [
+    {
+      "name": "superframe_sync_gps_epoch",
+      "type": "superframe_sync",
+      "description": "GCP-6.1: GPS-equipped gateway provides absolute time reference. Superframe aligned to UTC minute boundary.",
+      "time_source": "gps",
+      "gps_epoch_utc": "2024-07-03T12:00:00Z",
+      "gps_epoch_unix": 1720008000,
+      "superframe_duration_s": 60,
+      "slots_per_superframe": 60,
+      "slot_duration_ms": 1000,
+      "current_superframe_id": 28666800,
+      "formula": "superframe_id = unix_timestamp / superframe_duration_s"
+    },
+    {
+      "name": "superframe_sync_time_master_election",
+      "type": "superframe_sync",
+      "description": "GCP-6.1: Non-GPS time master election. Lowest IID wins.",
+      "time_source": "backbone_elect",
+      "candidates": [
+        {"iid_hex": "aabbccddeeff0011", "iid_decimal": 12302652060662325265, "has_gps": false},
+        {"iid_hex": "0011223344556677", "iid_decimal": 4822678189205111, "has_gps": false},
+        {"iid_hex": "deadbeefcafebabe", "iid_decimal": 16045690984833335998, "has_gps": false}
+      ],
+      "elected_master_iid": "0011223344556677",
+      "election_rule": "lowest_iid_as_unsigned_bigendian_integer"
+    },
+    {
+      "name": "superframe_slot_timing",
+      "type": "superframe_sync",
+      "description": "GCP-6.1: Calculate current slot within superframe from timestamp.",
+      "superframe_duration_s": 60,
+      "slots_per_superframe": 60,
+      "test_timestamp_unix": 1720008025,
+      "superframe_start_unix": 1720008000,
+      "expected_current_slot": 25,
+      "expected_slots_remaining": 35,
+      "formula": "current_slot = (timestamp - superframe_start) % superframe_duration_s"
+    },
+    {
+      "name": "slot_allocation_interleaved_3gw",
+      "type": "slot_allocation",
+      "description": "GCP-6.2 Interleaved mode: Gateway with ordinal N owns slots N, N+G, N+2G... where G=gateway_count.",
+      "allocation_mode": "interleaved",
+      "gateway_count": 3,
+      "slots_per_superframe": 15,
+      "allocations": [
+        {"ordinal": 0, "iid_hex": "0011223344556677", "slots": [0, 3, 6, 9, 12]},
+        {"ordinal": 1, "iid_hex": "aabbccddeeff0011", "slots": [1, 4, 7, 10, 13]},
+        {"ordinal": 2, "iid_hex": "deadbeefcafebabe", "slots": [2, 5, 8, 11, 14]}
+      ],
+      "pattern_formula": "slots[i] == ordinal + i * gateway_count"
+    },
+    {
+      "name": "slot_allocation_contiguous_blocks",
+      "type": "slot_allocation",
+      "description": "GCP-6.2 Contiguous mode: Each gateway owns sequential block of slots.",
+      "allocation_mode": "contiguous",
+      "gateway_count": 3,
+      "slots_per_superframe": 60,
+      "allocations": [
+        {"iid_hex": "0011223344556677", "slot_start": 0, "slot_count": 20, "slots": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]},
+        {"iid_hex": "aabbccddeeff0011", "slot_start": 20, "slot_count": 20, "slots": [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]},
+        {"iid_hex": "deadbeefcafebabe", "slot_start": 40, "slot_count": 20, "slots": [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59]}
+      ]
+    },
+    {
+      "name": "coap_slots_post_interleaved",
+      "type": "coap_message",
+      "description": "GCP-6.4: POST /.well-known/lichen-gw/slots - Claim slots in interleaved mode.",
+      "method": "POST",
+      "uri_path": "/.well-known/lichen-gw/slots",
+      "content_format": 60,
+      "content_format_name": "application/cbor",
+      "payload": {
+        "gateway_iid": "0011223344556677",
+        "slots": [0, 3, 6, 9, 12],
+        "superframe_id": 1000,
+        "gateway_count": 3,
+        "ordinal": 0
+      },
+      "cbor_payload_hex": "a565736c6f747385000306090c676f7264696e616c006b676174657761795f6969644800112233445566776d676174657761795f636f756e74036d73757065726672616d655f69641903e8",
+      "note": "CBOR deterministic encoding (RFC 8949 Section 4.2): keys sorted by encoded length, then lexicographic"
+    },
+    {
+      "name": "coap_slots_post_contiguous",
+      "type": "coap_message",
+      "description": "GCP-6.4: POST /.well-known/lichen-gw/slots - Claim contiguous block of slots.",
+      "method": "POST",
+      "uri_path": "/.well-known/lichen-gw/slots",
+      "content_format": 60,
+      "content_format_name": "application/cbor",
+      "payload": {
+        "gateway_iid": "aabbccddeeff0011",
+        "slots": [20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+        "superframe_id": 1001,
+        "slot_start": 20,
+        "slot_count": 10
+      },
+      "cbor_payload_hex": "a565736c6f74738a1415161718181819181a181b181c181d6a736c6f745f636f756e740a6a736c6f745f7374617274146b676174657761795f69696448aabbccddeeff00116d73757065726672616d655f69641903e9"
+    },
+    {
+      "name": "coap_slots_response_grant",
+      "type": "coap_message",
+      "description": "GCP-6.4: 2.01 Created response confirming slot allocation.",
+      "response_code": "2.01",
+      "response_code_name": "Created",
+      "content_format": 60,
+      "payload": {
+        "granted_slots": [0, 3, 6, 9, 12],
+        "superframe_id": 1000,
+        "valid_until": 1720003600
+      },
+      "cbor_payload_hex": "a36b76616c69645f756e74696c1a66852c106d6772616e7465645f736c6f747385000306090c6d73757065726672616d655f69641903e8"
+    },
+    {
+      "name": "coap_slots_get_response",
+      "type": "coap_message",
+      "description": "GCP-6.4: GET /.well-known/lichen-gw/slots - Current slot allocation map response.",
+      "method": "GET",
+      "uri_path": "/.well-known/lichen-gw/slots",
+      "response_code": "2.05",
+      "response_code_name": "Content",
+      "content_format": 60,
+      "payload": {
+        "allocation_mode": "interleaved",
+        "gateway_count": 3,
+        "superframe_id": 1000,
+        "allocations": {
+          "0011223344556677": [0, 3, 6, 9, 12],
+          "aabbccddeeff0011": [1, 4, 7, 10, 13],
+          "deadbeefcafebabe": [2, 5, 8, 11, 14]
+        }
+      },
+      "cbor_payload_hex": "a46b616c6c6f636174696f6e73a3703030313132323333343435353636373785000306090c7061616262636364646565666630303131850104070a0d7064656164626565666361666562616265850205080b0e6d676174657761795f636f756e74036d73757065726672616d655f69641903e86f616c6c6f636174696f6e5f6d6f64656b696e7465726c6561766564"
+    },
+    {
+      "name": "coap_channels_get_response",
+      "type": "coap_message",
+      "description": "GCP-6.4: GET /.well-known/lichen-gw/channels - Channel ownership map.",
+      "method": "GET",
+      "uri_path": "/.well-known/lichen-gw/channels",
+      "response_code": "2.05",
+      "response_code_name": "Content",
+      "content_format": 60,
+      "payload": {
+        "0": "0011223344556677",
+        "1": "aabbccddeeff0011",
+        "2": "deadbeefcafebabe"
+      },
+      "cbor_payload_hex": "a3004800112233445566770148aabbccddeeff00110248deadbeefcafebabe",
+      "note": "Map keys are channel IDs (integers), values are gateway IIDs (8-byte bytestrings)"
+    },
+    {
+      "name": "conflict_resolution_both_valid_lowest_iid_wins",
+      "type": "conflict_resolution",
+      "description": "GCP-6.3: Overlapping claims where both signatures verify - lowest IID MUST win.",
+      "claim_a": {
+        "gateway_iid": "0011223344556677",
+        "iid_decimal": 4822678189205111,
+        "slots": [5, 6, 7],
+        "signature_valid": true
+      },
+      "claim_b": {
+        "gateway_iid": "0022334455667788",
+        "iid_decimal": 9645356378410120,
+        "slots": [5, 6, 7],
+        "signature_valid": true
+      },
+      "overlap_slots": [5, 6, 7],
+      "expected_winner": "claim_a",
+      "expected_winner_iid": "0011223344556677",
+      "resolution_rule": "lowest_iid_wins"
+    },
+    {
+      "name": "conflict_resolution_one_valid_wins",
+      "type": "conflict_resolution",
+      "description": "GCP-6.3: Overlapping claims where one signature fails - valid claim wins regardless of IID.",
+      "claim_a": {
+        "gateway_iid": "0011223344556677",
+        "iid_decimal": 4822678189205111,
+        "slots": [5, 6, 7],
+        "signature_valid": false
+      },
+      "claim_b": {
+        "gateway_iid": "0022334455667788",
+        "iid_decimal": 9645356378410120,
+        "slots": [5, 6, 7],
+        "signature_valid": true
+      },
+      "overlap_slots": [5, 6, 7],
+      "expected_winner": "claim_b",
+      "expected_winner_iid": "0022334455667788",
+      "resolution_rule": "valid_signature_wins"
+    },
+    {
+      "name": "conflict_resolution_loser_must_reclaim",
+      "type": "conflict_resolution",
+      "description": "GCP-6.3: Loser MUST select next available slot and re-claim.",
+      "winner_iid": "0011223344556677",
+      "winner_slots": [5, 6, 7],
+      "loser_iid": "0022334455667788",
+      "loser_original_slots": [5, 6, 7],
+      "occupied_slots": [0, 1, 2, 3, 4, 5, 6, 7],
+      "loser_next_available": [8, 9, 10],
+      "loser_must_action": ["select_next_available", "broadcast_updated_schedule"]
+    },
+    {
+      "name": "conflict_resolution_missing_signature_reject",
+      "type": "conflict_resolution",
+      "description": "GCP-6.3: Claims with missing signatures MUST be silently discarded.",
+      "claim": {
+        "gateway_iid": "0011223344556677",
+        "slots": [0, 1, 2],
+        "superframe_id": 1000
+      },
+      "signature": null,
+      "expected_action": "silently_discard",
+      "reason": "missing_signature"
+    },
+    {
+      "name": "conflict_resolution_invalid_signature_reject",
+      "type": "conflict_resolution",
+      "description": "GCP-6.3: Claims with invalid signatures MUST be silently discarded.",
+      "claim": {
+        "gateway_iid": "0011223344556677",
+        "slots": [0, 1, 2],
+        "superframe_id": 1000
+      },
+      "signature_hex": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "signature_valid": false,
+      "expected_action": "silently_discard",
+      "reason": "invalid_signature"
+    },
+    {
+      "name": "iid_comparison_unsigned_bigendian",
+      "type": "conflict_resolution",
+      "description": "GCP-6.3: IIDs compared as unsigned big-endian 64-bit integers.",
+      "comparisons": [
+        {
+          "iid_a_hex": "0000000000000001",
+          "iid_b_hex": "0000000000000002",
+          "iid_a_decimal": 1,
+          "iid_b_decimal": 2,
+          "winner": "iid_a",
+          "reason": "1 < 2"
+        },
+        {
+          "iid_a_hex": "0011223344556677",
+          "iid_b_hex": "aabbccddeeff0011",
+          "iid_a_decimal": 4822678189205111,
+          "iid_b_decimal": 12302652060662325265,
+          "winner": "iid_a",
+          "reason": "4822678189205111 < 12302652060662325265"
+        },
+        {
+          "iid_a_hex": "ffffffffffffffff",
+          "iid_b_hex": "0000000000000001",
+          "iid_a_decimal": 18446744073709551615,
+          "iid_b_decimal": 1,
+          "winner": "iid_b",
+          "reason": "1 < 18446744073709551615 (max u64)"
+        }
+      ]
+    },
+    {
+      "name": "tx_allowed_check",
+      "type": "slot_validation",
+      "description": "Transmission allowed only in assigned slots.",
+      "slot_map": [0, 3, 6, 9, 12],
+      "num_slots": 15,
+      "checks": [
+        {"current_slot": 0, "tx_allowed": true},
+        {"current_slot": 1, "tx_allowed": false},
+        {"current_slot": 2, "tx_allowed": false},
+        {"current_slot": 3, "tx_allowed": true},
+        {"current_slot": 6, "tx_allowed": true},
+        {"current_slot": 7, "tx_allowed": false},
+        {"current_slot": 12, "tx_allowed": true},
+        {"current_slot": 14, "tx_allowed": false}
+      ]
+    },
+    {
+      "name": "interleaved_pattern_validation",
+      "type": "slot_validation",
+      "description": "Validate interleaved slot pattern: slots[i] == ordinal + i * gateway_count.",
+      "test_cases": [
+        {
+          "ordinal": 0,
+          "gateway_count": 3,
+          "slots": [0, 3, 6, 9, 12],
+          "expected_valid": true
+        },
+        {
+          "ordinal": 1,
+          "gateway_count": 3,
+          "slots": [1, 4, 7, 10, 13],
+          "expected_valid": true
+        },
+        {
+          "ordinal": 0,
+          "gateway_count": 3,
+          "slots": [1, 4, 7],
+          "expected_valid": false,
+          "reason": "wrong_start_slot"
+        },
+        {
+          "ordinal": 0,
+          "gateway_count": 3,
+          "slots": [0, 2, 4],
+          "expected_valid": false,
+          "reason": "wrong_spacing"
+        }
+      ]
+    },
+    {
+      "name": "slot_claim_cbor_key_ordering",
+      "type": "cbor_encoding",
+      "description": "CBOR deterministic encoding per RFC 8949 Section 4.2.1: keys sorted by encoded length, then lexicographic.",
+      "claim_fields": {
+        "gateway_iid": "8 bytes",
+        "slots": "array",
+        "superframe_id": "integer",
+        "timestamp": "integer",
+        "gateway_count": "integer",
+        "ordinal": "integer"
+      },
+      "expected_key_order_by_encoded_length": [
+        "slots",
+        "ordinal",
+        "timestamp",
+        "gateway_iid",
+        "gateway_count",
+        "superframe_id"
+      ],
+      "note": "Signature field is NOT included in signed data per GCP-6.2"
+    },
+    {
+      "name": "superframe_info_cbor",
+      "type": "coap_message",
+      "description": "GCP-6.4: GET /.well-known/lichen-gw/info - Gateway info including superframe timing.",
+      "method": "GET",
+      "uri_path": "/.well-known/lichen-gw/info",
+      "response_code": "2.05",
+      "payload": {
+        "gateway_iid": "0011223344556677",
+        "superframe_duration_s": 60,
+        "superframe_epoch": 1720008000,
+        "time_source": "gps",
+        "slots_total": 60,
+        "allocated_slots": [0, 3, 6, 9, 12]
+      },
+      "cbor_payload_hex": "a66b676174657761795f6969644800112233445566776b736c6f74735f746f74616c183c6b74696d655f736f75726365636770736f616c6c6f63617465645f736c6f747385000306090c7073757065726672616d655f65706f63681a66853d407573757065726672616d655f6475726174696f6e5f73183c"
+    },
+    {
+      "name": "schnorr48_signature_slot_claim",
+      "type": "signature",
+      "description": "GCP-6.3: Slot claim MUST be signed with Schnorr48 (48-byte truncated Schnorr signature).",
+      "signing_seed_hex": "deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe",
+      "claim": {
+        "gateway_iid": "0011223344556677",
+        "slots": [0, 1, 2],
+        "superframe_id": 1000
+      },
+      "signed_data_description": "CBOR deterministic encoding of claim (excluding signature field)",
+      "signature_length": 48,
+      "verification": {
+        "algorithm": "schnorr48",
+        "pubkey_length": 32,
+        "signature_covers": "canonical_cbor_of_claim_fields"
+      }
+    }
+  ]
+}

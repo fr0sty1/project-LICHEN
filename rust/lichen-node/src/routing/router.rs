@@ -5,9 +5,15 @@ use std::vec::Vec;
 
 use lichen_core::constants::RPL_INSTANCE_ID;
 use lichen_hal::NonVolatile;
-use lichen_link::{identity::iid_from_pubkey, link_layer::LinkLayer};
+use lichen_link::{
+    keys::PublicKey,
+    link_layer::{AuthenticatedFrame, LinkLayer},
+};
 use lichen_rpl::dodag::DioOutcome;
-use lichen_rpl::message::{Dao, Dio, DodagConfig, OptionIter, TransitInfo, DODAG_CONFIG_DATA_LEN};
+use lichen_rpl::message::{
+    Dao, Dio, DodagConfig, DodagVersionAuthorization, OptionIter, TransitInfo,
+    DODAG_CONFIG_DATA_LEN, OPT_DODAG_VERSION_AUTHORIZATION,
+};
 use lichen_rpl::trickle::TrickleTimer;
 
 use super::{
@@ -24,6 +30,37 @@ use super::neighbor::{
 
 const NON_STORING_MOP: u8 = 1;
 const MRHOF_OCP: u16 = 1;
+const DODAG_VERSION_AUTHORIZATION_DOMAIN: &[u8] = b"LICHEN-RPL-DODAG-VERSION-v1";
+
+fn dodag_version_authorization_transcript(
+    rpl_instance_id: u8,
+    dodag_id: &[u8; 16],
+    version: u8,
+) -> Vec<u8> {
+    let mut transcript = Vec::with_capacity(DODAG_VERSION_AUTHORIZATION_DOMAIN.len() + 1 + 16 + 1);
+    transcript.extend_from_slice(DODAG_VERSION_AUTHORIZATION_DOMAIN);
+    transcript.push(rpl_instance_id);
+    transcript.extend_from_slice(dodag_id);
+    transcript.push(version);
+    transcript
+}
+
+fn verify_dodag_version_authorization(
+    authorization: &DodagVersionAuthorization,
+    dio: &Dio,
+) -> bool {
+    authorization.version == dio.version
+        && lichen_core::addr::ygg_addr_from_pubkey(&authorization.root_pubkey) == dio.dodag_id
+        && lichen_link::schnorr::verify(
+            &PublicKey::new(authorization.root_pubkey),
+            &dodag_version_authorization_transcript(
+                dio.rpl_instance_id,
+                &dio.dodag_id,
+                dio.version,
+            ),
+            &authorization.signature,
+        )
+}
 
 fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
     let imin_ms = 1u32.checked_shl(u32::from(config.dio_int_min)).unwrap_or(0);
@@ -67,7 +104,9 @@ pub(crate) fn sign_dao(
     origin_sequence: u64,
     link: &LinkLayer,
 ) -> Option<Vec<u8>> {
-    if origin_sequence == 0 || origin[8..] != iid_from_pubkey(&link.local_public_key()) {
+    if origin_sequence == 0
+        || origin != lichen_link::ygg_addr_from_pubkey(link.local_public_key().as_bytes())
+    {
         return None;
     }
     let dao = Dao::from_bytes(unsigned_dao).ok()?;
@@ -106,6 +145,7 @@ impl DioProcessOutcome {
         }
     }
 
+    #[cfg(test)]
     fn is_inconsistent(self) -> bool {
         self == Self::Inconsistent
     }
@@ -129,6 +169,8 @@ pub struct Router {
     pub(crate) dodag_id: [u8; 16],
     pub(crate) dodag_config: DodagConfig,
     pub(crate) last_now_ms: u64,
+    /// Latest independently verified root-owned version authorization.
+    version_authorization: Option<DodagVersionAuthorization>,
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
@@ -154,6 +196,7 @@ impl Router {
             dodag_id,
             dodag_config,
             last_now_ms: 0,
+            version_authorization: None,
             node_coords: None,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
@@ -194,6 +237,7 @@ impl Router {
             dodag_id,
             dodag_config,
             last_now_ms: 0,
+            version_authorization: None,
             node_coords: None,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
@@ -257,7 +301,8 @@ impl Router {
     /// Updates neighbor table, feeds DODAG state machine, and returns whether
     /// the trickle timer should be reset (inconsistent DIO heard). `now_ms`
     /// must use one nondecreasing monotonic `u64` timeline.
-    pub fn process_dio(
+    #[cfg(test)]
+    pub(crate) fn process_dio(
         &mut self,
         dio: &Dio,
         dio_bytes: &[u8],
@@ -269,7 +314,80 @@ impl Router {
             .is_inconsistent()
     }
 
-    pub fn process_dio_outcome(
+    /// Production DIO admission from live link-authenticated evidence.
+    pub fn process_authenticated_dio(
+        &mut self,
+        link: &LinkLayer,
+        frame: AuthenticatedFrame,
+        etx: LinkEtx,
+        rssi: i8,
+        now_ms: u64,
+    ) -> DioProcessOutcome {
+        let signer_iid = frame.sender().iid;
+        let expected_role =
+            if lichen_core::addr::ygg_addr_from_pubkey(frame.sender().pubkey.as_bytes())
+                == self.dodag_id
+            {
+                lichen_schc::ExpectedDioRole::Root
+            } else {
+                lichen_schc::ExpectedDioRole::Peer
+            };
+        let Ok(peer) = lichen_schc::AuthenticatedPeerSchcContext::from_authenticated_dio_frame(
+            frame,
+            self.dodag.rpl_instance_id,
+            &self.dodag_id,
+            NON_STORING_MOP,
+            expected_role,
+        ) else {
+            self.revoke_schc_peer(&signer_iid, now_ms);
+            return DioProcessOutcome::Rejected;
+        };
+        let Some(frame) = peer.authenticated_frame() else {
+            self.revoke_schc_peer(&signer_iid, now_ms);
+            return DioProcessOutcome::Rejected;
+        };
+        if !peer.allows_dodag_join() || !link.accepts_authenticated_frame(frame) {
+            self.revoke_schc_peer(&signer_iid, now_ms);
+            return DioProcessOutcome::Rejected;
+        }
+        let mut ipv6 = [0u8; 512];
+        let Ok(ipv6_len) = lichen_schc::decompress(&frame.payload()[1..], &mut ipv6) else {
+            self.revoke_schc_peer(&signer_iid, now_ms);
+            return DioProcessOutcome::Rejected;
+        };
+        if ipv6_len < 68 {
+            self.revoke_schc_peer(&signer_iid, now_ms);
+            return DioProcessOutcome::Rejected;
+        }
+        let dio_bytes = &ipv6[44..ipv6_len];
+        let Ok(dio) = Dio::from_bytes(dio_bytes) else {
+            self.revoke_schc_peer(&signer_iid, now_ms);
+            return DioProcessOutcome::Rejected;
+        };
+        let sender_addr = ipv6[8..24]
+            .try_into()
+            .expect("validated IPv6 header has a complete source address");
+        self.process_dio_with_etx_outcome(&dio, dio_bytes, sender_addr, etx, rssi, now_ms)
+    }
+
+    fn revoke_schc_peer(&mut self, signer_iid: &[u8; 8], now_ms: u64) {
+        let was_joined = self.dodag.is_joined();
+        let old_parent = self.dodag.preferred_parent;
+        let old_rank = self.dodag.rank;
+        let parent_removed = self.dodag.remove_parents_with_iid(signer_iid);
+        let neighbor_removed = self.neighbors.remove_with_iid(signer_iid);
+        let topology_changed = parent_removed
+            || neighbor_removed
+            || was_joined != self.dodag.is_joined()
+            || old_parent != self.dodag.preferred_parent
+            || old_rank != self.dodag.rank;
+        if topology_changed {
+            let now_ms = self.observe_now(now_ms);
+            self.trickle.reset(now_ms, 0);
+        }
+    }
+
+    pub(crate) fn process_dio_outcome(
         &mut self,
         dio: &Dio,
         dio_bytes: &[u8],
@@ -282,7 +400,8 @@ impl Router {
     }
 
     /// Process a DIO using a measured link ETX.
-    pub fn process_dio_with_etx(
+    #[cfg(test)]
+    pub(crate) fn process_dio_with_etx(
         &mut self,
         dio: &Dio,
         dio_bytes: &[u8],
@@ -295,7 +414,7 @@ impl Router {
             .is_inconsistent()
     }
 
-    pub fn process_dio_with_etx_outcome(
+    pub(crate) fn process_dio_with_etx_outcome(
         &mut self,
         dio: &Dio,
         dio_bytes: &[u8],
@@ -327,6 +446,7 @@ impl Router {
         }
 
         let mut proposed_config = self.dodag_config.clone();
+        let mut version_authorization = None;
         for option in OptionIter::new(Dio::options_tail(dio_bytes)) {
             let Ok(option) = option else {
                 return DioProcessOutcome::Rejected;
@@ -347,7 +467,24 @@ impl Router {
                     return DioProcessOutcome::Rejected;
                 }
                 proposed_config = parsed;
+            } else if option.opt_type == OPT_DODAG_VERSION_AUTHORIZATION {
+                if version_authorization.is_some() {
+                    return DioProcessOutcome::Rejected;
+                }
+                let Ok(parsed) = DodagVersionAuthorization::from_option_data(option.data) else {
+                    return DioProcessOutcome::Rejected;
+                };
+                version_authorization = Some(parsed);
             }
+        }
+        let version_authorized = version_authorization
+            .as_ref()
+            .is_some_and(|authorization| verify_dodag_version_authorization(authorization, dio));
+        if version_authorization.is_some() && !version_authorized {
+            return DioProcessOutcome::Rejected;
+        }
+        if !version_order.is_eq() && !version_authorized {
+            return DioProcessOutcome::Rejected;
         }
         let neighbor_known = self.neighbors.get_etx(&sender_addr).is_some();
         if dio.rank == u16::MAX {
@@ -394,7 +531,12 @@ impl Router {
         if let Some(evicted) = evicted {
             staged_dodag.remove_parent(&evicted);
         }
-        match staged_dodag.process_dio(dio, sender_addr, etx) {
+        match staged_dodag.process_dio_with_version_authorization(
+            dio,
+            sender_addr,
+            etx,
+            version_authorized,
+        ) {
             DioOutcome::Accepted => {}
             DioOutcome::Removed if !config_changed => {
                 self.dodag = staged_dodag;
@@ -420,6 +562,9 @@ impl Router {
         self.dodag = staged_dodag;
         self.neighbors = staged_neighbors;
         self.dodag_config = proposed_config;
+        if let Some(authorization) = version_authorization {
+            self.version_authorization = Some(authorization);
+        }
 
         let now_joined = self.dodag.is_joined();
         let new_parent = self.dodag.preferred_parent;
@@ -475,9 +620,7 @@ impl Router {
             else {
                 return false;
             };
-            let mut origin = [0u8; 16];
-            origin[..2].copy_from_slice(&[0xfe, 0x80]);
-            origin[8..].copy_from_slice(&identity.iid);
+            let origin = lichen_link::ygg_addr_from_pubkey(identity.pubkey.as_bytes());
             self.test_origin_sequence += 1;
             let Some(wire) = sign_dao(
                 dao_bytes,
@@ -624,7 +767,7 @@ impl Router {
         let Some(parent) = self.dodag.preferred_parent else {
             return Err(DaoTxError::NotJoined);
         };
-        if origin_ipv6[8..] != iid_from_pubkey(&link.local_public_key()) {
+        if origin_ipv6 != lichen_link::ygg_addr_from_pubkey(link.local_public_key().as_bytes()) {
             return Err(DaoTxError::InvalidOrigin);
         }
         if !tx_state.is_for_scope(
@@ -649,6 +792,40 @@ impl Router {
     ///
     /// Returns the number of bytes written.
     pub fn build_dio(&self, out: &mut [u8]) -> usize {
+        self.build_dio_with_authorization(out, None)
+    }
+
+    /// Build a DIO with the root authorization minted locally by a root or
+    /// propagated unchanged by a non-root router.
+    pub fn build_authenticated_dio(&self, out: &mut [u8], link: &LinkLayer) -> usize {
+        let authorization = if self.dodag.is_root() {
+            let root_pubkey = *link.local_public_key().as_bytes();
+            if lichen_core::addr::ygg_addr_from_pubkey(&root_pubkey) != self.dodag_id {
+                return 0;
+            }
+            let transcript = dodag_version_authorization_transcript(
+                self.dodag.rpl_instance_id,
+                &self.dodag_id,
+                self.dodag.version,
+            );
+            Some(DodagVersionAuthorization {
+                version: self.dodag.version,
+                root_pubkey,
+                signature: link.sign_digest(&transcript),
+            })
+        } else {
+            self.version_authorization
+                .clone()
+                .filter(|authorization| authorization.version == self.dodag.version)
+        };
+        self.build_dio_with_authorization(out, authorization.as_ref())
+    }
+
+    fn build_dio_with_authorization(
+        &self,
+        out: &mut [u8],
+        authorization: Option<&DodagVersionAuthorization>,
+    ) -> usize {
         let dio = Dio {
             rpl_instance_id: RPL_INSTANCE_ID,
             version: self.dodag.version,
@@ -666,7 +843,14 @@ impl Router {
         let Ok(config_len) = self.dodag_config.write_to(&mut out[base_len..]) else {
             return 0;
         };
-        base_len + config_len
+        let mut length = base_len + config_len;
+        if let Some(authorization) = authorization {
+            let Ok(authorization_len) = authorization.write_to(&mut out[length..]) else {
+                return 0;
+            };
+            length += authorization_len;
+        }
+        length
     }
 
     /// Get the route path for a destination (root only).
@@ -898,7 +1082,7 @@ impl Router {
     }
 
     /// Get DAO origin high water marks for testing.
-    #[cfg(any(test, feature = "test-support"))]
+    #[cfg(test)]
     pub fn dao_origin_keys(&self) -> Vec<super::DaoOriginHighWater> {
         self.dao_manager.origin_high_water()
     }

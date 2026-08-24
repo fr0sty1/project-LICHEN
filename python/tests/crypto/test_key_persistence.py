@@ -5,12 +5,16 @@
 Tests file-based key storage, crash-safety, and TrustStore persistence.
 """
 
+import hashlib
+import hmac
 import json
 import os
 import stat
+from pathlib import Path
 
 import pytest
 
+import lichen.crypto.key_persistence as key_persistence_module
 from lichen.crypto import (
     FileKeyStore,
     Identity,
@@ -21,17 +25,87 @@ from lichen.crypto import (
     TrustStore,
     TrustStorePersistence,
 )
-from lichen.crypto.key_persistence import TrustStorePersistenceError
+from lichen.crypto.key_persistence import (
+    TrustStorePersistenceError,
+    TrustStorePersistenceIndeterminateError,
+)
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.trust import compute_rotation_transcript
+from lichen.rollback_anchor import AnchoredState
+
+_RealFileKeyStore = FileKeyStore
+_RealTrustStorePersistence = TrustStorePersistence
+_AUTHENTICATION_KEY = bytes(range(32))
+_ANCHOR_KEY = bytes(range(32, 64))
+_TRUST_AUTH_DOMAIN = b"LICHEN-TRUST-STATE-v1\x00"
+
+
+class MemoryStateAnchor:
+    def __init__(self) -> None:
+        self.states: dict[bytes, AnchoredState] = {}
+
+    def read(self, key: bytes) -> AnchoredState | None:
+        return self.states.get(key)
+
+    def advance(
+        self,
+        key: bytes,
+        expected: AnchoredState | None,
+        state: AnchoredState,
+    ) -> None:
+        if self.states.get(key) != expected:
+            raise RuntimeError("anchor compare-and-advance failed")
+        if expected is not None and state.revision != expected.revision + 1:
+            raise RuntimeError("anchor revision did not advance exactly")
+        self.states[key] = state
+
+
+class FailingTrustPersistence:
+    is_crash_safe = True
+    fails_closed = True
+
+    def save(self, store: TrustStore) -> None:
+        raise OSError("injected ordinary persistence failure")
+
+
+_ANCHORS: dict[Path, MemoryStateAnchor] = {}
+
+
+def _anchor(path: Path) -> MemoryStateAnchor:
+    return _ANCHORS.setdefault(path, MemoryStateAnchor())
+
+
+def FileKeyStore(  # noqa: N802
+    base_dir,
+    *,
+    fail_closed: bool = True,  # type: ignore[no-untyped-def]
+):
+    path = Path(base_dir)
+    return _RealFileKeyStore(
+        path,
+        revision_anchor=_anchor(path),
+        anchor_key=_ANCHOR_KEY,
+        allow_bootstrap=True,
+        fail_closed=fail_closed,
+    )
+
+
+def TrustStorePersistence(  # noqa: N802
+    base_dir,  # type: ignore[no-untyped-def]
+):
+    path = Path(base_dir)
+    return _RealTrustStorePersistence(
+        path,
+        authentication_key=_AUTHENTICATION_KEY,
+        revision_anchor=_anchor(path),
+        anchor_key=_ANCHOR_KEY,
+        allow_bootstrap=True,
+    )
+
 
 # Deterministic seeds for reproducible tests
-SEED_ALICE = bytes.fromhex(
-    "0000000000000000000000000000000000000000000000000000000000000001"
-)
-SEED_BOB = bytes.fromhex(
-    "0000000000000000000000000000000000000000000000000000000000000002"
-)
+SEED_ALICE = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000001")
+SEED_BOB = bytes.fromhex("0000000000000000000000000000000000000000000000000000000000000002")
 
 
 def _entry_document(entry: TrustEntry, **overrides: object) -> dict[str, object]:
@@ -51,14 +125,21 @@ def _entry_document(entry: TrustEntry, **overrides: object) -> dict[str, object]
 
 
 def _write_trust_document(path, entries, **overrides: object) -> None:
-    data: dict[str, object] = {
-        "format_version": 1,
+    body: dict[str, object] = {
+        "format_version": 2,
         "revision": 1,
         "auto_pin": True,
         "entries": entries,
     }
-    data.update(overrides)
-    path.write_text(json.dumps(data))
+    body.update(overrides)
+    canonical = json.dumps(body, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    authentication = hmac.new(
+        _AUTHENTICATION_KEY,
+        _TRUST_AUTH_DOMAIN + canonical,
+        hashlib.sha256,
+    ).hexdigest()
+    data = {**body, "authentication": authentication}
+    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
     path.chmod(0o600)
 
 
@@ -163,6 +244,8 @@ class TestFileKeyStore:
     def test_generation_exhaustion_is_explicit_and_preserves_seed(self, tmp_path):
         store = FileKeyStore(tmp_path)
         store._write_slot(tmp_path / "node_seed_0.bin", 0xFFFFFFFF, SEED_ALICE)
+        state = store._slot_anchor((0xFFFFFFFF, SEED_ALICE))
+        store._revision_anchor.advance(store._anchor_key, None, state)
         with pytest.raises(KeyPersistenceError, match="generation exhausted"):
             store.store_seed(SEED_BOB)
         assert store.load_seed() == SEED_ALICE
@@ -189,8 +272,7 @@ class TestFileKeyStore:
         assert stat.S_IMODE(tmp_path.stat().st_mode) == 0o700
         assert stat.S_IMODE((tmp_path / ".node_seed.lock").stat().st_mode) == 0o600
 
-    def test_corrupt_slot_falls_back_to_other(self, tmp_path):
-        """FileKeyStore uses valid slot when other is corrupt."""
+    def test_deleting_only_initialized_slot_cannot_reset_identity(self, tmp_path):
         store = FileKeyStore(tmp_path, fail_closed=False)
 
         # Write seed
@@ -206,9 +288,104 @@ class TestFileKeyStore:
             with open(slot1, "wb") as f:
                 f.write(b"CORRUPT")
 
-        # Should still load from valid slot (write creates both)
+        with pytest.raises(KeyPersistenceError, match="deleted"):
+            store.store_seed(SEED_BOB)
+
+    def test_deleting_all_initialized_slots_is_detected_after_restart(self, tmp_path):
+        store = FileKeyStore(tmp_path, fail_closed=False)
+        store.store_seed(SEED_ALICE)
+        for slot in (tmp_path / "node_seed_0.bin", tmp_path / "node_seed_1.bin"):
+            slot.unlink(missing_ok=True)
+
+        with pytest.raises(KeyPersistenceError, match="deleted"):
+            FileKeyStore(tmp_path, fail_closed=False).load_seed()
+
+    def test_restoring_older_slot_snapshot_is_detected_after_restart(self, tmp_path):
+        store = FileKeyStore(tmp_path)
+        store.store_seed(SEED_ALICE)
+        old_slots = {
+            slot.name: slot.read_bytes()
+            for slot in (tmp_path / "node_seed_0.bin", tmp_path / "node_seed_1.bin")
+            if slot.exists()
+        }
         store.store_seed(SEED_BOB)
-        assert store.load_seed() == SEED_BOB
+        for slot in (tmp_path / "node_seed_0.bin", tmp_path / "node_seed_1.bin"):
+            slot.unlink(missing_ok=True)
+        for name, contents in old_slots.items():
+            (tmp_path / name).write_bytes(contents)
+            (tmp_path / name).chmod(0o600)
+
+        with pytest.raises(KeyPersistenceError, match="rollback|substitution"):
+            FileKeyStore(tmp_path).load_seed()
+
+    def test_equal_generation_divergence_is_detected(self, tmp_path):
+        store = FileKeyStore(tmp_path)
+        store._write_slot(tmp_path / "node_seed_0.bin", 1, SEED_ALICE)
+        store._write_slot(tmp_path / "node_seed_1.bin", 1, SEED_BOB)
+
+        with pytest.raises(KeyPersistenceError, match="conflicting generations"):
+            store.load_seed()
+
+    def test_unanchored_generation_ahead_seed_is_ignored_and_overwritten(self, tmp_path):
+        store = FileKeyStore(tmp_path)
+        store.store_seed(SEED_ALICE)
+        store._write_slot(tmp_path / "node_seed_1.bin", 2, SEED_BOB)
+
+        restarted = FileKeyStore(tmp_path)
+        assert restarted.load_seed() == SEED_ALICE
+        restarted.store_seed(SEED_ALICE)
+        assert restarted.load_seed() == SEED_ALICE
+
+    @pytest.mark.parametrize("value", [0, 1, None, "true"])
+    def test_file_store_fail_closed_requires_exact_bool(self, tmp_path, value: object):
+        with pytest.raises(ValueError, match="fail_closed"):
+            _RealFileKeyStore(
+                tmp_path,
+                revision_anchor=MemoryStateAnchor(),
+                anchor_key=_ANCHOR_KEY,
+                allow_bootstrap=True,
+                fail_closed=value,  # type: ignore[arg-type]
+            )
+
+    def test_lock_does_not_relabel_body_oserror(self, tmp_path, monkeypatch):
+        store = FileKeyStore(tmp_path)
+
+        def fail_body(*args, **kwargs):  # type: ignore[no-untyped-def]
+            raise OSError("body failure")
+
+        monkeypatch.setattr(store, "_best_slot_locked", fail_body)
+        with pytest.raises(OSError, match="body failure"):
+            store.load_seed()
+
+    @pytest.mark.parametrize("writer", ["seed", "trust"])
+    def test_staging_cleanup_preserves_primary_error_and_closes_fd(
+        self, tmp_path, monkeypatch, writer: str
+    ):
+        descriptors: list[int] = []
+
+        def fail_fchmod(fd: int, _mode: int) -> None:
+            descriptors.append(fd)
+            raise OSError("primary staging failure")
+
+        def fail_unlink(*args, **kwargs):  # type: ignore[no-untyped-def]
+            raise OSError("cleanup failure")
+
+        monkeypatch.setattr(key_persistence_module.os, "fchmod", fail_fchmod)
+        monkeypatch.setattr(Path, "unlink", fail_unlink)
+        if writer == "seed":
+            operation = lambda: FileKeyStore(tmp_path)._write_slot(  # noqa: E731
+                tmp_path / "node_seed_0.bin", 1, SEED_ALICE
+            )
+        else:
+            operation = lambda: TrustStorePersistence(  # noqa: E731
+                tmp_path
+            )._write_json_locked(b"{}")
+
+        with pytest.raises(OSError, match="primary staging failure"):
+            operation()
+        assert len(descriptors) == 1
+        with pytest.raises(OSError):
+            os.fstat(descriptors[0])
 
     def test_fail_closed_raises_on_corrupt(self, tmp_path):
         """FileKeyStore raises when fail_closed and state is corrupt."""
@@ -234,7 +411,7 @@ class TestFileKeyStore:
             slot.write_bytes(b"CORRUPT")
         before = [slot.read_bytes() for slot in slots]
 
-        with pytest.raises(KeyPersistenceError, match="overwrite corrupt"):
+        with pytest.raises(KeyPersistenceError, match="deleted"):
             store.store_seed(SEED_ALICE)
 
         assert [slot.read_bytes() for slot in slots] == before
@@ -301,6 +478,93 @@ class TestTrustStorePersistence:
         assert restored_bob is not None
         assert restored_bob.rotation_sequence == 1
 
+    @pytest.mark.parametrize("failure_point", ["chmod", "directory_fsync"])
+    def test_post_replace_rotation_failure_is_indeterminate_and_recoverable(
+        self, tmp_path, monkeypatch, failure_point: str
+    ):
+        persistence = TrustStorePersistence(tmp_path)
+        alice = Identity.from_seed(SEED_ALICE)
+        bob = Identity.from_seed(SEED_BOB)
+        store = TrustStore(persistence=persistence)
+        store.verify_or_pin(alice.pubkey, alice.iid)
+        transcript = compute_rotation_transcript(alice.pubkey, bob.pubkey, 1)
+        signature = schnorr_sign(alice.privkey, alice.pubkey, transcript)
+
+        if failure_point == "chmod":
+            real_chmod = key_persistence_module.os.chmod
+
+            def fail_chmod(path, mode):  # type: ignore[no-untyped-def]
+                if Path(path) == tmp_path / "trust_store.json":
+                    raise OSError("injected post-replace chmod failure")
+                return real_chmod(path, mode)
+
+            monkeypatch.setattr(key_persistence_module.os, "chmod", fail_chmod)
+        else:
+            real_fsync = key_persistence_module.os.fsync
+
+            def fail_directory_fsync(fd: int) -> None:
+                if stat.S_ISDIR(os.fstat(fd).st_mode):
+                    raise OSError("injected directory fsync failure")
+                real_fsync(fd)
+
+            monkeypatch.setattr(key_persistence_module.os, "fsync", fail_directory_fsync)
+
+        with pytest.raises(TrustStorePersistenceIndeterminateError):
+            store.rotate_key(alice.pubkey, bob.pubkey, 1, signature)
+
+        assert store.get(alice.iid) is None
+        assert store.get(bob.iid) is not None
+        with pytest.raises(TrustStorePersistenceError, match="indeterminate"):
+            persistence.load()
+        restored = TrustStorePersistence(tmp_path).load()
+        assert restored is not None
+        assert restored.get(alice.iid) is None
+        assert restored.get(bob.iid) is not None
+
+    def test_deleting_initialized_trust_document_is_detected(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        persistence.save(TrustStore())
+        (tmp_path / "trust_store.json").unlink()
+
+        with pytest.raises(TrustStorePersistenceError, match="deleted"):
+            TrustStorePersistence(tmp_path).load()
+
+    def test_restoring_old_authenticated_document_is_detected(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        store = TrustStore()
+        persistence.save(store)
+        old_document = (tmp_path / "trust_store.json").read_bytes()
+        alice = Identity.from_seed(SEED_ALICE)
+        store.verify_or_pin(alice.pubkey, alice.iid)
+        persistence.save(store)
+        (tmp_path / "trust_store.json").write_bytes(old_document)
+        (tmp_path / "trust_store.json").chmod(0o600)
+
+        with pytest.raises(TrustStorePersistenceError, match="rollback|substitution"):
+            TrustStorePersistence(tmp_path).load()
+
+    def test_byte_valid_forgery_fails_authentication(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        persistence.save(TrustStore())
+        path = tmp_path / "trust_store.json"
+        document = json.loads(path.read_bytes())
+        document["auto_pin"] = False
+        path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
+        path.chmod(0o600)
+
+        with pytest.raises(TrustStorePersistenceError, match="authentication failed"):
+            persistence.load()
+
+    def test_trust_lock_does_not_relabel_body_oserror(self, tmp_path, monkeypatch):
+        persistence = TrustStorePersistence(tmp_path)
+
+        def fail_body(*args, **kwargs):  # type: ignore[no-untyped-def]
+            raise OSError("body failure")
+
+        monkeypatch.setattr(persistence, "_read_json_locked", fail_body)
+        with pytest.raises(OSError, match="body failure"):
+            persistence.load()
+
     def test_save_and_load_with_entries(self, tmp_path):
         """TrustStorePersistence preserves trust entries."""
         persistence = TrustStorePersistence(tmp_path)
@@ -320,6 +584,57 @@ class TestTrustStorePersistence:
         assert len(loaded) == 2
         assert alice.iid in loaded
         assert bob.iid in loaded
+
+    def test_security_mutations_are_automatically_durable(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        alice = Identity.from_seed(SEED_ALICE)
+        bob = Identity.from_seed(SEED_BOB)
+        store = TrustStore(persistence=persistence)
+
+        store.verify_or_pin(alice.pubkey, alice.iid)
+        assert persistence.load().get(alice.iid) is not None  # type: ignore[union-attr]
+        store.add_trust_anchor(bob.pubkey, TrustLevel.BR_PROVISIONED)
+        assert persistence.load().get(bob.iid) is not None  # type: ignore[union-attr]
+        store.revoke(alice.iid)
+        assert persistence.load().get(alice.iid).revoked  # type: ignore[union-attr]
+        store.remove(bob.iid)
+        assert persistence.load().get(bob.iid) is None  # type: ignore[union-attr]
+        store.clear()
+        restored = persistence.load()
+        assert restored is not None
+        assert len(restored) == 0
+
+    def test_ordinary_persistence_failures_roll_back_every_security_mutation(self):
+        alice = Identity.from_seed(SEED_ALICE)
+        bob = Identity.from_seed(SEED_BOB)
+
+        empty_mutations = [
+            lambda store: store.verify_or_pin(alice.pubkey, alice.iid),
+            lambda store: store.add_trust_anchor(alice.pubkey, TrustLevel.BR_PROVISIONED),
+        ]
+        for mutate in empty_mutations:
+            store = TrustStore(persistence=FailingTrustPersistence())
+            with pytest.raises(OSError, match="ordinary persistence failure"):
+                mutate(store)
+            assert len(store) == 0
+            assert store._persistence_revision == 0
+
+        populated_mutations = [
+            lambda store: store.verify_peer(alice.pubkey, alice.iid),
+            lambda store: store.revoke(alice.iid),
+            lambda store: store.remove(bob.iid),
+            lambda store: store.clear(),
+        ]
+        for mutate in populated_mutations:
+            store = TrustStore()
+            store.verify_or_pin(alice.pubkey, alice.iid)
+            store.verify_or_pin(bob.pubkey, bob.iid)
+            before = store.list_entries(include_revoked=True)
+            store._persistence = FailingTrustPersistence()
+            with pytest.raises(OSError, match="ordinary persistence failure"):
+                mutate(store)
+            assert store.list_entries(include_revoked=True) == before
+            assert store._persistence_revision == 0
 
     def test_preserves_trust_levels(self, tmp_path):
         """TrustStorePersistence preserves trust levels."""
@@ -390,6 +705,15 @@ class TestTrustStorePersistence:
         with pytest.raises(TrustStorePersistenceError, match="corrupt JSON"):
             persistence.load()
 
+    def test_load_wraps_json_integer_digit_limit(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        file_path = tmp_path / "trust_store.json"
+        file_path.write_text('{"revision":' + "9" * 5000 + "}")
+        file_path.chmod(0o600)
+
+        with pytest.raises(TrustStorePersistenceError, match="corrupt JSON"):
+            persistence.load()
+
     def test_load_raises_on_invalid_hex(self, tmp_path):
         """TrustStorePersistence raises on invalid hex in entry."""
         persistence = TrustStorePersistence(tmp_path)
@@ -426,7 +750,7 @@ class TestTrustStorePersistence:
         with open(tmp_path / "trust_store.json", "w") as f:
             json.dump(data, f)
 
-        with pytest.raises(TrustStorePersistenceError, match="does not derive to iid"):
+        with pytest.raises(TrustStorePersistenceError, match="authentication failed"):
             persistence.load()
 
     def test_load_raises_on_duplicate_iid(self, tmp_path):
@@ -466,6 +790,32 @@ class TestTrustStorePersistence:
         with pytest.raises(TrustStorePersistenceError, match="non-negative"):
             persistence.load()
 
+    def test_load_rejects_unrepresentable_integer_timestamp(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        alice = TrustEntry.from_pubkey(Identity.from_seed(SEED_ALICE).pubkey)
+        _write_trust_document(
+            tmp_path / "trust_store.json",
+            [_entry_document(alice, first_seen=10**309, last_seen=10**309)],
+        )
+
+        with pytest.raises(TrustStorePersistenceError, match="timestamps must be finite"):
+            persistence.load()
+
+    def test_load_preserves_exact_large_integer_timestamp_order(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        alice = TrustEntry.from_pubkey(Identity.from_seed(SEED_ALICE).pubkey)
+        _write_trust_document(
+            tmp_path / "trust_store.json",
+            [_entry_document(alice, first_seen=2**53, last_seen=2**53 + 1)],
+        )
+
+        loaded = persistence.load()
+        assert loaded is not None
+        entry = loaded.get(alice.iid)
+        assert entry is not None
+        assert entry.first_seen == 2**53
+        assert entry.last_seen == 2**53 + 1
+
     def test_preserves_auto_pin_setting(self, tmp_path):
         """TrustStorePersistence preserves auto_pin setting."""
         persistence = TrustStorePersistence(tmp_path)
@@ -487,10 +837,8 @@ class TestTrustStorePersistence:
         alice = Identity.from_seed(SEED_ALICE)
         bob = Identity.from_seed(SEED_BOB)
         first.verify_or_pin(alice.pubkey, alice.iid)
-        persistence.save(first)
-        stale.verify_or_pin(bob.pubkey, bob.iid)
         with pytest.raises(TrustStorePersistenceError, match="stale"):
-            persistence.save(stale)
+            stale.verify_or_pin(bob.pubkey, bob.iid)
         restored = persistence.load()
         assert restored is not None
         assert alice.iid in restored
@@ -507,6 +855,11 @@ class TestTrustStorePersistence:
         persistence = TrustStorePersistence(tmp_path)
         path = tmp_path / "trust_store.json"
         _write_trust_document(path, [], revision=(1 << 64) - 1)
+        persistence._revision_anchor.advance(
+            persistence._anchor_key,
+            None,
+            AnchoredState((1 << 64) - 1, hashlib.sha256(path.read_bytes()).digest()),
+        )
         store = persistence.load()
         assert store is not None
         before = path.read_bytes()

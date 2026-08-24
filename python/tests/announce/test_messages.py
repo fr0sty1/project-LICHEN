@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 
 from lichen.announce.messages import (
+    ANNOUNCE_SIGNATURE_DOMAIN,
     ANNOUNCE_TYPE,
+    MAX_ANNOUNCE_APP_DATA,
     MAX_ANNOUNCE_HOPS,
     SIGNATURE_LENGTH,
     AnnounceError,
@@ -68,6 +70,16 @@ class TestAnnounceMessage:
                 hop_count=256,
             )
 
+    @pytest.mark.parametrize("rx_channel", [-1, 8, 255])
+    def test_rejects_rx_channel_outside_ccp9_profile(self, rx_channel):
+        with pytest.raises(AnnounceError, match="must be 0-7"):
+            AnnounceMessage(
+                originator_iid=bytes(8),
+                pubkey=bytes(32),
+                seq_num=0,
+                rx_channel=rx_channel,
+            )
+
     def test_rejects_wrong_signature_length(self):
         """Signature must be 0 (unsigned) or 48 bytes (signed)."""
         with pytest.raises(AnnounceError, match="signature must be 0 or 48"):
@@ -101,7 +113,7 @@ class TestSignedData:
             pubkey=bytes(32),
             seq_num=0,
         )
-        assert msg.signed_data().startswith(iid)
+        assert msg.signed_data().startswith(ANNOUNCE_SIGNATURE_DOMAIN + iid)
 
     def test_signed_data_includes_pubkey(self):
         """signed_data() includes pubkey."""
@@ -121,7 +133,8 @@ class TestSignedData:
             seq_num=0x1234,
         )
         signed = msg.signed_data()
-        assert signed[40:42] == bytes([0x12, 0x34])
+        offset = len(ANNOUNCE_SIGNATURE_DOMAIN) + 40
+        assert signed[offset:offset + 2] == bytes([0x12, 0x34])
 
     def test_signed_data_includes_rx_channel_at_offset(self):
         msg = AnnounceMessage(
@@ -131,9 +144,14 @@ class TestSignedData:
             rx_channel=5,
         )
         signed = msg.signed_data()
-        expected = b"\x01\x02\x03\x04\x05\x06\x07\x08" + b"\x00" * 32 + b"\x12\x34" + b"\x05"
+        expected = (
+            ANNOUNCE_SIGNATURE_DOMAIN
+            + b"\x01\x02\x03\x04\x05\x06\x07\x08"
+            + b"\x00" * 32
+            + b"\x12\x34\x05\x00\x00"
+        )
         assert signed == expected
-        assert signed[42] == 5
+        assert signed[len(ANNOUNCE_SIGNATURE_DOMAIN) + 42] == 5
 
     def test_signed_data_includes_app_data(self):
         app_data = b"capabilities:sensor,relay"
@@ -186,7 +204,58 @@ class TestSignedData:
             rx_channel=5,
         )
         signed = msg.signed_data()
-        assert signed[42:43] == bytes([5])
+        offset = len(ANNOUNCE_SIGNATURE_DOMAIN) + 42
+        assert signed[offset:offset + 1] == bytes([5])
+
+    def test_signed_data_domain_and_length_are_unambiguous(self):
+        msg = AnnounceMessage(
+            originator_iid=bytes(8),
+            pubkey=bytes(32),
+            seq_num=1,
+            app_data=b"abc",
+        )
+        signed = msg.signed_data()
+        assert signed.startswith(ANNOUNCE_SIGNATURE_DOMAIN)
+        assert signed[-5:-3] == b"\x00\x03"
+
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("originator_iid", bytearray(8)),
+            ("pubkey", bytearray(32)),
+            ("signature", bytearray(48)),
+            ("app_data", bytearray()),
+            ("seq_num", True),
+            ("hop_count", False),
+            ("rx_channel", True),
+        ],
+    )
+    def test_rejects_mutable_and_non_exact_security_types(self, field, value):
+        kwargs = {
+            "originator_iid": bytes(8),
+            "pubkey": bytes(32),
+            "seq_num": 1,
+            "signature": bytes(48),
+        }
+        kwargs[field] = value
+        with pytest.raises(AnnounceError):
+            AnnounceMessage(**kwargs)
+
+    def test_app_data_is_bounded_by_signed_link_profile(self):
+        AnnounceMessage(bytes(8), bytes(32), 1, app_data=bytes(MAX_ANNOUNCE_APP_DATA))
+        with pytest.raises(AnnounceError, match="link profile limit"):
+            AnnounceMessage(bytes(8), bytes(32), 1, app_data=bytes(MAX_ANNOUNCE_APP_DATA + 1))
+
+    def test_parser_requires_immutable_bytes(self):
+        with pytest.raises(AnnounceError, match="immutable bytes"):
+            AnnounceMessage.from_bytes(bytearray(93))
+
+    def test_parser_rejects_unsupported_rx_channel(self):
+        wire = bytearray(93)
+        wire[0] = ANNOUNCE_TYPE
+        wire[1] = 8
+        with pytest.raises(AnnounceError, match="must be 0-7"):
+            AnnounceMessage.from_bytes(bytes(wire))
 
 
 class TestSerialization:

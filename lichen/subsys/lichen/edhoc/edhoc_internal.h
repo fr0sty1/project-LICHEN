@@ -86,6 +86,23 @@ int aead_decrypt(const uint8_t key[16],
 int x25519_keypair(uint8_t sk[32], uint8_t pk[32]);
 
 /**
+ * @brief Derive X25519 keypair from Ed25519 seed (for static DH)
+ *
+ * x25519_private = clamp(SHA-512(seed)[0:32]) per RFC 7748 section 5.
+ * x25519_public  = X25519(x25519_private, basepoint)
+ *
+ * This allows deriving both Ed25519 signing keys and X25519 DH keys
+ * from the same seed, enabling static authentication in EDHOC.
+ *
+ * @param[in]  seed  32-byte Ed25519 seed
+ * @param[out] sk    32-byte X25519 private key (clamped)
+ * @param[out] pk    32-byte X25519 public key
+ */
+void x25519_keypair_from_seed(const uint8_t seed[32],
+			      uint8_t sk[32],
+			      uint8_t pk[32]);
+
+/**
  * @brief X25519 shared secret computation
  */
 void x25519_shared_secret(uint8_t shared[32],

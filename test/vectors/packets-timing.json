@@ -1,6 +1,6 @@
 {
   "format_version": 2,
-  "description": "Packets and Timing timing vectors (spec 09 \u00a714 Trickle, DAO, duty cycle, airtime, CSMA, time sync, SFN, TDMA). Python oracle lichen.timing.",
+  "description": "Packets and Timing timing vectors (spec 09 \u00a714 Trickle, DAO, duty cycle, airtime, CSMA, time sync, SFN, TDMA). Numeric regression fixtures use literal spec calculations and local state-machine oracles; signed trust fixtures use the independent PyNaCl Schnorr reference.",
   "vectors": [
     {
       "name": "trickle_constants",
@@ -64,7 +64,7 @@
       "seq_1_valid": true,
       "seq_advance_valid": true,
       "seq_no_advance_invalid": false,
-      "seq_max_invalid": false
+      "seq_max_valid_terminal": true
     },
     {
       "name": "data_traffic_intervals",
@@ -76,12 +76,20 @@
     },
     {
       "name": "duty_cycle_eu868_10pct",
-      "description": "14.4 EU 868 10% duty cycle, SF9 60B ~200ms => 1800 packets/hour, comfortable 100-300.",
+      "description": "14.4 EU 868 10% duty cycle: exact SF9/125kHz CR4/5 60-byte airtime is 369.664 ms, permitting 973 whole packets/hour.",
       "category": "duty_cycle",
       "duty_cycle_percent": 10.0,
-      "airtime_60b_ms": 200.0,
-      "max_packets_per_hour": 1800,
-      "max_via_formula": 1800
+      "payload_len": 60,
+      "sf": 9,
+      "bw_hz": 125000,
+      "coding_rate": "4/5",
+      "preamble_symbols": 8,
+      "explicit_header": true,
+      "phy_crc": true,
+      "airtime_us": 369664,
+      "airtime_60b_ms": 369.664,
+      "max_packets_per_hour": 973,
+      "max_via_formula": 973
     },
     {
       "name": "duty_cycle_usage_examples",
@@ -148,7 +156,7 @@
     },
     {
       "name": "airtime_sf9_60b",
-      "description": "Airtime for 60B at SF9/125kHz (spec example ~200ms).",
+      "description": "Airtime for 60B at SF9/125kHz, CR4/5, explicit header and CRC.",
       "category": "airtime_sf9",
       "payload_len": 60,
       "sf": 9,
@@ -197,59 +205,613 @@
     },
     {
       "name": "time_sync_epoch_floor",
-      "description": "Effective epoch floor = max(firmware_build_epoch, board_provision_epoch_if_valid).",
+      "description": "Independent literal decisions for verifier-issued, identity-bound, versioned provision metadata.",
       "category": "time_sync",
-      "floor_firmware_only": 1700000000,
-      "floor_max": 1800000000,
-      "floor_firmware_higher": 1900000000
+      "cases": [
+        {
+          "action": "firmware_only",
+          "build_epoch": 1700000000,
+          "expected_floor": 1700000000,
+          "status": "missing"
+        },
+        {
+          "action": "authenticated_provision",
+          "build_epoch": 1700000000,
+          "provision_epoch": 1800000000,
+          "record_version": 1,
+          "max_provision_lead_s": 100000000,
+          "expected_floor": 1800000000,
+          "status": "accepted"
+        },
+        {
+          "action": "authenticated_provision",
+          "build_epoch": 1900000000,
+          "provision_epoch": 1800000000,
+          "record_version": 1,
+          "max_provision_lead_s": 100000000,
+          "expected_floor": 1900000000,
+          "status": "before-build"
+        },
+        {
+          "action": "authenticated_provision",
+          "build_epoch": 1700000000,
+          "provision_epoch": 1800000001,
+          "record_version": 1,
+          "max_provision_lead_s": 100000000,
+          "expected_floor": 1700000000,
+          "status": "beyond-lead"
+        },
+        {
+          "action": "raw_integer",
+          "build_epoch": 1700000000,
+          "provision_epoch": 1800000000,
+          "expected_floor": 1700000000,
+          "status": "unauthenticated"
+        }
+      ]
     },
     {
       "name": "time_sync_stratum",
-      "description": "Time stratum 0..4 table and source class mapping.",
+      "description": "Time stratum 0..4 and possible source classes; stratum does not infer provenance.",
       "category": "time_stratum",
       "strata": [
         {
           "value": 0,
           "name": "NO_SYNC",
-          "source": "NO_SYNC"
+          "source_classes": [
+            "Monotonic"
+          ]
         },
         {
           "value": 1,
-          "name": "MESH_DERIVED",
-          "source": "MESH_DERIVED"
+          "name": "CONSERVATIVE_SYNC",
+          "source_classes": [
+            "Network",
+            "Local-client",
+            "Manual/static",
+            "Internal RTC"
+          ]
         },
         {
           "value": 2,
           "name": "ROUGHTIME",
-          "source": "ROUGHTIME"
+          "source_classes": [
+            "Network"
+          ]
         },
         {
           "value": 3,
           "name": "NTS",
-          "source": "NTS"
+          "source_classes": [
+            "Network"
+          ]
         },
         {
           "value": 4,
           "name": "GNSS_GPSD",
-          "source": "GNSS_GPSD"
+          "source_classes": [
+            "GNSS",
+            "Local-client"
+          ]
         }
       ]
     },
     {
       "name": "dio_time_option",
-      "description": "DIO Time Option Type TBD 8 bytes: Type(1)+Len(1)+Stratum(1)+Reserved(1)+Timestamp(4).",
+      "description": "DIO Time Option project-local provisional Type 0x15 (not IANA-assigned and no early-allocation request submitted), 8 bytes: Type(1)+Len(1)+Stratum(1)+Reserved(1)+Timestamp(4).",
       "category": "dio_time_option",
-      "encoded_hex": "000603006553f100",
+      "option_type": 21,
+      "encoded_hex": "150603006553f100",
       "decoded_stratum": 3,
-      "decoded_timestamp": 1700000000
+      "decoded_timestamp": 1700000000,
+      "no_sync_encoded_hex": "1506000000000000"
     },
     {
       "name": "time_adoption",
-      "description": "Time adoption: higher stratum MAY adopt, lower MUST NOT, below floor MUST reject.",
+      "description": "Non-authoritative scalar prefilter literals: higher stratum passes the prefilter, while lower stratum and below-floor values do not.",
       "category": "time_adoption",
-      "adopt_higher": true,
-      "reject_lower": false,
-      "reject_below_floor": false
+      "authoritative": false,
+      "cases": [
+        {
+          "local": 1,
+          "received": 4,
+          "timestamp": 1700000000,
+          "floor": 1700000000,
+          "expected": true
+        },
+        {
+          "local": 4,
+          "received": 1,
+          "timestamp": 1700000000,
+          "floor": 1700000000,
+          "expected": false
+        },
+        {
+          "local": 1,
+          "received": 4,
+          "timestamp": 1699999999,
+          "floor": 1700000000,
+          "expected": false
+        }
+      ]
+    },
+    {
+      "name": "time_sync_trust_policy",
+      "description": "Independent literal trust, authorization, accuracy, anti-ratchet, and provisioning decisions; expected outcomes are not computed by the oracle.",
+      "category": "time_sync_trust",
+      "dio_envelope": {
+        "description": "SCHC-compressed IPv6/ICMPv6 RPL DIO with a valid pseudoheader checksum, Pad1, unknown option, SCHC version, and Time Option.",
+        "link_payload_hex": "14ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0194930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100",
+        "ipv6_hex": "60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0194930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100",
+        "src_ipv6": "fe80::b19e:dad2:9589:34e1",
+        "dst_ipv6": "ff02::1a",
+        "rpl_instance_id": 0,
+        "dodag_id": "fe80::1",
+        "mop": 1,
+        "role": "peer",
+        "option_ipv6_span": [
+          75,
+          83
+        ],
+        "option_hex": "150604006553f100",
+        "duplicate_link_payload_hex": "14ff6000000000333afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b013a1c0001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100150604006553f100",
+        "origin_source": "GNSS",
+        "transport_source": "Network"
+      },
+      "network_cases": [
+        {
+          "name": "signed-canonical-authorized",
+          "wire_hex": "91a0000001b39edad2958934e114ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0194930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100b37119f20859af494141cf879decf8c704c5099f6f5428fc4144c78a8b97090623304df4ef55fd453153145e5be3e80a",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 1,
+          "ipv6_hex": "60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0194930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100",
+          "expected_authoritative": true,
+          "rejection_stage": null,
+          "rejection": null
+        },
+        {
+          "name": "signed-missing-time-option",
+          "wire_hex": "89a0000002b39edad2958934e114ff6000000000233afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b01ef0a0001020008000000fe80000000000000000000000000000100ee01aa1301030a1302e74c97171580e86140f29c341b134269f39f12b8b45f19ecbed4cf72720ea966863f0cafddd0d418de8ed60004",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 2,
+          "ipv6_hex": "6000000000233afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b01ef0a0001020008000000fe80000000000000000000000000000100ee01aa130103",
+          "expected_authoritative": false,
+          "rejection_stage": "time_verifier",
+          "rejection": "dio-time-option-count"
+        },
+        {
+          "name": "signed-duplicate-time-option",
+          "wire_hex": "99a0000003b39edad2958934e114ff6000000000333afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b013a1c0001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100150604006553f100b3ed7697d0f9fdacc3cc9dd0594d885dfe32371f2a09d8144f03747420c604ddf57525e7da4bc31a6fb711da86b02305",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 3,
+          "ipv6_hex": "6000000000333afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b013a1c0001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100150604006553f100",
+          "expected_authoritative": false,
+          "rejection_stage": "time_verifier",
+          "rejection": "dio-time-option-count"
+        },
+        {
+          "name": "signed-wrong-dispatch",
+          "wire_hex": "91a0000004b39edad2958934e115ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0194930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f10037c31b7da5356c264c8f1a078967f037be6497f42a88c42d094b60a387d5ed21fd0fbbf641f5572f1e050266e0639504",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 4,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated DIO must use the SCHC L2 dispatch"
+        },
+        {
+          "name": "signed-bad-icmpv6-checksum",
+          "wire_hex": "91a0000005b39edad2958934e114ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0195930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100679ef433d50899c896c94b96ed78d13ecd61ae4421b903c146fbcdfb5ae15a110e7344e3def1528110f8951e906e300b",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 5,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated SCHC payload is not a valid RPL DIO"
+        },
+        {
+          "name": "signed-bare-dio",
+          "wire_hex": "63a000000ab39edad2958934e10001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100e8ac4f70ba034539e514a1d1ec25c343203dd482904d1c64ed6559c33560a3908ea2c01c482e87f6b6b1e5895d18130b",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 10,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated DIO must use the SCHC L2 dispatch"
+        },
+        {
+          "name": "signed-malformed-schc",
+          "wire_hex": "3fa000000bb39edad2958934e114ff607fe52deef7a65565fc4c206ddab6b379beb38d61cf5830593f7ee2b137d3189e7d516f38e23a298d6af781a627e9e200",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 11,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "IPv6 packet length must be 40..65575, got 1"
+        },
+        {
+          "name": "signed-wrong-ipv6-next-header",
+          "wire_hex": "91a000000cb39edad2958934e114ff60000000002b3bfffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0194930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100b63142ae69e5a7409ada20631bb43050148b85b1c7e02a80418f160ccb0d8ea9d07a99e45dc92dae6cca110080381f0a",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 12,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated DIO must be carried in ICMPv6"
+        },
+        {
+          "name": "signed-wrong-icmpv6-type",
+          "wire_hex": "91a000000db39edad2958934e114ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9a0195930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100dff0c4c7173bb43eb4826f2838aadcbdb9e34cbae98309bf3ed57c22d8a607d4a92f0ee90e129beef46b587b90a6110a",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 13,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated SCHC payload is not a valid RPL DIO"
+        },
+        {
+          "name": "signed-wrong-icmpv6-code",
+          "wire_hex": "91a000000eb39edad2958934e114ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0094940001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100b6a3d56a0eeb6391e1403a5673ad106e3100bd5cb2de7572e66dc55e8cbd77200b7175d9ba28ad3b3945cfb7606d8107",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 14,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated SCHC payload is not a valid RPL DIO"
+        },
+        {
+          "name": "signed-wrong-role",
+          "wire_hex": "91a000000fb39edad2958934e114ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0194930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f1001f255ae06427f91752377483a1988f4225741f3ce29e268a69dfa9af81d5a3b935f02cb568721a370774e1bdcc864a0f",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 15,
+          "expected_role": "root",
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated DIO role mismatch"
+        },
+        {
+          "name": "signed-wrong-instance",
+          "wire_hex": "91a0000006b39edad2958934e114ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0193930101020008000000fe80000000000000000000000000000100ee01aa130103150604006553f1009c4218f4ec4a39113b33339fd9baa8ffc8a4bfe626d223b6a12cb75a73958069d028d4ecd8ae20e0842de15b96728300",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 6,
+          "expected_rpl_instance_id": 0,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated DIO RPLInstanceID mismatch"
+        },
+        {
+          "name": "signed-wrong-dodag",
+          "wire_hex": "91a0000007b39edad2958934e114ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0193fb0001020008000000fe80000000000000000000000000009900ee01aa130103150604006553f100f7b8f38f753ad566c4b69fe09102708ed0825f0445d309c613480ae1dddd3f9143c8c450633e911da5ed51b57a9c8209",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 7,
+          "expected_dodag_id": "fe80::1",
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated DIO DODAGID mismatch"
+        },
+        {
+          "name": "signed-wrong-mop",
+          "wire_hex": "91a0000008b39edad2958934e114ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b018c930001020010000000fe80000000000000000000000000000100ee01aa130103150604006553f1006e43b4dc2b6c57ff145539f9505bf56f972c44dc949ebc15e04af71b4e88404c1adc8449fe9bebb54e768f01f064d00c",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 8,
+          "expected_mop": 1,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "authenticated DIO MOP mismatch"
+        },
+        {
+          "name": "signed-wrong-signer",
+          "wire_hex": "91a0000009c7bd444180b5dbfd14ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0194930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100175a784bf6f8781b3efb6669c7b876020906eda6c87e7683811c1eb328047916d8a70fe99c533d5e7b1d610e9b21bc03",
+          "signer_pubkey_hex": "712651f450ba05b63898b99ef5f7ba45632e8e2527f7f715cd671ec4024cc51e",
+          "counter": 9,
+          "expected_authoritative": false,
+          "rejection_stage": "dio_admission",
+          "rejection": "source_signer_mismatch"
+        },
+        {
+          "name": "signed-replay",
+          "wire_hex": "91a0000001b39edad2958934e114ff60000000002b3afffe80000000000000b19edad2958934e1ff02000000000000000000000000001a9b0194930001020008000000fe80000000000000000000000000000100ee01aa130103150604006553f100b37119f20859af494141cf879decf8c704c5099f6f5428fc4144c78a8b97090623304df4ef55fd453153145e5be3e80a",
+          "signer_pubkey_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+          "counter": 1,
+          "expected_authoritative": false,
+          "rejection_stage": "link_receive",
+          "receive_count": 2,
+          "rejection": "REPLAY"
+        }
+      ],
+      "correction_cases": [
+        {
+          "name": "bounded-step-cumulative-ratchet",
+          "policy": {
+            "max_sample_age_s": 300,
+            "max_forward_step_s": 3600,
+            "max_cumulative_forward_correction_s": 3600,
+            "max_correction_rate_ppm": 0
+          },
+          "transitions": [
+            {
+              "action": "sample",
+              "clock": 0,
+              "timestamp": 1700000000,
+              "accepted": true,
+              "rejection": null
+            },
+            {
+              "action": "sample",
+              "clock": 1,
+              "timestamp": 1700003601,
+              "accepted": true,
+              "rejection": null
+            },
+            {
+              "action": "sample",
+              "clock": 2,
+              "timestamp": 1700007202,
+              "accepted": false,
+              "rejection": "cumulative-forward-correction-exceeds-policy"
+            }
+          ]
+        },
+        {
+          "name": "anchor-survives-source-expiry",
+          "policy": {
+            "max_sample_age_s": 0,
+            "max_forward_step_s": 2000,
+            "max_cumulative_forward_correction_s": 100,
+            "max_correction_rate_ppm": 0
+          },
+          "transitions": [
+            {
+              "action": "sample",
+              "clock": 0,
+              "timestamp": 1700000000,
+              "accepted": true,
+              "rejection": null
+            },
+            {
+              "action": "expire",
+              "clock": 1,
+              "accepted": false,
+              "rejection": "current-source-expired"
+            },
+            {
+              "action": "sample",
+              "clock": 1,
+              "timestamp": 1700001001,
+              "accepted": false,
+              "rejection": "cumulative-forward-correction-exceeds-policy"
+            }
+          ]
+        },
+        {
+          "name": "anchor-survives-explicit-clear",
+          "policy": {
+            "max_sample_age_s": 300,
+            "max_forward_step_s": 2000,
+            "max_cumulative_forward_correction_s": 100,
+            "max_correction_rate_ppm": 0
+          },
+          "transitions": [
+            {
+              "action": "sample",
+              "clock": 0,
+              "timestamp": 1700000000,
+              "accepted": true,
+              "rejection": null
+            },
+            {
+              "action": "clear",
+              "clock": 1,
+              "accepted": false,
+              "rejection": "vector-clear"
+            },
+            {
+              "action": "sample",
+              "clock": 1,
+              "timestamp": 1700001001,
+              "accepted": false,
+              "rejection": "cumulative-forward-correction-exceeds-policy"
+            }
+          ]
+        }
+      ],
+      "provider_cases": [
+        {
+          "name": "gnss-position-valid-time-invalid",
+          "source": "GNSS",
+          "stratum": 4,
+          "source_valid": true,
+          "gnss_position_valid": true,
+          "gnss_time_valid": false,
+          "expected_authoritative": false,
+          "rejection": "gnss-time-not-valid",
+          "rejection_stage": "tracker"
+        },
+        {
+          "name": "rtc-uninitialized",
+          "source": "Internal RTC",
+          "stratum": 1,
+          "source_valid": true,
+          "rtc_initialized": false,
+          "expected_authoritative": false,
+          "rejection": "rtc-validity-metadata-missing",
+          "rejection_stage": "tracker"
+        },
+        {
+          "name": "direct-nts-authenticated",
+          "source": "Network",
+          "stratum": 3,
+          "source_valid": true,
+          "network_protocol": "NTS",
+          "network_authenticated": true,
+          "expected_authoritative": true,
+          "rejection": null,
+          "rejection_stage": null
+        },
+        {
+          "name": "projected-initial-lead-plus-one",
+          "source": "GNSS",
+          "stratum": 4,
+          "raw_lead_seconds": 91,
+          "observation_delay_seconds": 10,
+          "maximum_initial_lead_seconds": 100,
+          "expected_authoritative": false,
+          "rejection": "initial-time-too-far-above-epoch-floor",
+          "rejection_stage": "tracker"
+        },
+        {
+          "name": "idle-source-expiry",
+          "source": "GNSS",
+          "stratum": 4,
+          "sample_age_seconds": 11,
+          "maximum_sample_age_seconds": 10,
+          "authoritative_read": true,
+          "expected_authoritative": false,
+          "rejection": "current-source-expired",
+          "rejection_stage": "authoritative_read"
+        },
+        {
+          "name": "rtc-accumulated-age-boundary",
+          "source": "Internal RTC",
+          "stratum": 1,
+          "rtc_initialized": true,
+          "rtc_age_seconds": 299,
+          "sample_age_seconds": 1,
+          "maximum_sample_age_seconds": 300,
+          "authoritative_read": true,
+          "expected_authoritative": true,
+          "rejection": null,
+          "rejection_stage": null
+        },
+        {
+          "name": "rtc-accumulated-age-expired",
+          "source": "Internal RTC",
+          "stratum": 1,
+          "rtc_initialized": true,
+          "rtc_age_seconds": 299,
+          "sample_age_seconds": 1.001,
+          "maximum_sample_age_seconds": 300,
+          "authoritative_read": true,
+          "expected_authoritative": false,
+          "rejection": "current-rtc-state-stale",
+          "rejection_stage": "authoritative_read"
+        },
+        {
+          "name": "local-client-verified-gpsd",
+          "source": "Local-client",
+          "stratum": 4,
+          "source_subtype": "gpsd",
+          "source_subtype_verified": true,
+          "quality": {
+            "gpsd_mode": 3,
+            "gpsd_time_valid": true,
+            "gpsd_time_accuracy_seconds": 1
+          },
+          "expected_authoritative": true,
+          "rejection": null,
+          "rejection_stage": null
+        },
+        {
+          "name": "local-client-unverified-gpsd",
+          "source": "Local-client",
+          "stratum": 4,
+          "source_subtype": "gpsd",
+          "source_subtype_verified": false,
+          "quality": {
+            "gpsd_mode": 3,
+            "gpsd_time_valid": true,
+            "gpsd_time_accuracy_seconds": 1
+          },
+          "expected_authoritative": false,
+          "rejection": "stratum 4 local-client time requires verified gpsd",
+          "rejection_stage": "provider"
+        },
+        {
+          "name": "local-client-gpsd-missing-quality",
+          "source": "Local-client",
+          "stratum": 4,
+          "source_subtype": "gpsd",
+          "source_subtype_verified": true,
+          "quality": {},
+          "expected_authoritative": false,
+          "rejection": "gpsd-fix-mode-not-valid",
+          "rejection_stage": "provider"
+        },
+        {
+          "name": "local-client-gpsd-time-invalid",
+          "source": "Local-client",
+          "stratum": 4,
+          "source_subtype": "gpsd",
+          "source_subtype_verified": true,
+          "quality": {
+            "gpsd_mode": 3,
+            "gpsd_time_valid": false,
+            "gpsd_time_accuracy_seconds": 1
+          },
+          "expected_authoritative": false,
+          "rejection": "gpsd-time-not-valid",
+          "rejection_stage": "provider"
+        }
+      ],
+      "provision_cases": [
+        {
+          "name": "virgin-marker-noop-not-acknowledged",
+          "build_epoch": 1700000000,
+          "expected_floor": 1700000000,
+          "status": "virgin marker persistence was not acknowledged",
+          "action": "virgin_noop_reject"
+        },
+        {
+          "name": "virgin-marker-consumed-once",
+          "build_epoch": 1700000000,
+          "expected_floor": 1700000000,
+          "status": "virgin provision state is not bound to the configured admin",
+          "action": "virgin_reuse_reject"
+        },
+        {
+          "name": "raw-integer-cannot-raise-floor",
+          "build_epoch": 1700000000,
+          "provision_epoch": 1800000000,
+          "expected_floor": 1700000000,
+          "status": "unauthenticated",
+          "action": "raw_integer"
+        },
+        {
+          "name": "record-version-rollback",
+          "build_epoch": 1700000000,
+          "provision_epoch": 1800000000,
+          "record_version": 1,
+          "minimum_record_version": 2,
+          "record_board": "expected",
+          "expected_floor": 1700000000,
+          "status": "rollback",
+          "action": "install_reject"
+        },
+        {
+          "name": "board-identity-mismatch",
+          "build_epoch": 1700000000,
+          "provision_epoch": 1800000000,
+          "record_version": 2,
+          "record_board": "other",
+          "expected_floor": 1700000000,
+          "status": "identity-mismatch",
+          "action": "install_reject"
+        },
+        {
+          "name": "new-version-persists-before-acceptance",
+          "build_epoch": 1700000000,
+          "provision_epoch": 1700000100,
+          "record_version": 2,
+          "minimum_record_version": 1,
+          "record_board": "expected",
+          "expected_floor": 1700000100,
+          "status": "accepted",
+          "action": "install_accept"
+        },
+        {
+          "name": "clear-reboot-same-record-reactivation",
+          "build_epoch": 1700000000,
+          "provision_epoch": 1700000100,
+          "record_version": 2,
+          "record_board": "expected",
+          "expected_floor": 1700000100,
+          "status": "accepted",
+          "action": "clear_reboot_reactivate"
+        }
+      ]
     },
     {
       "name": "sfn_delta_wrap",
@@ -303,11 +865,46 @@
       "state_after_3rd": "SYNCED"
     },
     {
+      "name": "desync_fsm_recovery_timeout",
+      "description": "Incomplete recovery returns to DESYNCED after 3 missed superframes.",
+      "category": "desync_fsm",
+      "cases": [
+        {
+          "valid_count": 1,
+          "timeout_superframes": 3,
+          "states": [
+            "RECOVERING",
+            "RECOVERING",
+            "DESYNCED"
+          ],
+          "final_consecutive": 0
+        },
+        {
+          "valid_count": 2,
+          "timeout_superframes": 3,
+          "states": [
+            "RECOVERING",
+            "RECOVERING",
+            "DESYNCED"
+          ],
+          "final_consecutive": 0
+        }
+      ]
+    },
+    {
       "name": "tdma_slot_constants",
-      "description": "14.8 Superframe guard 50ms (alt 100ms per table), slot 250ms, beacon timeout 3x superframe.",
+      "description": "14.8 slot minimum is ceil(maximum permitted PHY-payload airtime) + the single normative 50 ms guard.",
       "category": "tdma_constants",
       "guard_ms": 50,
-      "slot_ms": 250
+      "max_phy_payload_bytes": 255,
+      "sf": 10,
+      "bw_hz": 125000,
+      "coding_rate": "4/5",
+      "preamble_symbols": 8,
+      "explicit_header": true,
+      "phy_crc": true,
+      "max_payload_airtime_us": 2295808,
+      "slot_ms": 2346
     }
   ]
 }

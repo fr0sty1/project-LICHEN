@@ -13,6 +13,7 @@ from collections.abc import Callable
 from typing import Any
 
 from lichen.sim.events import (
+    DelayedRxReadyEvent,
     Event,
     RxTimeoutEvent,
     TxEndEvent,
@@ -104,6 +105,8 @@ class EventHandlersMixin:
                 self._handle_tx_end(event)
             case RxTimeoutEvent():
                 self._handle_rx_timeout(event)
+            case DelayedRxReadyEvent():
+                pass
 
     def _handle_tx_start_delayed(self, event: TxStartDelayedEvent) -> None:
         """Handle delayed transmission start event.

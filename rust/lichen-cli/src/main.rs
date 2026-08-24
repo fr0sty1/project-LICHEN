@@ -66,6 +66,9 @@ enum Command {
     /// Show received messages (inbox).
     Inbox,
 
+    /// Show sent messages.
+    Sent,
+
     /// Key management subcommands.
     Key {
         #[command(subcommand)]
@@ -153,6 +156,7 @@ async fn main() {
         Command::Neighbors => commands::neighbors(cli.node, &fmt).await,
         Command::Send { to, message } => commands::send(cli.node, &to, &message, &fmt).await,
         Command::Inbox => commands::inbox(cli.node, &fmt).await,
+        Command::Sent => commands::sent(cli.node, &fmt).await,
         Command::Key { action } => commands::key(cli.node, action, &fmt).await,
         Command::Config { action } => commands::config(cli.node, action, &fmt).await,
         Command::Position { action } => commands::position(cli.node, action, &fmt).await,

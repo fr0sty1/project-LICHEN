@@ -26,11 +26,26 @@ The default unsigned signature is empty; a signed message carries 48 bytes.
 
 LOADNG_ICMPV6_TYPE = 158
 INITIAL_HOP_LIMIT = 4
+# Spec appendix B2.1: RREQ flood bound. The hop field is one wire byte, but
+# values above 15 are malformed. 0 is in range: RREQ hop_limit=0 is terminal
+# (do not rebroadcast); RREP hop_count=0 is the destination itself.
 MAX_HOP_LIMIT = 15
 SIGNATURE_LENGTH = 48
 
 _RREQ_RREP_PREFIX = 36  # flags(1) hop(1) seq(2) originator(16) destination(16)
 _RERR_PREFIX = 18  # flags(1) error_code(1) unreachable(16)
+
+
+def _validate_hop(value: int, field: str) -> None:
+    """Reject hop_limit/hop_count outside 0..=MAX_HOP_LIMIT (spec B2.1)."""
+    if not 0 <= value <= MAX_HOP_LIMIT:
+        raise LoadngError(f"{field} out of range: {value}")
+
+
+def _validate_u8(value: int, field: str) -> None:
+    """Reject a one-byte wire field outside 0..=255."""
+    if not 0 <= value <= 255:
+        raise LoadngError(f"{field} out of range: {value}")
 
 
 def _parse_signature(data: bytes, offset: int) -> bytes:
@@ -67,10 +82,10 @@ class RREQ:
     def to_bytes(self) -> bytes:
         if not 0 <= self.seq_num <= 0xFFFF:
             raise LoadngError(f"seq_num out of range: {self.seq_num}")
-        if not 0 <= self.hop_limit <= MAX_HOP_LIMIT:
-            raise LoadngError(f"hop_limit out of range: {self.hop_limit}")
+        _validate_hop(self.hop_limit, "hop_limit")
+        _validate_u8(self.flags, "flags")
         return (
-            bytes([self.flags & 0xFF, self.hop_limit])
+            bytes([self.flags, self.hop_limit])
             + self.seq_num.to_bytes(2, "big")
             + IPv6Address(self.originator).packed
             + IPv6Address(self.destination).packed
@@ -86,9 +101,11 @@ class RREQ:
             raise LoadngError(
                 f"invalid signature length: {len(signature)}, expected 0 or {SIGNATURE_LENGTH}"
             )
+        hop_limit = data[1]
+        _validate_hop(hop_limit, "hop_limit")
         return cls(
             flags=data[0],
-            hop_limit=data[1],
+            hop_limit=hop_limit,
             seq_num=int.from_bytes(data[2:4], "big"),
             originator=IPv6Address(data[4:20]),
             destination=IPv6Address(data[20:36]),
@@ -110,10 +127,10 @@ class RREP:
     def to_bytes(self) -> bytes:
         if not 0 <= self.seq_num <= 0xFFFF:
             raise LoadngError(f"seq_num out of range: {self.seq_num}")
-        if not 0 <= self.hop_count <= MAX_HOP_LIMIT:
-            raise LoadngError(f"hop_count out of range: {self.hop_count}")
+        _validate_hop(self.hop_count, "hop_count")
+        _validate_u8(self.flags, "flags")
         return (
-            bytes([self.flags & 0xFF, self.hop_count])
+            bytes([self.flags, self.hop_count])
             + self.seq_num.to_bytes(2, "big")
             + IPv6Address(self.originator).packed
             + IPv6Address(self.destination).packed
@@ -129,9 +146,11 @@ class RREP:
             raise LoadngError(
                 f"invalid signature length: {len(signature)}, expected 0 or {SIGNATURE_LENGTH}"
             )
+        hop_count = data[1]
+        _validate_hop(hop_count, "hop_count")
         return cls(
             flags=data[0],
-            hop_count=data[1],
+            hop_count=hop_count,
             seq_num=int.from_bytes(data[2:4], "big"),
             originator=IPv6Address(data[4:20]),
             destination=IPv6Address(data[20:36]),
@@ -149,10 +168,10 @@ class RERR:
     signature: bytes = field(default=b"")
 
     def to_bytes(self) -> bytes:
-        if not 0 <= self.error_code <= 255:
-            raise LoadngError(f"error_code out of range: {self.error_code}")
+        _validate_u8(self.error_code, "error_code")
+        _validate_u8(self.flags, "flags")
         return (
-            bytes([self.flags & 0xFF, self.error_code & 0xFF])
+            bytes([self.flags, self.error_code])
             + IPv6Address(self.unreachable).packed
             + self.signature
         )

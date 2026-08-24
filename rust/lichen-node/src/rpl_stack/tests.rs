@@ -7,18 +7,17 @@ use std::vec;
 
 use super::*;
 use crate::announce::MAX_TRACKED_ORIGINATORS;
-use crate::routing::{DaoRxState, Router, ROOT_RANK};
+use crate::routing::{Router, ROOT_RANK};
 use crate::runtime::{RplRuntimeAction, RplRuntimeActionError, RplRuntimeConfig};
 use crate::secure::SecureStack;
 use crate::stack::{Priority, Stack, TxError, MAX_FRAME_SIZE};
 
-use lichen_core::announce::AnnounceBuilder;
+use lichen_core::announce::{write_announce_signed_data, AnnounceBuilder};
 use lichen_core::constants::L2_DISPATCH_ROUTING;
-use lichen_core::icmpv6::hdr_field;
-use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
+use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_hal::loopback::LoopbackRadio;
 use lichen_hal::storage::mem::MemStorage;
-use lichen_hal::{ChannelConfig, Radio, RadioConfig, RxPacket};
+use lichen_hal::{ChannelConfig, Radio, RadioConfig, RxPacket, TxResult};
 use lichen_ipv6::{Addr, Ipv6Header};
 use lichen_link::frame::{AddrMode, LichenFrame};
 use lichen_link::identity::{Identity, PeerIdentity};
@@ -36,11 +35,11 @@ use std::convert::Infallible;
 use std::sync::{Arc, Mutex};
 
 use crate::announce::{AnnounceProcessor, AnnounceRejectReason};
-use crate::node::{rpl_code, valid_rpl_ipv6, RplEvent};
+use crate::node::{rpl_code, RplEvent};
 use crate::runtime::RplRuntime;
 use crate::secure::{SecureResponse, SecureResponseData};
 
-use super::error::{RplReceiveError, RplRuntimeReceiveError, RplRuntimeTrickleError};
+use super::error::{RplReceiveError, RplRuntimeReceiveError};
 use super::provisioning::provision_or_resume_root_state;
 use super::util::{
     advance_rpl_source_route, dao_ipv6_packet, dao_parts, eui64_link_local, ipv6_eui64,
@@ -114,9 +113,10 @@ impl SenderStateStore for TestOscoreStore {
 impl Radio for RuntimeRadio {
     type Error = Infallible;
 
-    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<TxResult, Self::Error> {
         self.0.lock().unwrap().transmitted.push(payload.to_vec());
-        Ok(())
+        let airtime_us = 12_000 + (payload.len() as u32) * 66;
+        Ok(TxResult { airtime_us })
     }
 
     async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
@@ -149,7 +149,7 @@ impl FailOnceRadio {
 impl Radio for FailOnceRadio {
     type Error = ();
 
-    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<TxResult, Self::Error> {
         if core::mem::take(&mut self.fail_next) {
             return Err(());
         }
@@ -226,11 +226,12 @@ fn deliver(state: &mut MeshState, source: Option<usize>, wire: &[u8]) {
 impl Radio for MeshRadio {
     type Error = Infallible;
 
-    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<TxResult, Self::Error> {
         let mut state = self.state.lock().unwrap();
         state.sent.push(payload.to_vec());
         deliver(&mut state, Some(self.index), payload);
-        Ok(())
+        let airtime_us = 12_000 + (payload.len() as u32) * 66;
+        Ok(TxResult { airtime_us })
     }
 
     async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
@@ -376,12 +377,12 @@ async fn runtime_completes_trickle_multicast_suppression_and_expiry() {
     assert!(suppressed_radio.lock().unwrap().transmitted.is_empty());
 }
 
-fn address(identity: &Identity, host_prefix: u8) -> [u8; 16] {
-    let mut address = [0u8; 16];
-    address[0] = 0xfd;
-    address[7] = host_prefix;
-    address[8..].copy_from_slice(&identity.iid);
-    address
+fn address(identity: &Identity, _host_prefix: u8) -> [u8; 16] {
+    lichen_core::addr::ygg_addr_from_pubkey(identity.pubkey.as_bytes())
+}
+
+fn root_address(identity: &Identity) -> [u8; 16] {
+    lichen_core::addr::ygg_addr_from_pubkey(identity.pubkey.as_bytes())
 }
 
 fn announces(prefix: [u8; 8]) -> AnnounceProcessor {
@@ -455,7 +456,11 @@ async fn plaintext_coap_is_not_delivered_by_rpl_owner() {
     .unwrap();
 
     sender
-        .send_coap_raw(&Addr(receiver_addr), &[0x40, 0x01, 0x12, 0x34], Priority::Normal)
+        .send_coap_raw(
+            &Addr(receiver_addr),
+            &[0x40, 0x01, 0x12, 0x34],
+            Priority::Normal,
+        )
         .await
         .unwrap();
 
@@ -478,11 +483,16 @@ async fn plaintext_coap_is_not_delivered_by_rpl_owner() {
 
 fn signed_announce(identity: &Identity, sequence: u16) -> Vec<u8> {
     let rx_channel = 3;
-    let mut signed = Vec::new();
-    signed.extend_from_slice(&identity.iid);
-    signed.extend_from_slice(identity.pubkey.as_bytes());
-    signed.extend_from_slice(&sequence.to_be_bytes());
-    signed.push(rx_channel);
+    let mut signed = [0u8; 64];
+    write_announce_signed_data(
+        &identity.iid,
+        identity.pubkey.as_bytes(),
+        sequence,
+        rx_channel,
+        &[],
+        &mut signed,
+    )
+    .unwrap();
     let signature = schnorr::sign(&identity.privkey, &identity.pubkey, &signed);
     let mut wire = vec![0u8; 93];
     let len = AnnounceBuilder {
@@ -545,9 +555,34 @@ fn dio_packet_from(
         flags: 0,
         dodag_id,
     };
-    let mut body = [0u8; Dio::BASE_LEN];
+    let mut body = [0u8; Dio::SERIALIZED_LEN];
     let len = dio.write_to(&mut body).unwrap();
     rpl_ipv6_packet(source, destination, rpl_code::DIO, &body[..len]).unwrap()
+}
+
+fn dio_packet_with_raw_version_options(
+    source: [u8; 16],
+    destination: [u8; 16],
+    dodag_id: [u8; 16],
+    rank: u16,
+    options: &[u8],
+) -> Vec<u8> {
+    let dio = Dio {
+        rpl_instance_id: lichen_core::constants::RPL_INSTANCE_ID,
+        version: 0,
+        rank,
+        grounded: true,
+        mode_of_operation: 1,
+        preference: 0,
+        dtsn: 0,
+        flags: 0,
+        dodag_id,
+    };
+    let mut canonical = [0u8; Dio::SERIALIZED_LEN];
+    dio.write_to(&mut canonical).unwrap();
+    let mut body = canonical[..Dio::BASE_LEN].to_vec();
+    body.extend_from_slice(options);
+    rpl_ipv6_packet(source, destination, rpl_code::DIO, &body).unwrap()
 }
 
 async fn join_leaf<R: Radio, L: Radio, S: NonVolatile>(
@@ -572,7 +607,16 @@ async fn join_leaf<R: Radio, L: Radio, S: NonVolatile>(
         .unwrap()
         .is_some());
     sender
-        .send_ipv6_to(&dio_packet(root_addr, leaf_addr), &ipv6_eui64(leaf_addr), Priority::Routing)
+        .send_ipv6_to(
+            &dio_packet_from(
+                link_local_from_iid(root_identity.iid),
+                link_local_from_iid(leaf_addr[8..].try_into().unwrap()),
+                root_addr,
+                ROOT_RANK,
+            ),
+            &ipv6_eui64(leaf_addr),
+            Priority::Routing,
+        )
         .await
         .unwrap();
     assert!(matches!(
@@ -590,7 +634,7 @@ async fn receive_ipv6(stack: &mut Stack<LoopbackRadio>) -> ReceivedIpv6 {
 async fn announcement_bootstraps_real_l2_peer_and_rejects_tampering() {
     let root_identity = identity(1);
     let peer_identity = identity(2);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let (peer_radio, root_radio) = LoopbackRadio::pair();
     let mut peer = Stack::new_default_epoch(peer_radio, peer_identity.clone());
     let root_stack = Stack::new_default_epoch(root_radio, root_identity);
@@ -685,7 +729,7 @@ async fn sending_local_announce_does_not_mutate_full_remote_state() {
 async fn failed_announce_relay_can_retry_same_origin_sequence() {
     let root_identity = identity(251);
     let peer_identity = identity(252);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let (peer_radio, root_radio) = LoopbackRadio::pair();
     let mut peer = Stack::new_default_epoch(peer_radio, peer_identity.clone());
     let root_stack = Stack::new_default_epoch(
@@ -734,7 +778,7 @@ async fn failed_announce_relay_can_retry_same_origin_sequence() {
 #[tokio::test]
 async fn announcement_bootstrap_is_bounded_and_rejection_forgets_replay() {
     let root_identity = identity(20);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let (mut transmitter, root_radio) = LoopbackRadio::pair();
     let mut root = RplStack::provision_root(
         Stack::new_default_epoch(root_radio, root_identity),
@@ -813,7 +857,7 @@ async fn announcement_bootstrap_is_bounded_and_rejection_forgets_replay() {
 async fn rpl_dispatch_rejects_invalid_ipv6_length_and_checksum() {
     let root_identity = identity(11);
     let leaf_identity = identity(12);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let leaf_addr = address(&leaf_identity, 1);
     let (root_radio, leaf_radio) = LoopbackRadio::pair();
     let mut root = Stack::new_default_epoch(root_radio, root_identity.clone());
@@ -847,9 +891,13 @@ async fn rpl_dispatch_rejects_invalid_ipv6_length_and_checksum() {
     cases.push(partial_rpl);
 
     for packet in cases {
-        root.send_ipv6_to(&packet, &ipv6_eui64(leaf_addr), Priority::Routing)
-            .await
-            .unwrap();
+        if matches!(
+            root.send_ipv6_to(&packet, &ipv6_eui64(leaf_addr), Priority::Routing)
+                .await,
+            Err(crate::stack::TxError::SchcCompress)
+        ) {
+            continue;
+        }
         assert!(matches!(
             leaf.receive(1, 1).await.unwrap(),
             Some(RplReceiveOutcome::RplRejected)
@@ -866,7 +914,7 @@ async fn rpl_dispatch_rejects_invalid_ipv6_length_and_checksum() {
 #[tokio::test]
 async fn multicast_dio_and_dis_use_broadcast_l2_destination() {
     let root_identity = identity(253);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let unicast = address(&identity(254), 1);
     let multicast = [0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a];
     let (root_radio, mut observer) = LoopbackRadio::pair();
@@ -918,7 +966,7 @@ async fn multicast_dio_and_dis_use_broadcast_l2_destination() {
 async fn multicast_dio_and_dis_are_received() {
     let root_identity = identity(247);
     let leaf_identity = identity(248);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let leaf_addr = address(&leaf_identity, 1);
     let multicast = [0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a];
     let (root_radio, leaf_radio) = LoopbackRadio::pair();
@@ -951,6 +999,39 @@ async fn multicast_dio_and_dis_are_received() {
     ));
     assert!(leaf.rpl_node().is_joined());
 
+    for invalid_options in [
+        [].as_slice(),
+        [0x13, 0].as_slice(),
+        [0x13, 2, 3, 0].as_slice(),
+        [0x13, 1, 3, 0x13, 1, 3].as_slice(),
+        [0x13, 1, 2].as_slice(),
+    ] {
+        let invalid = dio_packet_with_raw_version_options(
+            root_addr,
+            multicast,
+            root_addr,
+            ROOT_RANK,
+            invalid_options,
+        );
+        root.stack
+            .send_ipv6_to(&invalid, &[], Priority::Routing)
+            .await
+            .unwrap();
+        assert!(matches!(
+            leaf.receive(1, 0).await.unwrap(),
+            Some(RplReceiveOutcome::RplRejected)
+        ));
+        assert!(leaf.rpl_node().is_joined());
+        assert_eq!(leaf.rpl_node().router.neighbors().iter().count(), 1);
+
+        root.send_dio(multicast).await.unwrap();
+        assert!(matches!(
+            leaf.receive(1, 0).await.unwrap(),
+            Some(RplReceiveOutcome::Rpl(RplEvent::DioReceived { .. }))
+        ));
+        assert!(leaf.rpl_node().is_joined());
+    }
+
     leaf.send_dis(multicast).await.unwrap();
     assert!(matches!(
         root.receive(1, 0).await.unwrap(),
@@ -976,7 +1057,7 @@ async fn multicast_dio_and_dis_are_received() {
 #[tokio::test]
 async fn multicast_dis_uses_bounded_node_differentiated_jitter() {
     let sender = identity(240);
-    let sender_addr = address(&sender, 1);
+    let sender_addr = link_local_from_iid(sender.iid);
     let first_identity = identity(241);
     let first_eui64 = ipv6_eui64(address(&first_identity, 1));
     // Default DodagConfig uses dio_int_min=12, so imin=4096ms, range=2048ms.
@@ -1057,7 +1138,7 @@ async fn multicast_dis_uses_bounded_node_differentiated_jitter() {
 async fn unrelated_rpl_multicast_does_not_consume_sender_replay_state() {
     let root_identity = identity(245);
     let leaf_identity = identity(246);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let leaf_addr = address(&leaf_identity, 1);
     let (mut sender_radio, leaf_radio) = LoopbackRadio::pair();
     let mut leaf_stack = Stack::new_default_epoch(leaf_radio, leaf_identity);
@@ -1070,6 +1151,7 @@ async fn unrelated_rpl_multicast_does_not_consume_sender_replay_state() {
         MemStorage::new(),
     )
     .unwrap();
+    let root_link_local = link_local_from_iid(root_identity.iid);
     let link = LinkLayer::new(root_identity);
     let mut wire = [0u8; MAX_FRAME_SIZE];
     let mut schc = [0u8; 200];
@@ -1077,7 +1159,7 @@ async fn unrelated_rpl_multicast_does_not_consume_sender_replay_state() {
     let unrelated = [0xff, 0x05, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12, 0x34, 0, 0];
 
     for (destination, accepted) in [(unrelated, false), (RPL_ALL_NODES, true)] {
-        let packet = dio_packet_from(root_addr, destination, root_addr, ROOT_RANK);
+        let packet = dio_packet_from(root_link_local, destination, root_addr, ROOT_RANK);
         let schc_len = codec::compress(&packet, &mut schc).unwrap();
         payload[0] = lichen_core::constants::L2_DISPATCH_SCHC;
         payload[1..1 + schc_len].copy_from_slice(&schc[..schc_len]);
@@ -1105,7 +1187,7 @@ async fn broadcast_wrapped_foreign_unicast_dio_dis_are_rejected_without_mutation
     let foreign_addr = address(&identity(233), 1);
     let sender_addr = address(&sender, 1);
     let leaf_addr = address(&leaf_identity, 1);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let (mut leaf_tx, leaf_radio) = LoopbackRadio::pair();
     let (mut root_tx, root_radio) = LoopbackRadio::pair();
     let mut leaf_stack = Stack::new_default_epoch(leaf_radio, leaf_identity);
@@ -1139,7 +1221,7 @@ async fn broadcast_wrapped_foreign_unicast_dio_dis_are_rejected_without_mutation
         flags: 0,
         dodag_id: sender_addr,
     };
-    let mut dio_body = [0u8; Dio::BASE_LEN];
+    let mut dio_body = [0u8; Dio::SERIALIZED_LEN];
     dio.write_to(&mut dio_body).unwrap();
     let build_wire = |code: u8, body: &[u8]| {
         let packet = rpl_ipv6_packet(sender_addr, foreign_addr, code, body).unwrap();
@@ -1253,7 +1335,7 @@ async fn non_destination_does_not_consume_sender_replay_state() {
 async fn leaf_send_allocates_each_update_and_restart_advances_sequence() {
     let root_identity = identity(3);
     let leaf_identity = identity(4);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let leaf_addr = address(&leaf_identity, 1);
     let (root_radio, leaf_radio) = LoopbackRadio::pair();
     let mut root_sender = Stack::new_default_epoch(root_radio, root_identity.clone());
@@ -1335,7 +1417,7 @@ async fn leaf_send_allocates_each_update_and_restart_advances_sequence() {
 async fn dao_radio_failure_retains_exact_finalized_bytes() {
     let root_identity = identity(101);
     let leaf_identity = identity(102);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let leaf_addr = address(&leaf_identity, 1);
     let (root_radio, leaf_radio) = LoopbackRadio::pair();
     let mut root = Stack::new_default_epoch(root_radio, root_identity.clone());
@@ -1374,7 +1456,7 @@ async fn relay_forwards_original_source_and_signed_body() {
     let root_identity = identity(5);
     let relay_identity = identity(6);
     let leaf_identity = identity(7);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let relay_addr = address(&relay_identity, 1);
     let leaf_addr = address(&leaf_identity, 1);
     let (root_radio, relay_radio) = LoopbackRadio::pair();
@@ -1424,7 +1506,7 @@ async fn relay_forwards_original_source_and_signed_body() {
     .unwrap();
     let mut leaf_router = Router::new(leaf_addr, root_addr);
     let dio = Dio::from_bytes(&dio_packet(root_addr, leaf_addr)[44..]).unwrap();
-    let mut dio_body = [0u8; Dio::BASE_LEN];
+    let mut dio_body = [0u8; Dio::SERIALIZED_LEN];
     let dio_len = dio.write_to(&mut dio_body).unwrap();
     assert!(leaf_router.process_dio(&dio, &dio_body[..dio_len], relay_addr, 0, 0));
     let signed = leaf_router
@@ -1440,10 +1522,15 @@ async fn relay_forwards_original_source_and_signed_body() {
         .build_frame(128, 1u16.into(), &[], &payload, &mut wire)
         .unwrap();
     root.radio().transmit(0, &wire[..len]).await.unwrap();
-    assert!(matches!(
-        relay.receive(1, 0).await.unwrap(),
-        Some(RplReceiveOutcome::Forwarded { next_hop }) if next_hop == root_addr
-    ));
+    let relay_outcome = relay.receive(1, 0).await.unwrap();
+    assert!(
+        matches!(
+            relay_outcome,
+        Some(RplReceiveOutcome::Forwarded { next_hop })
+            if next_hop == link_local_from_iid(root_identity.iid)
+        ),
+        "{relay_outcome:?}"
+    );
 
     let forwarded = receive_ipv6(&mut root).await;
     assert_eq!(
@@ -1459,7 +1546,7 @@ async fn three_rpl_stacks_send_leaf_dao_via_preferred_parent() {
     let root_identity = identity(16);
     let relay_identity = identity(17);
     let leaf_identity = identity(18);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let relay_addr = address(&relay_identity, 1);
     let leaf_addr = address(&leaf_identity, 1);
     let mut root_eui64 = root_identity.iid;
@@ -1551,7 +1638,10 @@ async fn three_rpl_stacks_send_leaf_dao_via_preferred_parent() {
         leaf.receive(1, 0).await.unwrap(),
         Some(RplReceiveOutcome::Rpl(RplEvent::DioReceived { .. }))
     ));
-    assert_eq!(leaf.rpl_node().preferred_parent(), Some(relay_addr));
+    assert_eq!(
+        leaf.rpl_node().preferred_parent(),
+        Some(link_local_from_iid(relay_identity.iid))
+    );
     let unknown_downward = address(&identity(99), 1);
     assert!(leaf.route_for(unknown_downward, 0, true).is_none());
 
@@ -1593,10 +1683,14 @@ async fn three_rpl_stacks_send_leaf_dao_via_preferred_parent() {
     ));
 
     relay.send_dao().await.unwrap();
-    assert!(matches!(
-        root.receive(1, 0).await.unwrap(),
-        Some(RplReceiveOutcome::Dao(DaoHandlingOutcome::Applied))
-    ));
+    let relay_dao_outcome = root.receive(1, 0).await.unwrap();
+    assert!(
+        matches!(
+            relay_dao_outcome,
+            Some(RplReceiveOutcome::Dao(DaoHandlingOutcome::Applied))
+        ),
+        "{relay_dao_outcome:?}"
+    );
     let before_leaf = mesh.sent().len();
 
     leaf.send_dao().await.unwrap();
@@ -1604,18 +1698,27 @@ async fn three_rpl_stacks_send_leaf_dao_via_preferred_parent() {
     let originated = LichenFrame::from_bytes(&sent[before_leaf]).unwrap();
     assert_eq!(originated.addr_mode, AddrMode::Extended);
     assert_eq!(originated.dst_addr, relay_eui64);
-    assert!(matches!(
-        relay.receive(1, 0).await.unwrap(),
-        Some(RplReceiveOutcome::Forwarded { next_hop }) if next_hop == root_addr
-    ));
+    let relay_outcome = relay.receive(1, 0).await.unwrap();
+    assert!(
+        matches!(
+            relay_outcome,
+        Some(RplReceiveOutcome::Forwarded { next_hop })
+            if next_hop == link_local_from_iid(root_identity.iid)
+        ),
+        "{relay_outcome:?}"
+    );
     let sent = mesh.sent();
     let forwarded = LichenFrame::from_bytes(&sent[before_leaf + 1]).unwrap();
     assert_eq!(forwarded.addr_mode, AddrMode::Extended);
     assert_eq!(forwarded.dst_addr, root_eui64);
-    assert!(matches!(
-        root.receive(1, 0).await.unwrap(),
-        Some(RplReceiveOutcome::Dao(DaoHandlingOutcome::Applied))
-    ));
+    let leaf_dao_outcome = root.receive(1, 0).await.unwrap();
+    assert!(
+        matches!(
+            leaf_dao_outcome,
+            Some(RplReceiveOutcome::Dao(DaoHandlingOutcome::Applied))
+        ),
+        "{leaf_dao_outcome:?}"
+    );
     assert_eq!(
         root.rpl_node().router.lookup_route(&leaf_addr),
         Some([relay_addr, leaf_addr].as_slice())
@@ -1697,7 +1800,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     let root_identity = identity(8);
     let leaf_identity = identity(9);
     let unknown_identity = identity(10);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let leaf_addr = address(&leaf_identity, 1);
     let unknown_addr = address(&unknown_identity, 1);
     let (leaf_radio, root_radio) = LoopbackRadio::pair();
@@ -1740,7 +1843,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
         flags: 0,
         dodag_id: root_addr,
     };
-    let mut dio_body = [0u8; Dio::BASE_LEN];
+    let mut dio_body = [0u8; Dio::SERIALIZED_LEN];
     let dio_len = dio.write_to(&mut dio_body).unwrap();
     assert!(leaf_router.process_dio(&dio, &dio_body[..dio_len], root_addr, 0, 0));
     let signed = leaf_router
@@ -1826,13 +1929,18 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
     .unwrap();
     assert!(matches!(
         root.receive(1, 0).await.unwrap(),
-        Some(RplReceiveOutcome::Dao(DaoHandlingOutcome::BadSignature))
+        Some(RplReceiveOutcome::Dao(DaoHandlingOutcome::IidMismatch))
     ));
-    assert!(root
-        .rpl_node()
-        .router
-        .lookup_route(&substituted_source)
-        .is_none());
+    assert_eq!(
+        root.rpl_node().router.lookup_route(&substituted_source),
+        None,
+        "a rejected prefix alias must not resolve through an IID-only fallback"
+    );
+    assert_eq!(
+        root.rpl_node().router.lookup_route(&leaf_addr),
+        Some([leaf_addr].as_slice()),
+        "the rejected DAO must not mutate the canonical host route"
+    );
 
     let before = root.rpl_node().router.lookup_route(&unknown_addr);
     assert!(before.is_none());
@@ -2017,7 +2125,7 @@ async fn root_dispatch_installs_route_and_failures_do_not_mutate() {
 #[test]
 fn announce_tofu_churn_does_not_admit_dao_origins() {
     let root_identity = identity(200);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let (_peer_radio, root_radio) = LoopbackRadio::pair();
     let mut root = RplStack::provision_root(
         Stack::new_default_epoch(root_radio, root_identity),
@@ -2041,7 +2149,7 @@ fn announce_tofu_churn_does_not_admit_dao_origins() {
 #[test]
 fn dao_origin_admission_is_bounded_without_eviction() {
     let root_identity = identity(201);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let (_peer_radio, root_radio) = LoopbackRadio::pair();
     let mut root = RplStack::provision_root(
         Stack::new_default_epoch(root_radio, root_identity),
@@ -2082,7 +2190,7 @@ fn dao_origin_admission_is_bounded_without_eviction() {
 #[test]
 fn dao_origin_admission_survives_restart_before_first_dao() {
     let root_identity = identity(202);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let admitted = identity(203);
     let (_peer_radio, root_radio) = LoopbackRadio::pair();
     let mut root = RplStack::provision_root(
@@ -2117,7 +2225,7 @@ fn dao_origin_admission_survives_restart_before_first_dao() {
 #[test]
 fn failed_dao_admission_write_changes_neither_ram_nor_storage() {
     let root_identity = identity(204);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let admitted = identity(205);
     let (_peer_radio, root_radio) = LoopbackRadio::pair();
     let mut root = RplStack::provision_root(
@@ -2158,7 +2266,7 @@ fn failed_dao_admission_write_changes_neither_ram_nor_storage() {
 #[test]
 fn root_provisioning_resumes_each_write_boundary() {
     let root_identity = identity(206);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let instance = lichen_core::constants::RPL_INSTANCE_ID;
 
     for successful_writes in 0..=1 {
@@ -2196,7 +2304,7 @@ fn root_provisioning_resumes_each_write_boundary() {
 #[test]
 fn root_provisioning_resumes_either_matching_empty_partial_state() {
     let root_identity = identity(207);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let instance = lichen_core::constants::RPL_INSTANCE_ID;
 
     let mut admission_only = MemStorage::new();
@@ -2237,7 +2345,7 @@ fn root_provisioning_resumes_either_matching_empty_partial_state() {
 #[test]
 fn root_provisioning_rejects_mismatched_and_nonempty_partials() {
     let root_identity = identity(208);
-    let root_addr = address(&root_identity, 1);
+    let root_addr = root_address(&root_identity);
     let other_addr = address(&identity(209), 1);
     let instance = lichen_core::constants::RPL_INSTANCE_ID;
 

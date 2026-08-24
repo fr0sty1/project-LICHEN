@@ -6,7 +6,9 @@
  * @brief CoAP messaging resources for LCI
  *
  * Implements /msg resources per LCI spec section 17.5.7:
+ * - GET /msg/sent - retrieve sent messages
  * - POST /msg/sent - queue outbound message
+ * - GET /msg/sent/<id> - get status of sent message
  * - GET /msg/inbox - retrieve inbound messages (observable)
  * - POST /msg/ack - acknowledge message receipt
  *
@@ -176,6 +178,27 @@ int lichen_msg_sent_post(struct coap_resource *_Nonnull resource,
 int lichen_msg_sent_id_get(struct coap_resource *_Nonnull resource,
 			   struct coap_packet *_Nonnull request,
 			   struct sockaddr *_Nonnull addr, socklen_t addr_len);
+
+/**
+ * @brief CoAP handler for GET /msg/sent
+ *
+ * Retrieve sent messages. CBOR response format:
+ * {
+ *   "messages": [
+ *     {
+ *       "id": <uint>,
+ *       "to": "<IPv6 address string>",
+ *       "body": "<message text>",
+ *       "timestamp": <uint>,
+ *       "status": "queued"|"sending"|"delivered"|"failed"
+ *     },
+ *     ...
+ *   ]
+ * }
+ */
+int lichen_msg_sent_get_handler(struct coap_resource *_Nonnull resource,
+				struct coap_packet *_Nonnull request,
+				struct sockaddr *_Nonnull addr, socklen_t addr_len);
 
 /**
  * @brief CoAP handler for GET /msg/inbox

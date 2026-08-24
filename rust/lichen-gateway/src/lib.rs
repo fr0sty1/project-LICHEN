@@ -5,10 +5,16 @@
 
 pub mod aprs_is;
 pub mod config;
+pub mod discovery;
 pub mod gateway;
+pub mod handoff;
+pub mod resources;
 pub mod slip;
+pub mod slot;
+pub mod trust;
 #[cfg(target_os = "linux")]
 pub mod tun;
 
 pub use aprs_is::{aprs_to_cot, cot_to_aprs, AprsIsClient, CompactCot};
-pub use gateway::Gateway;
+pub use gateway::{Gateway, GatewayIngress, GatewayOpenError, GatewayPersistence};
+pub use slot::{AllocationMode, SlotAllocator};

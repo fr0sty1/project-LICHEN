@@ -3,6 +3,7 @@
 import contextlib
 from ipaddress import IPv6Address
 
+import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from hypothesis.stateful import RuleBasedStateMachine, rule
@@ -12,11 +13,12 @@ from lichen.coap.schc_channel import unwrap_coap, wrap_coap
 from lichen.crypto.identity import _pubkey_to_iid
 from lichen.interface.kiss.framing import FEND, kiss_decode, kiss_encode
 from lichen.ipv6.addr import eui64_to_iid, short_addr_to_iid
+from lichen.ipv6.packet import IPv6Header, IPv6Packet, NextHeader
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.link.replay import ReplayWindow, logical_counter
 from lichen.schc.codec import SchcError, compress, decompress
 from lichen.schc.headers import compress_packet, decompress_packet
-from lichen.schc.rules import COAP_RULE, RULE_ID_UNCOMPRESSED, RULES
+from lichen.schc.rules import COAP_RULE, RULE_ID_UNCOMPRESSED, RULES, UNCOMPRESSED_RULE
 
 
 @given(
@@ -42,6 +44,7 @@ def test_frame_roundtrip(
         mic_length=mic_length,
         signature_present=signature_present,
         encrypted=encrypted,
+        signer_eui64=bytes(8) if signature_present else b"",
     )
     try:
         encoded = frame.to_bytes()
@@ -133,10 +136,37 @@ def test_schc_rule_id_is_encoded_as_one_byte():
     assert compress(COAP_RULE, fields)[0] == COAP_RULE.rule_id
 
 
-@given(payload=st.binary(max_size=1280))
+@st.composite
+def complete_ipv6_packets(draw) -> bytes:
+    source_iid = draw(st.binary(min_size=8, max_size=8))
+    destination_iid = draw(st.binary(min_size=8, max_size=8))
+    payload = draw(st.binary(max_size=1024))
+    return IPv6Packet(
+        IPv6Header(
+            src_addr=IPv6Address(b"\xfe\x80" + bytes(6) + source_iid),
+            dst_addr=IPv6Address(b"\xfe\x80" + bytes(6) + destination_iid),
+            next_header=NextHeader.NO_NEXT_HEADER,
+            hop_limit=draw(st.integers(min_value=0, max_value=255)),
+            traffic_class=draw(st.integers(min_value=0, max_value=255)),
+            flow_label=draw(st.integers(min_value=0, max_value=0xFFFFF)),
+        ),
+        payload=payload,
+    ).to_bytes()
+
+
+@given(packet=complete_ipv6_packets())
 @settings(suppress_health_check=[HealthCheck.too_slow])
-def test_schc_packet_roundtrip(payload):
-    assert decompress_packet(compress_packet(payload)) == payload
+def test_schc_packet_roundtrip(packet):
+    assert decompress_packet(compress_packet(packet)) == packet
+
+
+@given(packet=complete_ipv6_packets())
+def test_schc_packet_rejects_ipv6_payload_length_mismatch(packet):
+    malformed = bytearray(packet)
+    declared = int.from_bytes(malformed[4:6], "big")
+    malformed[4:6] = ((declared + 1) & 0xFFFF).to_bytes(2, "big")
+    with pytest.raises(SchcError, match="payload_length"):
+        compress_packet(bytes(malformed))
 
 
 @given(data=st.binary(max_size=200))
@@ -147,7 +177,9 @@ def test_schc_decompress_no_panic(data):
 
 def test_rule_id_validity():
     assert all(0 <= rule_id <= 255 for rule_id in RULES)
-    assert RULE_ID_UNCOMPRESSED not in RULES
+    assert RULES[RULE_ID_UNCOMPRESSED] is UNCOMPRESSED_RULE
+    assert UNCOMPRESSED_RULE.rule_id == RULE_ID_UNCOMPRESSED
+    assert UNCOMPRESSED_RULE.fields == ()
     assert len({rule.rule_id for rule in RULES.values()}) == len(RULES)
 
 

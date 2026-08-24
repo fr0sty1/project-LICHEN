@@ -8,8 +8,7 @@
 
 use lichen_core::duty_cycle::{DutyCycleTracker, WINDOW_MS};
 use lichen_core::tx_queue::{
-    TxPriority, TxQueue, DEADLINE_BULK_MS, DEADLINE_NORMAL_MS, DEADLINE_ROUTING_MS,
-    DEADLINE_SOS_MS,
+    TxPriority, TxQueue, DEADLINE_BULK_MS, DEADLINE_NORMAL_MS, DEADLINE_ROUTING_MS, DEADLINE_SOS_MS,
 };
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -76,21 +75,21 @@ impl RadioState {
 
         // Add some items to the TX queue (capacity is 4 per spec)
         let now = self.now_ms;
-        let _ = self.tx_queue.push(
-            TxPriority::Sos,
-            now + DEADLINE_SOS_MS,
-            now,
-            &[0u8; 12],
-        ); // Emergency SOS
+        let _ = self
+            .tx_queue
+            .push(TxPriority::Sos, now + DEADLINE_SOS_MS, now, &[0u8; 12]); // Emergency SOS
         let _ = self.tx_queue.push(
             TxPriority::Routing,
             now + DEADLINE_ROUTING_MS,
             now,
             &[0u8; 48],
         ); // RPL DIO
-        let _ = self
-            .tx_queue
-            .push(TxPriority::Normal, now + DEADLINE_NORMAL_MS, now, &[0u8; 64]); // Normal message
+        let _ = self.tx_queue.push(
+            TxPriority::Normal,
+            now + DEADLINE_NORMAL_MS,
+            now,
+            &[0u8; 64],
+        ); // Normal message
         let _ = self
             .tx_queue
             .push(TxPriority::Bulk, now + DEADLINE_BULK_MS, now, &[0u8; 200]); // Firmware chunk
@@ -127,11 +126,11 @@ pub fn render_radio_tab(f: &mut Frame, area: Rect, state: &mut RadioState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(6), // Duty cycle section
-            Constraint::Length(1), // Spacer
+            Constraint::Length(6),  // Duty cycle section
+            Constraint::Length(1),  // Spacer
             Constraint::Length(10), // TX queue section (5 priorities + summary + spacer + borders)
-            Constraint::Min(0),    // Remaining space
-            Constraint::Length(1), // Status bar
+            Constraint::Min(0),     // Remaining space
+            Constraint::Length(1),  // Status bar
         ])
         .split(area);
 

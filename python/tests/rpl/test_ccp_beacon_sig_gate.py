@@ -123,19 +123,18 @@ def test_negative_etx_raises() -> None:
 
 
 def test_nan_etx_path_cost() -> None:
-    """Verify NaN ETX handling.
+    """Corrupted candidates fail closed consistently with the Rust oracle.
 
-    Python raises ValueError when round() receives NaN. This is a known
-    divergence from Rust which explicitly handles NaN and returns u16::MAX.
+    Public construction and ``process_dio`` reject NaN before a candidate is
+    admitted.  If internal state is nevertheless corrupted, ``path_cost``
+    must saturate instead of raising from ``round(nan)``.
     """
     candidate = ParentCandidate.__new__(ParentCandidate)
     candidate.neighbor_id = IPv6Address("fe80::1")
     candidate.rank = 256
     candidate.link_etx = float("nan")
 
-    # Python round(nan) raises ValueError
-    with pytest.raises(ValueError, match="cannot convert float NaN"):
-        candidate.path_cost(256)
+    assert candidate.path_cost(256) == INFINITE_RANK
 
 
 @pytest.mark.parametrize("name,vector", _admissibility_vectors())
@@ -189,9 +188,7 @@ def test_sig_gate_conceptual_valid_signature() -> None:
     vector = vectors["sig_gate_valid_allows_dio"]
 
     dodag_id = bytes.fromhex(vector["dio"]["dodag_id_hex"])
-    dodag_id_str = ":".join(
-        f"{dodag_id[i]:02x}{dodag_id[i+1]:02x}" for i in range(0, 16, 2)
-    )
+    dodag_id_str = ":".join(f"{dodag_id[i]:02x}{dodag_id[i + 1]:02x}" for i in range(0, 16, 2))
 
     node = DodagState(
         rpl_instance_id=vector["dio"]["rpl_instance_id"],

@@ -140,7 +140,7 @@ fn main() {
 
         // Transmit
         match futures::executor::block_on(lichen_hal::Radio::transmit(&mut radio, 0, &announce)) {
-            Ok(()) => {
+            Ok(_tx_result) => {
                 metrics.tx_count += 1;
                 metrics.tx_bytes += announce.len() as u64;
                 let hash = Sha256::digest(&announce);

@@ -1,0 +1,325 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "tx_queue_priority",
+  "description": "B.2.3 Priority Queuing oracle for TX queue. Defines priority-based ordering, preemption, and scheduling behavior per spec/appendix-bufferbloat.md Section 3. Independent oracle: all expected results computed outside LICHEN code. All implementations (Python, Rust, C) MUST match these vectors exactly.",
+  "spec": "spec/appendix-bufferbloat.md Section 3 (Priority Queuing)",
+  "constants": {
+    "PRIORITY_SOS": 0,
+    "PRIORITY_ROUTING": 1,
+    "PRIORITY_ACK": 1,
+    "PRIORITY_URGENT": 2,
+    "PRIORITY_NORMAL": 3,
+    "PRIORITY_BULK": 4,
+    "CAPACITY": 4
+  },
+  "traffic_mapping": {
+    "description": "Spec Table: Traffic type to priority level mapping",
+    "mappings": [
+      {"traffic_type": "SOS beacons", "priority": "SOS", "priority_value": 0},
+      {"traffic_type": "Routing control (DIO/DAO)", "priority": "ROUTING", "priority_value": 1},
+      {"traffic_type": "Link-layer ACKs", "priority": "ACK", "priority_value": 1},
+      {"traffic_type": "CoAP CON / tactical chat", "priority": "URGENT", "priority_value": 2},
+      {"traffic_type": "CoAP NON / telemetry / position", "priority": "NORMAL", "priority_value": 3},
+      {"traffic_type": "Bulk transfer / firmware", "priority": "BULK", "priority_value": 4}
+    ]
+  },
+  "vectors": [
+    {
+      "name": "pop_order_strict_priority",
+      "description": "Packets pop in strict priority order: P0 before P1 before P2 before P3 before P4.",
+      "property": "pop_order",
+      "scenario": {
+        "capacity": 5,
+        "push_sequence": [
+          {"data": "bulk", "priority": "BULK"},
+          {"data": "normal", "priority": "NORMAL"},
+          {"data": "urgent", "priority": "URGENT"},
+          {"data": "routing", "priority": "ROUTING"},
+          {"data": "sos", "priority": "SOS"}
+        ]
+      },
+      "expected": {
+        "pop_order": ["sos", "routing", "urgent", "normal", "bulk"],
+        "note": "Reverse of push order due to strict priority"
+      }
+    },
+    {
+      "name": "fifo_within_same_priority",
+      "description": "Packets with same priority pop in FIFO order (enqueue time).",
+      "property": "pop_order",
+      "scenario": {
+        "capacity": 4,
+        "push_sequence": [
+          {"data": "bulk_first", "priority": "BULK", "enqueue_time_ms": 0},
+          {"data": "bulk_second", "priority": "BULK", "enqueue_time_ms": 10},
+          {"data": "bulk_third", "priority": "BULK", "enqueue_time_ms": 20},
+          {"data": "bulk_fourth", "priority": "BULK", "enqueue_time_ms": 30}
+        ]
+      },
+      "expected": {
+        "pop_order": ["bulk_first", "bulk_second", "bulk_third", "bulk_fourth"],
+        "note": "Same priority, order by enqueue time"
+      }
+    },
+    {
+      "name": "mixed_priority_interleaved",
+      "description": "Mixed priorities with interleaved push order - priority wins, FIFO within.",
+      "property": "pop_order",
+      "scenario": {
+        "capacity": 8,
+        "push_sequence": [
+          {"data": "bulk_1", "priority": "BULK", "enqueue_time_ms": 0},
+          {"data": "routing_1", "priority": "ROUTING", "enqueue_time_ms": 10},
+          {"data": "urgent_1", "priority": "URGENT", "enqueue_time_ms": 20},
+          {"data": "bulk_2", "priority": "BULK", "enqueue_time_ms": 30},
+          {"data": "routing_2", "priority": "ROUTING", "enqueue_time_ms": 40},
+          {"data": "normal_1", "priority": "NORMAL", "enqueue_time_ms": 50}
+        ]
+      },
+      "expected": {
+        "pop_order": ["routing_1", "routing_2", "urgent_1", "normal_1", "bulk_1", "bulk_2"],
+        "note": "ROUTING(1) first FIFO, then URGENT(2), NORMAL(3), BULK(4) FIFO"
+      }
+    },
+    {
+      "name": "preemption_sos_evicts_bulk",
+      "description": "SOS (P0) preempts BULK (P4) when queue full.",
+      "property": "preemption",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "bulk_1", "priority": "BULK"},
+          {"data": "bulk_2", "priority": "BULK"}
+        ],
+        "incoming": {"data": "sos", "priority": "SOS"}
+      },
+      "expected": {
+        "action": "preempt",
+        "evicted_priority": "BULK",
+        "queue_contains": ["sos", "bulk_2"],
+        "stats": {"packets_dropped_preempt": 1}
+      }
+    },
+    {
+      "name": "preemption_evicts_lowest_among_mixed",
+      "description": "Preemption evicts the lowest priority packet among mixed priorities.",
+      "property": "preemption",
+      "scenario": {
+        "capacity": 3,
+        "initial_packets": [
+          {"data": "routing", "priority": "ROUTING"},
+          {"data": "urgent", "priority": "URGENT"},
+          {"data": "bulk", "priority": "BULK"}
+        ],
+        "incoming": {"data": "sos", "priority": "SOS"}
+      },
+      "expected": {
+        "action": "preempt",
+        "evicted_priority": "BULK",
+        "evicted_data": "bulk",
+        "queue_contains": ["sos", "routing", "urgent"],
+        "note": "BULK (lowest priority) is evicted, not ROUTING or URGENT"
+      }
+    },
+    {
+      "name": "preemption_evicts_oldest_among_same_lowest",
+      "description": "When multiple packets have lowest priority, evict oldest (first pushed).",
+      "property": "preemption",
+      "scenario": {
+        "capacity": 3,
+        "initial_packets": [
+          {"data": "bulk_old", "priority": "BULK", "enqueue_time_ms": 0},
+          {"data": "bulk_mid", "priority": "BULK", "enqueue_time_ms": 10},
+          {"data": "bulk_new", "priority": "BULK", "enqueue_time_ms": 20}
+        ],
+        "incoming": {"data": "routing", "priority": "ROUTING"}
+      },
+      "expected": {
+        "action": "preempt",
+        "evicted_data": "bulk_old",
+        "queue_contains": ["routing", "bulk_mid", "bulk_new"],
+        "note": "bulk_old evicted because it has lowest priority AND oldest enqueue time"
+      }
+    },
+    {
+      "name": "no_preemption_same_priority",
+      "description": "Same priority cannot preempt - QueueFullError raised.",
+      "property": "backpressure",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "routing_1", "priority": "ROUTING"},
+          {"data": "routing_2", "priority": "ROUTING"}
+        ],
+        "incoming": {"data": "routing_3", "priority": "ROUTING"}
+      },
+      "expected": {
+        "action": "reject",
+        "error": "QueueFullError",
+        "note": "Same priority (P1) cannot preempt P1"
+      }
+    },
+    {
+      "name": "no_preemption_lower_priority",
+      "description": "Lower priority cannot preempt higher - QueueFullError raised.",
+      "property": "backpressure",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "sos_1", "priority": "SOS"},
+          {"data": "sos_2", "priority": "SOS"}
+        ],
+        "incoming": {"data": "bulk", "priority": "BULK"}
+      },
+      "expected": {
+        "action": "reject",
+        "error": "QueueFullError",
+        "note": "BULK (P4) cannot preempt SOS (P0)"
+      }
+    },
+    {
+      "name": "ack_alias_same_as_routing",
+      "description": "ACK and ROUTING are aliases (both P1), treated identically.",
+      "property": "priority_alias",
+      "scenario": {
+        "capacity": 4,
+        "push_sequence": [
+          {"data": "bulk", "priority": "BULK"},
+          {"data": "ack", "priority": "ACK"},
+          {"data": "routing", "priority": "ROUTING"},
+          {"data": "urgent", "priority": "URGENT"}
+        ]
+      },
+      "expected": {
+        "pop_order": ["ack", "routing", "urgent", "bulk"],
+        "note": "ACK and ROUTING have same priority value (1), FIFO determines order"
+      }
+    },
+    {
+      "name": "all_five_priorities_sorted",
+      "description": "All five priority levels coexist and sort correctly.",
+      "property": "pop_order",
+      "scenario": {
+        "capacity": 5,
+        "push_sequence": [
+          {"data": "bulk", "priority": "BULK"},
+          {"data": "urgent", "priority": "URGENT"},
+          {"data": "sos", "priority": "SOS"},
+          {"data": "routing", "priority": "ROUTING"},
+          {"data": "normal", "priority": "NORMAL"}
+        ]
+      },
+      "expected": {
+        "pop_order": ["sos", "routing", "urgent", "normal", "bulk"],
+        "note": "P0=SOS, P1=ROUTING, P2=URGENT, P3=NORMAL, P4=BULK"
+      }
+    },
+    {
+      "name": "priority_value_comparison",
+      "description": "Priority comparison: lower numeric value = higher urgency.",
+      "property": "priority_comparison",
+      "comparisons": [
+        {"a": "SOS", "op": "<", "b": "ROUTING", "result": true},
+        {"a": "ROUTING", "op": "<", "b": "URGENT", "result": true},
+        {"a": "URGENT", "op": "<", "b": "NORMAL", "result": true},
+        {"a": "NORMAL", "op": "<", "b": "BULK", "result": true},
+        {"a": "BULK", "op": "<", "b": "SOS", "result": false},
+        {"a": "ROUTING", "op": "==", "b": "ACK", "result": true}
+      ]
+    },
+    {
+      "name": "routing_never_starved_by_bulk",
+      "description": "Routing control (P1) always beats bulk data (P4).",
+      "property": "priority_ordering",
+      "scenario": {
+        "capacity": 4,
+        "push_sequence": [
+          {"data": "bulk_1", "priority": "BULK"},
+          {"data": "bulk_2", "priority": "BULK"},
+          {"data": "routing", "priority": "ROUTING"},
+          {"data": "bulk_3", "priority": "BULK"}
+        ]
+      },
+      "expected": {
+        "first_pop": "routing",
+        "note": "ROUTING always pops before BULK regardless of push order"
+      }
+    },
+    {
+      "name": "sos_always_first",
+      "description": "SOS (P0) emergency traffic always transmits first.",
+      "property": "priority_ordering",
+      "scenario": {
+        "capacity": 4,
+        "push_sequence": [
+          {"data": "routing", "priority": "ROUTING"},
+          {"data": "urgent", "priority": "URGENT"},
+          {"data": "normal", "priority": "NORMAL"},
+          {"data": "sos", "priority": "SOS"}
+        ]
+      },
+      "expected": {
+        "first_pop": "sos",
+        "note": "SOS pushed last but pops first (highest urgency)"
+      }
+    },
+    {
+      "name": "peek_returns_highest_priority",
+      "description": "peek() returns highest priority (lowest numeric value) packet.",
+      "property": "peek",
+      "scenario": {
+        "capacity": 3,
+        "push_sequence": [
+          {"data": "bulk", "priority": "BULK"},
+          {"data": "routing", "priority": "ROUTING"},
+          {"data": "normal", "priority": "NORMAL"}
+        ]
+      },
+      "expected": {
+        "peek_data": "routing",
+        "peek_priority": "ROUTING",
+        "queue_length_after_peek": 3,
+        "note": "peek does not remove, returns P1 ROUTING (lowest value)"
+      }
+    },
+    {
+      "name": "reserve_returns_highest_priority_entry",
+      "description": "reserve() returns the highest priority entry for transmission.",
+      "property": "reserve",
+      "scenario": {
+        "capacity": 3,
+        "push_sequence": [
+          {"data": "normal", "priority": "NORMAL"},
+          {"data": "sos", "priority": "SOS"},
+          {"data": "bulk", "priority": "BULK"}
+        ]
+      },
+      "expected": {
+        "reserved_data": "sos",
+        "reserved_priority": "SOS",
+        "queue_length_after_reserve": 3,
+        "note": "reserve() peeks at highest priority entry without removing"
+      }
+    },
+    {
+      "name": "priority_preemption_chain",
+      "description": "Successive preemptions create priority-ordered queue.",
+      "property": "preemption_chain",
+      "scenario": {
+        "capacity": 2,
+        "operations": [
+          {"action": "push", "data": "bulk_1", "priority": "BULK"},
+          {"action": "push", "data": "bulk_2", "priority": "BULK"},
+          {"action": "push", "data": "normal", "priority": "NORMAL", "expected_preempt": true},
+          {"action": "push", "data": "urgent", "priority": "URGENT", "expected_preempt": true}
+        ]
+      },
+      "expected": {
+        "final_queue": ["urgent", "normal"],
+        "total_preemptions": 2,
+        "note": "Chain of preemptions: NORMAL evicts BULK, then URGENT evicts remaining BULK"
+      }
+    }
+  ]
+}

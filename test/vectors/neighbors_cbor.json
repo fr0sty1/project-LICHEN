@@ -1,0 +1,110 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "neighbors_cbor",
+  "description": "GET /status/neighbors CBOR encoding vectors (spec section 8.4). Validates neighbor table wire format with addr, rssi_dbm, snr_db (x10), etx (x10), last_seen_s, trust fields.",
+  "spec": "spec/08-status.md",
+  "vectors": [
+    {
+      "name": "empty_neighbor_table",
+      "description": "Empty neighbor table response (node has no discovered neighbors).",
+      "input": {
+        "neighbors": []
+      },
+      "encoded_hex": "a1696e65696768626f727380"
+    },
+    {
+      "name": "single_neighbor_tofu",
+      "description": "Single neighbor with typical values: RSSI -92 dBm, SNR 7.5 dB (x10=75), ETX 1.2 (x10=12), TOFU trust.",
+      "input": {
+        "neighbors": [
+          {
+            "addr": "fd00::2",
+            "rssi_dbm": -92,
+            "snr_db": 75,
+            "etx": 12,
+            "last_seen_s": 30,
+            "trust": "tofu"
+          }
+        ]
+      },
+      "encoded_hex": "a1696e65696768626f727381a6646164647267666430303a3a3268727373695f64626d385b66736e725f6462184b636574780c6b6c6173745f7365656e5f73181e65747275737464746f6675"
+    },
+    {
+      "name": "multiple_neighbors",
+      "description": "Multiple neighbors with varying link qualities and trust levels.",
+      "input": {
+        "neighbors": [
+          {
+            "addr": "fd00::2",
+            "rssi_dbm": -92,
+            "snr_db": 75,
+            "etx": 12,
+            "last_seen_s": 30,
+            "trust": "tofu"
+          },
+          {
+            "addr": "fd00::3",
+            "rssi_dbm": -85,
+            "snr_db": 100,
+            "etx": 10,
+            "last_seen_s": 5,
+            "trust": "verified"
+          }
+        ]
+      },
+      "encoded_hex": "a1696e65696768626f727382a6646164647267666430303a3a3268727373695f64626d385b66736e725f6462184b636574780c6b6c6173745f7365656e5f73181e65747275737464746f6675a6646164647267666430303a3a3368727373695f64626d385466736e725f64621864636574780a6b6c6173745f7365656e5f7305657472757374687665726966696564"
+    },
+    {
+      "name": "negative_snr",
+      "description": "Neighbor with negative SNR (weak signal): SNR -5.0 dB (x10=-50), poor link ETX 3.0.",
+      "input": {
+        "neighbors": [
+          {
+            "addr": "fd00::4",
+            "rssi_dbm": -110,
+            "snr_db": -50,
+            "etx": 30,
+            "last_seen_s": 60,
+            "trust": "none"
+          }
+        ]
+      },
+      "encoded_hex": "a1696e65696768626f727381a6646164647267666430303a3a3468727373695f64626d386d66736e725f6462383163657478181e6b6c6173745f7365656e5f73183c657472757374646e6f6e65"
+    },
+    {
+      "name": "excellent_link_dane",
+      "description": "Excellent link quality with DANE trust: RSSI -50 dBm, SNR 15.0 dB, ETX 1.0.",
+      "input": {
+        "neighbors": [
+          {
+            "addr": "fd00::5",
+            "rssi_dbm": -50,
+            "snr_db": 150,
+            "etx": 10,
+            "last_seen_s": 1,
+            "trust": "dane"
+          }
+        ]
+      },
+      "encoded_hex": "a1696e65696768626f727381a6646164647267666430303a3a3568727373695f64626d383166736e725f64621896636574780a6b6c6173745f7365656e5f73016574727573746464616e65"
+    },
+    {
+      "name": "stale_neighbor",
+      "description": "Stale neighbor entry (large last_seen_s value, may be pruned soon).",
+      "input": {
+        "neighbors": [
+          {
+            "addr": "fd00::6",
+            "rssi_dbm": -95,
+            "snr_db": 50,
+            "etx": 20,
+            "last_seen_s": 300,
+            "trust": "tofu"
+          }
+        ]
+      },
+      "encoded_hex": "a1696e65696768626f727381a6646164647267666430303a3a3668727373695f64626d385e66736e725f6462183263657478146b6c6173745f7365656e5f7319012c65747275737464746f6675"
+    }
+  ]
+}

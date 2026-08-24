@@ -11,52 +11,98 @@
  * path_cost = parent_rank + (link_etx * min_hop_rank_increase) / 256
  */
 
-#include <lichen/rpl_dodag.h>
-#include <lichen/rpl_addr.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 
-/**
- * RFC 6550 Section 7.2: Lollipop sequence number comparison.
- *
- * RPL version numbers use a "lollipop" counter: values 0-127 are in the
- * linear region (restart), 128-255 are in the circular region (normal).
- *
- * Returns true if 'a' is newer than 'b' per lollipop semantics.
- * The circular region uses modular comparison with a window of SEQUENCE_WINDOW.
- */
-#define LOLLIPOP_MAX_VALUE    255
-#define LOLLIPOP_CIRCULAR_BIT 128
-/*
- * SEQUENCE_WINDOW per RFC 1982 serial number arithmetic: 'a' is newer than 'b'
- * if (a - b) mod 128 is in (0, WINDOW]. Value 16 balances tolerance for
- * out-of-order delivery (~16 missed DIOs) against detecting true rollbacks.
- */
-#define LOLLIPOP_SEQUENCE_WINDOW 16
+#include <lichen/rpl_dodag.h>
+#include <lichen/rpl_addr.h>
 
+/**
+ * RFC 6550 Section 7.2: Lollipop sequence-counter comparison.
+ *
+ * Values in [128..255] are the linear region (restart/bootstrap); values
+ * in [0..127] are the circular region, a 128-value serial number space per
+ * RFC 1982. SEQUENCE_WINDOW is 16 (RFC MUST).
+ *
+ * Mirrors rust/lichen-rpl/src/routing.rs seq_is_newer():
+ * - Same region: RFC 1982 serial arithmetic on the low 7 bits; newer iff
+ *   the wrapped difference is in [1..SEQUENCE_WINDOW]. This accepts
+ *   multi-step crossings of the 127->0 restart (e.g. 5 after 120) exactly
+ *   as the Rust reference does.
+ * - a linear, b circular: a is newer iff more than SEQUENCE_WINDOW steps
+ *   past the 255->0 wrap, i.e. (256 + b - a) > SEQUENCE_WINDOW.
+ * - a circular, b linear: a is newer iff within SEQUENCE_WINDOW steps of
+ *   the 255->0 wrap, i.e. (256 + a - b) <= SEQUENCE_WINDOW.
+ *
+ * lollipop_cmp returns 1 if a is newer, -1 if older, 0 if equal, and
+ * LOLLIPOP_INCOMPARABLE when neither direction is newer.
+ *
+ * Exhaustive cross-check against the Rust semantics:
+ * lichen/tests/rpl_dao_sequence/sweep.c + golden_lollipop_sweep.txt.
+ */
+#define LOLLIPOP_LINEAR_BASE	 128
+#define LOLLIPOP_SEQUENCE_WINDOW 16
+#define LOLLIPOP_INCOMPARABLE	 2
+
+static bool lollipop_is_newer(uint8_t new_seq, uint8_t old_seq)
+{
+	bool new_linear = new_seq >= LOLLIPOP_LINEAR_BASE;
+	bool old_linear = old_seq >= LOLLIPOP_LINEAR_BASE;
+	uint8_t diff;
+
+	if (new_linear == old_linear) {
+		/* RFC 1982 serial arithmetic inside one region (mod 128). */
+		diff = (uint8_t)((uint8_t)(new_seq - old_seq) & 0x7Fu);
+		return diff != 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW;
+	}
+	if (new_linear) {
+		/* New past the 255->0 wrap by more than SEQUENCE_WINDOW. */
+		return (256u + old_seq - new_seq) > LOLLIPOP_SEQUENCE_WINDOW;
+	}
+	/* New within SEQUENCE_WINDOW steps of the 255->0 wrap. */
+	return (256u + new_seq - old_seq) <= LOLLIPOP_SEQUENCE_WINDOW;
+}
+
+static int lollipop_cmp(uint8_t a, uint8_t b)
+{
+	if (a == b) {
+		return 0;
+	}
+	if (lollipop_is_newer(a, b)) {
+		return 1;
+	}
+	if (lollipop_is_newer(b, a)) {
+		return -1;
+	}
+	return LOLLIPOP_INCOMPARABLE;
+}
+
+/**
+ * True if a is strictly newer than b.
+ *
+ * Matches rust/lichen-rpl/src/routing.rs seq_is_newer(); the mod-128
+ * serial form subsumes the increment_lollipop restarts (0 after 127 and
+ * 0 after 255 are newer; the reverse pairs are stale).
+ */
 static bool version_is_newer(uint8_t a, uint8_t b)
 {
-	/* If both in linear region (0-127), simple comparison */
-	if (a < LOLLIPOP_CIRCULAR_BIT && b < LOLLIPOP_CIRCULAR_BIT) {
-		return a > b;
-	}
-
-	/* If both in circular region (128-255), use modular comparison */
-	if (a >= LOLLIPOP_CIRCULAR_BIT && b >= LOLLIPOP_CIRCULAR_BIT) {
-		/*
-		 * The circular region has 128 values (128-255).
-		 * a is newer than b if (a - b) mod 128 is in (0, WINDOW].
-		 * We mask with 0x7F to get the circular distance.
-		 */
-		uint8_t diff = (uint8_t)((a - b) & 0x7F);
-		return diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW;
-	}
-
-	/*
-	 * Mixed regions: linear (restart) is always newer than circular.
-	 * A node restarting with version 0 should be accepted over version 250.
-	 */
-	return a < LOLLIPOP_CIRCULAR_BIT;
+	return lollipop_cmp(a, b) == 1;
 }
+
+#ifdef LICHEN_RPL_TEST
+/* Prototypes live in rpl_dodag.h. External linkage is intentional
+ * (lichen/tests/rpl_dodag). */
+int lichen_rpl_lollipop_cmp(uint8_t a, uint8_t b) /* NOLINT(misc-use-internal-linkage) */
+{
+	return lollipop_cmp(a, b);
+}
+
+bool lichen_rpl_version_is_newer(uint8_t new_ver, uint8_t old_ver) /* NOLINT(misc-use-internal-linkage) */
+{
+	return version_is_newer(new_ver, old_ver);
+}
+#endif /* LICHEN_RPL_TEST */
 
 /**
  * Calculate path cost via this parent (MRHOF, RFC 6719 appendix B.1).
@@ -157,6 +203,7 @@ static void adopt_version(struct lichen_rpl_dodag *d,
 	d->lowest_rank = LICHEN_RPL_INFINITE_RANK;
 	d->role = LICHEN_RPL_UNJOINED;
 	d->gateway_centric = false;
+	d->last_gateway_centric = false;
 }
 
 /* ── Public API ────────────────────────────────────────────────────────────── */
@@ -291,7 +338,7 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  bool authenticated)
 {
 	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
-		return 0;
+		return LICHEN_RPL_ERR_INVALID;
 	}
 
 	if (d->role == LICHEN_RPL_ROOT) {
@@ -306,22 +353,39 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 		return 0;
 	}
 
-	if (lichen_rpl_dodag_is_joined(d) &&
-	    !rpl_addr_eq(dio->dodag_id, d->dodag_id) &&
-	    !version_is_newer(dio->version, d->version)) {
-		return 0;
-	}
+	/*
+	 * SECURITY: DODAGVersionNumber is scoped to (RPLInstanceID, DODAGID).
+	 * A JOINED node ignores a foreign DIO (no version compare, no adopt).
+	 * An UNJOINED node may first-join a foreign DODAG without using leftover
+	 * version bytes. Incomparable lollipop versions are not same-version.
+	 */
+	bool foreign = (dio->rpl_instance_id != d->rpl_instance_id) ||
+		       !rpl_addr_eq(dio->dodag_id, d->dodag_id);
 
-	if (version_is_newer(dio->version, d->version) ||
-	    !lichen_rpl_dodag_is_joined(d)) {
+	if (foreign) {
+		if (lichen_rpl_dodag_is_joined(d)) {
+			return 0;
+		}
 		adopt_version(d, dio);
-	} else if (version_is_newer(d->version, dio->version)) {
+	} else if (version_is_newer(dio->version, d->version)) {
+		adopt_version(d, dio);
+	} else if (dio->version != d->version) {
 		return 0;
 	}
 
-	/* Propagate gateway_centric flag from DODAG Configuration option */
-	if (config != NULL) {
+	/*
+	 * Gateway-centric mode is root-authoritative: the DODAG Configuration
+	 * option is honored only when this DIO was sent by the adopted root
+	 * (the DODAGID is the root's address, RFC 6550 Section 2). Any joined
+	 * peer could otherwise flap neighbors' announce scheduling per-DIO.
+	 * Every DIO without an authoritative option restores the last-known-
+	 * good root value so an earlier bad option cannot outlive one DIO.
+	 */
+	if (config != NULL && rpl_addr_eq(neighbor_addr, d->dodag_id)) {
 		d->gateway_centric = config->gateway_centric;
+		d->last_gateway_centric = config->gateway_centric;
+	} else {
+		d->gateway_centric = d->last_gateway_centric;
 	}
 
 	int ret = 0;
@@ -387,13 +451,15 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	return ret;
 }
 
+#ifndef LICHEN_RPL_TEST
 int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *d,
 					const uint8_t *dio_bytes,
 					size_t dio_len,
 					const uint8_t *neighbor_addr,
 					uint16_t link_etx,
 					uint8_t load_factor,
-					uint32_t now)
+					uint32_t now,
+					bool authenticated)
 {
 	if (d == NULL || dio_bytes == NULL || neighbor_addr == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
@@ -408,11 +474,12 @@ int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *d,
 	const uint8_t *opts = lichen_rpl_dio_options(dio_bytes, dio_len);
 	size_t opts_len = lichen_rpl_dio_options_len(dio_len);
 
-	/* Parse DODAG Configuration option to extract gateway_centric */
+	/* Parse DODAG Configuration option; process_dio copies gateway_centric. */
 	struct lichen_rpl_opt_iter it;
 	struct lichen_rpl_raw_opt opt;
+	struct lichen_rpl_dodag_config cfg;
+	const struct lichen_rpl_dodag_config *config = NULL;
 	lichen_rpl_opt_iter_init(&it, opts, opts_len);
-	d->is_gateway_centric = false;
 
 	for (;;) {
 		int oret = lichen_rpl_opt_iter_next(&it, &opt);
@@ -423,18 +490,19 @@ int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *d,
 			break;
 		}
 		if (opt.opt_type == LICHEN_RPL_OPT_DODAG_CONFIG) {
-			struct lichen_rpl_dodag_config cfg;
 			ret = lichen_rpl_dodag_config_parse(&cfg, opt.data, opt.data_len);
 			if (ret == LICHEN_RPL_OK) {
-				d->is_gateway_centric = cfg.gateway_centric;
+				config = &cfg;
 			}
 			break;
 		}
 	}
 
-	return lichen_rpl_dodag_process_dio(d, &dio, neighbor_addr,
-					    link_etx, load_factor, now);
+	return lichen_rpl_dodag_process_dio(d, &dio, config, neighbor_addr,
+					    link_etx, load_factor, now,
+					    authenticated);
 }
+#endif /* !LICHEN_RPL_TEST */
 
 void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
 				    const uint8_t *addr)

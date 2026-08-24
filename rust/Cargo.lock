@@ -1793,9 +1793,13 @@ name = "lichen-client"
 version = "0.1.0"
 dependencies = [
  "ciborium",
+ "hex",
+ "lichen-coap",
  "lichen-core",
  "lichen-senml",
  "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -1864,23 +1868,31 @@ dependencies = [
 name = "lichen-gateway"
 version = "0.1.0"
 dependencies = [
+ "ciborium",
  "clap",
+ "hex",
+ "hex-literal",
  "libc",
+ "lichen-coap",
  "lichen-core",
  "lichen-hal",
  "lichen-ipv6",
  "lichen-kiss",
  "lichen-link",
  "lichen-node",
+ "lichen-oscore",
  "lichen-rpl",
  "lichen-schc",
  "lichen-sim",
+ "schnorr48",
  "serde",
+ "sha2 0.10.9",
  "tokio",
  "tokio-serial",
  "toml",
  "tracing",
  "tracing-subscriber",
+ "zeroize",
 ]
 
 [[package]]
@@ -1979,6 +1991,7 @@ dependencies = [
  "log",
  "oscore",
  "rand_core",
+ "schnorr48",
  "serde",
  "serde_json",
 ]
@@ -1992,6 +2005,7 @@ dependencies = [
  "lichen-hal",
  "lichen-link",
  "lichen-rpl",
+ "lichen-schc",
  "log",
  "serde_json",
  "sha2 0.11.0",
@@ -2003,6 +2017,7 @@ version = "0.1.0"
 dependencies = [
  "defmt 0.3.100",
  "lichen-core",
+ "lichen-link",
  "log",
  "schc",
  "serde",

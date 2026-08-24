@@ -16,9 +16,9 @@ TDMA eliminates collisions in gateway-centric deployments by assigning exclusive
 - N data slots: node TX (assigned nodes only)
 - Contention slot(s): new nodes, retries, legacy ALOHA traffic
 
-Slot duration = max_packet_airtime + guard_time.
+Slot duration MUST be at least `ceil(maximum permitted PHY-payload airtime in milliseconds) + guard_time` for the configured schedule profile. It MUST NOT be derived from a typical frame.
 
-At SF10/125kHz, 60-byte packet ~200 ms airtime + 50 ms guard = 250 ms slot (4 slots/sec, 240 slots/min for 60 s superframe).
+For the canonical SF10/125 kHz, CR 4/5 profile with an eight-symbol preamble, explicit header, PHY CRC, and the 255-byte maximum payload, airtime is 2,295.808 ms. With the mandatory 50 ms guard, the minimum slot is 2,346 ms. The data window starts at the slot boundary and the single guard occupies the final 50 ms; a node MUST NOT transmit during the guard.
 
 Beacon content (normative wire format, SCHC-compressed on CH0):
 - Type (1B): 0xBE (beacon)
@@ -35,7 +35,7 @@ Beacon uses distinct sync word (0x34 per spec) or LLSec flag. Old nodes MUST ign
 
 Priority order (per lichen_coordination_mechanism in link.h:106):
 1. SCHEDULED: gateway-assigned slot from beacon/DIO (preferred for TDMA)
-2. HASH_BASED: slot = hash_32(EUI64 + SFN.to_bytes(4, "little")) % n_slots (lichen_hash_32, FNV-1a32 basis 0x811c9dc5; see ccp_tdma.json)
+2. HASH_BASED: `slot = (hash_32(EUI64) + u32(SFN)) mod n_slots` (FNV-1a32 basis `0x811c9dc5`; addition wraps modulo 2^32; see `ccp_sfn_wrap_slot_hash.json`)
 3. ANNOUNCE_DRIVEN: rx_channel from Announce (CCP-9, ccp9*.json)
 4. FALLBACK: CH0 contention
 
@@ -52,7 +52,7 @@ correction_ms = drift_ppm * future_delta_ms / 1000000
 adjusted_time = local_time + correction_ms
 ```
 
-See ccp_tdma.json "drift_compensation" vector (local 123456, expected 123400, ppm=10, correction=56). Nodes MUST apply before slot calculation. GPS stratum reduces guard from 50ms. Threshold >5000ppm triggers desync (per ccp16-desync.json).
+See ccp_tdma.json "drift_compensation" vector (local 123456, expected 123400, ppm=10, correction=56). Nodes MUST apply before slot calculation. GPS stratum improves clock accuracy but MUST NOT reduce the 50 ms guard. Threshold >5000ppm triggers desync (per ccp16-desync.json).
 
 ## Join Procedure (FSM)
 
@@ -85,8 +85,8 @@ All MUST match test/vectors/ccp_tdma.json (slot hash, guard boundaries, drift), 
 ## Appendix A: Constants
 
 - GUARD_TIME_MS = 50
-- SLOT_DURATION_MS (SF10) = 250
-- SUPERFRAME_SLOTS = 240 (for 60s at 250ms)
+- SLOT_DURATION_MS (SF10 profile maximum) = 2346
+- A 60-second superframe can contain at most 25 whole 2346 ms slots before reserving beacon and contention time.
 - HASH_BASIS = 0x811c9dc5 (FNV-1a32)
 - slot_adjust_ticks = 8 (scheduler tolerance for predictive wakeup; matches ccp_load_balancing.json vector)
 

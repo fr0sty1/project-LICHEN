@@ -1,0 +1,242 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "tx_queue_implementation",
+  "description": "B.3.1 TX Queue implementation oracle per spec/appendix-bufferbloat.md Section 3.1. Validates the tx_queue_push() contract: deadline check before admission, preemption of lowest priority when full with higher priority incoming, and ENOBUFS when full with same/lower priority.",
+  "spec": "spec/appendix-bufferbloat.md Section 3.1 (TX Queue)",
+  "constants": {
+    "TX_QUEUE_SIZE": 4,
+    "ENOBUFS": -105,
+    "note": "ENOBUFS is the C error code; Python raises QueueFullError"
+  },
+  "struct_definition": {
+    "name": "tx_queue_entry",
+    "fields": {
+      "data": "uint8_t[MAX_PACKET_SIZE]",
+      "len": "uint16_t",
+      "deadline_ms": "uint32_t",
+      "priority": "uint8_t"
+    },
+    "note": "Python TxQueueEntry has equivalent fields: data (bytes), deadline_ms (int), priority (Priority enum)"
+  },
+  "vectors": [
+    {
+      "name": "tx_queue_size_constant",
+      "description": "TX_QUEUE_SIZE is 4 packets (spec B.3.1: '#define TX_QUEUE_SIZE 4').",
+      "property": "constant",
+      "expected": {
+        "TX_QUEUE_SIZE": 4
+      }
+    },
+    {
+      "name": "entry_has_required_fields",
+      "description": "tx_queue_entry has data, deadline_ms, priority fields (len is implicit in bytes).",
+      "property": "struct_fields",
+      "expected": {
+        "has_data": true,
+        "has_deadline_ms": true,
+        "has_priority": true
+      }
+    },
+    {
+      "name": "push_checks_deadline_before_admission",
+      "description": "tx_queue_push: 'Check deadline of oldest packet, drop if expired' runs BEFORE capacity check.",
+      "property": "push_contract",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "stale1", "deadline_ms": 100, "priority": "BULK"},
+          {"data": "stale2", "deadline_ms": 100, "priority": "BULK"}
+        ],
+        "now_ms": 200,
+        "incoming": {"data": "fresh", "priority": "BULK", "deadline_ms": 10000}
+      },
+      "expected": {
+        "action": "accept",
+        "reason": "stale packets expired BEFORE capacity check, making room",
+        "stats": {"packets_dropped_deadline": 2},
+        "queue_length_after": 1
+      }
+    },
+    {
+      "name": "push_preempts_lowest_when_full_higher_priority",
+      "description": "tx_queue_push: 'If full and new packet is higher priority, preempt lowest'.",
+      "property": "push_contract",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "bulk1", "deadline_ms": 10000, "priority": "BULK"},
+          {"data": "bulk2", "deadline_ms": 10000, "priority": "BULK"}
+        ],
+        "now_ms": 0,
+        "incoming": {"data": "routing", "priority": "ROUTING", "deadline_ms": 5000}
+      },
+      "expected": {
+        "action": "preempt",
+        "evicted_priority": "BULK",
+        "stats": {"packets_dropped_preempt": 1},
+        "queue_contains": ["routing", "bulk2"]
+      }
+    },
+    {
+      "name": "push_rejects_same_priority_when_full",
+      "description": "tx_queue_push: 'If full and same/lower priority, return -ENOBUFS'.",
+      "property": "push_contract",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "bulk1", "deadline_ms": 10000, "priority": "BULK"},
+          {"data": "bulk2", "deadline_ms": 10000, "priority": "BULK"}
+        ],
+        "now_ms": 0,
+        "incoming": {"data": "bulk3", "priority": "BULK", "deadline_ms": 10000}
+      },
+      "expected": {
+        "action": "reject",
+        "error": "ENOBUFS",
+        "python_error": "QueueFullError",
+        "stats": {"packets_dropped_full": 1}
+      }
+    },
+    {
+      "name": "push_rejects_lower_priority_when_full",
+      "description": "tx_queue_push: lower priority cannot preempt same or higher.",
+      "property": "push_contract",
+      "scenario": {
+        "capacity": 2,
+        "initial_packets": [
+          {"data": "urgent1", "deadline_ms": 30000, "priority": "URGENT"},
+          {"data": "urgent2", "deadline_ms": 30000, "priority": "URGENT"}
+        ],
+        "now_ms": 0,
+        "incoming": {"data": "bulk", "priority": "BULK", "deadline_ms": 120000}
+      },
+      "expected": {
+        "action": "reject",
+        "error": "ENOBUFS",
+        "python_error": "QueueFullError",
+        "stats": {"packets_dropped_full": 1}
+      }
+    },
+    {
+      "name": "push_expiry_then_preemption_sequence",
+      "description": "Push contract order: (1) expire stale, (2) check capacity, (3) preempt or reject.",
+      "property": "push_contract",
+      "scenario": {
+        "capacity": 3,
+        "operations": [
+          {"action": "push", "data": "stale", "deadline_ms": 100, "priority": "BULK"},
+          {"action": "push", "data": "valid1", "deadline_ms": 10000, "priority": "BULK"},
+          {"action": "push", "data": "valid2", "deadline_ms": 10000, "priority": "BULK"},
+          {"action": "advance_time", "now_ms": 200},
+          {"action": "push", "data": "routing", "priority": "ROUTING", "deadline_ms": 5000}
+        ]
+      },
+      "expected": {
+        "action": "accept",
+        "reason": "stale expired first (1 dropped_deadline), then routing admits without preemption",
+        "stats": {
+          "packets_dropped_deadline": 1,
+          "packets_dropped_preempt": 0
+        },
+        "queue_length_after": 3,
+        "queue_order": ["routing", "valid1", "valid2"]
+      }
+    },
+    {
+      "name": "push_no_expiry_then_preemption",
+      "description": "When no packets are expired, preemption happens if needed.",
+      "property": "push_contract",
+      "scenario": {
+        "capacity": 2,
+        "operations": [
+          {"action": "push", "data": "normal1", "deadline_ms": 60000, "priority": "NORMAL"},
+          {"action": "push", "data": "bulk1", "deadline_ms": 120000, "priority": "BULK"},
+          {"action": "push", "data": "sos", "priority": "SOS", "deadline_ms": 2000}
+        ],
+        "now_ms": 0
+      },
+      "expected": {
+        "action": "preempt",
+        "evicted_priority": "BULK",
+        "evicted_data": "bulk1",
+        "reason": "BULK (P4) is lower priority than NORMAL (P3), so BULK evicted",
+        "stats": {"packets_dropped_preempt": 1},
+        "queue_order": ["sos", "normal1"]
+      }
+    },
+    {
+      "name": "push_preempts_oldest_among_same_lowest",
+      "description": "When multiple packets share lowest priority, evict the oldest.",
+      "property": "push_contract",
+      "scenario": {
+        "capacity": 3,
+        "operations": [
+          {"action": "push", "data": "bulk1", "deadline_ms": 120000, "priority": "BULK", "enqueue_time_ms": 0},
+          {"action": "push", "data": "bulk2", "deadline_ms": 120000, "priority": "BULK", "enqueue_time_ms": 10},
+          {"action": "push", "data": "bulk3", "deadline_ms": 120000, "priority": "BULK", "enqueue_time_ms": 20},
+          {"action": "push", "data": "urgent", "priority": "URGENT", "deadline_ms": 30000, "enqueue_time_ms": 30}
+        ],
+        "now_ms": 0
+      },
+      "expected": {
+        "action": "preempt",
+        "evicted_data": "bulk1",
+        "evicted_reason": "bulk1 was oldest among equal-priority BULK packets",
+        "stats": {"packets_dropped_preempt": 1},
+        "queue_order": ["urgent", "bulk2", "bulk3"]
+      }
+    },
+    {
+      "name": "capacity_enforced_strictly",
+      "description": "Queue never exceeds TX_QUEUE_SIZE even during rapid push sequence.",
+      "property": "invariant",
+      "scenario": {
+        "capacity": 4,
+        "operations": [
+          {"action": "push", "data": "p1", "priority": "BULK"},
+          {"action": "push", "data": "p2", "priority": "BULK"},
+          {"action": "push", "data": "p3", "priority": "BULK"},
+          {"action": "push", "data": "p4", "priority": "BULK"},
+          {"action": "verify_len", "expected": 4},
+          {"action": "push", "data": "p5", "priority": "ROUTING"},
+          {"action": "verify_len", "expected": 4, "reason": "preemption keeps len at capacity"},
+          {"action": "push", "data": "p6", "priority": "ROUTING"},
+          {"action": "verify_len", "expected": 4}
+        ]
+      },
+      "expected": {
+        "max_len_observed": 4,
+        "invariant_held": true
+      }
+    },
+    {
+      "name": "deadline_stored_absolute",
+      "description": "deadline_ms is stored as absolute timestamp, not relative offset.",
+      "property": "entry_semantics",
+      "scenario": {
+        "enqueue_time_ms": 1000,
+        "priority": "ROUTING",
+        "deadline_default_ms": 5000
+      },
+      "expected": {
+        "deadline_ms": 6000,
+        "reason": "deadline = enqueue_time (1000) + default (5000) = 6000 absolute",
+        "note": "expiry check is: now >= deadline_ms"
+      }
+    },
+    {
+      "name": "priority_stored_numeric",
+      "description": "priority field stores numeric value (0-4), not string.",
+      "property": "entry_semantics",
+      "expected": {
+        "SOS": 0,
+        "ROUTING": 1,
+        "URGENT": 2,
+        "NORMAL": 3,
+        "BULK": 4,
+        "note": "Python uses IntEnum, C uses uint8_t"
+      }
+    }
+  ]
+}

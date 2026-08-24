@@ -237,13 +237,18 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
         }
         let seq = self.increment_seq();
 
-        let signed_data_len = 8 + 32 + 2 + 1 + self.app_data.len();
+        let signed_data_len =
+            lichen_core::announce::ANNOUNCE_SIGNED_FIXED_LENGTH + self.app_data.len();
         let mut signed_data = vec![0u8; signed_data_len];
-        signed_data[..8].copy_from_slice(&self.identity.iid);
-        signed_data[8..40].copy_from_slice(self.identity.pubkey.as_bytes());
-        signed_data[40..42].copy_from_slice(&seq.to_be_bytes());
-        signed_data[42] = self.config.rx_channel;
-        signed_data[43..].copy_from_slice(&self.app_data);
+        lichen_core::announce::write_announce_signed_data(
+            &self.identity.iid,
+            self.identity.pubkey.as_bytes(),
+            seq,
+            self.config.rx_channel,
+            &self.app_data,
+            &mut signed_data,
+        )
+        .map_err(|_| SchedulerError::BufferTooSmall)?;
 
         let signature = sign(&self.identity.privkey, &self.identity.pubkey, &signed_data);
 

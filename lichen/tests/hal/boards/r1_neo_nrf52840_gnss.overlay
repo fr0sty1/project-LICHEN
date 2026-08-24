@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+
+/*
+ * R1 Neo GNSS UART validation overlay.
+ *
+ * Enables UART1 for GNSS hardware validation. Pin direction
+ * (TX=P0.24, RX=P0.25) is assumed from existing pinctrl but needs
+ * hardware confirmation - Meshtastic and MeshCore disagree on naming.
+ *
+ * CRITICAL: This overlay does NOT instantiate the AG3335 driver because
+ * the control GPIO pins (enable, vrtc, sleep_int, reset) are not
+ * documented for R1 Neo. Add them here once determined via schematic
+ * review or hardware probing.
+ *
+ * Hardware validation procedure:
+ *   1. Flash firmware with this overlay
+ *   2. Connect logic analyzer to P0.24/P0.25
+ *   3. Confirm NMEA traffic direction (115200 baud)
+ *   4. If no traffic or wrong direction, swap TX/RX in r1_neo-pinctrl.dtsi
+ *   5. Identify AG3335 control GPIOs and add gnss0 node
+ */
+
+&uart1 {
+	status = "okay";
+};
+
+/ {
+	chosen {
+		/* Route GNSS UART to HAL for future driver instantiation */
+		lichen,gnss-uart = &uart1;
+	};
+};

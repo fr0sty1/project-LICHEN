@@ -19,8 +19,10 @@ handled here.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
+from types import MappingProxyType
 
 
 class MO(Enum):
@@ -161,8 +163,10 @@ class Rule:
     fields: tuple[FieldDescriptor, ...]
 
     def __post_init__(self) -> None:
-        if type(self.rule_id) is not int or not 0 <= self.rule_id <= 0x7F:
-            raise ValueError(f"compression rule_id must be between 0 and 127, got {self.rule_id}")
+        if type(self.rule_id) is not int or not (
+            0 <= self.rule_id <= 0x7F or self.rule_id == RULE_ID_UNCOMPRESSED
+        ):
+            raise ValueError(f"rule_id must be 0-127 or 255, got {self.rule_id}")
         if type(self.fields) is not tuple:
             raise ValueError("fields must be a tuple")
         if any(not isinstance(field, FieldDescriptor) for field in self.fields):
@@ -170,6 +174,8 @@ class Rule:
         field_ids = [field.field_id for field in self.fields]
         if len(set(field_ids)) != len(field_ids):
             raise ValueError("field IDs must be unique within a rule")
+        if self.rule_id == RULE_ID_UNCOMPRESSED and self.fields:
+            raise ValueError("Rule 255 is a marker and cannot have field descriptors")
 
 
 # Rule ID reserved for the uncompressed fallback (spec sections 5.5 / 5.7).
@@ -179,7 +185,8 @@ RULE_ID_UNCOMPRESSED = 255
 #   0 - Reserved (uncompressed fallback)
 #   1 - Legacy experimental (not interoperable)
 #   2 - RFC 8724 fragmentation profile
-RULE_SET_VERSION = 2
+#   3 - Canonical specialized Rule 7 MQTT-SN residue
+RULE_SET_VERSION = 3
 
 # DIO Rule Version Option type (spec section 5.7, LICHEN extension).
 # Advertised in DIO messages to indicate the SCHC rule set version.
@@ -201,7 +208,7 @@ class SchcRuleVersionOption:
            1B       1B       1B
 
     Attributes:
-        version: 8-bit unsigned rule set version (0 reserved, 1 legacy, 2 current).
+        version: 8-bit unsigned rule set version (0 reserved, 1 legacy, 3 current).
     """
 
     version: int
@@ -213,6 +220,21 @@ class SchcRuleVersionOption:
     def to_bytes(self) -> bytes:
         """Serialize to wire format (Type/Length/Version)."""
         return bytes([SCHC_RULE_VERSION_TYPE, 1, self.version])
+
+    @classmethod
+    def local(cls, version: int = RULE_SET_VERSION) -> SchcRuleVersionOption:
+        """Create an option for a locally implemented rule registry.
+
+        Parsers retain unknown remote version bytes so callers can reject them
+        explicitly.  Local construction is stricter: this implementation has
+        exactly one operational registry, Rule Set Version 3.
+        """
+        if version != RULE_SET_VERSION:
+            raise ValueError(
+                f"unsupported local SCHC rule set version {version}; "
+                f"implemented version is {RULE_SET_VERSION}"
+            )
+        return cls(version=version)
 
     @classmethod
     def from_bytes(cls, data: bytes) -> SchcRuleVersionOption:
@@ -227,8 +249,10 @@ class SchcRuleVersionOption:
         Raises:
             ValueError: If the data is malformed or has wrong type.
         """
-        if len(data) < 3:
-            raise ValueError(f"SCHC Rule Version Option too short: {len(data)} bytes")
+        if type(data) is not bytes:
+            raise ValueError("SCHC Rule Version Option must be bytes")
+        if len(data) != 3:
+            raise ValueError(f"SCHC Rule Version Option must be exactly 3 bytes, got {len(data)}")
         if data[0] != SCHC_RULE_VERSION_TYPE:
             raise ValueError(
                 f"wrong option type: expected {SCHC_RULE_VERSION_TYPE:#x}, got {data[0]:#x}"
@@ -240,14 +264,14 @@ class SchcRuleVersionOption:
     @classmethod
     def current(cls) -> SchcRuleVersionOption:
         """Create an option with the current rule set version."""
-        return cls(version=RULE_SET_VERSION)
+        return cls.local()
 
 
 # CoAP header compression (spec appendix A.2), fixed part (no variable token).
 # Version is a constant; the rest are carried verbatim in the residue.
-# IDs 64+ are used for these standalone building-block rules to avoid colliding
-# with the spec's reserved top-level rules 0-4 (which additionally require IPv6
-# header parsing that is not yet implemented).
+# IDs 64+ identify local descriptor building blocks only. They are not v3 wire
+# Rule IDs, are excluded from the operational registry, and cannot be selected
+# or decoded by a default context.
 COAP_RULE = Rule(
     rule_id=64,
     fields=(
@@ -314,8 +338,12 @@ def _addr_field(field_id: str, *, link_local: bool) -> FieldDescriptor:
             mo_arg=64,
         )
     return FieldDescriptor(
-        field_id, 128, MO.MSB, CDA.LSB,
-        target_value=_GLOBAL_PREFIX_TV, mo_arg=8,
+        field_id,
+        128,
+        MO.MSB,
+        CDA.LSB,
+        target_value=_GLOBAL_PREFIX_TV,
+        mo_arg=8,
     )
 
 
@@ -408,15 +436,24 @@ _DIO_BASE_FIELDS = (
 # compatibility with existing test vectors and codec behavior.
 _DIO_OPTION_FIELDS = (
     FieldDescriptor(
-        "RPL.Option.Type", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT,
+        "RPL.Option.Type",
+        8,
+        MO.MATCH_MAPPING,
+        CDA.MAPPING_SENT,
         mapping=(0, 8, 2, 5, 6, 7),
     ),
     FieldDescriptor("RPL.Option.Len", 8, MO.EQUAL, CDA.NOT_SENT, target_value=30),
     FieldDescriptor("PIO.PrefixLen", 8, MO.EQUAL, CDA.NOT_SENT, target_value=64),
     FieldDescriptor("PIO.Flags", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0xC0),
     FieldDescriptor("PIO.ValidPreferred", 64, MO.IGNORE, CDA.VALUE_SENT),
-    FieldDescriptor("PIO.Prefix", 128, MO.MSB, CDA.LSB, mo_arg=64,
-                     target_value=0xfe800000000000000000000000000000),
+    FieldDescriptor(
+        "PIO.Prefix",
+        128,
+        MO.MSB,
+        CDA.LSB,
+        mo_arg=64,
+        target_value=0xFE800000000000000000000000000000,
+    ),
 )
 RPL_DIO_RULE = Rule(
     rule_id=3,
@@ -457,17 +494,81 @@ GLOBAL_OSCORE_RULE = Rule(
     fields=_ipv6_header_fields(17, link_local=False) + _udp_fields() + _coap_fields(),
 )
 
+UNCOMPRESSED_RULE = Rule(rule_id=RULE_ID_UNCOMPRESSED, fields=())
 
-# Registry keyed by rule ID.
-RULES: dict[int, Rule] = {
+
+# Version 3's immutable generic registry, keyed by rule ID.  Specialized Rule
+# 7 deliberately is not represented by generic FieldDescriptors; its
+# AddressMode/PortDirection residue has one implementation in headers.py.
+_RULES_V3: dict[int, Rule] = {
+    # OSCORE must precede its otherwise descriptor-identical plaintext rule.
+    LINK_LOCAL_OSCORE_RULE.rule_id: LINK_LOCAL_OSCORE_RULE,
+    GLOBAL_OSCORE_RULE.rule_id: GLOBAL_OSCORE_RULE,
     LINK_LOCAL_COAP_RULE.rule_id: LINK_LOCAL_COAP_RULE,
     GLOBAL_COAP_RULE.rule_id: GLOBAL_COAP_RULE,
     LINK_LOCAL_ICMPV6_ECHO_RULE.rule_id: LINK_LOCAL_ICMPV6_ECHO_RULE,
     RPL_DIO_RULE.rule_id: RPL_DIO_RULE,
     RPL_DAO_RULE.rule_id: RPL_DAO_RULE,
-    LINK_LOCAL_OSCORE_RULE.rule_id: LINK_LOCAL_OSCORE_RULE,
-    GLOBAL_OSCORE_RULE.rule_id: GLOBAL_OSCORE_RULE,
-    ICMPV6_ECHO_RULE.rule_id: ICMPV6_ECHO_RULE,
-    COAP_RULE.rule_id: COAP_RULE,
-    UDP_PORT_RULE.rule_id: UDP_PORT_RULE,
+    UNCOMPRESSED_RULE.rule_id: UNCOMPRESSED_RULE,
 }
+RULES: Mapping[int, Rule] = MappingProxyType(_RULES_V3)
+RULE_SET_REGISTRIES: Mapping[int, Mapping[int, Rule]] = MappingProxyType({RULE_SET_VERSION: RULES})
+
+_FNV1A64_OFFSET = 0xCBF29CE484222325
+_FNV1A64_PRIME = 0x100000001B3
+_MO_FINGERPRINT_CODES = {MO.EQUAL: 0, MO.MSB: 1, MO.MATCH_MAPPING: 2, MO.IGNORE: 3}
+_CDA_FINGERPRINT_CODES = {
+    CDA.NOT_SENT: 0,
+    CDA.VALUE_SENT: 1,
+    CDA.LSB: 2,
+    CDA.COMPUTE: 3,
+    CDA.MAPPING_SENT: 4,
+}
+
+
+def _fingerprint_bytes(hash_value: int, data: bytes) -> int:
+    for octet in data:
+        hash_value ^= octet
+        hash_value = (hash_value * _FNV1A64_PRIME) & 0xFFFFFFFFFFFFFFFF
+    return hash_value
+
+
+def rule_set_v3_descriptor_hash() -> int:
+    """Return the canonical Version 3 registry descriptor fingerprint.
+
+    The byte stream is domain-separated with ``LICHEN-SCHC-DESC-v1`` and then
+    encodes the registry version, ordered rules, and every descriptor field in
+    fixed-width network byte order. This is an interoperability fingerprint,
+    not a cryptographic integrity primitive.
+    """
+    hash_value = _fingerprint_bytes(_FNV1A64_OFFSET, b"LICHEN-SCHC-DESC-v1\0")
+    hash_value = _fingerprint_bytes(hash_value, bytes([RULE_SET_VERSION]))
+    for rule in RULES.values():
+        hash_value = _fingerprint_bytes(hash_value, b"R" + bytes([rule.rule_id]))
+        hash_value = _fingerprint_bytes(hash_value, len(rule.fields).to_bytes(2, "big"))
+        for descriptor in rule.fields:
+            field_id = descriptor.field_id.encode("utf-8")
+            mapping = descriptor.mapping or ()
+            hash_value = _fingerprint_bytes(hash_value, len(field_id).to_bytes(2, "big"))
+            hash_value = _fingerprint_bytes(hash_value, field_id)
+            hash_value = _fingerprint_bytes(
+                hash_value, descriptor.length_bits.to_bytes(2, "big")
+            )
+            hash_value = _fingerprint_bytes(
+                hash_value,
+                bytes(
+                    [
+                        _MO_FINGERPRINT_CODES[descriptor.mo],
+                        _CDA_FINGERPRINT_CODES[descriptor.cda],
+                    ]
+                ),
+            )
+            hash_value = _fingerprint_bytes(
+                hash_value, descriptor.target_value.to_bytes(16, "big")
+            )
+            mo_arg = 0xFFFF if descriptor.mo_arg is None else descriptor.mo_arg
+            hash_value = _fingerprint_bytes(hash_value, mo_arg.to_bytes(2, "big"))
+            hash_value = _fingerprint_bytes(hash_value, len(mapping).to_bytes(2, "big"))
+            for value in mapping:
+                hash_value = _fingerprint_bytes(hash_value, value.to_bytes(16, "big"))
+    return hash_value

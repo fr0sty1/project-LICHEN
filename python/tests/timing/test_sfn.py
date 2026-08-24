@@ -10,7 +10,6 @@ from lichen.timing.sfn import (
     DESYNC_CONSTANTS,
     TDMA_BEACON_TIMEOUT_SUPERFRAMES,
     TDMA_GUARD_MS,
-    TDMA_GUARD_MS_ALT,
     TDMA_REJOIN_TIMEOUT_SUPERFRAMES,
     TDMA_SLOT_MS,
     CcpState,
@@ -29,11 +28,8 @@ class TestTdmaConstants:
     def test_guard_ms(self) -> None:
         assert TDMA_GUARD_MS == 50
 
-    def test_guard_ms_alt(self) -> None:
-        assert TDMA_GUARD_MS_ALT == 100
-
     def test_slot_ms(self) -> None:
-        assert TDMA_SLOT_MS == 250
+        assert TDMA_SLOT_MS == 2346
 
     def test_beacon_timeout(self) -> None:
         assert TDMA_BEACON_TIMEOUT_SUPERFRAMES == 3
@@ -86,6 +82,11 @@ class TestHash32:
         result = hash_32(b"\xff" * 100)
         assert 0 <= result < 2**32
 
+    @pytest.mark.parametrize("data", [bytearray(b"x"), [0], memoryview(b"x")])
+    def test_rejects_non_exact_bytes(self, data: object) -> None:
+        with pytest.raises(TypeError, match="exact bytes"):
+            hash_32(data)  # type: ignore[arg-type]
+
 
 class TestSlotFor:
     """Test slot_for calculation."""
@@ -103,6 +104,11 @@ class TestSlotFor:
         with pytest.raises(ValueError, match="eui64 must be 8 bytes"):
             slot_for(b"\x01\x02\x03\x04\x05\x06\x07\x08\x09", 0, 10)
 
+    @pytest.mark.parametrize("eui64", [bytearray(8), [0] * 8, memoryview(bytes(8))])
+    def test_non_exact_bytes_eui64_raises(self, eui64: object) -> None:
+        with pytest.raises(TypeError, match="exact bytes"):
+            slot_for(eui64, 0, 10)  # type: ignore[arg-type]
+
     def test_zero_slots_raises(self) -> None:
         eui64 = b"\x01\x02\x03\x04\x05\x06\x07\x08"
         with pytest.raises(ValueError, match="num_slots must be positive"):
@@ -113,11 +119,29 @@ class TestSlotFor:
         with pytest.raises(ValueError, match="num_slots must be positive"):
             slot_for(eui64, 0, -1)
 
+    @pytest.mark.parametrize("num_slots", [True, False, 2.5, "2", None])
+    def test_non_integer_slots_raise(self, num_slots: object) -> None:
+        eui64 = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+        with pytest.raises(TypeError, match="num_slots must be an integer"):
+            slot_for(eui64, 0, num_slots)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("sfn", [True, False, 1.5, "1", None])
+    def test_non_integer_sfn_raises(self, sfn: object) -> None:
+        eui64 = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+        with pytest.raises(TypeError, match="sfn must be an integer"):
+            slot_for(eui64, sfn, 8)  # type: ignore[arg-type]
+
     def test_deterministic(self) -> None:
         eui64 = b"\x01\x02\x03\x04\x05\x06\x07\x08"
         s1 = slot_for(eui64, 100, 16)
         s2 = slot_for(eui64, 100, 16)
         assert s1 == s2
+
+    def test_u32_addition_wraps_before_non_power_of_two_modulus(self) -> None:
+        eui64 = bytes.fromhex("0102030405060708")
+        assert hash_32(eui64) == 0x2804678D
+        assert slot_for(eui64, 0xFFFFFFFF, 3) == 2
+        assert (hash_32(eui64) + 0xFFFFFFFF) % 3 == 0
 
     def test_sfn_affects_slot(self) -> None:
         eui64 = b"\x01\x02\x03\x04\x05\x06\x07\x08"
@@ -195,6 +219,16 @@ class TestSfnDelta:
         result = sfn_delta(2, 10)
         assert result == 0xFFFFFFF8
 
+    @pytest.mark.parametrize("bad", [True, False, 1.0, "1", None])
+    def test_rejects_non_integer_curr(self, bad: object) -> None:
+        with pytest.raises(TypeError, match="curr must be an integer"):
+            sfn_delta(bad, 0)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("bad", [True, False, 1.0, "1", None])
+    def test_rejects_non_integer_last(self, bad: object) -> None:
+        with pytest.raises(TypeError, match="last must be an integer"):
+            sfn_delta(0, bad)  # type: ignore[arg-type]
+
 
 class TestInitialStartupDelay:
     """Test initial_startup_delay calculation."""
@@ -224,6 +258,11 @@ class TestInitialStartupDelay:
     def test_large_value_capped(self) -> None:
         result = initial_startup_delay(10000)
         assert result == 300
+
+    @pytest.mark.parametrize("nodes_heard", [-1, True, 1.0, "1"])
+    def test_invalid_node_count_rejected(self, nodes_heard: object) -> None:
+        with pytest.raises(ValueError, match="non-negative integer"):
+            initial_startup_delay(nodes_heard)  # type: ignore[arg-type]
 
 
 class TestDesyncFSM:
@@ -294,6 +333,22 @@ class TestDesyncFSM:
         fsm.on_beacon(valid=False)  # -> DESYNCED, count=0
         assert fsm.state == DesyncState.DESYNCED
         assert fsm.consecutive_valid == 0
+
+    @pytest.mark.parametrize("valid_count", [1, 2])
+    def test_recovery_timeout_at_each_incomplete_count(self, valid_count: int) -> None:
+        fsm = DesyncFSM()
+        fsm.state = DesyncState.DESYNCED
+        for _ in range(valid_count):
+            fsm.on_beacon(valid=True)
+        assert fsm.state == DesyncState.RECOVERING
+
+        for missed in range(1, TDMA_BEACON_TIMEOUT_SUPERFRAMES):
+            assert fsm.on_missed_superframe() == DesyncState.RECOVERING
+            assert fsm.missed_superframes == missed
+
+        assert fsm.on_missed_superframe() == DesyncState.DESYNCED
+        assert fsm.consecutive_valid == 0
+        assert fsm.missed_superframes == 0
 
 
 class TestDesyncState:

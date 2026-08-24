@@ -72,10 +72,13 @@
     },
     {
       "name": "extended_eui64",
-      "description": "AddrMode EXTENDED (2): 64-bit EUI-64, 8 bytes on wire",
+      "description": "AddrMode EXTENDED (2): the authenticated peer record's canonical 64-bit EUI-64, never the key-derived IID, is sent unchanged as 8 wire bytes",
       "addr_mode": 2,
       "addr_mode_name": "EXTENDED",
       "dst_addr": "0011223344556677",
+      "peer_eui64": "0011223344556677",
+      "key_derived_iid": "7dd5cfc679ab6342",
+      "must_not_use_key_derived_iid": true,
       "dst_len": 8,
       "payload": "150102",
       "encoded": "0f020300c80011223344556677150102",
@@ -92,6 +95,21 @@
       "payload": "1400ff",
       "encoded": "0f02ffffffaabbccddeeff00111400ff",
       "expected_destination": "fe80::a8bb:ccdd:eeff:11",
+      "is_broadcast": false
+    },
+    {
+      "name": "key_derived_extended_eui64",
+      "description": "A key-derived authenticated IID is converted back to canonical Extended wire EUI-64 by flipping the U/L bit exactly once",
+      "addr_mode": 2,
+      "addr_mode_name": "EXTENDED",
+      "sender_pubkey_hex": "29acbae141bccaf0b619c8e961f59929c8f34e8cde0ccff38ec76ef981596fd0",
+      "key_derived_iid": "3c8d1d929460b421",
+      "wire_eui64_hex": "3e8d1d929460b421",
+      "dst_addr": "3e8d1d929460b421",
+      "dst_len": 8,
+      "payload": "150102",
+      "encoded": "0f020000003e8d1d929460b421150102",
+      "expected_destination": "fe80::3c8d:1d92:9460:b421",
       "is_broadcast": false
     },
     {

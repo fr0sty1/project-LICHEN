@@ -76,8 +76,12 @@ pub const OPT_PREFIX_INFO: u8 = 8;
 pub const OPT_RPL_TARGET_DESCRIPTOR: u8 = 9;
 /// Provisional LICHEN DAO origin-authentication option.
 pub const OPT_DAO_ORIGIN_SIGNATURE: u8 = 0x12;
+/// Root-signed, relayable DODAGVersionNumber authorization option.
+pub const OPT_DODAG_VERSION_AUTHORIZATION: u8 = 0x16;
 pub const DAO_ORIGIN_SIGNATURE_DATA_LEN: usize = 56;
 pub const DAO_ORIGIN_SIGNATURE_LEN: usize = 58;
+pub const DODAG_VERSION_AUTHORIZATION_DATA_LEN: usize = 81;
+pub const DODAG_VERSION_AUTHORIZATION_LEN: usize = 83;
 
 // ── ICMPv6 code for each RPL message ─────────────────────────────────────────
 
@@ -108,6 +112,7 @@ pub struct Dio {
 
 impl Dio {
     pub const BASE_LEN: usize = 24;
+    pub const SERIALIZED_LEN: usize = 27;
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < Self::BASE_LEN {
@@ -139,12 +144,31 @@ impl Dio {
     }
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
-        if out.len() < Self::BASE_LEN {
-            return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
-        }
-        // Reject local RPLInstanceID 0xC0-0xFF per RFC 6550 5.1
+        self.write_to_with_schc_version_option(None, out)
+    }
+
+    /// Serialize with an explicit canonical SCHC Rule Version option.
+    ///
+    /// `None` inserts the local current version. `Some` must contain exactly
+    /// one complete Type 0x13/Length 1 option; its advertised byte is preserved.
+    pub fn write_to_with_schc_version_option(
+        &self,
+        option: Option<&[u8]>,
+        out: &mut [u8],
+    ) -> Result<usize, RplError> {
+        // Validate semantic fields before reporting output capacity.
         if self.rpl_instance_id >= 0xC0 {
             return Err(RplError::LocalInstanceId(self.rpl_instance_id));
+        }
+        let version_option = match option {
+            None => lichen_schc::SchcRuleVersionOption::current().to_bytes(),
+            Some(bytes) => lichen_schc::SchcRuleVersionOption::from_bytes(bytes)
+                .ok_or(RplError::InvalidOption)?
+                .to_bytes(),
+        };
+        let required = Self::SERIALIZED_LEN;
+        if out.len() < required {
+            return Err(BufferTooSmall::new(required, out.len()).into());
         }
         let gmop = ((self.grounded as u8) << 7)
             | ((self.mode_of_operation & 0x7) << 3)
@@ -158,7 +182,8 @@ impl Dio {
         out[6] = self.flags;
         out[7] = 0; // reserved
         out[8..24].copy_from_slice(&self.dodag_id);
-        Ok(Self::BASE_LEN)
+        out[24..27].copy_from_slice(&version_option);
+        Ok(required)
     }
 
     /// Options slice (everything after the 24-byte base).
@@ -171,11 +196,48 @@ impl Dio {
     }
 }
 
+/// Relayable authorization proving that the DODAG root minted a version.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DodagVersionAuthorization {
+    pub version: u8,
+    pub root_pubkey: [u8; 32],
+    pub signature: [u8; 48],
+}
+
+impl DodagVersionAuthorization {
+    pub fn from_option_data(data: &[u8]) -> Result<Self, RplError> {
+        if data.len() != DODAG_VERSION_AUTHORIZATION_DATA_LEN {
+            return Err(RplError::InvalidOption);
+        }
+        Ok(Self {
+            version: data[0],
+            root_pubkey: data[1..33]
+                .try_into()
+                .map_err(|_| RplError::InvalidOption)?,
+            signature: data[33..81]
+                .try_into()
+                .map_err(|_| RplError::InvalidOption)?,
+        })
+    }
+
+    pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
+        if out.len() < DODAG_VERSION_AUTHORIZATION_LEN {
+            return Err(BufferTooSmall::new(DODAG_VERSION_AUTHORIZATION_LEN, out.len()).into());
+        }
+        out[0] = OPT_DODAG_VERSION_AUTHORIZATION;
+        out[1] = DODAG_VERSION_AUTHORIZATION_DATA_LEN as u8;
+        out[2] = self.version;
+        out[3..35].copy_from_slice(&self.root_pubkey);
+        out[35..83].copy_from_slice(&self.signature);
+        Ok(DODAG_VERSION_AUTHORIZATION_LEN)
+    }
+}
+
 // ── DAO ──────────────────────────────────────────────────────────────────────
 
 /// DAO base object (RFC 6550 §6.4). D-flag (bit 6 of byte 1) determines length:
 /// D=1 includes 16-byte DODAGID (20 bytes total); D=0 elides it (4 bytes total).
-/// LICHEN/SCHC rule 4 uses D=1; parser supports both (D=0 zeros dodag_id).
+/// LICHEN/SCHC rule 4 uses D=1; parser supports both (D=0 yields no dodag_id).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Dao {
     pub rpl_instance_id: u8,
@@ -207,8 +269,8 @@ impl Dao {
             // SAFETY: length check ensures data.len() >= 20; 4..20 is 16 bytes
             Some(data[4..20].try_into().unwrap())
         } else {
-            // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG
-            Some([0u8; 16])
+            // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG.
+            None
         };
         Ok(Self {
             rpl_instance_id,
@@ -232,7 +294,7 @@ impl Dao {
             return Err(BufferTooSmall::new(base_len, out.len()).into());
         }
         let kd = ((self.ack_requested as u8) << 7)
-            | (1u8 << 6) // D-flag always set (LICHEN/SCHC rule 4)
+            | ((self.dodag_id.is_some() as u8) << 6)
             | (self.flags & 0x3F);
         out[0] = self.rpl_instance_id;
         out[1] = kd;
@@ -519,8 +581,10 @@ impl RplTarget {
 
 // ── Transit Information option (type 6) ──────────────────────────────────────
 
-/// Transit Information option (RFC 6550 6.7.8). E flag (bit 7 of first data
-/// byte) indicates whether Parent Address is present; LICHEN always uses E=1.
+/// Transit Information option (RFC 6550 6.7.8).
+///
+/// The current LICHEN profile carries a Parent Address by the exact 20-byte
+/// option length and requires the flags byte, including E, to be zero.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransitInfo {
     pub path_control: u8,
@@ -536,9 +600,11 @@ impl TransitInfo {
         if data.len() < Self::DATA_LEN {
             return Err(TooShort::new(Self::DATA_LEN, data.len()).into());
         }
-        // SAFETY: length check above ensures data.len() >= DATA_LEN (20),
-        // so 4..20 is within bounds and exactly 16 bytes. E flag (data[0] bit 7)
-        // is asserted by caller tests per aligned E/Parent contract.
+        if data.len() != Self::DATA_LEN || data[0] != 0 {
+            return Err(RplError::InvalidOption);
+        }
+        // SAFETY: exact length check above ensures 4..20 is within bounds and
+        // exactly 16 bytes.
         Ok(Self {
             path_control: data[1],
             path_sequence: data[2],
@@ -554,7 +620,7 @@ impl TransitInfo {
         }
         out[0] = OPT_TRANSIT_INFO;
         out[1] = Self::DATA_LEN as u8;
-        out[2] = 0x80; // E=1 (parent address present) per RFC 6550 6.7.8, aligned with Python
+        out[2] = 0; // Current-profile flags; Parent presence is conveyed by length 20.
         out[3] = self.path_control;
         out[4] = self.path_sequence;
         out[5] = self.path_lifetime;
@@ -627,6 +693,13 @@ pub fn append_option(buf: &mut [u8], pos: usize, option_bytes: &[u8]) -> Result<
 mod tests {
     use super::*;
 
+    fn decode_hex(value: &str) -> std::vec::Vec<u8> {
+        (0..value.len())
+            .step_by(2)
+            .map(|index| u8::from_str_radix(&value[index..index + 2], 16).unwrap())
+            .collect()
+    }
+
     // ── DIO round-trip ────────────────────────────────────────────────────────
 
     #[test]
@@ -647,8 +720,8 @@ mod tests {
             dodag_id,
         };
 
-        let mut buf = [0u8; 24];
-        orig.write_to(&mut buf).unwrap();
+        let mut buf = [0u8; Dio::SERIALIZED_LEN];
+        let written = orig.write_to(&mut buf).unwrap();
 
         // gmop = (1<<7) | (1<<3) | 0 = 0x88
         assert_eq!(buf[0], 0); // instance id
@@ -657,17 +730,81 @@ mod tests {
         assert_eq!(buf[4], 0x88); // gmop
         assert_eq!(buf[5], 42); // dtsn
         assert_eq!(&buf[8..24], &dodag_id);
+        assert_eq!(written, Dio::SERIALIZED_LEN);
+        assert_eq!(
+            &buf[24..],
+            &lichen_schc::SchcRuleVersionOption::current().to_bytes()
+        );
 
         let decoded = Dio::from_bytes(&buf).unwrap();
         assert_eq!(decoded, orig);
     }
 
     #[test]
+    fn every_dio_matches_committed_cross_language_vectors() {
+        let document: serde_json::Value =
+            serde_json::from_str(include_str!("../../../test/vectors/rpl_messages.json")).unwrap();
+        let vectors = document["vectors"].as_array().unwrap();
+        let mut executed = 0;
+        for vector in vectors.iter().filter(|vector| vector["type"] == "dio") {
+            let fields = &vector["fields"];
+            let mut dodag_id = [0u8; 16];
+            dodag_id.copy_from_slice(
+                &fields["dodag_id"]
+                    .as_str()
+                    .unwrap()
+                    .parse::<core::net::Ipv6Addr>()
+                    .unwrap()
+                    .octets(),
+            );
+            let dio = Dio {
+                rpl_instance_id: fields["rpl_instance_id"].as_u64().unwrap() as u8,
+                version: fields["version"].as_u64().unwrap() as u8,
+                rank: fields["rank"].as_u64().unwrap() as u16,
+                grounded: fields["grounded"].as_bool().unwrap(),
+                mode_of_operation: fields["mode_of_operation"].as_u64().unwrap() as u8,
+                preference: fields["preference"].as_u64().unwrap() as u8,
+                dtsn: fields["dtsn"].as_u64().unwrap() as u8,
+                flags: fields["flags"].as_u64().unwrap() as u8,
+                dodag_id,
+            };
+            let mode = vector["schc_version_mode"].as_str().unwrap();
+            let options = decode_hex(vector["options_hex"].as_str().unwrap());
+            let mut actual = [0u8; 64];
+            let result = match mode {
+                "insert_current" => dio.write_to(&mut actual),
+                "propagate_root" | "explicit" | "malformed" | "duplicate" => {
+                    dio.write_to_with_schc_version_option(Some(&options), &mut actual)
+                }
+                other => panic!("unknown SCHC version mode {other}"),
+            };
+            if vector.get("expect_error").is_some() {
+                assert_eq!(result, Err(RplError::InvalidOption), "{}", vector["name"]);
+            } else {
+                let written = result.unwrap();
+                let expected = decode_hex(vector["encoded"].as_str().unwrap());
+                assert_eq!(&actual[..written], expected, "{}", vector["name"]);
+                let expected_option = if mode == "insert_current" {
+                    lichen_schc::SchcRuleVersionOption::current().to_bytes()
+                } else {
+                    options.as_slice().try_into().unwrap()
+                };
+                assert_eq!(Dio::options_tail(&actual[..written]), &expected_option);
+                assert_eq!(Dio::from_bytes(&actual[..written]).unwrap(), dio);
+            }
+            executed += 1;
+        }
+        assert_eq!(executed, 6);
+    }
+
+    #[test]
     fn dio_too_short() {
-        assert_eq!(
-            Dio::from_bytes(&[0u8; 23]),
-            Err(TooShort::new(24, 23).into())
-        );
+        for length in 0..Dio::BASE_LEN {
+            assert_eq!(
+                Dio::from_bytes(&[0u8; Dio::BASE_LEN][..length]),
+                Err(TooShort::new(Dio::BASE_LEN, length).into())
+            );
+        }
     }
 
     // ── DAO round-trip ────────────────────────────────────────────────────────
@@ -717,19 +854,19 @@ mod tests {
 
     #[test]
     fn dao_supports_d_flag_zero() {
-        // Per RFC 6550 both D=0 and D=1 valid; LICHEN prefers D=1 but
-        // accepts D=0 with zeroed DODAGID for interop (use DIO DODAGID).
-        let mut buf = [0u8; 20];
-        buf[0] = 0; // rpl_instance_id
-        buf[1] = 0x00; // K=0, D=0, flags=0
-        buf[2] = 0; // reserved
-        buf[3] = 1; // dao_sequence
-        let dao = Dao::from_bytes(&buf).unwrap();
-        assert_eq!(dao.rpl_instance_id, 0);
-        assert!(!dao.ack_requested);
-        assert_eq!(dao.flags, 0);
-        assert_eq!(dao.dao_sequence, 1);
-        assert_eq!(dao.dodag_id, Some([0u8; 16]));
+        // Per RFC 6550 both D=0 and D=1 are valid. D=0 carries no DODAGID;
+        // the receiver supplies it from the active DODAG context.
+        let original = Dao {
+            rpl_instance_id: 0,
+            ack_requested: false,
+            flags: 0,
+            dao_sequence: 1,
+            dodag_id: None,
+        };
+        let mut buf = [0u8; 4];
+        assert_eq!(original.write_to(&mut buf).unwrap(), 4);
+        assert_eq!(buf, [0, 0, 0, 1]);
+        assert_eq!(Dao::from_bytes(&buf).unwrap(), original);
     }
 
     #[test]
@@ -871,7 +1008,7 @@ mod tests {
         let n = ti.write_to(&mut buf).unwrap();
         assert_eq!(buf[0], OPT_TRANSIT_INFO);
         assert_eq!(buf[1], 20);
-        assert_eq!(buf[2], 0x80); // E=1 parent present
+        assert_eq!(buf[2], 0); // Current-profile flags; length conveys Parent.
         assert_eq!(buf[3], 0); // path_control
         assert_eq!(buf[4], 3); // path_sequence
         assert_eq!(buf[5], 255); // path_lifetime
@@ -879,6 +1016,19 @@ mod tests {
 
         let decoded = TransitInfo::from_bytes(&buf[2..n]).unwrap();
         assert_eq!(decoded, ti);
+
+        let mut unsupported_e = buf[2..n].to_vec();
+        unsupported_e[0] = 0x80;
+        assert_eq!(
+            TransitInfo::from_bytes(&unsupported_e),
+            Err(RplError::InvalidOption)
+        );
+        let mut reserved_flag = buf[2..n].to_vec();
+        reserved_flag[0] = 0x40;
+        assert_eq!(
+            TransitInfo::from_bytes(&reserved_flag),
+            Err(RplError::InvalidOption)
+        );
     }
 
     // ── DODAG Configuration option ────────────────────────────────────────────
@@ -902,8 +1052,10 @@ mod tests {
 
     #[test]
     fn dodag_config_gateway_centric_roundtrip() {
-        let mut cfg = DodagConfig::default();
-        cfg.gateway_centric = true;
+        let cfg = DodagConfig {
+            gateway_centric: true,
+            ..DodagConfig::default()
+        };
         let mut buf = [0u8; 20];
         let n = cfg.write_to(&mut buf).unwrap();
         assert_eq!(buf[2] & 0x80, 0x80);

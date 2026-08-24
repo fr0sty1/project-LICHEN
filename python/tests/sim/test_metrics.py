@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import random
 import tempfile
 from pathlib import Path
 
@@ -130,10 +131,23 @@ class TestMetricsUnit:
         future_time = max_age + 1_000_000_000
         m.record_transmission_start("new_tx", future_time)
 
-        assert len(m._tx_start_times) == 1
         assert "new_tx" in m._tx_start_times
-
+        assert len(m._tx_start_times) <= threshold + 2
         assert m.transmissions == threshold + 2
+
+    def test_delayed_reception_keeps_latency_after_threshold(self) -> None:
+        """A 90s delayed RX after >1000 TX starts still records latency."""
+        m = Metrics()
+        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
+        for i in range(threshold + 1):
+            m.record_transmission_start(f"tx_{i}", 0)
+        delayed_us = 90_000_000
+        m.record_transmission_start("newer", delayed_us)
+        assert m.record_reception("rx", "tx_0", delayed_us) is True
+        stats = m.latency_stats()
+        assert stats.count == 1
+        assert stats.min_us == delayed_us
+        assert m.receptions == 1
 
     def test_tx_start_times_recent_not_pruned(self) -> None:
         m = Metrics()
@@ -233,6 +247,7 @@ class TestMetricsUnit:
             assert "receptions,1" in content
             assert "collisions,1" in content
             assert "latency_min_us,100" in content
+            assert "latency_mean_us,100.00" in content
 
             # Check per-channel section.
             assert "# Collisions by Channel" in content
@@ -246,6 +261,7 @@ class TestMetricsUnit:
             assert "# Time-Series Events" in content
             assert "reception" in content
             assert "collision" in content
+            assert "tx1,tx2" in content
         finally:
             path.unlink()
 
@@ -261,6 +277,25 @@ class TestMetricsUnit:
             content = path.read_text()
             assert "transmissions,0" in content
             assert "receptions,0" in content
+        finally:
+            path.unlink()
+
+    def test_csv_export_zero_latency_is_not_blank(self) -> None:
+        """A real 0 µs latency must not collapse to the empty-cell sentinel."""
+        m = Metrics()
+        m.record_transmission_start("tx1", 100)
+        m.record_reception("rx1", "tx1", 100)
+
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            path = Path(f.name)
+
+        try:
+            m.export_csv(path)
+            content = path.read_text()
+            assert "latency_min_us,0" in content
+            assert "latency_max_us,0" in content
+            assert "latency_mean_us,0.00" in content
+            assert "latency_p50_us,0" in content
         finally:
             path.unlink()
 
@@ -314,6 +349,93 @@ class TestMetricsUnit:
         assert len(m._collisions_by_node) == 0
         assert len(m._time_series) == 0
         assert m.latency_p50() is None
+
+    def test_delivered_and_time_series_are_capped(self) -> None:
+        """Dedup sets and CSV series do not grow without bound."""
+        m = Metrics()
+        cap = Metrics._DELIVERED_MAX_SIZE
+        series_cap = Metrics._TIME_SERIES_MAX_SIZE
+        n = cap + 50
+        for i in range(n):
+            tx = f"tx{i}"
+            m.record_transmission_start(tx, 0)
+            m.record_reception(f"rx{i}", tx, 10)
+        assert m.receptions == n
+        # In-window identities must not be LRU-evicted (poll re-inflation).
+        assert m.record_reception("rx0", "tx0", 10) is False
+        assert m.receptions == n
+        assert len(m._time_series) <= series_cap
+
+    def test_tx_latency_recorded_pruned_with_start_times(self) -> None:
+        """Latency-recorded ids are dropped when their start times are pruned."""
+        m = Metrics()
+        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
+        for i in range(threshold + 1):
+            tx = f"old_tx_{i}"
+            m.record_transmission_start(tx, 0)
+            m.record_reception(f"rx_{i}", tx, 10)
+        assert len(m._tx_latency_recorded) == threshold + 1
+        future_time = Metrics._TX_START_TIMES_MAX_AGE_US + 1_000_000
+        m.record_transmission_start("new_tx", future_time)
+        assert "old_tx_0" not in m._tx_start_times
+        assert "old_tx_0" not in m._tx_latency_recorded
+        assert ("rx_0", "old_tx_0") not in m._delivered
+        m.reset()
+        assert m._tx_latency_recorded == set()
+
+    def test_re_poll_after_many_identities_does_not_inflate(self) -> None:
+        """A (rx, tx) still in-flight must not be counted again after cap."""
+        m = Metrics()
+        n = Metrics._DELIVERED_MAX_SIZE + 25
+        for i in range(n):
+            tx = f"tx{i}"
+            m.record_transmission_start(tx, 0)
+            assert m.record_reception(f"rx{i}", tx, 5) is True
+        assert m.receptions == n
+        for i in range(0, n, 17):
+            assert m.record_reception(f"rx{i}", f"tx{i}", 9) is False
+        assert m.receptions == n
+
+    def test_reservoir_uses_seeded_rng_not_global_random(self) -> None:
+        """Percentiles after the reservoir cap are reproducible per Metrics rng."""
+        original_randint = random.randint
+
+        def boom(a: int, b: int) -> int:
+            raise AssertionError("Metrics must not call global random.randint")
+
+        random.randint = boom  # type: ignore[method-assign]
+        try:
+            m1 = Metrics(rng=random.Random(123))
+            m2 = Metrics(rng=random.Random(123))
+            n = Metrics._MAX_LATENCY_SAMPLES + 250
+            for i in range(n):
+                tx = f"tx{i}"
+                m1.record_transmission_start(tx, 0)
+                m1.record_reception("rx", tx, i + 1)
+                m2.record_transmission_start(tx, 0)
+                m2.record_reception("rx", tx, i + 1)
+            assert m1.latency_p50() == m2.latency_p50()
+            assert m1.latency_p95() == m2.latency_p95()
+            assert m1.latency_p99() == m2.latency_p99()
+            assert m1.latency_stats().count == n
+        finally:
+            random.randint = original_randint  # type: ignore[method-assign]
+
+    def test_global_random_does_not_perturb_percentiles(self) -> None:
+        """Process-global random draws must not change seeded reservoir output."""
+        m1 = Metrics(rng=random.Random(99))
+        m2 = Metrics(rng=random.Random(99))
+        n = Metrics._MAX_LATENCY_SAMPLES + 100
+        rng_noise = random.Random(0)
+        for i in range(n):
+            rng_noise.randint(0, 10_000)
+            tx = f"tx{i}"
+            m1.record_transmission_start(tx, 0)
+            m1.record_reception("rx", tx, (i * 17) % 5000)
+            m2.record_transmission_start(tx, 0)
+            m2.record_reception("rx", tx, (i * 17) % 5000)
+        assert m1.latency_p50() == m2.latency_p50()
+        assert m1.latency_p99() == m2.latency_p99()
 
 
 class TestMetricsIntegration:
@@ -460,9 +582,7 @@ class TestMetricsComparison:
             "delivery_rate": 0.9,
             "collision_rate": 0.05,
             # worse latency
-            "latency_us": {
-                "min": 150, "max": 800, "mean": 400, "p50": 360, "p95": 700, "p99": 780
-            },
+            "latency_us": {"min": 150, "max": 800, "mean": 400, "p50": 360, "p95": 700, "p99": 780},
         }
         diff = compare_metrics(baseline, variant)
 
@@ -492,9 +612,7 @@ class TestMetricsComparison:
             "delivery_rate": 0.95,  # better
             "collision_rate": 0.03,  # better
             # worse latency
-            "latency_us": {
-                "min": 150, "max": 800, "mean": 400, "p50": 360, "p95": 700, "p99": 780
-            },
+            "latency_us": {"min": 150, "max": 800, "mean": 400, "p50": 360, "p95": 700, "p99": 780},
         }
         diff = compare_metrics(baseline, variant)
 
@@ -505,12 +623,18 @@ class TestMetricsComparison:
     def test_compare_threshold_adjustment(self) -> None:
         """Custom threshold should affect significance detection."""
         baseline = {
-            "transmissions": 100, "receptions": 100, "collisions": 0,
-            "delivery_rate": 1.0, "collision_rate": 0.0,
+            "transmissions": 100,
+            "receptions": 100,
+            "collisions": 0,
+            "delivery_rate": 1.0,
+            "collision_rate": 0.0,
         }
         variant = {
-            "transmissions": 100, "receptions": 103, "collisions": 0,
-            "delivery_rate": 1.03, "collision_rate": 0.0,
+            "transmissions": 100,
+            "receptions": 103,
+            "collisions": 0,
+            "delivery_rate": 1.03,
+            "collision_rate": 0.0,
         }
 
         # 3% change with default 5% threshold -> not significant.
@@ -526,12 +650,18 @@ class TestMetricsComparison:
     def test_compare_zero_baseline(self) -> None:
         """Handle zero baseline gracefully."""
         baseline = {
-            "transmissions": 0, "receptions": 0, "collisions": 0,
-            "delivery_rate": 0.0, "collision_rate": 0.0,
+            "transmissions": 0,
+            "receptions": 0,
+            "collisions": 0,
+            "delivery_rate": 0.0,
+            "collision_rate": 0.0,
         }
         variant = {
-            "transmissions": 100, "receptions": 90, "collisions": 5,
-            "delivery_rate": 0.9, "collision_rate": 0.05,
+            "transmissions": 100,
+            "receptions": 90,
+            "collisions": 5,
+            "delivery_rate": 0.9,
+            "collision_rate": 0.05,
         }
 
         diff = compare_metrics(baseline, variant)
@@ -541,30 +671,71 @@ class TestMetricsComparison:
         assert tx_change.significant
         assert tx_change.pct_change == float("inf")  # undefined but represented as inf
 
+        delivery = next(c for c in diff.changes if c.name == "delivery_rate")
+        assert delivery.significant
+        assert delivery.variant == 0.9
+        collision = next(c for c in diff.changes if c.name == "collision_rate")
+        assert collision.significant
+
     def test_compare_missing_latency(self) -> None:
         """Handle missing latency data gracefully."""
         baseline = {
-            "transmissions": 100, "receptions": 90, "collisions": 5,
-            "delivery_rate": 0.9, "collision_rate": 0.05,
+            "transmissions": 100,
+            "receptions": 90,
+            "collisions": 5,
+            "delivery_rate": 0.9,
+            "collision_rate": 0.05,
         }
         variant = {
-            "transmissions": 100, "receptions": 90, "collisions": 5,
-            "delivery_rate": 0.9, "collision_rate": 0.05,
+            "transmissions": 100,
+            "receptions": 90,
+            "collisions": 5,
+            "delivery_rate": 0.9,
+            "collision_rate": 0.05,
         }
 
         # No latency_us key should not cause errors.
         diff = compare_metrics(baseline, variant)
         assert diff.overall_verdict == "neutral"
 
+    def test_compare_zero_delivery_none_latency_is_not_better(self) -> None:
+        """None latency from a zero-delivery snapshot is not a 0 µs win."""
+        baseline_m = Metrics()
+        baseline_m.record_transmission_start("tx1", 0)
+        baseline_m.record_reception("rx1", "tx1", 500)
+        variant_m = Metrics()
+        variant_m.record_transmission_start("tx1", 0)
+        baseline = baseline_m.snapshot()
+        variant = variant_m.snapshot()
+        lat = variant["latency_us"]
+        assert isinstance(lat, dict)
+        assert lat["count"] == 0
+        assert lat["p50"] is None
+        diff = compare_metrics(baseline, variant)
+        latency_changes = [c for c in diff.changes if c.name.startswith("latency_")]
+        assert latency_changes == []
+        assert not any(
+            c.significant and c.direction == "improved" for c in latency_changes
+        )
+        delivery = next(c for c in diff.changes if c.name == "delivery_rate")
+        assert delivery.variant < delivery.baseline
+        assert diff.overall_verdict != "better"
+
     def test_diff_to_dict(self) -> None:
         """MetricsDiff.to_dict returns JSON-serializable output."""
         baseline = {
-            "transmissions": 100, "receptions": 80, "collisions": 10,
-            "delivery_rate": 0.8, "collision_rate": 0.11,
+            "transmissions": 100,
+            "receptions": 80,
+            "collisions": 10,
+            "delivery_rate": 0.8,
+            "collision_rate": 0.11,
         }
         variant = {
-            "transmissions": 100, "receptions": 95, "collisions": 3,
-            "delivery_rate": 0.95, "collision_rate": 0.03,
+            "transmissions": 100,
+            "receptions": 95,
+            "collisions": 3,
+            "delivery_rate": 0.95,
+            "collision_rate": 0.03,
         }
 
         diff = compare_metrics(baseline, variant)
@@ -580,12 +751,18 @@ class TestMetricsComparison:
     def test_diff_summary(self) -> None:
         """MetricsDiff.summary returns human-readable output."""
         baseline = {
-            "transmissions": 100, "receptions": 80, "collisions": 10,
-            "delivery_rate": 0.8, "collision_rate": 0.11,
+            "transmissions": 100,
+            "receptions": 80,
+            "collisions": 10,
+            "delivery_rate": 0.8,
+            "collision_rate": 0.11,
         }
         variant = {
-            "transmissions": 100, "receptions": 95, "collisions": 3,
-            "delivery_rate": 0.95, "collision_rate": 0.03,
+            "transmissions": 100,
+            "receptions": 95,
+            "collisions": 3,
+            "delivery_rate": 0.95,
+            "collision_rate": 0.03,
         }
 
         diff = compare_metrics(baseline, variant)

@@ -18,7 +18,7 @@ from lichen.coap.params import (
 )
 from lichen.coap.resources.base import NodeInfo
 from lichen.coap.resources.edhoc import EdhocResource
-from lichen.coap.resources.emergency import RollcallResource, SosResource
+from lichen.coap.resources.emergency import CheckInResource, RollcallResource, SosResource
 from lichen.coap.resources.keys import KeyResource
 from lichen.coap.resources.messaging import (
     LegacyMessagesAliasResource,
@@ -29,13 +29,18 @@ from lichen.coap.resources.messaging import (
 )
 from lichen.coap.resources.node_resources import (
     ConfigResource,
+    IdentityConfigResource,
     NeighborsResource,
+    RadioConfigResource,
+    RoutesResource,
     StatusResource,
 )
+from lichen.coap.resources.position import PositionCacheResource
 from lichen.coap.resources.presence import PresenceResource
 from lichen.coap.resources.proxy import ProxyResource
 from lichen.coap.resources.resource_directory import ResourceDirectoryResource
 from lichen.coap.resources.senml import (
+    PositionBeaconResource,
     SenMLLocationResource,
     SenMLMetricsResource,
     SenMLSensorsResource,
@@ -127,30 +132,41 @@ def build_site(
     *,
     pubkey: bytes | None = None,
     mesh_client: aiocoap.Context | None = None,
+    neighbors_resource: NeighborsResource | None = None,
     sensors_resource: SenMLSensorsResource | None = None,
     location_resource: SenMLLocationResource | None = None,
+    position_beacon_resource: PositionBeaconResource | None = None,
+    position_cache_resource: PositionCacheResource | None = None,
     metrics_resource: SenMLMetricsResource | None = None,
     presence_resource: PresenceResource | None = None,
     messages_resource: MessagesResource | None = None,
     message_receipts_resource: MessageReceiptsResource | None = None,
     sos_resource: SosResource | None = None,
     rollcall_resource: RollcallResource | None = None,
+    checkin_resource: CheckInResource | None = None,
     resource_directory: bool = False,
     edhoc_resource: EdhocResource | None = None,
     endpoint_policy: EndpointPolicy | None = None,
     config_allow_writes: bool = False,
+    radio_config_allow_writes: bool = False,
     congestion_provider: CongestionProvider | None = None,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
     Pass pre-constructed observable resources to expose ``/sensors``,
     ``/location``, ``/metrics``, ``/presence``, ``/msg/inbox``, ``/msg/ack``,
-    ``/sos``, and/or ``/rollcall`` for conference demo (messaging, presence,
-    rollcall, position beacons with SenML). Callers hold references and call
-    update() methods to push LCI notifications. Pass ``rollcall_resource`` to
-    enable conference rollcall demo using LCI and SenML per spec 18.
+    ``/sos``, ``/rollcall``, and/or ``/checkin`` for conference demo (messaging,
+    presence, rollcall, check-in, position beacons with SenML). Callers hold
+    references and call update() methods to push LCI notifications. Pass
+    ``rollcall_resource`` to enable conference rollcall demo using LCI and SenML
+    per spec 18.
+
+    Pass ``neighbors_resource`` to hold a reference for calling
+    :meth:`NeighborsResource.notify_changed` when neighbours change.
 
     Args:
+        neighbors_resource: Optional pre-constructed NeighborsResource for
+            CoAP Observe support. If None, a default resource is created.
         congestion_provider: If provided, the site will check congestion level
             before processing requests and return 5.03 Service Unavailable when
             duty cycle congestion exceeds thresholds (spec 07 §10.2.3).
@@ -165,14 +181,27 @@ def build_site(
         resource.WKCResource(site.get_resources_as_linkheader),
     )
     site.add_resource(["status"], StatusResource(node_info))
-    site.add_resource(["neighbors"], NeighborsResource(node_info))
+    site.add_resource(
+        ["status", "neighbors"],
+        neighbors_resource if neighbors_resource is not None else NeighborsResource(node_info),
+    )
+    site.add_resource(["status", "routes"], RoutesResource(node_info))
     site.add_resource(["config"], ConfigResource(node_info, allow_writes=config_allow_writes))
+    site.add_resource(
+        ["config", "radio"],
+        RadioConfigResource(node_info, allow_writes=radio_config_allow_writes),
+    )
+    site.add_resource(["config", "identity"], IdentityConfigResource(node_info))
     if mesh_client is not None:
         site.add_resource(["proxy"], ProxyResource(mesh_client))
     if sensors_resource is not None:
         site.add_resource(["sensors"], sensors_resource)
     if location_resource is not None:
         site.add_resource(["location"], location_resource)
+    if position_beacon_resource is not None:
+        site.add_resource(["pos"], position_beacon_resource)
+    if position_cache_resource is not None:
+        site.add_resource(["pos", "cache"], position_cache_resource)
     if metrics_resource is not None:
         site.add_resource(["metrics"], metrics_resource)
     if presence_resource is not None:
@@ -195,6 +224,8 @@ def build_site(
         site.add_resource(["sos"], sos_resource)
     if rollcall_resource is not None:
         site.add_resource(["rollcall"], rollcall_resource)
+    if checkin_resource is not None:
+        site.add_resource(["checkin"], checkin_resource)
     if resource_directory:
         def remove_rd_registration(reg_id: str) -> None:
             site.remove_resource(["rd", reg_id])

@@ -23,157 +23,6 @@ from lichen.schc import (
     decompress,
 )
 from lichen.schc.codec import BitReader, BitWriter
-from lichen.schc.rules import CDA, MO, FieldDescriptor
-
-
-@pytest.mark.parametrize(
-    ("descriptor", "message"),
-    [
-        (
-            ("x", -1, MO.IGNORE, CDA.VALUE_SENT),
-            "x: length_bits must be a non-negative integer",
-        ),
-        (
-            ("x", True, MO.IGNORE, CDA.VALUE_SENT),
-            "x: length_bits must be a non-negative integer",
-        ),
-        (([], 8, MO.IGNORE, CDA.VALUE_SENT), "field_id must be a string"),
-        (("x", 8, "ignore", CDA.VALUE_SENT), "x: mo must be an MO"),
-        (("x", 8, MO.IGNORE, "value-sent"), "x: cda must be a CDA"),
-        (
-            ("x", 8, MO.MSB, CDA.LSB, 0, -1),
-            "x: mo_arg must be between 0 and length_bits",
-        ),
-        (
-            ("x", 8, MO.MSB, CDA.LSB, 0, 9),
-            "x: mo_arg must be between 0 and length_bits",
-        ),
-        (
-            ("x", 8, MO.EQUAL, CDA.NOT_SENT, 0, 4),
-            "x: mo_arg is only valid with MSB",
-        ),
-        (("x", 8, MO.MSB, CDA.LSB), "x: MSB requires mo_arg"),
-        (
-            ("x", 8, MO.IGNORE, CDA.LSB),
-            "x: LSB requires MSB matching operator",
-        ),
-        (
-            ("x", 8, MO.IGNORE, CDA.NOT_SENT),
-            "x: NOT_SENT requires EQUAL matching operator",
-        ),
-        (
-            ("x", 8, MO.IGNORE, CDA.MAPPING_SENT, 0, None, (1,)),
-            "x: MAPPING_SENT requires MATCH_MAPPING matching operator",
-        ),
-        (
-            ("x", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT),
-            "x: MATCH_MAPPING requires a mapping",
-        ),
-        (
-            ("x", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, 0, None, ()),
-            "x: MATCH_MAPPING requires a mapping",
-        ),
-        (
-            ("x", 8, MO.IGNORE, CDA.VALUE_SENT, 0, None, (1,)),
-            "x: mapping is only valid with MATCH_MAPPING",
-        ),
-        (
-            ("x", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, 0, None, [1]),
-            "x: mapping must be a tuple",
-        ),
-        (
-            ("x", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, 0, None, (1, 1)),
-            "x: mapping values must be unique",
-        ),
-        (
-            ("x", 8, MO.EQUAL, CDA.NOT_SENT, -1),
-            "x: target value -1 does not fit in 8 bits",
-        ),
-        (
-            ("x", 8, MO.EQUAL, CDA.NOT_SENT, 256),
-            "x: target value 256 does not fit in 8 bits",
-        ),
-        (
-            ("x", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, 0, None, (-1,)),
-            "x: mapping value -1 does not fit in 8 bits",
-        ),
-        (
-            ("x", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, 0, None, (256,)),
-            "x: mapping value 256 does not fit in 8 bits",
-        ),
-    ],
-)
-def test_field_descriptor_rejects_invalid_construction(
-    descriptor: tuple[object, ...], message: str
-) -> None:
-    with pytest.raises(ValueError) as exc_info:
-        FieldDescriptor(*descriptor)  # type: ignore[arg-type]
-    assert str(exc_info.value) == message
-
-
-@pytest.mark.parametrize("mo_arg", [0, 8])
-def test_field_descriptor_accepts_mo_arg_boundaries(mo_arg: int) -> None:
-    descriptor = FieldDescriptor("x", 8, MO.MSB, CDA.LSB, mo_arg=mo_arg)
-    assert descriptor.lsb_bits() == 8 - mo_arg
-
-
-def test_field_descriptor_accepts_zero_bit_constant() -> None:
-    FieldDescriptor("x", 0, MO.EQUAL, CDA.NOT_SENT, target_value=0)
-
-
-@pytest.mark.parametrize("rule_id", [-1, 128, 254, 255, 256])
-def test_rule_rejects_id_outside_compression_range(rule_id: int) -> None:
-    with pytest.raises(ValueError) as exc_info:
-        Rule(rule_id, ())
-    assert str(exc_info.value) == (f"compression rule_id must be between 0 and 127, got {rule_id}")
-
-
-def test_rule_accepts_highest_compression_id() -> None:
-    assert Rule(127, ()).rule_id == 127
-
-
-@pytest.mark.parametrize(
-    ("fields", "message"),
-    [
-        ([], "fields must be a tuple"),
-        (("not-a-descriptor",), "fields must contain only FieldDescriptor values"),
-        (
-            (
-                FieldDescriptor("x", 8, MO.IGNORE, CDA.VALUE_SENT),
-                FieldDescriptor("x", 8, MO.IGNORE, CDA.VALUE_SENT),
-            ),
-            "field IDs must be unique within a rule",
-        ),
-    ],
-)
-def test_rule_rejects_invalid_fields(fields: object, message: str) -> None:
-    with pytest.raises(ValueError) as exc_info:
-        Rule(1, fields)  # type: ignore[arg-type]
-    assert str(exc_info.value) == message
-
-
-@pytest.mark.parametrize(
-    ("rule", "fields", "expected"),
-    [
-        (
-            Rule(1, (FieldDescriptor("x", 8, MO.MSB, CDA.VALUE_SENT, 0xA0, 4),)),
-            {"x": 0xAB},
-            bytes.fromhex("01ab"),
-        ),
-        (
-            Rule(
-                2,
-                (FieldDescriptor("x", 8, MO.MATCH_MAPPING, CDA.VALUE_SENT, mapping=(0x10, 0x20)),),
-            ),
-            {"x": 0x20},
-            bytes.fromhex("0220"),
-        ),
-    ],
-)
-def test_value_sent_remains_valid_with_constraining_mo(
-    rule: Rule, fields: dict[str, int], expected: bytes
-) -> None:
-    assert compress(rule, fields) == expected
 
 
 def test_compress_accepts_boolean_as_int() -> None:
@@ -183,19 +32,17 @@ def test_compress_accepts_boolean_as_int() -> None:
     assert compress(rule, {"x": False}) == bytes([0x01, 0x00])  # rule 1 + 0 bit + padding
 
 
-def test_decompress_ignores_excess_residue() -> None:
-    # Extra trailing bytes are ignored — they become the packet tail.
+def test_decompress_rejects_excess_residue() -> None:
     packet = bytes.fromhex("40000448d000")  # 5 residue bytes, rule needs 4
-    rule_id, fields = decompress(packet, COAP_RULE)
-    assert rule_id == 64
+    with pytest.raises(SchcError, match="residue must be exactly 5 bytes, got 6"):
+        decompress(packet, COAP_RULE)
 
 
-def test_decompress_ignores_nonzero_padding() -> None:
-    # Padding bits are not validated; extra bits are silently ignored.
+def test_decompress_rejects_nonzero_padding() -> None:
     packet = bytearray.fromhex("40000448d0")
     packet[-1] |= 0x01  # set padding bit
-    rule_id, fields = decompress(bytes(packet), COAP_RULE)
-    assert rule_id == 64
+    with pytest.raises(SchcError, match="residue has nonzero padding"):
+        decompress(bytes(packet), COAP_RULE)
 
 
 @pytest.mark.parametrize(
@@ -293,15 +140,19 @@ def test_field_descriptor_accepts_zero_bit_constant() -> None:
     FieldDescriptor("x", 0, MO.EQUAL, CDA.NOT_SENT, target_value=0)
 
 
-@pytest.mark.parametrize("rule_id", [-1, 128, 254, 255, 256])
+@pytest.mark.parametrize("rule_id", [-1, 128, 254, 256])
 def test_rule_rejects_id_outside_compression_range(rule_id: int) -> None:
     with pytest.raises(ValueError) as exc_info:
         Rule(rule_id, ())
-    assert str(exc_info.value) == (f"compression rule_id must be between 0 and 127, got {rule_id}")
+    assert str(exc_info.value) == f"rule_id must be 0-127 or 255, got {rule_id}"
 
 
 def test_rule_accepts_highest_compression_id() -> None:
     assert Rule(127, ()).rule_id == 127
+
+
+def test_rule_accepts_uncompressed_marker_id() -> None:
+    assert Rule(255, ()).rule_id == 255
 
 
 @pytest.mark.parametrize(
@@ -419,7 +270,7 @@ class TestCoapRule:
         assert out == bytes([64, 0x00, 0x04, 0x48, 0xD0])
 
     def test_decompress_recovers_fields(self) -> None:
-        rule_id, fields = decompress(bytes([64, 0x00, 0x04, 0x48, 0xD0]))
+        rule_id, fields = decompress(bytes([64, 0x00, 0x04, 0x48, 0xD0]), COAP_RULE)
         assert rule_id == 64
         assert fields["CoAP.version"] == 1
         assert fields["CoAP.type"] == 0
@@ -435,7 +286,7 @@ class TestCoapRule:
             "CoAP.code": 0x45,
             "CoAP.mid": 0xBEEF,
         }
-        rule_id, recovered = decompress(compress(COAP_RULE, original))
+        rule_id, recovered = decompress(compress(COAP_RULE, original), COAP_RULE)
         assert rule_id == 64
         assert recovered == original
 
@@ -469,7 +320,8 @@ class TestUdpPortRule:
 
     def test_roundtrip(self) -> None:
         rule_id, fields = decompress(
-            compress(UDP_PORT_RULE, {"UDP.src_port": 5683, "UDP.dst_port": 5690})
+            compress(UDP_PORT_RULE, {"UDP.src_port": 5683, "UDP.dst_port": 5690}),
+            UDP_PORT_RULE,
         )
         assert rule_id == 65
         assert fields["UDP.src_port"] == 5683
@@ -495,9 +347,10 @@ class TestDecompressRegistry:
             decompress(bytes([65, 0x00]), rule=COAP_RULE)
 
     def test_registry_contains_rules(self) -> None:
-        assert set(RULES) == {0, 1, 2, 3, 4, 5, 6, 64, 65, 66}
-        assert RULES[64] is COAP_RULE
-        assert RULES[65] is UDP_PORT_RULE
+        assert set(RULES) == {0, 1, 2, 3, 4, 5, 6, 255}
+        assert 64 not in RULES
+        assert 65 not in RULES
+        assert 66 not in RULES
 
 
 class TestCheckMsb:

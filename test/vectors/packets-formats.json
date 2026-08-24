@@ -1,65 +1,64 @@
 {
   "format_version": 2,
-  "description": "Packets and Timing packet format vectors (spec 09 \u00a713). Python oracle lichen.packets.",
+  "description": "Packets and Timing packet format vectors (spec 09 \u00a713). Fixed packet-budget fields are independent spec-derived oracles.",
   "vectors": [
     {
       "name": "complete_packet_example_link_frame",
-      "description": "13.1 Link-layer frame totals: Length 76 body, 77 on-wire, LLSec 0x21, Epoch 0x01, SeqNum 0x0042, DstAddr 0x0001, dispatch 0x14, signature 48B.",
+      "description": "13.1 plaintext example: 16-byte app value, 43-byte SCHC packet, 44-byte authenticated L2 payload, Length 106 body, 107 on-wire, LLSec 0xA1, mandatory 8-byte signer EUI-64, and 48-byte signature.",
       "category": "packet_walkthrough",
+      "app_payload_len": 16,
       "link_frame": {
-        "Length": 76,
-        "LLSec": 33,
+        "Length": 106,
+        "LLSec": 161,
         "Epoch": 1,
         "SeqNum": 66,
         "DstAddr": 1,
+        "signer_eui64_len": 8,
         "payload_dispatch": 20,
-        "payload_len": 22,
+        "payload_len": 44,
         "signature_len": 48,
-        "total_on_wire": 77
+        "total_on_wire": 107
       },
-      "l2_payload_len": 22,
-      "schc_packet_len": 21,
-      "total_on_wire": 77,
-      "body_bytes": 76
+      "l2_payload_len": 44,
+      "schc_packet_len": 43,
+      "total_on_wire": 107,
+      "body_bytes": 106
     },
     {
       "name": "packet_size_summary",
-      "description": "13.2 Packet Size Summary table; link security 53B, total 82-88 depending on routing overhead 0-6.",
+      "description": "13.2 exact plaintext example: app 16B + transport/network 27B + routing/addressing 3B + link security 61B = 107B.",
       "category": "size_budget",
       "summary": {
-        "app_payload": 17,
-        "security_e2e": 10,
-        "transport_network": 2,
-        "routing_overhead": [
-          0,
-          6
-        ],
-        "link_security": 53,
-        "total": [
-          82,
-          88
-        ]
+        "app_payload": 16,
+        "security_e2e": 0,
+        "transport_network": 27,
+        "routing_overhead": 3,
+        "link_security": 61,
+        "total": 107
       },
       "link_security_breakdown": {
         "Length": 1,
         "LLSec": 1,
         "Epoch": 1,
         "SeqNum": 2,
+        "SignerEui64": 8,
         "Signature": 48
       },
-      "link_security_overhead": 53,
-      "min_total": 82,
-      "max_total": 88
+      "link_security_overhead": 61,
+      "exact_total": 107,
+      "min_total_at_zero_routing": 104,
+      "max_total_at_six_routing": 110
     },
     {
       "name": "link_overhead_none_signed",
-      "description": "Link frame overhead for addr_mode=none signed=True: total 53B, body 52B.",
+      "description": "Link frame overhead for addr_mode=none signed=True: total 61B, body 60B.",
       "category": "link_overhead",
       "addr_mode": "none",
       "signed": true,
-      "total": 53,
-      "body": 52,
-      "dst_addr_len": 0
+      "total": 61,
+      "body": 60,
+      "dst_addr_len": 0,
+      "signer_eui64_len": 8
     },
     {
       "name": "link_overhead_none_unsigned",
@@ -69,17 +68,19 @@
       "signed": false,
       "total": 5,
       "body": 4,
-      "dst_addr_len": 0
+      "dst_addr_len": 0,
+      "signer_eui64_len": 0
     },
     {
       "name": "link_overhead_short_signed",
-      "description": "Link frame overhead for addr_mode=short signed=True: total 55B, body 54B.",
+      "description": "Link frame overhead for addr_mode=short signed=True: total 63B, body 62B.",
       "category": "link_overhead",
       "addr_mode": "short",
       "signed": true,
-      "total": 55,
-      "body": 54,
-      "dst_addr_len": 2
+      "total": 63,
+      "body": 62,
+      "dst_addr_len": 2,
+      "signer_eui64_len": 8
     },
     {
       "name": "link_overhead_short_unsigned",
@@ -89,17 +90,19 @@
       "signed": false,
       "total": 7,
       "body": 6,
-      "dst_addr_len": 2
+      "dst_addr_len": 2,
+      "signer_eui64_len": 0
     },
     {
       "name": "link_overhead_extended_signed",
-      "description": "Link frame overhead for addr_mode=extended signed=True: total 61B, body 60B.",
+      "description": "Link frame overhead for addr_mode=extended signed=True: total 69B, body 68B.",
       "category": "link_overhead",
       "addr_mode": "extended",
       "signed": true,
-      "total": 61,
-      "body": 60,
-      "dst_addr_len": 8
+      "total": 69,
+      "body": 68,
+      "dst_addr_len": 8,
+      "signer_eui64_len": 8
     },
     {
       "name": "link_overhead_extended_unsigned",
@@ -109,17 +112,19 @@
       "signed": false,
       "total": 13,
       "body": 12,
-      "dst_addr_len": 8
+      "dst_addr_len": 8,
+      "signer_eui64_len": 0
     },
     {
       "name": "link_overhead_elided_signed",
-      "description": "Link frame overhead for addr_mode=elided signed=True: total 53B, body 52B.",
+      "description": "Link frame overhead for addr_mode=elided signed=True: total 61B, body 60B.",
       "category": "link_overhead",
       "addr_mode": "elided",
       "signed": true,
-      "total": 53,
-      "body": 52,
-      "dst_addr_len": 0
+      "total": 61,
+      "body": 60,
+      "dst_addr_len": 0,
+      "signer_eui64_len": 8
     },
     {
       "name": "link_overhead_elided_unsigned",
@@ -129,11 +134,12 @@
       "signed": false,
       "total": 5,
       "body": 4,
-      "dst_addr_len": 0
+      "dst_addr_len": 0,
+      "signer_eui64_len": 0
     },
     {
       "name": "rpl_dio_skeleton",
-      "description": "13.3 RPL DIO packet fields and deterministic 21-byte skeleton (InstanceID, Version, Rank, Flags, DODAGID).",
+      "description": "13.3 RPL DIO packet fields and deterministic 27-byte DIO: 24-byte RFC 6550 base plus mandatory Rule-Version 13 01 03.",
       "category": "dio_format",
       "fields": {
         "link_layer": [
@@ -141,14 +147,14 @@
           "LLSec",
           "Epoch",
           "SeqNum",
-          "DstAddr=ff02::1a",
+          "SignerEUI64",
           "Payload",
           "Sig"
         ],
         "ipv6_compressed": [
-          "SCHC Rule 2",
-          "HopLimit",
-          "Multicast flag"
+          "validated SCHC Rule 255",
+          "full IPv6 header",
+          "destination ff02::1a"
         ],
         "icmpv6": {
           "Type": 155,
@@ -159,37 +165,39 @@
           "RPLInstanceID",
           "Version",
           "Rank",
+          "G/MOP/Prf",
+          "DTSN",
           "Flags",
+          "Reserved",
           "DODAGID"
         ],
         "options": [
-          "DODAG Configuration",
-          "Prefix Information"
+          "Rule-Version 0x13/0x01/0x03 (mandatory)"
         ]
       },
-      "example_hex": "000701000000000000000000000000000000000000",
-      "example_len": 21
+      "example_hex": "000701000800000000000000000000000000000000000000130103",
+      "example_len": 27
     },
     {
       "name": "dio_rank_0",
       "description": "DIO encoding with rank=0.",
       "category": "dio_rank",
       "rank": 0,
-      "hex": "000000000000000000000000000000000000000000"
+      "hex": "000000000800000000000000000000000000000000000000130103"
     },
     {
       "name": "dio_rank_256",
       "description": "DIO encoding with rank=256.",
       "category": "dio_rank",
       "rank": 256,
-      "hex": "000001000000000000000000000000000000000000"
+      "hex": "000001000800000000000000000000000000000000000000130103"
     },
     {
       "name": "dio_rank_65535",
       "description": "DIO encoding with rank=65535.",
       "category": "dio_rank",
       "rank": 65535,
-      "hex": "0000ffff0000000000000000000000000000000000"
+      "hex": "0000ffff0800000000000000000000000000000000000000130103"
     }
   ]
 }

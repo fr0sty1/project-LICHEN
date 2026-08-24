@@ -8,10 +8,20 @@ version.workspace = true
 license.workspace = true
 description = "Shared client-side domain models and CBOR wire codecs for LICHEN apps (CLI, TUI, GUI)."
 
+[features]
+default = []
+# Enable async client methods (requires tokio runtime)
+tokio = ["lichen-coap/tokio"]
+
 [dependencies]
 serde        = { version = "1", features = ["derive"] }
 ciborium     = "0.2"
 lichen-senml = { path = "../lichen-senml" }
 lichen-core  = { path = "../lichen-core" }
+lichen-coap  = { path = "../lichen-coap", optional = true }
 
 [dev-dependencies]
+serde_json = "1"
+hex = "0.4"
+tokio = { version = "1", features = ["rt", "macros"] }
+lichen-coap = { path = "../lichen-coap", features = ["tokio"] }

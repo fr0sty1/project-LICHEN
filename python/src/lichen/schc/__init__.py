@@ -10,6 +10,7 @@ from lichen.schc.codec import (
     residue_byte_length,
 )
 from lichen.schc.context import (
+    AuthenticatedPeerSchcContext,
     NoMatchingRuleError,
     SchcContext,
     VersionMismatchError,
@@ -44,7 +45,10 @@ from lichen.schc.headers import (
     RplDaoProfile,
     RplDioProfile,
     compress_packet,
+    decode_rule255,
     decompress_packet,
+    encode_rule255,
+    validate_full_ipv6,
 )
 from lichen.schc.reassembly import (
     FragmentReceiver,
@@ -80,6 +84,7 @@ __all__ = [
     "TILE_SIZE",
     "WINDOW_SIZE",
     "Ack",
+    "AuthenticatedPeerSchcContext",
     "CoapUdpGlobalProfile",
     "CoapUdpLinkLocalProfile",
     "FieldDescriptor",
@@ -114,10 +119,13 @@ __all__ = [
     "create_rule_version_option",
     "decompress",
     "decompress_packet",
+    "decode_rule255",
+    "encode_rule255",
     "residue_bit_length",
     "residue_byte_length",
     "receiver_abort",
     "rule_matches",
     "sender_abort",
     "versions_compatible",
+    "validate_full_ipv6",
 ]

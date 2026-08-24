@@ -5,28 +5,76 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
-import json
 import sys
 from pathlib import Path
+from typing import NotRequired, TypedDict, Unpack
 
-from lichen.crypto.schnorr48 import derive_keypair, sign
+VECTORS_DIR = Path(__file__).resolve().parent
+if str(VECTORS_DIR) not in sys.path:
+    sys.path.insert(0, str(VECTORS_DIR))
+
+from atomic_json import (  # noqa: E402
+    atomic_write_json,
+    json_bytes,
+    read_bounded_exact,
+)
+from reference_schnorr48 import ReferenceIdentity, sign  # noqa: E402
 
 DOMAIN = b"LICHEN-DAO-ORIGIN-v1"
 SEED = bytes.fromhex("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
-ULA_PREFIX = bytes.fromhex("fd424c494348454e")
+VICTIM_SEED = bytes.fromhex("a5" * 32)
 DODAG = bytes.fromhex("fe800000000000000000000000000001")
 ALT_DODAG = bytes.fromhex("fe800000000000000000000000000002")
 PARENT_1 = DODAG
 PARENT_2 = bytes.fromhex("fe800000000000000000000000000002")
 OUTPUT = Path(__file__).with_name("dao_origin_signature.json")
 
-PRIVATE_KEY, PUBLIC_KEY = derive_keypair(SEED)
-IID = bytearray(hashlib.sha512(PUBLIC_KEY).digest()[:8])
-IID[0] &= 0xFD
-ORIGIN = ULA_PREFIX + bytes(IID)
-ALT_PREFIX_ORIGIN = bytes.fromhex("fe80000000000000") + bytes(IID)
-VICTIM = ULA_PREFIX + bytes.fromhex("0011223344556677")
+IDENTITY = ReferenceIdentity.from_seed(SEED)
+PUBLIC_KEY = IDENTITY.pubkey
+_REFERENCE_ZERO_DIGEST_SIGNATURE = bytes.fromhex(
+    "fab5aa8ec31bc8e238d02e23f857a9d5"
+    "eefade1fc5ee40d357a120f89abe6707"
+    "7114a106aa3278aacdfa9f6cefe02e02"
+)
+
+
+class _RejectedOverrides(TypedDict):
+    description: NotRequired[str | None]
+    source: NotRequired[bytes]
+    effective_dodag: NotRequired[bytes]
+    active_dodag: NotRequired[bytes]
+    signature: NotRequired[bytes | None]
+    option_length: NotRequired[int]
+    signed_override: NotRequired[bytes | None]
+    option_offset: NotRequired[int | None]
+    key_available: NotRequired[bool]
+    previous: NotRequired[dict[str, object] | None]
+    envelope_valid: NotRequired[bool]
+    signature_valid: NotRequired[bool | None]
+
+
+class DaoVectorDocument(TypedDict):
+    vector_type: str
+    format_version: int
+    description: str
+    oracle_provenance: dict[str, str]
+    vectors: list[dict[str, object]]
+
+
+def native_address(public_key: bytes) -> bytes:
+    """Return the canonical key-derived LICHEN/Yggdrasil 02xx address."""
+    key_digest = hashlib.sha512(public_key).digest()
+    iid = bytearray(key_digest[:8])
+    iid[0] &= 0xFD
+    return b"\x02" + key_digest[:7] + bytes(iid)
+
+
+ORIGIN = native_address(PUBLIC_KEY)
+ALT_PREFIX_ORIGIN = bytes.fromhex("fe80000000000000") + ORIGIN[8:]
+VICTIM_PUBLIC_KEY = ReferenceIdentity.from_seed(VICTIM_SEED).pubkey
+VICTIM = native_address(VICTIM_PUBLIC_KEY)
 
 
 def target(address: bytes, prefix_length: int = 128) -> bytes:
@@ -37,7 +85,7 @@ def transit(
     parent: bytes,
     path_sequence: int = 0xF1,
     lifetime: int = 0xFF,
-    flags: int = 0x80,  # E=1: parent address present (RFC 6550 6.7.8)
+    flags: int = 0x00,  # E=0: current profile advertises self-owned reachability
     path_control: int = 0x80,
 ) -> bytes:
     return bytes([6, 20, flags, path_control, path_sequence, lifetime]) + parent
@@ -71,12 +119,14 @@ def transcript(
     option_length: int = 0x38,
 ) -> tuple[bytes, bytes, bytes]:
     message = digest(source, dodag, sequence, unsigned)
-    signature = sign(PRIVATE_KEY, PUBLIC_KEY, message) if signature is None else signature
+    signature = sign(IDENTITY, message) if signature is None else signature
     option = bytes([0x12, option_length]) + sequence.to_bytes(8, "big") + signature
     return message, option, unsigned + option
 
 
-def prior(source: bytes, sequence: int, signed_dao: bytes, *, route_present: bool = True) -> dict:
+def prior(
+    source: bytes, sequence: int, signed_dao: bytes, *, route_present: bool = True
+) -> dict[str, object]:
     return {
         "source_ipv6": source.hex(),
         "sequence": sequence,
@@ -100,7 +150,7 @@ def vector(
     signed_override: bytes | None = None,
     option_offset: int | None = None,
     key_available: bool = True,
-    previous: dict | None = None,
+    previous: dict[str, object] | None = None,
     accepted: bool = True,
     route_changed: bool = True,
     replay_persisted: bool = True,
@@ -108,11 +158,11 @@ def vector(
     signature_valid: bool | None = None,
     reason: str = "accepted",
     stage: str = "applied",
-) -> dict:
+) -> dict[str, object]:
     message, option, signed = transcript(
         unsigned, source, effective_dodag, sequence, signature, option_length
     )
-    canonical = sign(PRIVATE_KEY, PUBLIC_KEY, message)
+    canonical = sign(IDENTITY, message)
     return {
         "name": name,
         "description": description or name.replace("_", " ").capitalize() + ".",
@@ -146,8 +196,14 @@ def vector(
 
 
 def rejected(
-    name: str, coverage: str, unsigned: bytes, sequence: int, reason: str, stage: str, **kwargs
-) -> dict:
+    name: str,
+    coverage: str,
+    unsigned: bytes,
+    sequence: int,
+    reason: str,
+    stage: str,
+    **kwargs: Unpack[_RejectedOverrides],
+) -> dict[str, object]:
     return vector(
         name,
         coverage,
@@ -162,7 +218,16 @@ def rejected(
     )
 
 
-def generate() -> dict:
+def generate() -> DaoVectorDocument:
+    if (
+        bytes.fromhex(
+            "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6"
+        )
+        != PUBLIC_KEY
+    ):
+        raise AssertionError("independent DAO reference key derivation KAT failed")
+    if sign(IDENTITY, bytes(64)) != _REFERENCE_ZERO_DIGEST_SIGNATURE:
+        raise AssertionError("independent DAO reference signature KAT failed")
     single = dao(target(ORIGIN), transit(PARENT_1))
     base_digest, base_option, base_signed = transcript(single, ORIGIN, DODAG, 42)
     baseline_signature = base_option[10:]
@@ -171,8 +236,14 @@ def generate() -> dict:
     prior_43 = prior(ORIGIN, 43, signed_43)
     d0 = dao(target(ORIGIN), transit(PARENT_1), d=False)
 
-    vectors = [
-        vector("valid_d1_self_128", "d1", single, 42, description="Canonical D=1 self /128 DAO."),
+    vectors: list[dict[str, object]] = [
+        vector(
+            "valid_d1_self_128",
+            "d1",
+            single,
+            42,
+            description="Canonical D=1 self /128 DAO.",
+        ),
         vector(
             "valid_d0_self_128",
             "d0_effective_dodag",
@@ -181,9 +252,14 @@ def generate() -> dict:
             description="Canonical D=0 self /128 DAO using receiver DODAG context.",
         ),
         vector(
-            "valid_withdrawal", "withdrawal", dao(target(ORIGIN), transit(PARENT_1, 0xF2, 0)), 44
+            "valid_withdrawal",
+            "withdrawal",
+            dao(target(ORIGIN), transit(PARENT_1, 0xF2, 0)),
+            44,
         ),
-        vector("valid_high_byte_sequence", "high_byte_sequence", single, 0x8001020304050607),
+        vector(
+            "valid_high_byte_sequence", "high_byte_sequence", single, 0x8001020304050607
+        ),
         vector(
             "valid_max_u64_sequence",
             "max_u64_sequence",
@@ -216,8 +292,20 @@ def generate() -> dict:
             ORIGIN,
             DODAG,
         ),
-        ("target", "target_mutation", dao(target(VICTIM), transit(PARENT_1)), ORIGIN, DODAG),
-        ("parent", "parent_mutation", dao(target(ORIGIN), transit(PARENT_2)), ORIGIN, DODAG),
+        (
+            "target",
+            "target_mutation",
+            dao(target(VICTIM), transit(PARENT_1)),
+            ORIGIN,
+            DODAG,
+        ),
+        (
+            "parent",
+            "parent_mutation",
+            dao(target(ORIGIN), transit(PARENT_2)),
+            ORIGIN,
+            DODAG,
+        ),
         (
             "Path Sequence",
             "path_sequence_mutation",
@@ -232,11 +320,21 @@ def generate() -> dict:
             ORIGIN,
             DODAG,
         ),
-        ("option order", "order_mutation", dao(transit(PARENT_1), target(ORIGIN)), ORIGIN, DODAG),
+        (
+            "option order",
+            "order_mutation",
+            dao(transit(PARENT_1), target(ORIGIN)),
+            ORIGIN,
+            DODAG,
+        ),
     ]
     for field, coverage, mutated, source, effective_dodag in mutations:
-        reason = "instance_mismatch" if coverage == "instance_mutation" else "invalid_signature"
-        stage = "context" if coverage == "instance_mutation" else "identity"
+        if coverage == "instance_mutation":
+            reason, stage = "instance_mismatch", "context"
+        elif coverage == "source_mutation":
+            reason, stage = "iid_mismatch", "identity"
+        else:
+            reason, stage = "invalid_signature", "identity"
         vectors.append(
             rejected(
                 f"reject_{coverage}",
@@ -299,11 +397,13 @@ def generate() -> dict:
             rejected(
                 "reject_unsupported_transit_e",
                 "unsupported_transit_e",
-                dao(target(ORIGIN), transit(PARENT_1, flags=0x40)),
+                dao(target(ORIGIN), transit(PARENT_1, flags=0x80)),
                 47,
                 "unsupported_transit_e",
                 "semantic",
-                description="Transit with unsupported E-flag value (neither 0x00 nor 0x80) is rejected.",
+                description=(
+                    "Transit with E=1 is rejected by the current node-owned /128 profile."
+                ),
             ),
             rejected(
                 "reject_unknown_key",
@@ -406,8 +506,8 @@ def generate() -> dict:
                 "fresh_cross_prefix_target",
                 dao(target(ORIGIN), transit(PARENT_1)),
                 51,
-                "target_mismatch",
-                "semantic",
+                "iid_mismatch",
+                "identity",
                 source=ALT_PREFIX_ORIGIN,
             ),
             rejected(
@@ -423,8 +523,8 @@ def generate() -> dict:
                 "cross_prefix_equal",
                 single,
                 42,
-                "sequence_conflict",
-                "replay",
+                "iid_mismatch",
+                "identity",
                 source=ALT_PREFIX_ORIGIN,
                 previous=prior_42,
             ),
@@ -433,8 +533,8 @@ def generate() -> dict:
                 "cross_prefix_lower",
                 single,
                 41,
-                "replay",
-                "replay",
+                "iid_mismatch",
+                "identity",
                 source=ALT_PREFIX_ORIGIN,
                 previous=prior_42,
             ),
@@ -631,7 +731,7 @@ def generate() -> dict:
         "oracle_provenance": {
             "digest": "test/vectors/dao_origin_signature_oracle.c using Monocypher SHA-512",
             "signature_generation": (
-                "python/src/lichen/crypto/schnorr48.py (PyNaCl/libsodium), generator only"
+                "test/vectors/reference_schnorr48.py (independent PyNaCl/libsodium oracle)"
             ),
             "signature_cross_check": "test/vectors/dao_origin_signature_oracle.c (Monocypher)",
             "generator_command": (
@@ -655,14 +755,31 @@ def generate() -> dict:
     }
 
 
-if __name__ == "__main__":
+def write_output(document: object) -> None:
+    """Durably replace the canonical DAO vector with a complete document."""
+    atomic_write_json(OUTPUT, document)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Generate or byte-check the canonical DAO origin vector document."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true")
+    arguments = parser.parse_args(argv)
     document = generate()
-    if sys.argv[1:] == ["--check"]:
-        if json.loads(OUTPUT.read_text()) != document:
-            raise SystemExit(f"{OUTPUT.name} is not deterministically generated")
+    if arguments.check:
+        try:
+            current = read_bounded_exact(OUTPUT)
+        except (FileNotFoundError, RuntimeError):
+            current = None
+        if current != json_bytes(document):
+            print(f"{OUTPUT.name} is not deterministically generated", file=sys.stderr)
+            return 1
         print(f"checked {len(document['vectors'])} vectors in {OUTPUT.name}")
-    elif not sys.argv[1:]:
-        OUTPUT.write_text(json.dumps(document, indent=2) + "\n")
-        print(f"wrote {len(document['vectors'])} vectors to {OUTPUT.name}")
     else:
-        raise SystemExit("usage: generate_dao_origin_signature.py [--check]")
+        write_output(document)
+        print(f"wrote {len(document['vectors'])} vectors to {OUTPUT.name}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

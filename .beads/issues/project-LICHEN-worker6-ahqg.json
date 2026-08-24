@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ahqg",
+  "title": "Preserve trust timestamp ordering before float normalization",
+  "description": "Correctness review of the gvty/8cwr fix found that converting integer timestamps to float before comparing first_seen/last_seen can collapse distinct large integers (for example 2**53+1 and 2**53) and accept an originally reversed interval. Validate ordering on the exact input values before normalization, or reject lossy integer timestamps; add a regression test.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T18:32:40.487218Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T18:32:44.742405Z",
+  "started_at": "2026-08-24T18:32:44.742405Z",
+  "lease_expires_at": "2026-08-24T18:37:44.742405Z",
+  "heartbeat_at": "2026-08-24T18:32:44.742405Z"
+}

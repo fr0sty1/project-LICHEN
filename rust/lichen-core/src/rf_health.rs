@@ -284,11 +284,12 @@ impl RfHealthMetrics {
         }
         // Step 5
         let mut tx_allowed = true;
-        if loss_fp > loss_threshold || util > util_thresh_200 {
+        if loss_fp > loss_threshold {
             sf = sf.saturating_add(1).min(12);
-            if util > util_thresh_200 {
-                tx_allowed = false;
-            }
+        }
+        if util > util_thresh_200 {
+            sf = 12;
+            tx_allowed = false;
         }
         (sf, tx_allowed)
     }

@@ -1,0 +1,154 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "EDHOC cipher suite negotiation",
+  "description": "Test vectors for EDHOC cipher suite negotiation (spec 8.9). Suite 0 (AES-CCM-16-64-128, SHA-256, X25519, Ed25519) is REQUIRED for LICHEN. Negotiation uses SUITES_I in EDHOC message 1 per RFC 9528 section 3.5.",
+  "spec": "spec/06-security.md section 8.9",
+  "vectors": {
+    "basic_negotiation": [
+      {
+        "name": "both_support_suite0",
+        "description": "Both peers support Suite 0, negotiation succeeds",
+        "initiator_suites": [0],
+        "responder_suites": [0],
+        "selected_suite": 0,
+        "success": true
+      },
+      {
+        "name": "initiator_prefers_suite0",
+        "description": "Initiator offers Suite 0 first, responder supports multiple",
+        "initiator_suites": [0, 2],
+        "responder_suites": [2, 0],
+        "selected_suite": 0,
+        "success": true
+      },
+      {
+        "name": "responder_only_suite0",
+        "description": "Responder only supports Suite 0, initiator offers multiple",
+        "initiator_suites": [2, 0],
+        "responder_suites": [0],
+        "selected_suite": 0,
+        "success": true
+      }
+    ],
+    "lichen_required": [
+      {
+        "name": "lichen_suite0_required",
+        "description": "LICHEN nodes MUST support Suite 0, regardless of other suites",
+        "initiator_suites": [0],
+        "responder_suites": [0],
+        "selected_suite": 0,
+        "success": true,
+        "note": "Suite 0 is REQUIRED per spec; all LICHEN nodes MUST implement it"
+      },
+      {
+        "name": "suite0_takes_precedence",
+        "description": "Suite 0 selected when both support it, even if other suites preferred",
+        "initiator_suites": [0],
+        "responder_suites": [0, 2, 6],
+        "selected_suite": 0,
+        "success": true
+      }
+    ],
+    "failure_cases": [
+      {
+        "name": "no_common_suite",
+        "description": "No common suite between initiator and responder",
+        "initiator_suites": [2],
+        "responder_suites": [6],
+        "selected_suite": null,
+        "success": false,
+        "error": "ERR_SUITES_NONE"
+      },
+      {
+        "name": "non_lichen_peer_no_suite0",
+        "description": "Non-LICHEN peer without Suite 0 cannot interop with LICHEN",
+        "initiator_suites": [0],
+        "responder_suites": [2, 6],
+        "selected_suite": null,
+        "success": false,
+        "error": "ERR_SUITES_NONE",
+        "note": "LICHEN REQUIRES Suite 0; non-compliant peer"
+      },
+      {
+        "name": "empty_suites_i",
+        "description": "Empty SUITES_I is invalid",
+        "initiator_suites": [],
+        "responder_suites": [0],
+        "selected_suite": null,
+        "success": false,
+        "error": "ERR_MSG_MALFORMED"
+      }
+    ],
+    "suites_i_encoding": [
+      {
+        "name": "single_suite_compact",
+        "description": "Single suite encoded as int, not array (CBOR optimization)",
+        "initiator_suites": [0],
+        "suites_i_cbor": "00",
+        "cbor_type": "int"
+      },
+      {
+        "name": "multiple_suites_array",
+        "description": "Multiple suites encoded as array",
+        "initiator_suites": [0, 2],
+        "suites_i_cbor": "820002",
+        "cbor_type": "array"
+      },
+      {
+        "name": "three_suites_array",
+        "description": "Three suites encoded as array",
+        "initiator_suites": [0, 2, 6],
+        "suites_i_cbor": "83000206",
+        "cbor_type": "array"
+      }
+    ],
+    "rfc9528_selection": [
+      {
+        "name": "initiator_preference_wins",
+        "description": "Per RFC 9528, initiator's first supported suite is selected",
+        "initiator_suites": [2, 0],
+        "responder_suites": [0, 2],
+        "selected_suite": 2,
+        "success": true,
+        "note": "RFC 9528: first common suite from initiator's list"
+      },
+      {
+        "name": "responder_triggers_retry",
+        "description": "If responder doesn't support initiator's first choice, responds with SUITES_R",
+        "initiator_suites": [6],
+        "responder_suites": [0, 2],
+        "selected_suite": null,
+        "success": false,
+        "error": "ERR_WRONG_SELECTED_CIPHER_SUITE",
+        "note": "Responder sends ERR_WRONG_SELECTED_CIPHER_SUITE with SUITES_R"
+      }
+    ],
+    "edge_cases": [
+      {
+        "name": "suite_value_24",
+        "description": "Suite value >= 24 uses CBOR 1-byte encoding",
+        "initiator_suites": [24],
+        "suites_i_cbor": "1818",
+        "cbor_type": "int"
+      },
+      {
+        "name": "suite_value_256",
+        "description": "Suite value >= 256 uses CBOR 2-byte encoding",
+        "initiator_suites": [256],
+        "suites_i_cbor": "190100",
+        "cbor_type": "int"
+      },
+      {
+        "name": "all_iana_suites",
+        "description": "All IANA-registered cipher suites have defined semantics",
+        "iana_suites": [
+          {"id": 0, "name": "LICHEN_REQUIRED", "aead": "AES-CCM-16-64-128", "hash": "SHA-256", "ecdh": "X25519", "sign": "Ed25519"},
+          {"id": 2, "name": "SUITE_2", "aead": "AES-CCM-16-64-128", "hash": "SHA-256", "ecdh": "P-256", "sign": "ES256"},
+          {"id": 6, "name": "SUITE_6", "aead": "AES-CCM-16-128-128", "hash": "SHA-256", "ecdh": "P-256", "sign": "ES256"}
+        ],
+        "note": "Suite definitions per RFC 9529 / IANA EDHOC registry"
+      }
+    ]
+  }
+}
