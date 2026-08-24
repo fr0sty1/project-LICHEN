@@ -10,6 +10,7 @@
   "updated_at": "2026-07-25T00:40:03.365888704Z",
   "started_at": "2026-07-22T22:35:35.117596439Z",
   "labels": [
-    "defer-external"
+    "defer-external",
+    "zephyr"
   ]
 }
