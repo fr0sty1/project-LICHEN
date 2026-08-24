@@ -861,9 +861,40 @@ class SecureDatagramChannel(DatagramChannel):
                 # Full decode needed for OSCORE unprotection
                 msg = Message.decode(data, remote)
                 msg.direction = Direction.INCOMING
-                plaintext = await self._unprotect(msg, source)
-                if plaintext is not None and self._receiver is not None:
-                    self._receiver(plaintext, source)
+                result = await self._unprotect_datagram(msg, source)
+                if result is not None and self._receiver is not None:
+                    peer_key = self._endpoint_key(source)
+                    try:
+                        self._receiver(result.data, source)
+                    except Exception:
+                        # Delivery failed: roll back the inbound mapping staged
+                        # during unprotection so a peer retry starts fresh.
+                        # Outbound correlations are kept so retransmitted
+                        # responses still correlate after the retry.
+                        added = result.added_correlation
+                        if added is not None:
+                            context = self._active_peer_contexts.get(peer_key)
+                            if (
+                                context is not None
+                                and context.inbound_requests.get(msg.token) is added
+                            ):
+                                del context.inbound_requests[msg.token]
+                        raise
+                    # A terminal (non-observe) response successfully dispatched
+                    # to the local client retires the outbound correlation now;
+                    # on failure it is kept so peer retransmissions still match.
+                    if (
+                        result.message.code.is_response()
+                        and result.message.opt.observe is None
+                    ):
+                        context = self._active_peer_contexts.get(peer_key)
+                        correlation = result.matched_correlation
+                        if (
+                            context is not None
+                            and correlation is not None
+                            and context.outbound_requests.get(msg.token) is correlation
+                        ):
+                            self._retire_outbound(context, msg.token, correlation)
             elif self._endpoint_key(source) in self._edhoc_active_peers:
                 # EDHOC in progress with this peer - allow plaintext
                 # (EDHOC responses are not OSCORE-protected).

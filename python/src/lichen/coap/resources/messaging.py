@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Callable
+from ipaddress import IPv6Address
 from typing import Any
 
 import aiocoap
@@ -16,6 +17,7 @@ from aiocoap import (
     CONTENT,
     INTERNAL_SERVER_ERROR,
     SERVICE_UNAVAILABLE,
+    UNAUTHORIZED,
     Message,
     resource,
 )
@@ -29,6 +31,26 @@ _MESSAGE_ID_MAX = (1 << 64) - 1  # u64 bound for LCI message IDs (spec 17.5.7)
 
 def _is_u64(value: Any) -> bool:
     return type(value) is int and 0 <= value <= _MESSAGE_ID_MAX
+
+
+def _peer_is_local_admin(remote: Any) -> bool:
+    """Return True when the request peer holds LCI admin rights.
+
+    Mirrors the firmware ``lichen_coap_is_local_admin()`` contract validated
+    by test/vectors/coap_lci_auth.json: loopback peers are always admin.
+    Link-local admin trust is bound to the SLIP LCI transport interface in
+    the C firmware; the Python reference stack has no equivalent transport
+    identity, so every other source is treated as untrusted.
+    """
+    hostinfo = getattr(remote, "hostinfo", None)
+    if not isinstance(hostinfo, str):
+        return False
+    host = hostinfo.rsplit(":", 1)[0] if hostinfo.count(":") == 1 else hostinfo
+    host = host.strip("[]")
+    try:
+        return IPv6Address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def _legacy_message_view(message: dict[str, Any]) -> dict[str, Any]:
@@ -176,6 +198,14 @@ class SentMessagesResource(resource.Resource):
 
     async def render_get(self, request: Message) -> Message:
         return _cbor_response({"messages": self._messages.sent_messages()})
+
+    async def render_post(self, request: Message) -> Message:
+        # SECURITY: Writing to the sent archive is an admin operation
+        # (spec/11-lci.md §17.6.3; vectors msg_sent_mesh_forbidden /
+        # msg_sent_local_admin). Non-admin peers get 4.01 Unauthorized.
+        if not _peer_is_local_admin(getattr(request, "remote", None)):
+            return Message(code=UNAUTHORIZED)
+        return await self._messages.render_post(request)
 
 
 class SentMessageDetailsResource(resource.Resource, resource.PathCapable):

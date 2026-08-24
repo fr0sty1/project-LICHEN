@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-v6py",
+  "title": "POST /location returning 404 (test_sensors_location_no_post) conflicts with RFC 7252 + C cross-impl contract",
+  "description": "python/tests/coap/test_lci_auth.py::TestObservableAuth::test_sensors_location_no_post asserts POST /location -\u003e NOT_FOUND while GET /location on the same mounted SenMLLocationResource returns CONTENT. RFC 7252 mandates 4.05 Method Not Allowed for an existing resource that does not implement a method; 4.04 asserts the URI matches no resource. Cross-impl contract disagrees too: C coap_location.c sensors_location_post returns 401 (non-admin) / 201 (admin), never 404, and no vector in test/vectors/coap_lci_auth.json encodes a 404 location case; spec/appendix-senml.md defines /sensors/location as GET-only observable. Resolution needs either a test correction (expect 4.05) or an explicit spec decision to implement admin-gated POST semantics mirroring the C stack.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T23:45:57.022014Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T23:45:57.022014Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-v6py",
+      "depends_on_id": "project-LICHEN-worker6-emal",
+      "type": "discovered-from",
+      "created_at": "2026-08-24T23:45:57.576975Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

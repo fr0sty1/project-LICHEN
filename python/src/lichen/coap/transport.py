@@ -37,7 +37,7 @@ import aiocoap  # type: ignore[import-untyped]  # no official stubs
 from aiocoap import Message, error, interfaces
 from aiocoap.numbers import constants  # type: ignore[import-untyped]
 from aiocoap.numbers.codes import EMPTY  # type: ignore[import-untyped]
-from aiocoap.numbers.types import ACK  # type: ignore[import-untyped]
+from aiocoap.numbers.types import ACK, RST  # type: ignore[import-untyped]
 
 from lichen.coap.params import (
     CongestionError,
@@ -45,6 +45,7 @@ from lichen.coap.params import (
     CongestionState,
     check_congestion_allows,
 )
+from lichen.crypto.identity import hash_32
 from lichen.link.tx_queue import Priority
 
 ReceiveCallback = Callable[[bytes, str], None]
@@ -781,7 +782,10 @@ class LichenRemote(interfaces.EndpointAddress):  # type: ignore[misc]  # aiocoap
         )
 
     def __hash__(self) -> int:
-        return hash((id(self._owner), self._peer))
+        # Owner identity is deliberately excluded: id() is not stable across
+        # runs, and equal objects only require equal hashes, never distinct
+        # ones. The canonical authority is deterministic (hash_32).
+        return hash_32(self._peer.authority)
 
     def __repr__(self) -> str:
         return f"<LichenRemote {self.hostinfo}>"
@@ -822,7 +826,18 @@ class LichenTransport(interfaces.MessageInterface):  # type: ignore[misc]  # aio
             message = Message.decode(data, LichenRemote(source, self._local, owner=self))
         except (error.UnparsableMessage, IndexError, struct.error, TypeError, ValueError):
             return
+        exchange_key = (message.remote, message.mid)
+        active_exchanges = self._mm._active_exchanges
+        matched_exchange = (
+            active_exchanges.get(exchange_key)
+            if message.mtype in (ACK, RST) and active_exchanges is not None
+            else None
+        )
         self._mm.dispatch_message(message)
+        if matched_exchange is not None:
+            current = self._mm._active_exchanges
+            if current is None or current.get(exchange_key) is not matched_exchange:
+                self._channel.exchange_ended(source, message.mid, reset=message.mtype == RST)
 
     def send(self, message: Message) -> None:
         if not isinstance(message.remote, LichenRemote) or message.remote._owner is not self:
@@ -1086,6 +1101,10 @@ class _AiocoapLifecycleAdapter:
             result = self._original_send_message(message, messageerror_monitor)
         except BaseException:
             self._channel.message_abandoned(message)
+            # A failed dispatch still ends the exchange from aiocoap's
+            # perspective; complete the terminal response so correlations
+            # staged for it do not leak (rollback happens before this).
+            self._complete_terminal_response(message)
             raise
         if not self._is_backlogged(message):
             self._channel.message_abandoned(message)

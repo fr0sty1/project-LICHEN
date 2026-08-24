@@ -119,6 +119,22 @@ class Identity:
         return crypto_scalarmult_base(self.x25519_private)
 
 
+def hash_32(data: bytes | str) -> int:
+    """Keyed FNV-1a 32-bit hash with the LICHEN "LICH" basis (0x4c494348).
+
+    The basis is the leading 32 bits of the ASCII project key ``LICHEN``,
+    matching the C ``LICHEN_MESHTASTIC_DEFAULT_NODE_NUM`` constant. Unlike
+    the interpreter-salted built-in ``hash()``, results are stable across
+    processes, making this suitable for persistent endpoint identifiers.
+    """
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+    h = 0x4C494348
+    for byte in data:
+        h = ((h ^ byte) * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
 def _pubkey_to_iid(pubkey: bytes) -> bytes:
     """Derive IID from Ed25519 public key.
 
