@@ -9,6 +9,9 @@
   "created_at": "2026-07-25T03:44:13.881443Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-25T03:44:13.881443Z",
+  "labels": [
+    "blocked:hardware"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.15.12",
