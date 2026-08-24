@@ -10,6 +10,7 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-29T18:18:23.294571Z",
   "labels": [
-    "blocked:hardware"
+    "blocked:hardware",
+    "renode"
   ]
 }

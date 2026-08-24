@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-p7ih",
+  "title": "tmp: spinbead steal-claim probe",
+  "status": "in_progress",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T02:32:44.39254Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T02:32:45.277748Z",
+  "started_at": "2026-08-24T02:32:45.277748Z",
+  "lease_expires_at": "2026-08-24T02:37:45.277748Z",
+  "heartbeat_at": "2026-08-24T02:32:45.277748Z"
+}

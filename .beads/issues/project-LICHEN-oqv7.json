@@ -14,7 +14,8 @@
   "lease_expires_at": "2026-07-22T14:21:43.444153904Z",
   "heartbeat_at": "2026-07-22T14:16:43.444153904Z",
   "labels": [
-    "defer-external"
+    "defer-external",
+    "renode"
   ],
   "dependencies": [
     {

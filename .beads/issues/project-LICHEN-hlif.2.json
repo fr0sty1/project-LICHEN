@@ -14,6 +14,9 @@
   "close_reason": "Already fixed",
   "lease_expires_at": "2026-07-25T03:01:57.320041632Z",
   "heartbeat_at": "2026-07-25T02:56:57.320041632Z",
+  "labels": [
+    "renode"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-hlif.2",

@@ -12,7 +12,8 @@
   "closed_at": "2026-07-06T15:26:35.192922Z",
   "close_reason": "Implemented with triple code review",
   "labels": [
-    "owner-reserved"
+    "owner-reserved",
+    "renode"
   ],
   "dependencies": [
     {

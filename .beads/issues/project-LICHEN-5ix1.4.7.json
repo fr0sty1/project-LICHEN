@@ -18,7 +18,8 @@
   "heartbeat_at": "2026-07-25T02:46:54.988704669Z",
   "labels": [
     "evidence-needed",
-    "blocked:hardware"
+    "blocked:hardware",
+    "renode"
   ],
   "dependencies": [
     {

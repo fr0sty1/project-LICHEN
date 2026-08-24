@@ -15,6 +15,9 @@
   "close_reason": "Critical fixes implemented, non-blocking integrated preserving loopback, tested, compiles, README updated. No dead code.",
   "lease_expires_at": "2026-07-24T21:45:45.398803333Z",
   "heartbeat_at": "2026-07-24T21:40:45.398803333Z",
+  "labels": [
+    "renode"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-636h",

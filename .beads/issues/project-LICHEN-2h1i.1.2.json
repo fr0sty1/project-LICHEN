@@ -15,7 +15,8 @@
   "lease_expires_at": "2026-07-25T03:08:51.84798711Z",
   "heartbeat_at": "2026-07-25T03:03:51.84798711Z",
   "labels": [
-    "blocked:hardware"
+    "blocked:hardware",
+    "renode"
   ],
   "dependencies": [
     {

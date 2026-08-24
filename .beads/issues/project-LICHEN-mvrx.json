@@ -16,6 +16,9 @@
   "close_reason": "Nucleo puck CoAP configuration, Renode linkage, entropy model, runtime late markers, radio effects, and physical builds are validated through project-LICHEN-5ix1.3 and project-LICHEN-oqv7.3.",
   "lease_expires_at": "2026-07-24T21:47:46.894998726Z",
   "heartbeat_at": "2026-07-24T21:42:46.894998726Z",
+  "labels": [
+    "renode"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-mvrx",

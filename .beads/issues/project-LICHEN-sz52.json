@@ -11,7 +11,8 @@
   "updated_at": "2026-07-15T02:05:18.304121Z",
   "labels": [
     "simulation",
-    "blocked:hardware"
+    "blocked:hardware",
+    "renode"
   ],
   "dependencies": [
     {

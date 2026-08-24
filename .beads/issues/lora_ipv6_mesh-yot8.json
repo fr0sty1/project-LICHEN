@@ -11,6 +11,9 @@
   "updated_at": "2026-07-19T10:20:14Z",
   "closed_at": "2026-07-19T10:20:14Z",
   "close_reason": "FIXED and verified locally on Renode 1.16.1: pytest test_mesh.py --board=t_echo --nodes=2 -\u003e 2 passed reliably. Root cause was a 4-part chain: (1) firmware never booted (MCUboot slot-0 app, _vector_table at 0x32200 not 0x0) -\u003e seed VTOR/SP/PC via $vt monitor var (58532e3d/684cd1fc); (2) spun forever in nrf_usbd_common_enable (no USB host in Renode) -\u003e disable native USB+mcumgr for Renode builds (e95fc0b9); (3) test waited 10s but puck holds iface down for a 10s USB-settle -\u003e wait 20s (e95fc0b9); (4) SX1262.cs WaitForRxResponse blocked the SPI bus inside Transmit() while in RX, so a node could never leave RX to transmit (both nodes deadlocked) -\u003e made RX async via a background reader thread dispatching TX_DONE/RX_PACKET/RX_TIMEOUT to IRQ flags (08b9c4a5). The SX1262/r7h4 RX-model attribution in the old test comment was a symptom, not the cause; the real blockers were boot+USB+the blocking RX read.",
+  "labels": [
+    "renode"
+  ],
   "dependencies": [
     {
       "issue_id": "lora_ipv6_mesh-yot8",
