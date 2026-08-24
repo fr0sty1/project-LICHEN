@@ -1,0 +1,532 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+"""Tests for secure key persistence (spec 15.2).
+
+Tests file-based key storage, crash-safety, and TrustStore persistence.
+"""
+
+import json
+import os
+import stat
+
+import pytest
+
+from lichen.crypto import (
+    FileKeyStore,
+    Identity,
+    KeyPersistenceError,
+    MemoryKeyStore,
+    TrustEntry,
+    TrustLevel,
+    TrustStore,
+    TrustStorePersistence,
+)
+from lichen.crypto.key_persistence import TrustStorePersistenceError
+from lichen.crypto.schnorr48 import sign as schnorr_sign
+from lichen.crypto.trust import compute_rotation_transcript
+
+# Deterministic seeds for reproducible tests
+SEED_ALICE = bytes.fromhex(
+    "0000000000000000000000000000000000000000000000000000000000000001"
+)
+SEED_BOB = bytes.fromhex(
+    "0000000000000000000000000000000000000000000000000000000000000002"
+)
+
+
+def _entry_document(entry: TrustEntry, **overrides: object) -> dict[str, object]:
+    data: dict[str, object] = {
+        "pubkey_hex": entry.pubkey.hex(),
+        "iid_hex": entry.iid.hex(),
+        "ygg_addr_hex": entry.ygg_addr.hex(),
+        "trust_level": entry.trust_level.name,
+        "first_seen": 0,
+        "last_seen": 0,
+        "revoked": False,
+        "metadata": {},
+        "rotation_sequence": 0,
+    }
+    data.update(overrides)
+    return data
+
+
+def _write_trust_document(path, entries, **overrides: object) -> None:
+    data: dict[str, object] = {
+        "format_version": 1,
+        "revision": 1,
+        "auto_pin": True,
+        "entries": entries,
+    }
+    data.update(overrides)
+    path.write_text(json.dumps(data))
+    path.chmod(0o600)
+
+
+class TestMemoryKeyStore:
+    """Tests for in-memory key store (testing only)."""
+
+    def test_store_and_load_seed(self):
+        """MemoryKeyStore stores and retrieves seed correctly."""
+        store = MemoryKeyStore()
+        store.store_seed(SEED_ALICE)
+        assert store.load_seed() == SEED_ALICE
+
+    def test_load_returns_none_initially(self):
+        """MemoryKeyStore returns None when no seed stored."""
+        store = MemoryKeyStore()
+        assert store.load_seed() is None
+
+    def test_is_not_crash_safe(self):
+        """MemoryKeyStore is not crash-safe."""
+        store = MemoryKeyStore()
+        assert not store.is_crash_safe
+
+    def test_store_rejects_invalid_length(self):
+        """MemoryKeyStore rejects invalid seed length."""
+        store = MemoryKeyStore()
+        with pytest.raises(ValueError, match="32 bytes"):
+            store.store_seed(b"\x00" * 16)
+
+    def test_store_and_load_identity(self):
+        """MemoryKeyStore stores and loads Identity via seed."""
+        store = MemoryKeyStore()
+        identity = Identity.from_seed(SEED_ALICE)
+        store.store_identity(identity)
+
+        loaded = store.load_identity()
+        assert loaded is not None
+        assert loaded.pubkey == identity.pubkey
+        assert loaded.iid == identity.iid
+
+
+class TestFileKeyStore:
+    """Tests for file-based key storage."""
+
+    def test_store_and_load_seed(self, tmp_path):
+        """FileKeyStore stores and retrieves seed correctly."""
+        store = FileKeyStore(tmp_path)
+        store.store_seed(SEED_ALICE)
+        assert store.load_seed() == SEED_ALICE
+
+    def test_load_returns_none_when_empty(self, tmp_path):
+        """FileKeyStore returns None when no seed exists."""
+        store = FileKeyStore(tmp_path)
+        assert store.load_seed() is None
+
+    def test_is_crash_safe(self, tmp_path):
+        """FileKeyStore is crash-safe."""
+        store = FileKeyStore(tmp_path)
+        assert store.is_crash_safe
+
+    def test_store_rejects_invalid_length(self, tmp_path):
+        """FileKeyStore rejects invalid seed length."""
+        store = FileKeyStore(tmp_path)
+        with pytest.raises(ValueError, match="32 bytes"):
+            store.store_seed(b"\x00" * 16)
+
+    def test_file_permissions_are_restricted(self, tmp_path):
+        """FileKeyStore creates files with 0600 permissions (spec 15.2)."""
+        store = FileKeyStore(tmp_path)
+        store.store_seed(SEED_ALICE)
+
+        # Check that slot files have restricted permissions
+        slot0 = tmp_path / "node_seed_0.bin"
+        slot1 = tmp_path / "node_seed_1.bin"
+
+        # One of the slots should exist
+        if slot0.exists():
+            mode = stat.S_IMODE(os.stat(slot0).st_mode)
+            assert mode == stat.S_IRUSR | stat.S_IWUSR, f"Expected 0600, got {oct(mode)}"
+        elif slot1.exists():
+            mode = stat.S_IMODE(os.stat(slot1).st_mode)
+            assert mode == stat.S_IRUSR | stat.S_IWUSR, f"Expected 0600, got {oct(mode)}"
+        else:
+            pytest.fail("No slot file created")
+
+    def test_two_slot_crash_safety(self, tmp_path):
+        """FileKeyStore survives partial writes via two-slot mechanism."""
+        store = FileKeyStore(tmp_path)
+
+        # Write first seed
+        store.store_seed(SEED_ALICE)
+        assert store.load_seed() == SEED_ALICE
+
+        # Write second seed (should go to other slot)
+        store.store_seed(SEED_BOB)
+        assert store.load_seed() == SEED_BOB
+
+        # Both slots should exist
+        slot0 = tmp_path / "node_seed_0.bin"
+        slot1 = tmp_path / "node_seed_1.bin"
+        assert slot0.exists() and slot1.exists()
+
+    def test_generation_exhaustion_is_explicit_and_preserves_seed(self, tmp_path):
+        store = FileKeyStore(tmp_path)
+        store._write_slot(tmp_path / "node_seed_0.bin", 0xFFFFFFFF, SEED_ALICE)
+        with pytest.raises(KeyPersistenceError, match="generation exhausted"):
+            store.store_seed(SEED_BOB)
+        assert store.load_seed() == SEED_ALICE
+
+    def test_symlink_slot_fails_closed_without_following_target(self, tmp_path):
+        target = tmp_path / "target"
+        target.write_bytes(SEED_ALICE)
+        os.symlink(target, tmp_path / "node_seed_0.bin")
+        store = FileKeyStore(tmp_path, fail_closed=True)
+        with pytest.raises(KeyPersistenceError, match="corrupt"):
+            store.load_seed()
+        assert target.read_bytes() == SEED_ALICE
+
+    def test_broken_symlink_slot_is_corrupt_not_fresh(self, tmp_path):
+        os.symlink(tmp_path / "missing-target", tmp_path / "node_seed_0.bin")
+        store = FileKeyStore(tmp_path, fail_closed=True)
+
+        with pytest.raises(KeyPersistenceError, match="corrupt"):
+            store.load_seed()
+
+    def test_base_directory_and_lock_are_private(self, tmp_path):
+        store = FileKeyStore(tmp_path)
+        store.store_seed(SEED_ALICE)
+        assert stat.S_IMODE(tmp_path.stat().st_mode) == 0o700
+        assert stat.S_IMODE((tmp_path / ".node_seed.lock").stat().st_mode) == 0o600
+
+    def test_corrupt_slot_falls_back_to_other(self, tmp_path):
+        """FileKeyStore uses valid slot when other is corrupt."""
+        store = FileKeyStore(tmp_path, fail_closed=False)
+
+        # Write seed
+        store.store_seed(SEED_ALICE)
+
+        # Corrupt one slot
+        slot0 = tmp_path / "node_seed_0.bin"
+        slot1 = tmp_path / "node_seed_1.bin"
+        if slot0.exists():
+            with open(slot0, "wb") as f:
+                f.write(b"CORRUPT")
+        elif slot1.exists():
+            with open(slot1, "wb") as f:
+                f.write(b"CORRUPT")
+
+        # Should still load from valid slot (write creates both)
+        store.store_seed(SEED_BOB)
+        assert store.load_seed() == SEED_BOB
+
+    def test_fail_closed_raises_on_corrupt(self, tmp_path):
+        """FileKeyStore raises when fail_closed and state is corrupt."""
+        store = FileKeyStore(tmp_path, fail_closed=True)
+
+        # Create corrupt slot files
+        slot0 = tmp_path / "node_seed_0.bin"
+        slot1 = tmp_path / "node_seed_1.bin"
+        with open(slot0, "wb") as f:
+            f.write(b"CORRUPT")
+        with open(slot1, "wb") as f:
+            f.write(b"CORRUPT")
+
+        with pytest.raises(KeyPersistenceError, match="corrupt"):
+            store.load_seed()
+
+    def test_fail_closed_writer_preserves_wholly_corrupt_slots(self, tmp_path):
+        store = FileKeyStore(tmp_path, fail_closed=True)
+        store.store_seed(SEED_ALICE)
+        store.store_seed(SEED_BOB)
+        slots = [tmp_path / "node_seed_0.bin", tmp_path / "node_seed_1.bin"]
+        for slot in slots:
+            slot.write_bytes(b"CORRUPT")
+        before = [slot.read_bytes() for slot in slots]
+
+        with pytest.raises(KeyPersistenceError, match="overwrite corrupt"):
+            store.store_seed(SEED_ALICE)
+
+        assert [slot.read_bytes() for slot in slots] == before
+
+    def test_fail_closed_returns_none_when_missing(self, tmp_path):
+        """FileKeyStore returns None when fail_closed and no files exist."""
+        store = FileKeyStore(tmp_path, fail_closed=True)
+        # No files exist yet - this is a fresh node, not corrupt
+        assert store.load_seed() is None
+
+    def test_store_and_load_identity(self, tmp_path):
+        """FileKeyStore stores and loads Identity via seed."""
+        store = FileKeyStore(tmp_path)
+        identity = Identity.from_seed(SEED_ALICE)
+        store.store_identity(identity)
+
+        loaded = store.load_identity()
+        assert loaded is not None
+        assert loaded.pubkey == identity.pubkey
+        assert loaded.iid == identity.iid
+        assert loaded.ygg_addr == identity.ygg_addr
+
+    def test_rejects_file_as_base_dir(self, tmp_path):
+        """FileKeyStore rejects file path as base_dir."""
+        file_path = tmp_path / "not_a_dir.txt"
+        file_path.write_text("hello")
+
+        with pytest.raises(KeyPersistenceError, match="not a real directory"):
+            FileKeyStore(file_path)
+
+
+class TestTrustStorePersistence:
+    """Tests for TrustStore file persistence."""
+
+    def test_save_and_load_empty_store(self, tmp_path):
+        """TrustStorePersistence saves and loads empty store."""
+        persistence = TrustStorePersistence(tmp_path)
+        store = TrustStore()
+
+        persistence.save(store)
+        loaded = persistence.load()
+
+        assert loaded is not None
+        assert len(loaded) == 0
+        assert loaded.auto_pin == store.auto_pin
+
+    def test_public_rotation_is_persisted_before_return(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        alice = Identity.from_seed(SEED_ALICE)
+        bob = Identity.from_seed(SEED_BOB)
+        store = TrustStore(persistence=persistence)
+        store.verify_or_pin(alice.pubkey, alice.iid)
+        persistence.save(store)
+        transcript = compute_rotation_transcript(alice.pubkey, bob.pubkey, 1)
+        signature = schnorr_sign(alice.privkey, alice.pubkey, transcript)
+
+        rotated = store.rotate_key(alice.pubkey, bob.pubkey, 1, signature)
+
+        assert rotated.rotation_sequence == 1
+        restored = persistence.load()
+        assert restored is not None
+        assert alice.iid not in restored
+        restored_bob = restored.get(bob.iid)
+        assert restored_bob is not None
+        assert restored_bob.rotation_sequence == 1
+
+    def test_save_and_load_with_entries(self, tmp_path):
+        """TrustStorePersistence preserves trust entries."""
+        persistence = TrustStorePersistence(tmp_path)
+
+        # Create store with entries
+        store = TrustStore()
+        alice = Identity.from_seed(SEED_ALICE)
+        bob = Identity.from_seed(SEED_BOB)
+
+        store.verify_or_pin(alice.pubkey, alice.iid)
+        store.verify_or_pin(bob.pubkey, bob.iid)
+
+        persistence.save(store)
+        loaded = persistence.load()
+
+        assert loaded is not None
+        assert len(loaded) == 2
+        assert alice.iid in loaded
+        assert bob.iid in loaded
+
+    def test_preserves_trust_levels(self, tmp_path):
+        """TrustStorePersistence preserves trust levels."""
+        persistence = TrustStorePersistence(tmp_path)
+        store = TrustStore()
+
+        alice = Identity.from_seed(SEED_ALICE)
+        store.add_trust_anchor(alice.pubkey, TrustLevel.BR_PROVISIONED)
+
+        persistence.save(store)
+        loaded = persistence.load()
+
+        assert loaded is not None
+        entry = loaded.get(alice.iid)
+        assert entry is not None
+        assert entry.trust_level == TrustLevel.BR_PROVISIONED
+
+    def test_preserves_revoked_status(self, tmp_path):
+        """TrustStorePersistence preserves revoked status."""
+        persistence = TrustStorePersistence(tmp_path)
+        store = TrustStore()
+
+        alice = Identity.from_seed(SEED_ALICE)
+        store.verify_or_pin(alice.pubkey, alice.iid)
+        store.revoke(alice.iid)
+
+        persistence.save(store)
+        loaded = persistence.load()
+
+        assert loaded is not None
+        entry = loaded.get(alice.iid)
+        assert entry is not None
+        assert entry.revoked
+
+    def test_preserves_metadata(self, tmp_path):
+        """TrustStorePersistence preserves entry metadata."""
+        persistence = TrustStorePersistence(tmp_path)
+        store = TrustStore()
+
+        alice = Identity.from_seed(SEED_ALICE)
+        entry = TrustEntry.from_pubkey(
+            alice.pubkey,
+            metadata={"name": "alice", "role": "sensor"},
+        )
+        store._entries[entry.iid] = entry
+
+        persistence.save(store)
+        loaded = persistence.load()
+
+        assert loaded is not None
+        loaded_entry = loaded.get(alice.iid)
+        assert loaded_entry is not None
+        assert loaded_entry.metadata["name"] == "alice"
+        assert loaded_entry.metadata["role"] == "sensor"
+
+    def test_load_returns_none_when_file_missing(self, tmp_path):
+        """TrustStorePersistence returns None when file doesn't exist."""
+        persistence = TrustStorePersistence(tmp_path)
+        assert persistence.load() is None
+
+    def test_load_raises_on_corrupt_json(self, tmp_path):
+        """TrustStorePersistence raises on corrupt JSON (fail closed)."""
+        persistence = TrustStorePersistence(tmp_path)
+        file_path = tmp_path / "trust_store.json"
+        file_path.write_text("{ not valid json }")
+        file_path.chmod(0o600)
+
+        with pytest.raises(TrustStorePersistenceError, match="corrupt JSON"):
+            persistence.load()
+
+    def test_load_raises_on_invalid_hex(self, tmp_path):
+        """TrustStorePersistence raises on invalid hex in entry."""
+        persistence = TrustStorePersistence(tmp_path)
+        file_path = tmp_path / "trust_store.json"
+        alice = TrustEntry.from_pubkey(Identity.from_seed(SEED_ALICE).pubkey)
+        _write_trust_document(file_path, [_entry_document(alice, pubkey_hex="not-hex")])
+
+        with pytest.raises(TrustStorePersistenceError, match="invalid hex"):
+            persistence.load()
+
+    def test_load_raises_on_wrong_pubkey_length(self, tmp_path):
+        """TrustStorePersistence raises on wrong pubkey length."""
+        persistence = TrustStorePersistence(tmp_path)
+        file_path = tmp_path / "trust_store.json"
+        alice = TrustEntry.from_pubkey(Identity.from_seed(SEED_ALICE).pubkey)
+        _write_trust_document(file_path, [_entry_document(alice, pubkey_hex="0011")])
+
+        with pytest.raises(TrustStorePersistenceError, match="must be 32 bytes"):
+            persistence.load()
+
+    def test_load_raises_on_pubkey_iid_mismatch(self, tmp_path):
+        """TrustStorePersistence raises when pubkey doesn't derive to iid."""
+        persistence = TrustStorePersistence(tmp_path)
+        alice = TrustEntry.from_pubkey(Identity.from_seed(SEED_ALICE).pubkey)
+        bob = TrustEntry.from_pubkey(Identity.from_seed(SEED_BOB).pubkey)
+        # Save Alice's entry
+        store = TrustStore()
+        store._entries[alice.iid] = alice
+        persistence.save(store)
+        # Tamper: replace Alice's iid with Bob's
+        with open(tmp_path / "trust_store.json") as f:
+            data = json.load(f)
+        data["entries"][0]["iid_hex"] = bob.iid.hex()
+        with open(tmp_path / "trust_store.json", "w") as f:
+            json.dump(data, f)
+
+        with pytest.raises(TrustStorePersistenceError, match="does not derive to iid"):
+            persistence.load()
+
+    def test_load_raises_on_duplicate_iid(self, tmp_path):
+        """TrustStorePersistence raises on duplicate IIDs."""
+        persistence = TrustStorePersistence(tmp_path)
+        alice = TrustEntry.from_pubkey(Identity.from_seed(SEED_ALICE).pubkey)
+        # Manually create file with duplicate entries
+        _write_trust_document(
+            tmp_path / "trust_store.json",
+            [_entry_document(alice), _entry_document(alice)],
+        )
+
+        with pytest.raises(TrustStorePersistenceError, match="duplicate iid"):
+            persistence.load()
+
+    def test_load_raises_on_invalid_trust_level(self, tmp_path):
+        """TrustStorePersistence raises on invalid trust level."""
+        persistence = TrustStorePersistence(tmp_path)
+        alice = TrustEntry.from_pubkey(Identity.from_seed(SEED_ALICE).pubkey)
+        _write_trust_document(
+            tmp_path / "trust_store.json",
+            [_entry_document(alice, trust_level="INVALID_LEVEL")],
+        )
+
+        with pytest.raises(TrustStorePersistenceError, match="invalid trust_level"):
+            persistence.load()
+
+    def test_load_raises_on_negative_timestamp(self, tmp_path):
+        """TrustStorePersistence raises on negative timestamps."""
+        persistence = TrustStorePersistence(tmp_path)
+        alice = TrustEntry.from_pubkey(Identity.from_seed(SEED_ALICE).pubkey)
+        _write_trust_document(
+            tmp_path / "trust_store.json",
+            [_entry_document(alice, first_seen=-1)],
+        )
+
+        with pytest.raises(TrustStorePersistenceError, match="non-negative"):
+            persistence.load()
+
+    def test_preserves_auto_pin_setting(self, tmp_path):
+        """TrustStorePersistence preserves auto_pin setting."""
+        persistence = TrustStorePersistence(tmp_path)
+        store = TrustStore(auto_pin=False)
+
+        persistence.save(store)
+        loaded = persistence.load()
+
+        assert loaded is not None
+        assert loaded.auto_pin is False
+
+    def test_stale_loaded_store_cannot_overwrite_newer_revision(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        initial = TrustStore()
+        persistence.save(initial)
+        first = persistence.load()
+        stale = persistence.load()
+        assert first is not None and stale is not None
+        alice = Identity.from_seed(SEED_ALICE)
+        bob = Identity.from_seed(SEED_BOB)
+        first.verify_or_pin(alice.pubkey, alice.iid)
+        persistence.save(first)
+        stale.verify_or_pin(bob.pubkey, bob.iid)
+        with pytest.raises(TrustStorePersistenceError, match="stale"):
+            persistence.save(stale)
+        restored = persistence.load()
+        assert restored is not None
+        assert alice.iid in restored
+        assert bob.iid not in restored
+
+    def test_existing_revision_zero_is_rejected(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        _write_trust_document(tmp_path / "trust_store.json", [], revision=0)
+
+        with pytest.raises(TrustStorePersistenceError, match="nonzero u64"):
+            persistence.load()
+
+    def test_revision_exhaustion_preserves_last_document(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        path = tmp_path / "trust_store.json"
+        _write_trust_document(path, [], revision=(1 << 64) - 1)
+        store = persistence.load()
+        assert store is not None
+        before = path.read_bytes()
+
+        with pytest.raises(TrustStorePersistenceError, match="revision exhausted"):
+            persistence.save(store)
+
+        assert path.read_bytes() == before
+
+    def test_trust_file_directory_and_lock_are_private(self, tmp_path):
+        persistence = TrustStorePersistence(tmp_path)
+        persistence.save(TrustStore())
+        assert stat.S_IMODE(tmp_path.stat().st_mode) == 0o700
+        assert stat.S_IMODE((tmp_path / "trust_store.json").stat().st_mode) == 0o600
+        assert stat.S_IMODE((tmp_path / ".trust_store.lock").stat().st_mode) == 0o600
+
+    def test_trust_store_symlink_fails_closed(self, tmp_path):
+        target = tmp_path / "target.json"
+        target.write_text("{}")
+        os.symlink(target, tmp_path / "trust_store.json")
+        persistence = TrustStorePersistence(tmp_path)
+        with pytest.raises(TrustStorePersistenceError, match="unreadable"):
+            persistence.load()
