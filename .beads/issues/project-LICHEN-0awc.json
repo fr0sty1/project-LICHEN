@@ -9,5 +9,8 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-01T17:43:19.877927Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-02T15:09:16.00577Z"
+  "updated_at": "2026-07-02T15:09:16.00577Z",
+  "labels": [
+    "zephyr"
+  ]
 }
