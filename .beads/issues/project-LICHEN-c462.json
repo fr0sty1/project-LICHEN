@@ -11,7 +11,8 @@
   "updated_at": "2026-07-25T00:39:58.105126769Z",
   "started_at": "2026-07-22T20:25:43.906409651Z",
   "labels": [
-    "defer-external"
+    "defer-external",
+    "blocked:hardware"
   ],
   "dependencies": [
     {
