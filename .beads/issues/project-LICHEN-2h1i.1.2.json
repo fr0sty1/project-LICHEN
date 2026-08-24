@@ -14,6 +14,9 @@
   "close_reason": "Firmware production readiness complete for T-Echo: board support, configs, scalable OTA/flashing, updated testing/docs/matrix. All acceptance criteria met. Ready for 500-unit procurement.",
   "lease_expires_at": "2026-07-25T03:08:51.84798711Z",
   "heartbeat_at": "2026-07-25T03:03:51.84798711Z",
+  "labels": [
+    "blocked:hardware"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2h1i.1.2",
