@@ -11,6 +11,9 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-08-17T23:06:07.779482Z",
   "defer_until": "2026-08-24T16:06:07.466668-07:00",
+  "labels": [
+    "blocked:hardware"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.3.3",
