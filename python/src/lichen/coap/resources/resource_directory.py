@@ -17,14 +17,17 @@ from aiocoap import (
     CREATED,
     DELETED,
     INTERNAL_SERVER_ERROR,
+    NOT_ACCEPTABLE,
     NOT_FOUND,
     Message,
     resource,
 )
+from aiocoap.numbers import ContentFormat
 
 from lichen.coap.resources.base import CBOR
 from lichen.coap.resources.cbor_validation import _decode_single_cbor
 
+_LINK_FORMAT = ContentFormat.LINKFORMAT
 _RD_DEFAULT_LIFETIME = 86400  # seconds (RFC 9176 7.3.1)
 _rd_id_counter = itertools.count(1)
 _RD_PATH_CHARS = frozenset(string.ascii_letters + string.digits + "-._~")
@@ -278,6 +281,31 @@ def _mounted(site: resource.Site, path: tuple[str, ...]) -> resource.Resource | 
     return site._resources.get(path)
 
 
+def _quoted_link_attr(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _encode_link_format(hits: list[dict[str, Any]]) -> bytes:
+    """RFC 6690 / RFC 9176 application/link-format body."""
+    records: list[str] = []
+    for hit in hits:
+        href = hit.get("href")
+        if not isinstance(href, str):
+            continue
+        parts = [f"<{href}>"]
+        rt = hit.get("rt")
+        if isinstance(rt, str):
+            parts.append("rt=" + _quoted_link_attr(rt))
+        ep = hit.get("ep")
+        if isinstance(ep, str):
+            parts.append("ep=" + _quoted_link_attr(ep))
+        base = hit.get("base")
+        if isinstance(base, str):
+            parts.append("anchor=" + _quoted_link_attr(base))
+        records.append(";".join(parts))
+    return ",".join(records).encode("utf-8")
+
+
 def _ensure_rd_lookup_mounted(site: resource.Site) -> None:
     """Mount ``/rd-lookup/res`` once. Later RD instances must not steal it."""
     existing = _mounted(site, ("rd-lookup", "res"))
@@ -308,7 +336,14 @@ class _RdLookupResource(resource.Resource):
         if rd is None:
             return Message(code=NOT_FOUND)
         hits = rd.lookup_resources(_parse_lookup_query(request))
-        # RFC 9176 §6.2: no matches is still 2.05 with an empty payload (`[]`).
+        accept = request.opt.accept
+        if accept is not None and accept not in (CBOR, _LINK_FORMAT):
+            return Message(code=NOT_ACCEPTABLE)
+        if accept == _LINK_FORMAT:
+            msg = Message(code=CONTENT, payload=_encode_link_format(hits))
+            msg.opt.content_format = _LINK_FORMAT
+            return msg
+        # LICHEN default is CBOR 60; RFC 9176 link-format is offered via Accept.
         msg = Message(code=CONTENT, payload=cbor2.dumps(hits))
         msg.opt.content_format = CBOR
         return msg

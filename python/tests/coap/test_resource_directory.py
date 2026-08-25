@@ -8,6 +8,7 @@ import aiocoap
 import cbor2
 import pytest
 from aiocoap import DELETE, GET, POST, Message, resource
+from aiocoap.numbers import ContentFormat
 
 from lichen.coap.resources import ResourceDirectoryResource, StaticNodeInfo, build_site
 from lichen.coap.transport import InMemoryNetwork, create_lichen_context
@@ -639,6 +640,33 @@ class TestRdLookup:
             assert deleted.code == aiocoap.DELETED
             assert resp.code == aiocoap.CONTENT
             assert cbor2.loads(resp.payload) == []
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_link_format_when_accepted(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="sensor-42", links=_SENSOR_LINKS)
+            request = Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor")
+            request.opt.accept = ContentFormat.LINKFORMAT
+            resp = await client.request(request).response
+            assert resp.code == aiocoap.CONTENT
+            assert resp.opt.content_format == ContentFormat.LINKFORMAT
+            assert (
+                resp.payload.decode() == '</temperature>;rt="sensor";ep="sensor-42"'
+            )
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_rejects_unknown_accept(self) -> None:
+        client, server = await _setup()
+        try:
+            request = Message(code=GET, uri="coap://srv/rd-lookup/res")
+            request.opt.accept = ContentFormat(0)  # text/plain
+            resp = await client.request(request).response
+            assert resp.code == aiocoap.NOT_ACCEPTABLE
         finally:
             await client.shutdown()
             await server.shutdown()
