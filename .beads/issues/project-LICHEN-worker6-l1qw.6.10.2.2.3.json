@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.10.2.2.3",
   "title": "Vectors: Generate test vectors for Epoch Increment",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:41:43.344982Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:41:43.344982Z",
+  "updated_at": "2026-08-25T17:21:11.204715Z",
+  "closed_at": "2026-08-25T17:21:11.204715Z",
+  "close_reason": "Verified complete: epoch_rollover.json already contains epoch-increment vectors (normal increment on seqnum wrap, 255/65535 max boundary, forbidden 255-to-0 rollover rejection, tuple ordering, cross-epoch replay, cold-boot random init in [128,255]). Work was done under sibling bead .6.10.2.4 but this bead stayed open. Verified today: python/tests/test_vectors.py 645 passed including all epoch_rollover validation tests (uv sync --extra dev fixed missing deps). Gap filed separately: Rust has no consumer/validator for epoch_rollover.json (replay_window.json is cross-validated, this file is Python-only).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.2.2.3",

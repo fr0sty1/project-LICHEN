@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-emal",
+  "title": "CoAP secure lifecycle/protection/auth regressions (6 failing tests)",
+  "description": "Pre-existing at HEAD (verified via HEAD worktree). Failing: test_secure_lifecycle.py x4 (exchanges_ended empty after piggybacked ACK; nstart backlog retention; terminal response rollback), test_secure_protection.py::test_failed_request_delivery_rolls_back_new_inbound_mapping, test_transport.py::test_remote_identity_and_uri, test_lci_auth.py TestMessagesAuth::test_msg_sent_does_not_have_post_handler + TestObservableAuth::test_sensors_location_no_post, test_lci_contract_docs.py::test_lci_mesh_access_prefers_direct_ipv6_with_optional_proxy. Symptom example: inner.exchanges_ended == [] but [('peer', mid, False)] expected. Root cause likely in python/src/lichen/coap/** exchange/admission/handler-registration code. Fix implementation; do NOT weaken tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-24T20:06:24.851333Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-24T20:08:29.750467Z",
+  "started_at": "2026-08-24T20:08:29.750467Z",
+  "lease_expires_at": "2026-08-24T20:13:29.750467Z",
+  "heartbeat_at": "2026-08-24T20:08:29.750467Z"
+}

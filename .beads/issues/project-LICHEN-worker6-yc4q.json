@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-yc4q",
+  "title": "Rust: cross-validate epoch_rollover.json vectors",
+  "description": "test/vectors/epoch_rollover.json is validated only by python/tests/test_vectors.py. rust/lichen-link/src/replay.rs and seqnum.rs implement the same epoch semantics ((epoch\u003c\u003c16)|seqnum unsigned ordering, increment on wrap, reject 255-\u003e0 rollover) but no Rust test consumes the vector file, unlike replay_window.json which is cross-validated in rust/lichen-link/tests/shared_vectors.rs (gated behind --features schnorr,std). Add a shared_vectors test that replays the epoch_rollover.json sender_sequence/receiver_state vectors through the Rust implementation so both implementations prove identical accept/reject decisions per project rule 'all implementations MUST produce identical output for test vectors'.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T17:21:11.695442Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T17:26:14.817954Z",
+  "started_at": "2026-08-25T17:21:31.437587Z",
+  "closed_at": "2026-08-25T17:26:14.817954Z",
+  "close_reason": "Added test_epoch_rollover_vectors to rust/lichen-link/tests/shared_vectors.rs (gated behind --features schnorr,std like its replay_window sibling). Drives the real ReplayProtector through all epoch_rollover.json vector shapes: sender_sequence accept flags + counter math, receiver_state/received decisions (duplicate_in_window precondition reconstructed via public API and cross-checked against the recorded window bitmap bits), tuple ordering with canonical hex, unsigned comparisons, cold-boot init range, and post-terminal-counter epoch-wrap rejection. Mutation check performed: flipping one expected decision makes the test fail; vector file restored. Gates: cargo fmt clean, clippy -D-free (0 warnings), lichen-link full suite 104+1+1+6+2 passed, python test_vectors.py 645 passed.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yc4q",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.10.2.2.3",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T17:21:12.08593Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

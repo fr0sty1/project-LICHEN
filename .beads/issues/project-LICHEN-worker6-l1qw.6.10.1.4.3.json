@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.10.1.4.3",
   "title": "Vectors: Generate test vectors for Sliding Window",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:42:13.495959Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:42:13.495959Z",
+  "updated_at": "2026-08-25T17:20:55.04487Z",
+  "closed_at": "2026-08-25T17:20:55.04487Z",
+  "close_reason": "Verified complete: replay_window.json already contains comprehensive sliding-window vectors (normal, edge at offset 31/32 boundaries, error/reject cases, out-of-order tolerance, per-peer isolation, security_domain_vectors). Work was done under sibling beads .6.10.1.7 and .6.10.3 but this bead stayed open. Verified today: python/tests/test_vectors.py 645 passed (uv sync --extra dev fixed missing deps); rust/lichen-link/tests/shared_vectors.rs test_replay_window_vectors passed with --features schnorr,std.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.1.4.3",

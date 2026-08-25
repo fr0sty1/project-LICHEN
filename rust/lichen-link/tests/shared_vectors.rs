@@ -648,3 +648,349 @@ fn test_replay_window_vectors() {
         sequence_vectors.len()
     );
 }
+
+// Cross-validation test for epoch rollover (spec 4.4)
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochRolloverVectorFile {
+    format_version: u32,
+    vectors: Vec<EpochRolloverVector>,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochRolloverVector {
+    name: String,
+    #[serde(default)]
+    sender_sequence: Vec<EpochSenderStep>,
+    #[serde(default)]
+    key_rotation_required_after: bool,
+    #[serde(default)]
+    tuple: Option<EpochTuple>,
+    #[serde(default)]
+    counter: Option<u32>,
+    #[serde(default)]
+    hex: Option<String>,
+    #[serde(default)]
+    greater_than: Option<EpochOrderRef>,
+    #[serde(default)]
+    less_than: Option<EpochOrderRef>,
+    #[serde(default)]
+    receiver_state: Option<EpochReceiverState>,
+    #[serde(default)]
+    received: Option<EpochReceived>,
+    #[serde(default)]
+    expected: Option<EpochExpectation>,
+    #[serde(default)]
+    comparisons: Vec<EpochComparison>,
+    #[serde(default)]
+    cold_boot_epoch_range: Option<EpochRange>,
+    #[serde(default)]
+    examples: Vec<EpochColdBootExample>,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochSenderStep {
+    epoch: u8,
+    seqnum: u16,
+    counter: u32,
+    accept: bool,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize, Debug)]
+struct EpochTuple {
+    epoch: u8,
+    seqnum: u16,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochOrderRef {
+    epoch: u8,
+    seqnum: u16,
+    counter: u32,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochReceiverState {
+    last_epoch: u8,
+    last_seqnum: u16,
+    #[serde(default)]
+    window: u32,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochReceived {
+    epoch: u8,
+    seqnum: u16,
+    #[serde(default)]
+    counter: Option<u32>,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochExpectation {
+    accept: bool,
+    reason: String,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochComparison {
+    a: EpochTuple,
+    b: EpochTuple,
+    a_less_than_b: bool,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochRange {
+    min: u8,
+    max: u8,
+}
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+#[derive(Deserialize)]
+struct EpochColdBootExample {
+    epoch: u8,
+    seqnum: u16,
+    counter: u32,
+    valid_init: bool,
+}
+
+/// 24-bit logical replay counter: (epoch << 16) | seqnum, unsigned ordering.
+fn epoch_counter(epoch: u8, seqnum: u16) -> u32 {
+    (u32::from(epoch) << 16) | u32::from(seqnum)
+}
+
+/// Cross-validate Rust epoch rollover against shared test vectors (spec 4.4).
+///
+/// Drives the real ReplayProtector through the epoch_rollover.json vectors so
+/// Python and Rust prove identical accept/reject decisions for epoch increment,
+/// rollover rejection, tuple ordering, and replay detection across boundaries.
+#[test]
+#[cfg(all(feature = "schnorr", feature = "std"))]
+fn test_epoch_rollover_vectors() {
+    use lichen_link::link_layer::ReplayProtector;
+    use lichen_link::seqnum::LinkSeqNum;
+    use lichen_link::PublicKey;
+
+    let vectors_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/epoch_rollover.json");
+
+    assert!(
+        vectors_path.exists(),
+        "Vectors file not found at {:?}",
+        vectors_path
+    );
+
+    let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
+    let vectors: EpochRolloverVectorFile =
+        serde_json::from_str(&content).expect("Failed to parse vectors JSON");
+
+    assert_eq!(
+        vectors.format_version, 2,
+        "Unexpected vector format version"
+    );
+
+    let test_pubkey = PublicKey::from([0u8; 32]);
+    let mut failures = Vec::new();
+
+    for vector in &vectors.vectors {
+        // Sender sequences: every step must be accepted, counters must match.
+        if !vector.sender_sequence.is_empty() {
+            let mut protector = ReplayProtector::new();
+            for step in &vector.sender_sequence {
+                if epoch_counter(step.epoch, step.seqnum) != step.counter {
+                    failures.push(format!(
+                        "Vector '{}': counter mismatch for ({}, {})",
+                        vector.name, step.epoch, step.seqnum
+                    ));
+                }
+                let accepted = protector.check_and_update(
+                    &test_pubkey,
+                    step.epoch,
+                    LinkSeqNum::new(step.seqnum),
+                );
+                if accepted != step.accept {
+                    failures.push(format!(
+                        "Vector '{}': sender ({}, {}) expected {}, got {}",
+                        vector.name, step.epoch, step.seqnum, step.accept, accepted
+                    ));
+                }
+            }
+            if vector.key_rotation_required_after {
+                // Terminal counter reached: epoch wrap 255 -> 0 MUST be rejected.
+                if protector.check_and_update(&test_pubkey, 0, LinkSeqNum::new(0)) {
+                    failures.push(format!(
+                        "Vector '{}': epoch rollover after terminal counter was accepted",
+                        vector.name
+                    ));
+                }
+            }
+            continue;
+        }
+
+        // Receiver-state vectors: seed the protector to the recorded state,
+        // then check the received frame against the expected decision.
+        if let (Some(state), Some(received), Some(expected)) =
+            (&vector.receiver_state, &vector.received, &vector.expected)
+        {
+            if let Some(counter) = received.counter {
+                if epoch_counter(received.epoch, received.seqnum) != counter {
+                    failures.push(format!(
+                        "Vector '{}': received counter mismatch",
+                        vector.name
+                    ));
+                }
+            }
+
+            let mut protector = ReplayProtector::new();
+            let seeded = match expected.reason.as_str() {
+                // The recorded bitmap shows this exact frame was already seen;
+                // reconstruct that precondition through the public API:
+                // accept the frame, advance to the recorded high-water mark,
+                // then re-present the frame.
+                "duplicate_in_window" => {
+                    let offset =
+                        u32::from(state.last_seqnum).wrapping_sub(u32::from(received.seqnum));
+                    if offset >= 32 || state.window & (1 << offset) == 0 {
+                        failures.push(format!(
+                            "Vector '{}': recorded window {:#x} does not mark seqnum {} as seen",
+                            vector.name, state.window, received.seqnum
+                        ));
+                    }
+                    let first = protector.check_and_update(
+                        &test_pubkey,
+                        received.epoch,
+                        LinkSeqNum::new(received.seqnum),
+                    );
+                    if !first {
+                        failures.push(format!(
+                            "Vector '{}': duplicate_in_window setup rejected first sight",
+                            vector.name
+                        ));
+                    }
+                    protector.check_and_update(
+                        &test_pubkey,
+                        state.last_epoch,
+                        LinkSeqNum::new(state.last_seqnum),
+                    )
+                }
+                _ => protector.check_and_update(
+                    &test_pubkey,
+                    state.last_epoch,
+                    LinkSeqNum::new(state.last_seqnum),
+                ),
+            };
+            if !seeded {
+                failures.push(format!(
+                    "Vector '{}': could not seed receiver state ({}, {})",
+                    vector.name, state.last_epoch, state.last_seqnum
+                ));
+                continue;
+            }
+
+            let result = protector.check_and_update(
+                &test_pubkey,
+                received.epoch,
+                LinkSeqNum::new(received.seqnum),
+            );
+            if result != expected.accept {
+                failures.push(format!(
+                    "Vector '{}': received ({}, {}) reason={} expected {}, got {}",
+                    vector.name,
+                    received.epoch,
+                    received.seqnum,
+                    expected.reason,
+                    expected.accept,
+                    result
+                ));
+            }
+            continue;
+        }
+
+        // Tuple ordering vectors: counter math, canonical hex, ordering relations.
+        if let Some(tuple) = &vector.tuple {
+            let computed = epoch_counter(tuple.epoch, tuple.seqnum);
+            if Some(computed) != vector.counter {
+                failures.push(format!("Vector '{}': tuple counter mismatch", vector.name));
+            }
+            if let Some(hex) = &vector.hex {
+                if format!("{computed:06x}") != *hex {
+                    failures.push(format!(
+                        "Vector '{}': hex mismatch (got {:06x}, want {})",
+                        vector.name, computed, hex
+                    ));
+                }
+            }
+            if let Some(other) = &vector.greater_than {
+                if epoch_counter(other.epoch, other.seqnum) != other.counter
+                    || computed <= epoch_counter(other.epoch, other.seqnum)
+                {
+                    failures.push(format!(
+                        "Vector '{}': greater_than ordering violated",
+                        vector.name
+                    ));
+                }
+            }
+            if let Some(other) = &vector.less_than {
+                if epoch_counter(other.epoch, other.seqnum) != other.counter
+                    || computed >= epoch_counter(other.epoch, other.seqnum)
+                {
+                    failures.push(format!(
+                        "Vector '{}': less_than ordering violated",
+                        vector.name
+                    ));
+                }
+            }
+            continue;
+        }
+
+        // Unsigned comparison vectors: ordinary integer ordering, not serial arithmetic.
+        for comp in &vector.comparisons {
+            let a = epoch_counter(comp.a.epoch, comp.a.seqnum);
+            let b = epoch_counter(comp.b.epoch, comp.b.seqnum);
+            let ordered = if comp.a_less_than_b { a < b } else { a >= b };
+            if !ordered {
+                failures.push(format!(
+                    "Vector '{}': comparison {:?} < {:?} violated",
+                    vector.name, comp.a, comp.b
+                ));
+            }
+        }
+
+        // Cold-boot init vectors: counter math plus [min, max] validity.
+        if let Some(range) = &vector.cold_boot_epoch_range {
+            for example in &vector.examples {
+                if epoch_counter(example.epoch, example.seqnum) != example.counter {
+                    failures.push(format!(
+                        "Vector '{}': cold boot counter mismatch for epoch {}",
+                        vector.name, example.epoch
+                    ));
+                }
+                let in_range = range.min <= example.epoch && example.epoch <= range.max;
+                if in_range != example.valid_init {
+                    failures.push(format!(
+                        "Vector '{}': epoch {} valid_init mismatch",
+                        vector.name, example.epoch
+                    ));
+                }
+            }
+        }
+    }
+
+    if !failures.is_empty() {
+        for f in &failures {
+            eprintln!("FAIL: {}", f);
+        }
+        panic!("{} epoch rollover vector check(s) failed", failures.len());
+    }
+
+    println!("Validated {} epoch rollover vectors", vectors.vectors.len());
+}
