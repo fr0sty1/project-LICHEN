@@ -74,6 +74,10 @@ ruff check src/ tests/
 lichen-sim --node-port 4444 --api-port 4445
 ```
 
+## Code Review
+
+Run `/codereview` 3 times on every source module created or modified (correctness, security, robustness perspectives). File findings as beads. See `AGENTS.md` for full protocol.
+
 ## Architecture Overview
 
 See `AGENTS.md` for full technical details. Quick reference:
