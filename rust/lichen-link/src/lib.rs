@@ -54,6 +54,7 @@ pub mod keys;
 pub mod replay;
 pub mod seqnum;
 pub mod sos;
+pub mod sos_origin;
 
 pub use evidence::{
     AuthenticatedLinkFrame, DurablePeerKeyGeneration, PeerKeyGeneration, ReceiptClock,
@@ -75,6 +76,11 @@ pub use lichen_core::addr::ygg_addr_from_pubkey;
 pub use sos::{
     SosAlert, SosAlertType, SosCborError, SosRateLimitConfig, SosRateLimitConfigError,
     SosRateLimitResult, SosRateLimitState,
+};
+#[cfg(feature = "schnorr")]
+pub use sos_origin::{compute_sos_transcript, sign_sos_origin, verify_sos_origin};
+pub use sos_origin::{
+    SosOriginSignature, SosOriginSignatureError, SOS_ORIGIN_DOMAIN, SOS_ORIGIN_SIGNATURE_LENGTH,
 };
 
 #[cfg(all(feature = "schnorr", feature = "std"))]
