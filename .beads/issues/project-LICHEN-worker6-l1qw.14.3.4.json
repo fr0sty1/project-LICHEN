@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.14.3.4",
   "title": "Vectors: desync recovery scenarios",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:59.321669Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:59.321669Z",
+  "updated_at": "2026-08-25T19:34:28.934548Z",
+  "closed_at": "2026-08-25T19:34:28.934548Z",
+  "close_reason": "test/vectors/packets-timing.json desync_fsm x4: wrap-invalid-\u003eDESYNCED (error), DESYNCED+valid-\u003eRECOVERING, RECOVERING+3rd consecutive-\u003eSYNCED (recovery), recovery_timeout returns to DESYNCED after 3 missed superframes (edge). Consumer: python/tests/test_packets_timing.py explicitly asserts desync_fsm_recovery_timeout cases array + regen equality. Command: cd python \u0026\u0026 uv run --extra dev pytest tests/test_packets_timing.py -q =\u003e 28 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.14.3.4",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.18.4",
   "title": "Vectors: Presence and Status test vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:43.324678Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.519553Z",
+  "updated_at": "2026-08-25T19:35:42.169492Z",
+  "closed_at": "2026-08-25T19:35:42.169492Z",
+  "close_reason": "VERIFIED (closes over stale depends-on edge to still-open oracle bead l1qw.10.18.1, whose deliverable surface these tests exercise): test/vectors/presence_cbor.json (17 vectors: minimal_available, all_fields, full cache family cache_empty/cache_single_node etc.) consumed by python/tests/coap/test_presence_vectors.py — every vector validated byte-exact on encode (test_all_presence_vectors + test_all_cache_vectors iterate all 17) plus decode round-trip per vector; no error/reject family defined for this domain. Ran green: cd python \u0026\u0026 uv run --extra dev pytest tests/coap/test_presence_vectors.py -q =\u003e 7 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.18.4",

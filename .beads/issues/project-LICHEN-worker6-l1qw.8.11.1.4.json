@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.8.11.1.4",
   "title": "Vectors: monotonic time test cases",
   "description": "Test vectors for monotonic time. AC: Test cases verify monotonicity invariant.",
+  "notes": "VERIFICATION GAP (2026-08-25): No vector in test/vectors/*.json asserts the monotonicity invariant; 'Monotonic' appears in packets-timing.json only as a SourceClass label (time_sync_stratum) and in the DAO-sequence description. Unit coverage exists (python/tests/timing/test_time_sync.py:927 clock-domain mismatch, :1091 immutability) but bead requires test/vectors/*.json + machine consumer per verification bar.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:20.798561Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:20.798561Z",
+  "updated_at": "2026-08-25T19:35:03.575308Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.11.1.4",

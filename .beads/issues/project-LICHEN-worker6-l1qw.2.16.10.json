@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.2.16.10",
   "title": "Vectors: multi-channel timing cases",
   "description": "Create test vectors for multi-channel operation timing. Include channel switch, half-duplex, concurrent cell cases. Acceptance: All implementations handle correctly.",
+  "notes": "VERIFICATION GAP (2026-08-25): No vectors cover channel-switch timing, half-duplex turnaround, or concurrent-cell operation in any test/vectors/*.json. Multi-channel hop data exists (sync_hop.json n_channels 2/3/8/64 sequences; ccp16-hop.json SelectChannel set) but BOTH files have NO machine consumer in python/tests or rust, so none of it meets the verification bar.",
   "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:50.941784Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:50.941784Z",
+  "updated_at": "2026-08-25T19:35:11.908104Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.16.10",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.14.4",
   "title": "Vectors: Messaging test vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:22.981693Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.525945Z",
+  "updated_at": "2026-08-25T19:35:43.409826Z",
+  "closed_at": "2026-08-25T19:35:43.409826Z",
+  "close_reason": "VERIFIED (closes over stale depends-on edge to still-open oracle bead l1qw.10.14.1, whose deliverable surface these tests exercise): test/vectors/messaging.json (37 vectors across /msg/inbox /msg/sent /msg/ack GET+POST; \u003e=10 success + \u003e=10 error enforced by TestVectorCoverage; errors cover empty_payload, missing body/status/id/ts, invalid status enum, negative/string/overflow ids+ts, invalid CBOR 'ff', non-map payload, 4.04 id-format edges leading-zeros/non-numeric/u64-overflow) consumed by python/tests/test_messaging_vectors.py via real lichen.client MessageDraft/MessageReceipt/ReceiptStatus + validators. Ran green: cd python \u0026\u0026 uv run --extra dev pytest tests/test_messaging_vectors.py -q =\u003e 100 passed, 179 skipped (by-design parametrized resource filters).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.14.4",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.8.13",
   "title": "Vectors: superframe/cell calculation cases",
   "description": "Create test vectors for superframe and cell calculations. Include edge cases, boundary conditions. Acceptance: All implementations pass vectors.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:01.806938Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:01.806938Z",
+  "updated_at": "2026-08-25T19:34:31.272423Z",
+  "closed_at": "2026-08-25T19:34:31.272423Z",
+  "close_reason": "test/vectors/ccp_tdma.json: slot_static_hash_eui1/eui2 ((FNV-1a32(EUI64)+u32(SFN)) mod N cell assignment), data_window_last_millisecond + guard_boundary_start (boundary edge: tx forbidden in trailing 50ms guard), drift_compensation; plus packets-timing.json tdma_slot_constants (slot_ms=2346 derivation) and sfn_slot_assignment. Consumers: python/tests/test_vectors.py (ccp_tdma schema+vector tests) and python/tests/test_packets_timing.py. Commands: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -q =\u003e 676 passed; tests/test_packets_timing.py -q =\u003e 28 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.8.13",

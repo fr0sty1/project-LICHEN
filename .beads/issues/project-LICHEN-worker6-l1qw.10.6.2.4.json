@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.6.2.4",
   "title": "Vectors: waypoint sharing protocol",
   "description": "Test vectors for waypoint share requests and responses",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:41.039981Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:41.039981Z",
+  "updated_at": "2026-08-25T19:34:34.222821Z",
+  "closed_at": "2026-08-25T19:34:34.222821Z",
+  "close_reason": "VERIFIED: test/vectors/waypoint.json fully consumed by python/tests/coap/test_waypoint_vectors.py. Coverage: 23 vectors = 20 normal (minimal_required, all_fields, 11 icon enum values, negative_lat, high_alt/negative_alt, zero_coords, extreme_lon, unicode_name, long_notes, with_expires) + 3 reject truncated-CBOR (incl bare map header). Tests assert byte-exact ordered-map CBOR encode, decode round-trip, spec field-set validation, reject decode failure + prefix authenticity vs derived_from source. Ran green: cd python \u0026\u0026 uv run --extra dev pytest tests/coap/test_waypoint_vectors.py -q =\u003e 67 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.6.2.4",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.2.10.13",
   "title": "Vectors: channel selection hash cases",
   "description": "Create test vectors for channel selection hash. Include various peer combinations, edge cases. Acceptance: All implementations select same channel.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:20.17594Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:20.17594Z",
+  "updated_at": "2026-08-25T19:34:47.84223Z",
+  "closed_at": "2026-08-25T19:34:47.84223Z",
+  "close_reason": "Consumed vectors: ccp16.json select_channel_* x11 (hash-based channel per SFN/seed incl select_channel_sfn_wrap_now edge, density\u003e8 forced CH0 fallback, sf9..sf12 thresholds) consumed by python/tests/test_ccp.py, test_vectors.py, test_channel_plan.py; ccp_select_channel_endianness.json (byte-order edge) by test_ccp.py; ccp_sfn_wrap_slot_hash.json by tests/timing/test_sfn_wrap_vectors.py, tests/link/test_slot_coordination.py and rust/lichen-node/tests/sfn_wrap_vectors.rs. Commands: cd python \u0026\u0026 uv run --extra dev pytest tests/test_ccp.py -q =\u003e 59 passed; tests/test_vectors.py -q =\u003e 676 passed; tests/timing -q =\u003e 414 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.10.13",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.8.6",
   "title": "Vectors: Trickle timer behavior tests",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:09.747463Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:09.747463Z",
+  "updated_at": "2026-08-25T19:32:15.721333Z",
+  "closed_at": "2026-08-25T19:32:15.721333Z",
+  "close_reason": "test/vectors/packets-timing.json trickle_constants (Imin=4000ms, Imax_exact=1024000ms, k=10) + 4x trickle_state: interval_start (tx at Imin/2), heard_consistent (counter\u003ck tx), suppressed_at_k, expire_double (8000 capped at Imax). Normal+edge+suppression covered. Consumer: python/tests/test_packets_timing.py::test_packets_timing_vectors_against_oracle (full vector-set regeneration equality). Command: cd python \u0026\u0026 uv run --extra dev pytest tests/test_packets_timing.py -q =\u003e 28 passed; tests/timing -q =\u003e 414 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.8.6",

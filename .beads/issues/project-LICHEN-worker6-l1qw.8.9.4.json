@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.9.4",
   "title": "Vectors: airtime calculation test cases (SF10/125kHz spec examples)",
   "description": "Test vectors for airtime calculations. AC: Test cases match spec examples for SF10/125kHz.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:35.141669Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:35.141669Z",
+  "updated_at": "2026-08-25T19:32:15.721333Z",
+  "closed_at": "2026-08-25T19:32:15.721333Z",
+  "close_reason": "test/vectors/packets-timing.json: 7x airtime vectors SF10/125kHz (payloads 17,22,60,77,82,88,127B) + airtime_sf9_60b=369664us exactly matching spec/09-packets-timing.md:155 worked example + duty_cycle_eu868_10pct (973 packets/hr). Consumer: python/tests/test_packets_timing.py (vector-regen equality vs generate_packets_timing.py oracle + spot asserts). Command: cd python \u0026\u0026 uv run --extra dev pytest tests/test_packets_timing.py -q =\u003e 28 passed; corroborated by tests/timing -q =\u003e 414 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.9.4",

@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.2.15.16",
   "title": "Vectors: ASN derivation test cases",
   "description": "Create test vectors for ASN derivation. Include leap second boundaries, epoch rollover, edge cases. Acceptance: All implementations pass vectors.",
+  "notes": "VERIFICATION GAP (2026-08-25): No ASN or leap-second vectors exist anywhere under test/vectors/ (rg -i 'leap|ASN' =\u003e none). Closest artifacts: sync_hop.json SFN-from-time derivation with u32-wrap/clamp edges and custom superframe sizes - but sync_hop.json has NO machine consumer in python/tests or rust; epoch_rollover.json is link-layer replay epochs (different topic). Needed: ASN/SFN derivation vectors incl leap-second boundaries, plus a registered consumer.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:21.003627Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:21.003627Z",
+  "updated_at": "2026-08-25T19:35:03.575308Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.15.16",

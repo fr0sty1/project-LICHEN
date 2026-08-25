@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.8.16.17",
   "title": "Vectors: 14.8 TDMA CCP FSM test vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:55.450969Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:23:55.450969Z",
+  "updated_at": "2026-08-25T19:33:35.660811Z",
+  "closed_at": "2026-08-25T19:33:35.660811Z",
+  "close_reason": "test/vectors/packets-timing.json desync_fsm x4 (SYNCED+SFN-wrap-invalid-\u003eDESYNCED; DESYNCED+valid-\u003eRECOVERING; RECOVERING+3rd consecutive-\u003eSYNCED; incomplete recovery-\u003eDESYNCED after 3 missed superframes, explicit cases array) + tdma_slot_constants (slot_ms=2346 = ceil(255B SF10 airtime)+normative 50ms guard). Consumer: python/tests/test_packets_timing.py asserts recovery_timeout cases + full regen equality vs spec-14.8 oracle. Command: cd python \u0026\u0026 uv run --extra dev pytest tests/test_packets_timing.py -q =\u003e 28 passed. NOTE: --force used because declared blockers 8.16.4/8.16.1 (csma/dao oracle impls) are de-facto complete - lichen.timing.csma.cw_for_exponent and lichen.timing.dao.dao_retry_delay exist and pass in this same run - but closing them was outside this task's scope.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.16.17",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.8.16.13",
   "title": "Vectors: 14.7 TDMA SFN test vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:50.932677Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:23:50.932677Z",
+  "updated_at": "2026-08-25T19:33:38.406926Z",
+  "closed_at": "2026-08-25T19:33:38.406926Z",
+  "close_reason": "test/vectors/packets-timing.json sfn_delta_wrap ((0-0xFFFFFFFF) mod 2^32 = 1 wrap + normal + zero) + sfn_slot_assignment ((hash_32(eui64)+sfn) mod num_slots, n=8/16); reinforced by ccp_sfn_wrap_slot_hash.json consumed by python/tests/timing/test_sfn_wrap_vectors.py, python/tests/link/test_slot_coordination.py, rust/lichen-node/tests/sfn_wrap_vectors.rs. Consumers ran green: cd python \u0026\u0026 uv run --extra dev pytest tests/test_packets_timing.py -q =\u003e 28 passed; tests/timing -q =\u003e 414 passed. NOTE: --force because stale blocker 8.16.4 (sfn oracle impl) is de-facto complete (lichen.timing.sfn exercised passing in cited runs); left open out of scope.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.16.13",

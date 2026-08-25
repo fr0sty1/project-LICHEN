@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.5.1.5",
   "title": "Vectors: SenML position encoding (lat/lon/alt/speed/heading)",
   "description": "Test vectors for all position SenML fields",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:25.993911Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:25.993911Z",
+  "updated_at": "2026-08-25T19:34:35.806315Z",
+  "closed_at": "2026-08-25T19:34:35.806315Z",
+  "close_reason": "VERIFIED: test/vectors/senml_location.json (12 vectors: 5 positive covering all position fields lat/lon/alt/speed/heading/hacc/vacc + bn/bt base record, minimal no-base variant; 7 error vectors = encoder range/finite/NaN rejects + decoder type rejects with pinned messages) consumed by python/tests/coap/test_senml_location_vectors.py through real lichen.senml codec pack/unpack + profiles.location(); exhaustive partition test included. Ran green: cd python \u0026\u0026 uv run --extra dev pytest tests/coap/test_senml_location_vectors.py -q =\u003e 22 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.5.1.5",

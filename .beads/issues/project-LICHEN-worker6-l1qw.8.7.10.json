@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.7.10",
   "title": "Vectors: DAO timing scenarios",
   "description": "Test vectors for DAO timing scenarios. AC: Test cases for initial delay, retry sequence, refresh cycle.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:55.557512Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:55.557512Z",
+  "updated_at": "2026-08-25T19:32:43.253383Z",
+  "closed_at": "2026-08-25T19:32:43.253383Z",
+  "close_reason": "test/vectors/packets-timing.json dao_retry_delays (initial retry_0=4000ms, sequence 4/8/16s, retry_3_none, refresh_s=900=half of lifetime_s=1800) + dao_sequence_validation (seq starts\u003e0 invalid-0/valid-1, monotonic advance, no-wrap terminal at max). Covers initial delay + retry sequence + refresh cycle + error cases. Consumer: python/tests/test_packets_timing.py (dao_retry_delay spot asserts 4000/None). Command: cd python \u0026\u0026 uv run --extra dev pytest tests/test_packets_timing.py -q =\u003e 28 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.7.10",

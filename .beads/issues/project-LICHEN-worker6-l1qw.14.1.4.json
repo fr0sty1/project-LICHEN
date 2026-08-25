@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.14.1.4",
   "title": "Vectors: time source scenarios",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:30.344586Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:30.344586Z",
+  "updated_at": "2026-08-25T19:34:17.951632Z",
+  "closed_at": "2026-08-25T19:34:17.951632Z",
+  "close_reason": "test/vectors/packets-timing.json time_sync_stratum (strata 0-4 NO_SYNC..GNSS_GPSD with permissible source_classes incl Monotonic), time_sync_epoch_floor (firmware-only/authenticated-provision/raw-integer floors), time_sync_trust_policy provider_cases covering GNSS/Network/Internal-RTC acceptance+rejection scenarios. Consumer: python/tests/test_packets_timing.py executes strata mapping vs STRATUM_SOURCE_CLASSES + all provider cases via TimeProvider/StratumTracker. Command: cd python \u0026\u0026 uv run --extra dev pytest tests/test_packets_timing.py -q =\u003e 28 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.14.1.4",
