@@ -1,13 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.5.1.4",
   "title": "Vectors: EUI-64 to IID test cases",
-  "status": "open",
+  "description": "RE-SCOPED (2026-08-25): EUI-64-to-IID derivation is a TOTAL function over fixed-width inputs; language-neutral JSON cannot encode a rejectable input class for it, so coverage = positive vectors + inline rejection unit tests.\n\nOracle analysis:\n- python/src/lichen/ipv6/addr.py eui64_to_iid(): XOR with U/L bit, total over all 2^64 8-byte inputs. The ONLY runtime reject is wrong byte-width (len != 8 -\u003e AddrError), an API-binding artifact: Rust/C implementations take fixed [u8; 8] where a 7-byte EUI-64 is unconstructible, so an expect-error vector would validate nothing cross-language.\n- No reserved-pattern reject class exists: code performs no multicast-bit/reserved checks (vector eui64_all_ff with U/L=0xff -\u003e 0xfd including multicast bit set is accepted BY DESIGN), and repo spec grep for reserved/reject/MUST-NOT rules on EUI/IID derivation returned nothing.\n- Contrast: wire PARSERS have real reject classes (see schema ipv6_malformed_vector / ipv6_malformed.json); typed host-side derivations do not. Same judgment as sibling l1qw.9.7.5 (closed 2026-08-25T17:53Z).\n\nReal coverage:\n- Positive vectors ALREADY in oracle file test/vectors/ipv6-addresses.json profile=link_interoperability_only: eui64_spec_example (U/L clear-\u003eset, matches spec 12.2 worked example), eui64_zero (0x00-\u003e0x02 boundary), eui64_all_ff (0xff-\u003e0xfd boundary).\n- Inline rejection tests in consumer python/tests/ipv6/test_addr.py: test_eui64_to_iid_rejects_wrong_length (7-byte input), test_mac48_to_eui64_rejects_wrong_length (5-byte input), test_short_addr_to_iid_rejects_out_of_range (0x10000); plus test_mac48_to_iid_full_chain end-to-end modified-EUI-64 check.\n\nGates run 2026-08-25:\ncd python \u0026\u0026 uv run --extra dev pytest tests/ipv6/test_addr.py -q =\u003e 16 passed\ncd python \u0026\u0026 uv run --extra dev pytest tests/ipv6 tests/test_vectors.py -q =\u003e 732 passed",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:00.438602Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:00.438602Z",
+  "updated_at": "2026-08-25T18:57:15.168826Z",
+  "closed_at": "2026-08-25T18:57:15.168826Z",
+  "close_reason": "Re-scoped: EUI-64-\u003eIID is total over fixed-width 8-byte inputs; only reject class is wrong byte-width (binding artifact, unconstructible in fixed-width C/Rust), already covered by inline tests test_eui64_to_iid_rejects_wrong_length / test_mac48_to_eui64_rejects_wrong_length in python/tests/ipv6/test_addr.py. Positive boundary vectors already exist in ipv6-addresses.json (eui64_spec_example, eui64_zero, eui64_all_ff). Gates green 2026-08-25: pytest tests/ipv6/test_addr.py -q = 16 passed; pytest tests/ipv6 tests/test_vectors.py -q = 732 passed. No vectors faked.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.5.1.4",

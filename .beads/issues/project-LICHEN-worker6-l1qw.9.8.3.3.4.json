@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.3.3.4",
   "title": "Vectors: routing table CBOR payloads",
   "description": "Acceptance: shared test vectors for routes CBOR",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:41.044214Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:41.044214Z",
+  "updated_at": "2026-08-25T19:13:42.177203Z",
+  "closed_at": "2026-08-25T19:13:42.177203Z",
+  "close_reason": "File test/vectors/lci_routing_table.json: 3 vectors (3p/0e/0n; no rejection path on read-only GET /status/routes). Consumer test_lci_status_side_vectors.py TestRoutingTableVectors drives RoutesResource.render_get byte-exact, round-trip, and per-route field shape. Gate: pytest tests/coap tests/test_vectors.py -q = 1796 passed, ruff clean.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.3.3.4",

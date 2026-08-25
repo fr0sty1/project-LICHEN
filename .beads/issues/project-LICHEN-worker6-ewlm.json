@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ewlm",
+  "title": "test_lci_auth test_sensors_location_no_post fails at HEAD",
+  "description": "tests/coap/test_lich_auth.py::TestObservableAuth::test_sensors_location_no_post asserts POST /location returns NOT_FOUND but the response differs; reproduces in isolation and on a pristine HEAD worktree (a8087704), independent of worker vector work. Discovered while running the python/coap gate for l1qw status-side vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T19:10:56.514137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T19:10:56.514137Z"
+}

@@ -1,13 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.4.1.1",
   "title": "Vectors: link-local derivation test cases",
-  "status": "open",
+  "description": "RE-SCOPED (2026-08-25): link-local derivation is a TOTAL function over fixed-width 8-byte IIDs; language-neutral JSON cannot encode a rejectable input class for it. Coverage = positive vectors + inline rejection test.\n\nOracle analysis:\n- python/src/lichen/ipv6/addr.py make_link_local(): constructs b\"\\xfe\\x80\" + 6 zero bytes + IID - fe80::/10 is guaranteed BY CONSTRUCTION for every 8-byte IID; there is no IID value that can escape the prefix, so no protocol-level reject class exists. Only runtime reject is wrong byte-width len != 8 -\u003e AddrError (addr.py:97), an API-binding artifact unconstructible against fixed-width [u8; 8] C/Rust implementations.\n- Key-bound path link_local_from_pubkey() inherits totality from _pubkey_to_iid (SHA-512 over any 32-byte key); see sibling l1qw.4.5.2.4 for that judgment.\n\nfe80::/10 form verification (step-4 requirement): CONFIRMED PRESENT in asserted vectors, twice:\n1. python/tests/ipv6/test_addr.py test_make_link_local_matches_spec_example asserts exact equality with IPv6Address(\"fe80::1234:5678:9abc:def0\") - literal fe80::/10 form (spec 12.2 worked example, mirrors ipv6-addresses.json eui64_spec_example.link_local).\n2. test_key_derived_ipv6_vectors_match_production_boundaries asserts JSON vector field link_local_packed for all five key_derived_identity vectors; every committed value begins fe80000000000000 (exact packed-hex equality pins the fe80::/10 prefix bits), e.g. all_zero_pubkey -\u003e fe800000000000005046adc1dba83886.\nNo new case needed - the requirement is already satisfied by asserted artifacts.\n\nInline rejection coverage: test_make_link_local_rejects_bad_iid (4-byte IID raises AddrError).\n\nGates run 2026-08-25:\ncd python \u0026\u0026 uv run --extra dev pytest tests/ipv6/test_addr.py -q =\u003e 16 passed\ncd python \u0026\u0026 uv run --extra dev pytest tests/ipv6 tests/test_vectors.py -q =\u003e 732 passed",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:07.684157Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:07.684157Z",
+  "updated_at": "2026-08-25T18:58:01.435714Z",
+  "closed_at": "2026-08-25T18:58:01.435714Z",
+  "close_reason": "Re-scoped: make_link_local yields fe80::/10 by construction for every 8-byte IID (total function); only reject is wrong byte-width (binding artifact), covered inline by test_make_link_local_rejects_bad_iid. fe80::/10 form VERIFIED in asserted vectors: test_make_link_local_matches_spec_example pins fe80::1234:5678:9abc:def0 and test_key_derived_ipv6_vectors_match_production_boundaries pins all five JSON link_local_packed values to fe80000000000000-prefixed hex. Gates green 2026-08-25: pytest tests/ipv6/test_addr.py -q = 16 passed; pytest tests/ipv6 tests/test_vectors.py -q = 732 passed. No vectors faked.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.4.1.1",

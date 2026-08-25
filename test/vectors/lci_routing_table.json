@@ -1,0 +1,56 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "lci_routing_table",
+  "description": "GET /status/routes CBOR payload vectors (spec 11-lci.md section 17.5.3). Pins the routing table document shape: {routes: [{prefix, via, metric, lifetime_s}...], default_route}. Bytes are produced by RoutesResource.render_get over StaticNodeInfo (lichen.coap.resources.node_resources); encoded_hex equals cbor2.dumps of the pinned input. The resource is a read-only GET surface with no rejection path, so this family has no negative vectors.",
+  "spec": "spec/11-lci.md#section-17.5.3",
+  "vectors": [
+    {
+      "name": "routes_empty_no_default",
+      "description": "Node with no routes and no default route (null).",
+      "input": {
+        "routes": [],
+        "default_route": null
+      },
+      "encoded_hex": "a266726f75746573806d64656661756c745f726f757465f6"
+    },
+    {
+      "name": "routes_single_spec_example",
+      "description": "Single RPL route matching the spec 17.5.3 example: Yggdrasil-native prefix via link-local next hop, metric 512, lifetime 1800 s, same next hop as default route.",
+      "input": {
+        "routes": [
+          {
+            "prefix": "0200:1234:5678:9abc::/64",
+            "via": "fe80::1234:5678:9abc:def0",
+            "metric": 512,
+            "lifetime_s": 1800
+          }
+        ],
+        "default_route": "fe80::1234:5678:9abc:def0"
+      },
+      "encoded_hex": "a266726f7574657381a4667072656669787818303230303a313233343a353637383a396162633a3a2f3634637669617819666538303a3a313233343a353637383a396162633a64656630666d65747269631902006a6c69666574696d655f731907086d64656661756c745f726f7574657819666538303a3a313233343a353637383a396162633a64656630"
+    },
+    {
+      "name": "routes_multi_no_default",
+      "description": "Two mesh routes with different metrics/lifetimes and no default route (isolated mesh, non-storing mode downward routes held by the border router).",
+      "input": {
+        "routes": [
+          {
+            "prefix": "0200:1234:5678:9abc::/64",
+            "via": "fe80::1234:5678:9abc:def0",
+            "metric": 512,
+            "lifetime_s": 1800
+          },
+          {
+            "prefix": "0200:aaaa:bbbb:cccc::/64",
+            "via": "fe80::1111:2222:3333:4444",
+            "metric": 1024,
+            "lifetime_s": 900
+          }
+        ],
+        "default_route": null
+      },
+      "encoded_hex": "a266726f7574657382a4667072656669787818303230303a313233343a353637383a396162633a3a2f3634637669617819666538303a3a313233343a353637383a396162633a64656630666d65747269631902006a6c69666574696d655f73190708a4667072656669787818303230303a616161613a626262623a636363633a3a2f3634637669617819666538303a3a313131313a323232323a333333333a34343434666d65747269631904006a6c69666574696d655f731903846d64656661756c745f726f757465f6"
+    }
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.5.2.4",
   "title": "Vectors: position cache response format",
   "description": "Test vectors for cache response CBOR encoding",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:32.180516Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:32.180516Z",
+  "updated_at": "2026-08-25T19:14:00.630709Z",
+  "closed_at": "2026-08-25T19:14:00.630709Z",
+  "close_reason": "File test/vectors/position_cache.json: 7 vectors (4p/3n). Positives drive PositionCacheResource.render_get with injected fixed clock (empty, age_s=45 single, altitude entry, 3-peer multi) byte-exact incl. computed age_s; negatives pin real record_position ValueError rejections (negative ts, NaN lat via sentinel, string ts) and assert no cache mutation. Consumer TestPositionCacheVectors. Gate: pytest tests/coap tests/test_vectors.py -q = 1796 passed, ruff clean.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.5.2.4",

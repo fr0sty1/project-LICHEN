@@ -1,0 +1,57 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "position_observe",
+  "description": "CoAP Observe notification PAYLOAD sequences for position tracking (spec 12-apps.md section 18.2.3 Position Subscribe). Each vector drives the real stack end to end: SenMLLocationResource mounted via build_site on InMemoryNetwork, client subscribes with Observe: 0, then resource.update() pushes one notification per fix. Payloads are SenML+CBOR packs (Content-Format 112) built by lichen.senml.codec.pack from profiles.location records, which carry no timestamps and are therefore byte-deterministic. coap_observe_sequence.json separately pins Observe option sequence arithmetic; this family pins the notification bodies. No rejection path exists (profiles.location validates its own inputs, covered by senml_location.json error vectors).",
+  "spec": "spec/12-apps.md#section-18.2.3",
+  "vectors": [
+    {
+      "name": "location_observe_tracking_sequence",
+      "description": "Blue-force-tracking session: initial response is the empty pack (resource constructed without a fix), then three movement notifications - SF fix, SF fix with altitude 32.5 m, then a distant Vienna fix without altitude.",
+      "input": {
+        "updates": [
+          {
+            "lat": 37.774929,
+            "lon": -122.419416
+          },
+          {
+            "lat": 37.7751,
+            "lon": -122.4193,
+            "alt": 32.5
+          },
+          {
+            "lat": 48.2049,
+            "lon": 16.371
+          }
+        ]
+      },
+      "initial_response_hex": "80",
+      "notification_payloads_hex": [
+        "82a300636c617401636c617402fb4042e330df9bdc6aa300636c6f6e01636c6f6e02fbc05e9ad7b634dad3",
+        "83a300636c617401636c617402fb4042e3367a0f9097a300636c6f6e01636c6f6e02fbc05e9ad5cfaacd9fa30063616c7401616d02fb4040400000000000",
+        "82a300636c617401636c617402fb40481a3a29c779a7a300636c6f6e01636c6f6e02fb40305ef9db22d0e5"
+      ]
+    },
+    {
+      "name": "location_observe_altitude_transition",
+      "description": "Altitude appearing then disappearing: same lat/lon fix first with alt 10.5 m, then without - each transition notifies observers even though coordinates are unchanged.",
+      "input": {
+        "updates": [
+          {
+            "lat": 37.774929,
+            "lon": -122.419416,
+            "alt": 10.5
+          },
+          {
+            "lat": 37.774929,
+            "lon": -122.419416
+          }
+        ]
+      },
+      "notification_payloads_hex": [
+        "83a300636c617401636c617402fb4042e330df9bdc6aa300636c6f6e01636c6f6e02fbc05e9ad7b634dad3a30063616c7401616d02fb4025000000000000",
+        "82a300636c617401636c617402fb4042e330df9bdc6aa300636c6f6e01636c6f6e02fbc05e9ad7b634dad3"
+      ]
+    }
+  ]
+}

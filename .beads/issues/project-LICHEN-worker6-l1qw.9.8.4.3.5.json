@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.8.4.3.5",
   "title": "Vectors: raw TX CBOR payloads",
   "description": "Acceptance: shared test vectors for raw TX",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:18.593372Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:18.593372Z",
+  "updated_at": "2026-08-25T19:13:59.038551Z",
+  "closed_at": "2026-08-25T19:13:59.038551Z",
+  "close_reason": "File test/vectors/lci_raw_diag.json tx_command section (raw_tx_frame_wait_true, raw_tx_frame_wait_false_max_len): 2 vectors, bytes emitted by real LciClient.send_raw_tx through RecordingTransport; consumer TestRawDiagVectors asserts method/path/content_format + byte-exact request_cbor_hex + decoded body round-trip; 255-byte case pins spec max_frame_len with CBOR 58-ff length header. Gate: pytest tests/coap tests/test_vectors.py -q = 1796 passed, ruff clean.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.4.3.5",

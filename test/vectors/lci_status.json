@@ -1,0 +1,86 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "lci_status",
+  "description": "GET /status CBOR payload vectors (spec 11-lci.md section 17.5.3). Pins the node status document: uptime_s, battery_pct, battery_mv, mem_free_kb and the nested time/dodag/radio/ccp objects. Bytes are produced by StatusResource.render_get over StaticNodeInfo (lichen.coap.resources.node_resources); encoded_hex equals cbor2.dumps of the pinned input. /status is a read-only GET surface with no rejection path, so this family has no negative vectors.",
+  "spec": "spec/11-lci.md#section-17.5.3",
+  "vectors": [
+    {
+      "name": "status_empty",
+      "description": "Fresh node with no telemetry: empty status map encodes as a0.",
+      "input": {
+        "status": {}
+      },
+      "encoded_hex": "a0"
+    },
+    {
+      "name": "status_minimal",
+      "description": "Minimal status: uptime 120 s, battery 64 %, 3700 mV. Nested objects omitted.",
+      "input": {
+        "status": {
+          "uptime_s": 120,
+          "battery_pct": 64,
+          "battery_mv": 3700
+        }
+      },
+      "encoded_hex": "a368757074696d655f7318786b626174746572795f70637418406a626174746572795f6d76190e74"
+    },
+    {
+      "name": "status_full_spec_example",
+      "description": "Full status document matching the spec 17.5.3 example: GNSS-disciplined time, joined DODAG (rank 512), radio counters with fractional duty cycle (2.3 -> 8-byte float), CCP scheduler state.",
+      "input": {
+        "status": {
+          "uptime_s": 3600,
+          "battery_pct": 87,
+          "battery_mv": 3950,
+          "mem_free_kb": 42,
+          "time": {
+            "wall_clock_valid": true,
+            "unix_time": 1716742800,
+            "source_class": "gnss",
+            "source_name": "onboard-gnss",
+            "age_s": 120
+          },
+          "dodag": {
+            "joined": true,
+            "rank": 512,
+            "parent": "fe80::1234:5678:9abc:def0",
+            "root": "0200:1234:5678:9abc::1"
+          },
+          "radio": {
+            "rx_packets": 1234,
+            "tx_packets": 567,
+            "rx_errors": 12,
+            "duty_cycle_pct": 2.3
+          },
+          "ccp": {
+            "rx_channel": 5,
+            "scheduler_active": true,
+            "preferred_rx_valid_until_sfn": 12350
+          }
+        }
+      },
+      "encoded_hex": "a868757074696d655f73190e106b626174746572795f70637418576a626174746572795f6d76190f6e6b6d656d5f667265655f6b62182a6474696d65a57077616c6c5f636c6f636b5f76616c6964f569756e69785f74696d651a66536a906c736f757263655f636c61737364676e73736b736f757263655f6e616d656c6f6e626f6172642d676e7373656167655f73187865646f646167a4666a6f696e6564f56472616e6b19020066706172656e747819666538303a3a313233343a353637383a396162633a6465663064726f6f7476303230303a313233343a353637383a396162633a3a3165726164696fa46a72785f7061636b6574731904d26a74785f7061636b6574731902376972785f6572726f72730c6e647574795f6379636c655f706374fb400266666666666663636370a36a72785f6368616e6e656c05707363686564756c65725f616374697665f5781c7072656665727265645f72785f76616c69645f756e74696c5f73666e19303e"
+    },
+    {
+      "name": "status_wall_clock_invalid",
+      "description": "No wall clock (spec: unix_time omitted when wall_clock_valid is false) and unjoined DODAG at infinite rank 65535 with null parent/root.",
+      "input": {
+        "status": {
+          "uptime_s": 90,
+          "battery_pct": 12,
+          "time": {
+            "wall_clock_valid": false
+          },
+          "dodag": {
+            "joined": false,
+            "rank": 65535,
+            "parent": null,
+            "root": null
+          }
+        }
+      },
+      "encoded_hex": "a468757074696d655f73185a6b626174746572795f7063740c6474696d65a17077616c6c5f636c6f636b5f76616c6964f465646f646167a4666a6f696e6564f46472616e6b19ffff66706172656e74f664726f6f74f6"
+    }
+  ]
+}

@@ -1,13 +1,16 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.5.2.4",
   "title": "Vectors: pubkey to IID test cases",
-  "status": "open",
+  "description": "RE-SCOPED (2026-08-25): pubkey-to-IID derivation is a TOTAL function over fixed-width 32-byte inputs; language-neutral JSON cannot encode a rejectable input class for it, so coverage = positive vectors + inline rejection unit tests.\n\nOracle analysis:\n- python/src/lichen/crypto/identity.py _pubkey_to_iid(): SHA-512(pubkey)[0:8] with U/L bit cleared (iid[0] \u0026= 0xfd) - pure hash, NO curve/point validation, total over all 2^256 32-byte keys.\n- The ONLY runtime rejects are non-canonical-key encoding violations: len(pubkey) != 32 (identity.py:174 via PeerIdentity.from_pubkey; identity.py:222 via yggdrasil_address) and type is not immutable bytes (python/src/lichen/ipv6/addr.py:104,120). These are API-binding artifacts: Rust/C take fixed [u8; 32] where a 31-byte key is unconstructible - an expect-error vector would validate nothing cross-language. A 31-byte 'pubkey' is not a protocol-level reject class because the oracle itself (ipv6-addresses.json: SHA-512 over the key bytes) has no invalid domain members.\n- Same judgment as siblings l1qw.9.7.5 (closed 2026-08-25T17:53Z) and l1qw.4.5.1.4 (closed 2026-08-25T18:57Z).\n\nReal coverage:\n- Positive vectors ALREADY in test/vectors/ipv6-addresses.json profile=key_derived_identity: all_zero_pubkey, sha256_empty_as_pubkey, rfc8032_test_public_key, all_ab_pubkey, all_ff_pubkey - boundary keys incl. RFC 8032 §7.1 test vector, each with iid + link_local_packed + native_packed and iid_in_native cross-check.\n- Consumer python/tests/ipv6/test_addr.py test_key_derived_ipv6_vectors_match_production_boundaries asserts ALL five against production native_address_from_pubkey/link_local_from_pubkey (exact iid/native/link_local packed equality, \u003e=5 count guard).\n- Inline rejection tests: test_key_derived_address_helpers_reject_noncanonical_public_keys, parametrized over b\"\", bytes(31), bytes(33), bytearray(32), asserting AddrError from BOTH native_address_from_pubkey AND link_local_from_pubkey (test_addr.py:96-101).\n\nGates run 2026-08-25:\ncd python \u0026\u0026 uv run --extra dev pytest tests/ipv6/test_addr.py -q =\u003e 16 passed\ncd python \u0026\u0026 uv run --extra dev pytest tests/ipv6 tests/test_vectors.py -q =\u003e 732 passed",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:12.709429Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:12.709429Z",
+  "updated_at": "2026-08-25T18:57:39.395145Z",
+  "closed_at": "2026-08-25T18:57:39.395145Z",
+  "close_reason": "Re-scoped: pubkey-\u003eIID is pure SHA-512+U/L-clear, total over fixed-width 32-byte inputs with no curve validation; only rejects are width/type binding artifacts (len!=32, bytearray), already covered inline by test_key_derived_address_helpers_reject_noncanonical_public_keys (4 params x both API paths). Five positive boundary vectors already in ipv6-addresses.json key_derived_identity profile, asserted against production by test_key_derived_ipv6_vectors_match_production_boundaries. Gates green 2026-08-25: pytest tests/ipv6/test_addr.py -q = 16 passed; pytest tests/ipv6 tests/test_vectors.py -q = 732 passed. No vectors faked.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.5.2.4",

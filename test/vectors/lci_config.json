@@ -1,0 +1,230 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "lci_config",
+  "description": "LCI /config CBOR vectors (spec 17.5.2): GET responses and PUT update payloads emitted by ConfigResource, plus rejection cases reflecting its verified behavior (4.01 unauthenticated writes, 4.00 for empty/malformed/non-map/duplicate-key/tagged/trailing-byte bodies and unknown keys).",
+  "spec": "spec/11-lci.md",
+  "vectors": [
+    {
+      "name": "get_spec_example_config",
+      "op": "get",
+      "description": "GET /config response matching the spec 17.5.2 example document.",
+      "input": {
+        "name": "my-node",
+        "role": "router",
+        "radio": "/config/radio",
+        "identity": "/config/identity"
+      },
+      "content_format": 60,
+      "encoded_hex": "a4646e616d65676d792d6e6f646564726f6c6566726f7574657265726164696f6d2f636f6e6669672f726164696f686964656e74697479702f636f6e6669672f6964656e74697479"
+    },
+    {
+      "name": "get_empty_config",
+      "op": "get",
+      "description": "Fresh node with no configuration set returns an empty CBOR map.",
+      "input": {},
+      "content_format": 60,
+      "encoded_hex": "a0"
+    },
+    {
+      "name": "get_name_only",
+      "op": "get",
+      "description": "Minimal configuration carrying only the node name.",
+      "input": {
+        "name": "roadside-unit-7"
+      },
+      "content_format": 60,
+      "encoded_hex": "a1646e616d656f726f6164736964652d756e69742d37"
+    },
+    {
+      "name": "get_role_leaf",
+      "op": "get",
+      "description": "Leaf role value from the spec role enumeration.",
+      "input": {
+        "role": "leaf"
+      },
+      "content_format": 60,
+      "encoded_hex": "a164726f6c65646c656166"
+    },
+    {
+      "name": "put_partial_update_changed",
+      "op": "put",
+      "description": "PUT /config partial update (spec 17.5.2 example) merges into existing state.",
+      "input": {
+        "name": "new-name"
+      },
+      "content_format": 60,
+      "encoded_hex": "a1646e616d65686e65772d6e616d65",
+      "initial_config": {
+        "name": "my-node",
+        "role": "router",
+        "radio": "/config/radio",
+        "identity": "/config/identity"
+      },
+      "expected": {
+        "code": "2.04",
+        "resulting_config": {
+          "name": "new-name",
+          "role": "router",
+          "radio": "/config/radio",
+          "identity": "/config/identity"
+        }
+      }
+    },
+    {
+      "name": "put_multi_key_update_changed",
+      "op": "put",
+      "description": "PUT /config updating several known keys in one request.",
+      "input": {
+        "name": "relay-1",
+        "role": "border-router"
+      },
+      "content_format": 60,
+      "encoded_hex": "a2646e616d656772656c61792d3164726f6c656d626f726465722d726f75746572",
+      "initial_config": {
+        "name": "my-node",
+        "role": "router",
+        "radio": "/config/radio",
+        "identity": "/config/identity"
+      },
+      "expected": {
+        "code": "2.04",
+        "resulting_config": {
+          "name": "relay-1",
+          "role": "border-router",
+          "radio": "/config/radio",
+          "identity": "/config/identity"
+        }
+      }
+    },
+    {
+      "name": "get_unicode_node_name",
+      "op": "get",
+      "description": "Edge: non-ASCII node name encodes as UTF-8 CBOR text string.",
+      "input": {
+        "name": "nœud-émetteur-七"
+      },
+      "content_format": 60,
+      "encoded_hex": "a1646e616d65736ec59375642dc3a96d6574746575722de4b883"
+    },
+    {
+      "name": "get_large_integer_value",
+      "op": "get",
+      "description": "Edge: integer above uint8 encodes with CBOR extended length.",
+      "input": {
+        "uptime_s": 1716742800
+      },
+      "content_format": 60,
+      "encoded_hex": "a168757074696d655f731a66536a90"
+    },
+    {
+      "name": "put_unauthorized_when_writes_disabled",
+      "op": "put",
+      "description": "PUT /config without transport authentication returns 4.01; state unchanged.",
+      "resource_path": "/config",
+      "writes_enabled": false,
+      "expected": {
+        "code": "4.01"
+      },
+      "input": {
+        "name": "renamed"
+      },
+      "encoded_hex": "a1646e616d656772656e616d6564"
+    },
+    {
+      "name": "put_empty_payload_bad_request",
+      "op": "put",
+      "description": "Empty PUT body is rejected 4.00 before CBOR parsing.",
+      "resource_path": "/config",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00"
+      },
+      "wire_hex": ""
+    },
+    {
+      "name": "put_invalid_cbor_bad_request",
+      "op": "put",
+      "description": "Malformed CBOR bytes are rejected 4.00.",
+      "resource_path": "/config",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00"
+      },
+      "wire_hex": "fffefd"
+    },
+    {
+      "name": "put_non_map_cbor_bad_request",
+      "op": "put",
+      "description": "A well-formed CBOR array is rejected 4.00 because updates must be a map.",
+      "resource_path": "/config",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00"
+      },
+      "input": [
+        1,
+        2,
+        3
+      ],
+      "encoded_hex": "83010203",
+      "note": "encoded_hex of a list is pinned only as the malformed request body."
+    },
+    {
+      "name": "put_unknown_key_atomic_reject",
+      "op": "put",
+      "description": "Unknown key rejects 4.00 atomically; no field from the body is applied.",
+      "resource_path": "/config",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00",
+        "resulting_config": {
+          "name": "v2",
+          "role": "router"
+        }
+      },
+      "input": {
+        "name": "v3",
+        "unknown_key": 1
+      },
+      "encoded_hex": "a2646e616d656276336b756e6b6e6f776e5f6b657901",
+      "initial_config": {
+        "name": "v2",
+        "role": "router"
+      }
+    },
+    {
+      "name": "put_trailing_bytes_bad_request",
+      "op": "put",
+      "description": "Valid CBOR map followed by trailing bytes is rejected 4.00.",
+      "resource_path": "/config",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00"
+      },
+      "wire_hex": "a16c74785f706f7765725f64626d14747261696c696e67"
+    },
+    {
+      "name": "put_duplicate_keys_bad_request",
+      "op": "put",
+      "description": "Duplicate map keys are rejected 4.00 instead of last-one-wins.",
+      "resource_path": "/config",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00"
+      },
+      "wire_hex": "a2646e616d65656669727374646e616d65667365636f6e64"
+    },
+    {
+      "name": "put_tagged_value_bad_request",
+      "op": "put",
+      "description": "CBOR-tagged values (tag 29) inside the update map are rejected 4.00.",
+      "resource_path": "/config",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00"
+      },
+      "wire_hex": "a1646e616d65d81d63616263"
+    }
+  ]
+}

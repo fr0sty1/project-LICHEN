@@ -1,0 +1,116 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "position_cache",
+  "description": "GET /pos/cache CBOR response vectors (spec 12-apps.md section 18.2.1). Pins the cache document shape {positions: [{node, lat, lon, ts, alt?, age_s}...]} where age_s is computed at response time as int(now - ts). Bytes are produced by PositionCacheResource.render_get with an injected fixed time_source (lichen.coap.resources.position); encoded_hex equals cbor2.dumps of the produced document. Reject vectors cover record_position validation, which are real ValueError rejections; the GET surface itself has no rejection path.",
+  "spec": "spec/12-apps.md#section-18.2.1",
+  "vectors": [
+    {
+      "name": "cache_empty",
+      "description": "Empty cache returns {positions: []}.",
+      "input": {
+        "now": 1716742845.0,
+        "record": []
+      },
+      "encoded_hex": "a169706f736974696f6e7380"
+    },
+    {
+      "name": "cache_single_age45",
+      "description": "Spec example coordinates (San Francisco) recorded at t0, queried 45 s later: age_s 45, no altitude key.",
+      "input": {
+        "now": 1716742845.0,
+        "record": [
+          {
+            "node": "0200::1111",
+            "lat": 37.774929,
+            "lon": -122.419416,
+            "ts": 1716742800.0
+          }
+        ]
+      },
+      "encoded_hex": "a169706f736974696f6e7381a5646e6f64656a303230303a3a31313131636c6174fb4042e330df9bdc6a636c6f6efbc05e9ad7b634dad3627473fb41d994daa4000000656167655f73182d"
+    },
+    {
+      "name": "cache_with_altitude",
+      "description": "Entry recorded with altitude 61.5 m (Space Needle): alt key present between ts and age_s per insertion order.",
+      "input": {
+        "now": 1716742845.0,
+        "record": [
+          {
+            "node": "0200::2222",
+            "lat": 47.620506,
+            "lon": -122.349274,
+            "ts": 1716742805.0,
+            "alt": 61.5
+          }
+        ]
+      },
+      "encoded_hex": "a169706f736974696f6e7381a6646e6f64656a303230303a3a32323232636c6174fb4047cf6cbd987c63636c6f6efbc05e965a8155d5f5627473fb41d994daa540000063616c74fb404ec00000000000656167655f731828"
+    },
+    {
+      "name": "cache_multiple_peers",
+      "description": "Three peers cached at different times: ages 5 s, 2 s (with alt), and 15 s; insertion order preserved by the CBOR array.",
+      "input": {
+        "now": 1716742845.0,
+        "record": [
+          {
+            "node": "0200::1111",
+            "lat": 37.774929,
+            "lon": -122.419416,
+            "ts": 1716742840.0
+          },
+          {
+            "node": "0200::2222",
+            "lat": 47.620506,
+            "lon": -122.349274,
+            "ts": 1716742843.0,
+            "alt": 10.5
+          },
+          {
+            "node": "0200::3333",
+            "lat": -33.8688,
+            "lon": 151.2093,
+            "ts": 1716742830.0
+          }
+        ]
+      },
+      "encoded_hex": "a169706f736974696f6e7383a5646e6f64656a303230303a3a31313131636c6174fb4042e330df9bdc6a636c6f6efbc05e9ad7b634dad3627473fb41d994daae000000656167655f7305a6646e6f64656a303230303a3a32323232636c6174fb4047cf6cbd987c63636c6f6efbc05e965a8155d5f5627473fb41d994daaec0000063616c74fb4025000000000000656167655f7302a5646e6f64656a303230303a3a33333333636c6174fbc040ef34d6a161e5636c6f6efb4062e6b295e9e1b1627473fb41d994daab800000656167655f730f"
+    },
+    {
+      "name": "cache_record_reject_negative_ts",
+      "description": "Negative: recording with negative timestamp raises ValueError('timestamp must be non-negative finite number'); nothing enters the cache.",
+      "kind": "reject",
+      "input": {
+        "node": "0200::9999",
+        "lat": 1.0,
+        "lon": 1.0,
+        "ts": -1.0
+      },
+      "expected_error": "timestamp must be non-negative finite number"
+    },
+    {
+      "name": "cache_record_reject_nan_lat",
+      "description": "Negative: recording with NaN latitude raises ValueError('latitude must be finite number'). The 'NaN' string sentinel stands in for float('nan') when driving the oracle.",
+      "kind": "reject",
+      "input": {
+        "node": "0200::9999",
+        "lat": "NaN",
+        "lon": 1.0,
+        "ts": 1716742800.0
+      },
+      "expected_error": "latitude must be finite number"
+    },
+    {
+      "name": "cache_record_reject_bad_ts_type",
+      "description": "Negative: recording with a non-numeric timestamp raises ValueError('timestamp must be non-negative finite number').",
+      "kind": "reject",
+      "input": {
+        "node": "0200::9999",
+        "lat": 1.0,
+        "lon": 1.0,
+        "ts": "bad"
+      },
+      "expected_error": "timestamp must be non-negative finite number"
+    }
+  ]
+}

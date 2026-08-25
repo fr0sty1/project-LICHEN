@@ -1,0 +1,244 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "core_link_format",
+  "description": "CoRE Link Format (RFC 6690) discovery vectors: parse_link_format cases for /.well-known/core bodies plus the exact link entries emitted by the Python node's default CoAP site. Error cases reflect verified behavior: unclosed quotes raise LciClientError; bracket-less entries are skipped.",
+  "spec": "spec/11-lci.md",
+  "vectors": [
+    {
+      "name": "parse_single_link_minimal",
+      "kind": "parse",
+      "description": "Bare target with no attributes.",
+      "body": "</status>",
+      "expected": {
+        "resources": [
+          "/status"
+        ],
+        "observable": [],
+        "resource_types": {}
+      }
+    },
+    {
+      "name": "parse_rt_quoted",
+      "kind": "parse",
+      "description": "Quoted rt attribute maps to the resource type tuple.",
+      "body": "</config>;rt=\"config\"",
+      "expected": {
+        "resources": [
+          "/config"
+        ],
+        "observable": [],
+        "resource_types": {
+          "/config": [
+            "config"
+          ]
+        }
+      }
+    },
+    {
+      "name": "parse_obs_flag",
+      "kind": "parse",
+      "description": "Unquoted obs flag marks the resource observable (RFC 7641).",
+      "body": "</status/neighbors>;rt=\"status\";obs",
+      "expected": {
+        "resources": [
+          "/status/neighbors"
+        ],
+        "observable": [
+          "/status/neighbors"
+        ],
+        "resource_types": {
+          "/status/neighbors": [
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "name": "parse_multiple_rt_tokens",
+      "kind": "parse",
+      "description": "Space-separated tokens inside quoted rt become multiple types.",
+      "body": "</a>;rt=\"sensor temp\"",
+      "expected": {
+        "resources": [
+          "/a"
+        ],
+        "observable": [],
+        "resource_types": {
+          "/a": [
+            "sensor",
+            "temp"
+          ]
+        }
+      }
+    },
+    {
+      "name": "parse_multiple_links",
+      "kind": "parse",
+      "description": "Comma-separated link entries parse independently.",
+      "body": "</config>;rt=\"config\",</config/radio>;rt=\"config\",</keys>;rt=\"keystore\"",
+      "expected": {
+        "resources": [
+          "/config",
+          "/config/radio",
+          "/keys"
+        ],
+        "observable": [],
+        "resource_types": {
+          "/config": [
+            "config"
+          ],
+          "/config/radio": [
+            "config"
+          ],
+          "/keys": [
+            "keystore"
+          ]
+        }
+      }
+    },
+    {
+      "name": "parse_ct_attribute_ignored",
+      "kind": "parse",
+      "description": "Unquoted ct is tolerated and not surfaced as a capability.",
+      "body": "</msg/inbox>;rt=\"msg.inbox\";ct=60;obs",
+      "expected": {
+        "resources": [
+          "/msg/inbox"
+        ],
+        "observable": [
+          "/msg/inbox"
+        ],
+        "resource_types": {
+          "/msg/inbox": [
+            "msg.inbox"
+          ]
+        }
+      }
+    },
+    {
+      "name": "parse_whitespace_tolerated",
+      "kind": "parse",
+      "description": "Spaces around targets, separators, and attributes are ignored.",
+      "body": " </a> ; rt=\"x\" ,  </b> ",
+      "expected": {
+        "resources": [
+          "/a",
+          "/b"
+        ],
+        "observable": [],
+        "resource_types": {
+          "/a": [
+            "x"
+          ]
+        }
+      }
+    },
+    {
+      "name": "parse_empty_body",
+      "kind": "parse",
+      "description": "Edge: empty discovery body yields zero capabilities.",
+      "body": "",
+      "expected": {
+        "resources": [],
+        "observable": [],
+        "resource_types": {}
+      }
+    },
+    {
+      "name": "parse_escaped_quote_edge",
+      "kind": "parse",
+      "description": "Edge: escaped quote inside rt does not raise; backslash sequences survive literally in tokens (documented parser behavior).",
+      "body": "</a>;rt=\"say \\\"hi\\\"\"",
+      "expected": {
+        "resources": [
+          "/a"
+        ],
+        "observable": [],
+        "resource_types": {
+          "/a": [
+            "say",
+            "\\\"hi\\\""
+          ]
+        }
+      }
+    },
+    {
+      "name": "error_unclosed_quote_raises",
+      "kind": "error",
+      "description": "An unterminated quoted attribute raises LciClientError.",
+      "body": "</a>;rt=\"unclosed",
+      "expected": {
+        "raises": "LciClientError"
+      }
+    },
+    {
+      "name": "error_bare_target_skipped",
+      "kind": "error",
+      "description": "Entries whose target lacks angle brackets are skipped, not fatal.",
+      "body": "garbage,</real>;rt=\"x\"",
+      "expected": {
+        "resources": [
+          "/real"
+        ],
+        "observable": [],
+        "resource_types": {
+          "/real": [
+            "x"
+          ]
+        },
+        "note": "Lenient skip is actual parser behavior, not a hard reject."
+      }
+    },
+    {
+      "name": "node_default_site_wkc_links",
+      "kind": "node_emitted",
+      "description": "Exact link entries emitted by GET /.well-known/core on a default build_site() node (aiocoap appends one version-pinned rel=\"impl-info\" entry that is intentionally excluded here).",
+      "links": [
+        "</.well-known/core>;ct=\"40\"",
+        "</status>;rt=\"status\";ct=\"60\"",
+        "</status/neighbors>;rt=\"status\";ct=\"60\";obs",
+        "</status/routes>;rt=\"status\";ct=\"60\"",
+        "</config>;rt=\"config\";ct=\"60\"",
+        "</config/radio>;rt=\"config\";ct=\"60\"",
+        "</config/identity>;rt=\"config\";ct=\"60\""
+      ],
+      "expected": {
+        "content_format": 40,
+        "resources": [
+          "/.well-known/core",
+          "/status",
+          "/status/neighbors",
+          "/status/routes",
+          "/config",
+          "/config/radio",
+          "/config/identity"
+        ],
+        "observable": [
+          "/status/neighbors"
+        ],
+        "resource_types": {
+          "/.well-known/core": [],
+          "/status": [
+            "status"
+          ],
+          "/status/neighbors": [
+            "status"
+          ],
+          "/status/routes": [
+            "status"
+          ],
+          "/config": [
+            "config"
+          ],
+          "/config/radio": [
+            "config"
+          ],
+          "/config/identity": [
+            "config"
+          ]
+        }
+      }
+    }
+  ]
+}

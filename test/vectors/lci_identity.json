@@ -1,0 +1,78 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "lci_identity",
+  "description": "LCI /config/identity CBOR vectors (spec 17.5.2): read-only identity documents emitted by IdentityConfigResource. Addresses derive from the node Ed25519 key per spec 6.1/12 (link-local fe80::/10 + native 0200::/8). The resource has no write path: mutating methods yield 4.05.",
+  "spec": "spec/11-lci.md",
+  "vectors": [
+    {
+      "name": "get_full_identity",
+      "op": "get",
+      "description": "GET /config/identity with all fields; addresses are genuinely derived from the Ed25519 public key (seed 000102..1f) via link_local_from_pubkey and native_address_from_pubkey.",
+      "input": {
+        "eui64": "0x0011223344556677",
+        "pubkey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+        "pubkey_fingerprint": "SHA256:56475aa75463474c",
+        "addrs": {
+          "link_local": "fe80::ed42:42ea:d4ac:6948",
+          "primary": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948"
+        }
+      },
+      "content_format": 60,
+      "encoded_hex": "a465657569363472307830303131323233333434353536363737667075626b6579784030336131303762666633636531306265316437306464313865373462633039393637653464363330396261353064356631646463383636343132353533316238727075626b65795f66696e6765727072696e74775348413235363a35363437356161373534363334373463656164647273a26a6c696e6b5f6c6f63616c7819666538303a3a656434323a343265613a643461633a36393438677072696d61727978263265643a343234323a656164343a616336393a656434323a343265613a643461633a36393438"
+    },
+    {
+      "name": "get_minimal_identity",
+      "op": "get",
+      "description": "Identity exposing only the long address.",
+      "input": {
+        "eui64": "0x0011223344556677"
+      },
+      "content_format": 60,
+      "encoded_hex": "a165657569363472307830303131323233333434353536363737"
+    },
+    {
+      "name": "get_addrs_only",
+      "op": "get",
+      "description": "Identity exposing only the derived address map (no EUI-64).",
+      "input": {
+        "addrs": {
+          "link_local": "fe80::ed42:42ea:d4ac:6948",
+          "primary": "2ed:4242:ead4:ac69:ed42:42ea:d4ac:6948"
+        }
+      },
+      "content_format": 60,
+      "encoded_hex": "a1656164647273a26a6c696e6b5f6c6f63616c7819666538303a3a656434323a343265613a643461633a36393438677072696d61727978263265643a343234323a656164343a616336393a656434323a343265613a643461633a36393438"
+    },
+    {
+      "name": "get_unprovisioned_identity",
+      "op": "get",
+      "description": "Edge: unprovisioned node returns an empty CBOR identity map.",
+      "input": {},
+      "content_format": 60,
+      "encoded_hex": "a0"
+    },
+    {
+      "name": "put_read_only_method_not_allowed",
+      "op": "put",
+      "description": "Identity is read-only: PUT returns 4.05 Method Not Allowed.",
+      "method": "PUT",
+      "resource_path": "/config/identity",
+      "wire_hex": "a165657569363472307861616262636364646565666630303131",
+      "expected": {
+        "code": "4.05"
+      }
+    },
+    {
+      "name": "delete_read_only_method_not_allowed",
+      "op": "delete",
+      "description": "DELETE on the read-only identity resource returns 4.05.",
+      "method": "DELETE",
+      "resource_path": "/config/identity",
+      "wire_hex": "",
+      "expected": {
+        "code": "4.05"
+      }
+    }
+  ]
+}

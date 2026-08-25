@@ -1,0 +1,181 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "lci_raw_diag",
+  "description": "Raw diagnostics wire vectors (spec 11-lci.md section 17.5.4). Four kinds: (1) tx_command - POST /diag/raw/tx request bodies encoded by the real LciClient.send_raw_tx; (2) arm_command - PUT /diag/raw/rx arming request bodies encoded by the real LciClient.arm_raw_rx, plus its client-side ttl_s<=0 rejection which emits no wire bytes; (3) rx_status - GET /diag/raw/rx response payloads consumed by normalize_raw_rx_status; (4) rx_event - /diag/raw/rx/events notification payloads consumed by normalize_raw_rx_event. NOTE: no Python producer exists for rx_status/rx_event payloads (they are firmware-side); their bytes are pinned via the reference CBOR codec oracle (cbor2.dumps of the spec-shaped input) and driven through the real client decoders. Negative vectors exist only where real rejection paths exist.",
+  "spec": "spec/11-lci.md#section-17.5.4",
+  "vectors": [
+    {
+      "name": "raw_tx_frame_wait_true",
+      "description": "Spec example: transmit 4-byte frame c1020304 synchronously (wait=true).",
+      "kind": "tx_command",
+      "input": {
+        "frame_hex": "c1020304",
+        "wait": true
+      },
+      "request": {
+        "method": "POST",
+        "path": "/diag/raw/tx",
+        "content_format": 60
+      },
+      "request_cbor_hex": "a2656672616d6544c10203046477616974f5"
+    },
+    {
+      "name": "raw_tx_frame_wait_false_max_len",
+      "description": "255-byte frame (spec /diag max_frame_len) sent asynchronously (wait=false). Exercises two-byte CBOR byte-string length header 58 ff.",
+      "kind": "tx_command",
+      "input": {
+        "frame_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfe",
+        "wait": false
+      },
+      "request": {
+        "method": "POST",
+        "path": "/diag/raw/tx",
+        "content_format": 60
+      },
+      "request_cbor_hex": "a2656672616d6558ff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfe6477616974f4"
+    },
+    {
+      "name": "rx_arm_spec_example",
+      "description": "Spec example: arm raw RX for 60 s with payload capture enabled.",
+      "kind": "arm_command",
+      "input": {
+        "enabled": true,
+        "ttl_s": 60,
+        "include_payload": true
+      },
+      "request": {
+        "method": "PUT",
+        "path": "/diag/raw/rx",
+        "content_format": 60
+      },
+      "request_cbor_hex": "a367656e61626c6564f56574746c5f73183c6f696e636c7564655f7061796c6f6164f5"
+    },
+    {
+      "name": "rx_arm_disarm",
+      "description": "Disarm raw RX early: enabled=false with a finite TTL.",
+      "kind": "arm_command",
+      "input": {
+        "enabled": false,
+        "ttl_s": 30,
+        "include_payload": false
+      },
+      "request": {
+        "method": "PUT",
+        "path": "/diag/raw/rx",
+        "content_format": 60
+      },
+      "request_cbor_hex": "a367656e61626c6564f46574746c5f73181e6f696e636c7564655f7061796c6f6164f4"
+    },
+    {
+      "name": "rx_arm_reject_ttl_zero",
+      "description": "Negative: ttl_s=0 is rejected client-side before any wire request is emitted (LciClient.arm_raw_rx returns state error, detail 'ttl_s must be positive', zero transport requests).",
+      "kind": "arm_command_reject",
+      "input": {
+        "ttl_s": 0
+      },
+      "expected": {
+        "state": "error",
+        "detail": "ttl_s must be positive",
+        "wire_requests": 0
+      }
+    },
+    {
+      "name": "rx_status_disabled_spec_example",
+      "description": "Spec example GET /diag/raw/rx response: raw RX disabled, no remaining time, max TTL 300 s.",
+      "kind": "rx_status",
+      "input": {
+        "enabled": false,
+        "remaining_s": 0,
+        "max_ttl_s": 300
+      },
+      "encoded_hex": "a367656e61626c6564f46b72656d61696e696e675f7300696d61785f74746c5f7319012c",
+      "normalized": {
+        "state": "ok",
+        "enabled": false,
+        "remaining_s": 0,
+        "max_ttl_s": 300
+      }
+    },
+    {
+      "name": "rx_status_enabled",
+      "description": "Armed window mid-flight: enabled with 42 s remaining.",
+      "kind": "rx_status",
+      "input": {
+        "enabled": true,
+        "remaining_s": 42,
+        "max_ttl_s": 300
+      },
+      "encoded_hex": "a367656e61626c6564f56b72656d61696e696e675f73182a696d61785f74746c5f7319012c",
+      "normalized": {
+        "state": "ok",
+        "enabled": true,
+        "remaining_s": 42,
+        "max_ttl_s": 300
+      }
+    },
+    {
+      "name": "rx_status_not_a_map",
+      "description": "Negative: non-map status payload (CBOR text string) drives normalize_raw_rx_status into state error with detail '/diag/raw/rx payload is not a map'. Bytes emitted by the reference CBOR codec.",
+      "kind": "rx_status_reject",
+      "encoded_hex": "696e6f742d612d6d6170",
+      "expected": {
+        "state": "error",
+        "detail": "/diag/raw/rx payload is not a map"
+      }
+    },
+    {
+      "name": "rx_event_full_spec_example",
+      "description": "Spec example /diag/raw/rx/events notification: captured frame with RSSI/SNR/frequency/CRC metadata and capture timestamp.",
+      "kind": "rx_event",
+      "input": {
+        "frame_hex": "c1020304",
+        "rssi_dbm": -85,
+        "snr_db": 9,
+        "uptime_ms": 3662000,
+        "freq_hz": 915000000,
+        "crc_ok": true
+      },
+      "encoded_hex": "a6656672616d6544c102030468727373695f64626d385466736e725f64620969757074696d655f6d731a0037e0b067667265715f687a1a3689cac0666372635f6f6bf5",
+      "normalized": {
+        "state": "ok",
+        "frame_hex": "c1020304",
+        "rssi_dbm": -85,
+        "snr_db": 9,
+        "uptime_ms": 3662000,
+        "freq_hz": 915000000,
+        "crc_ok": true
+      }
+    },
+    {
+      "name": "rx_event_minimal",
+      "description": "Minimal event without include_payload extras: only frame/RSSI/SNR present; optional fields normalize to None.",
+      "kind": "rx_event",
+      "input": {
+        "frame_hex": "deadbeef",
+        "rssi_dbm": -92,
+        "snr_db": -7
+      },
+      "encoded_hex": "a3656672616d6544deadbeef68727373695f64626d385b66736e725f646226",
+      "normalized": {
+        "state": "ok",
+        "frame_hex": "deadbeef",
+        "rssi_dbm": -92,
+        "snr_db": -7,
+        "freq_hz": null,
+        "crc_ok": null,
+        "uptime_ms": null
+      }
+    },
+    {
+      "name": "rx_event_not_a_map",
+      "description": "Negative: non-map event payload (CBOR array) drives normalize_raw_rx_event into state error with detail '/diag/raw/rx/events payload is not a map'. Bytes emitted by the reference CBOR codec.",
+      "kind": "rx_event_reject",
+      "encoded_hex": "83010203",
+      "expected": {
+        "state": "error",
+        "detail": "/diag/raw/rx/events payload is not a map"
+      }
+    }
+  ]
+}

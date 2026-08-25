@@ -64,7 +64,7 @@ Complete index of every vector file (111 files). Byte strings are lowercase hex 
 | `loadng_messages.json` | LOADng RREQ/RREP/RERR message encoding (spec 10.3/10.4/10.6) |
 | `root_authorization.json` | DODAGID == AddrForKey(root_pubkey) binding (spec 8.2, 8.4) |
 | `root_signature.json` | Root-signature verification of RPL DIO (spec 8.2, 8.4) |
-| `rpl_messages.json` | RPL DIO/DAO message encodings (RFC 6550, hardcoded independent vectors) |
+| `rpl_messages.json` | RPL DIS/DIO/DAO/DAO-ACK message encodings (RFC 6550, hardcoded independent vectors) |
 | `rpl_multi_instance.json` | Multi-instance RPL coordination (GCP-5) |
 | `rpl_route_state.json` | Post-provenance DAO route-state transitions from fixed option bytes |
 | `source_route_hop_limit.json` | RFC 6554 source-route Segment Left/hop-limit validation |

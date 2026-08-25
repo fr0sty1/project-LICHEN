@@ -2727,6 +2727,122 @@ def rpl_messages_vectors() -> list[dict]:
                 "dodag_id": None,
             },
         },
+        {
+            "name": "dis_base",
+            "type": "dis",
+            "description": (
+                "Normal DODAG Information Solicitation: zero flags, zero "
+                "reserved, no options (RFC 6550 6.2)."
+            ),
+            "encoded": "0000",
+            "fields": {"flags": 0, "reserved": 0},
+        },
+        {
+            "name": "dis_flags_ignored_on_receive",
+            "type": "dis",
+            "description": (
+                "RFC 6550 6.2 DIS flag bits are unused: senders MUST zero them "
+                "and receivers MUST ignore them, so a decoder preserves rather "
+                "than rejects or masks any flags value."
+            ),
+            "encoded": "a500",
+            "fields": {"flags": 165, "reserved": 0},
+        },
+        {
+            "name": "dis_solicited_no_dodagid_match",
+            "type": "dis",
+            "description": (
+                "No-DODAGID solicitation via Solicited Information option "
+                "(RFC 6550 6.6): type 7 length 18, RPLInstanceID 0, VID flags "
+                "0xC0 (V+I set, D clear so the carried DODAGID is not matched), "
+                "AddrForKey DODAGID of the deterministic all-zero identity seed."
+            ),
+            "options_hex": "071200c0027dd5cfc679ab637dd5cfc679ab6342",
+            "encoded": "0000071200c0027dd5cfc679ab637dd5cfc679ab6342",
+            "fields": {"flags": 0, "reserved": 0},
+        },
+        {
+            "name": "dis_truncated",
+            "type": "dis",
+            "description": "A DIS shorter than its two-byte base object is rejected.",
+            "encoded": "00",
+            "expect_error": "too_short",
+        },
+        {
+            "name": "dis_nonzero_reserved",
+            "type": "dis",
+            "description": (
+                "A nonzero DIS Reserved byte violates RFC 6550 6.2 and is "
+                "rejected instead of ignored."
+            ),
+            "encoded": "0001",
+            "expect_error": "nonzero_reserved",
+        },
+        {
+            "name": "dao_ack_accept",
+            "type": "dao_ack",
+            "description": (
+                "Successful DAO acknowledgement: status 0, D flag clear so no "
+                "DODAGID is carried (RFC 6550 6.5)."
+            ),
+            "encoded": "00000500",
+            "fields": {
+                "rpl_instance_id": 0,
+                "flags": 0,
+                "dao_sequence": 5,
+                "status": 0,
+                "dodag_id": None,
+            },
+        },
+        {
+            "name": "dao_ack_status_rejected",
+            "type": "dao_ack",
+            "description": (
+                "Non-success DAO-ACK: the codecs carry Status as a raw byte "
+                "(no enum), so non-zero values are preserved verbatim."
+            ),
+            "encoded": "00000601",
+            "fields": {
+                "rpl_instance_id": 0,
+                "flags": 0,
+                "dao_sequence": 6,
+                "status": 1,
+                "dodag_id": None,
+            },
+        },
+        {
+            "name": "dao_ack_with_dodagid",
+            "type": "dao_ack",
+            "description": (
+                "D-flag DAO-ACK carries the AddrForKey DODAGID of the "
+                "deterministic all-zero identity seed after the four-byte base."
+            ),
+            "encoded": "00800900027dd5cfc679ab637dd5cfc679ab6342",
+            "fields": {
+                "rpl_instance_id": 0,
+                "flags": 0,
+                "dao_sequence": 9,
+                "status": 0,
+                "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342",
+            },
+        },
+        {
+            "name": "dao_ack_too_short",
+            "type": "dao_ack",
+            "description": "A DAO-ACK shorter than its four-byte base object is rejected.",
+            "encoded": "000005",
+            "expect_error": "too_short",
+        },
+        {
+            "name": "dao_ack_missing_dodagid",
+            "type": "dao_ack",
+            "description": (
+                "D flag set without the sixteen DODAGID bytes that must follow "
+                "is rejected instead of misparsed."
+            ),
+            "encoded": "00800500",
+            "expect_error": "missing_dodagid",
+        },
     ]
 
 
@@ -3972,7 +4088,7 @@ VECTOR_FILES: tuple[_VectorFile, ...] = (
     ),
     _VectorFile(
         "rpl_messages.json",
-        "RPL messages (DIO/DAO per RFC 6550) with hardcoded independent vectors from spec.",
+        "RPL messages (DIS/DIO/DAO/DAO-ACK per RFC 6550) with hardcoded independent vectors from spec.",
         builder="rpl_messages_vectors",
     ),
     _VectorFile(

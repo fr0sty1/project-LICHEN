@@ -1,0 +1,188 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "lci_radio_config",
+  "description": "LCI /config/radio CBOR vectors (spec 17.5.2): GET responses and PUT update payloads emitted by RadioConfigResource, plus rejection cases reflecting its verified behavior (4.01 unauthenticated writes, 4.00 for empty/non-map bodies and unknown keys).",
+  "spec": "spec/11-lci.md",
+  "vectors": [
+    {
+      "name": "get_spec_example_radio",
+      "op": "get",
+      "description": "GET /config/radio response matching the spec 17.5.2 example (906.875 MHz encodes as CBOR float64).",
+      "input": {
+        "freq_mhz": 906.875,
+        "bw_khz": 125,
+        "sf": 9,
+        "cr": "4/5",
+        "tx_power_dbm": 20,
+        "sync_word": "0x34"
+      },
+      "content_format": 60,
+      "encoded_hex": "a668667265715f6d687afb408c5700000000006662775f6b687a187d6273660962637263342f356c74785f706f7765725f64626d146973796e635f776f72646430783334"
+    },
+    {
+      "name": "get_eu868_radio",
+      "op": "get",
+      "description": "EU868-flavoured radio configuration with reduced TX power.",
+      "input": {
+        "freq_mhz": 869.525,
+        "bw_khz": 125,
+        "sf": 9,
+        "cr": "4/5",
+        "tx_power_dbm": 14,
+        "sync_word": "0x34"
+      },
+      "content_format": 60,
+      "encoded_hex": "a668667265715f6d687afb408b2c33333333336662775f6b687a187d6273660962637263342f356c74785f706f7765725f64626d0e6973796e635f776f72646430783334"
+    },
+    {
+      "name": "get_minimal_radio",
+      "op": "get",
+      "description": "Partial radio configuration exposing only two keys.",
+      "input": {
+        "freq_mhz": 915.0,
+        "sf": 12
+      },
+      "content_format": 60,
+      "encoded_hex": "a268667265715f6d687afb408c9800000000006273660c"
+    },
+    {
+      "name": "get_empty_radio",
+      "op": "get",
+      "description": "Fresh node with no radio configuration returns an empty CBOR map.",
+      "input": {},
+      "content_format": 60,
+      "encoded_hex": "a0"
+    },
+    {
+      "name": "put_spec_update_changed",
+      "op": "put",
+      "description": "PUT /config/radio partial update from spec 17.5.2 merges into state.",
+      "input": {
+        "sf": 10,
+        "tx_power_dbm": 17
+      },
+      "content_format": 60,
+      "encoded_hex": "a26273660a6c74785f706f7765725f64626d11",
+      "initial_config": {
+        "freq_mhz": 906.875,
+        "bw_khz": 125,
+        "sf": 9,
+        "cr": "4/5",
+        "tx_power_dbm": 20,
+        "sync_word": "0x34"
+      },
+      "expected": {
+        "code": "2.04",
+        "resulting_config": {
+          "freq_mhz": 906.875,
+          "bw_khz": 125,
+          "sf": 10,
+          "cr": "4/5",
+          "tx_power_dbm": 17,
+          "sync_word": "0x34"
+        }
+      }
+    },
+    {
+      "name": "get_sf_bounds",
+      "op": "get",
+      "description": "Edge: spreading factor at both LoRa bounds (SF7 and SF12).",
+      "input": {
+        "sf7": 7,
+        "sf12": 12
+      },
+      "content_format": 60,
+      "encoded_hex": "a2637366370764736631320c"
+    },
+    {
+      "name": "get_negative_tx_power",
+      "op": "get",
+      "description": "Edge: negative TX power encodes as CBOR negative integer.",
+      "input": {
+        "tx_power_dbm": -9
+      },
+      "content_format": 60,
+      "encoded_hex": "a16c74785f706f7765725f64626d28"
+    },
+    {
+      "name": "get_meshtastic_sync_word",
+      "op": "get",
+      "description": "Edge: Meshtastic sync word value 0x2B (reflash coexistence note, spec README).",
+      "input": {
+        "sync_word": "0x2B"
+      },
+      "content_format": 60,
+      "encoded_hex": "a16973796e635f776f72646430783242"
+    },
+    {
+      "name": "put_unauthorized_when_writes_disabled",
+      "op": "put",
+      "description": "PUT /config/radio without transport authentication returns 4.01.",
+      "resource_path": "/config/radio",
+      "writes_enabled": false,
+      "expected": {
+        "code": "4.01"
+      },
+      "input": {
+        "sf": 10
+      },
+      "encoded_hex": "a16273660a"
+    },
+    {
+      "name": "put_empty_payload_bad_request",
+      "op": "put",
+      "description": "Empty PUT body to /config/radio is rejected 4.00.",
+      "resource_path": "/config/radio",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00"
+      },
+      "wire_hex": ""
+    },
+    {
+      "name": "put_unknown_key_atomic_reject",
+      "op": "put",
+      "description": "Unknown radio key rejects 4.00 atomically; no field is applied.",
+      "resource_path": "/config/radio",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00",
+        "resulting_config": {
+          "freq_mhz": 906.875,
+          "bw_khz": 125,
+          "sf": 9,
+          "cr": "4/5",
+          "tx_power_dbm": 20,
+          "sync_word": "0x34"
+        }
+      },
+      "input": {
+        "bandwidth_khz": 250
+      },
+      "encoded_hex": "a16d62616e6477696474685f6b687a18fa",
+      "initial_config": {
+        "freq_mhz": 906.875,
+        "bw_khz": 125,
+        "sf": 9,
+        "cr": "4/5",
+        "tx_power_dbm": 20,
+        "sync_word": "0x34"
+      },
+      "note": "'bandwidth_khz' is not a provisioned key ('bw_khz' is); nothing mutates."
+    },
+    {
+      "name": "put_non_map_cbor_bad_request",
+      "op": "put",
+      "description": "CBOR text string body is rejected 4.00 (updates must be a map).",
+      "resource_path": "/config/radio",
+      "writes_enabled": true,
+      "expected": {
+        "code": "4.00"
+      },
+      "input": "sf10",
+      "encoded_hex": "6473663130",
+      "note": "encoded_hex of a bare string is pinned only as the malformed request body."
+    }
+  ]
+}

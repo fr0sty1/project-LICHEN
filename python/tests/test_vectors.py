@@ -2649,6 +2649,15 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         assert rebuilt.to_bytes() == encoded, f"{name}: encode"
 
     elif msg_type == "dao_ack":
+        if vector.get("expect_error") == "too_short":
+            with pytest.raises(RplError, match="DAO-ACK too short"):
+                DAOAck.from_bytes(encoded)
+            return
+        if vector.get("expect_error") == "missing_dodagid":
+            with pytest.raises(RplError, match="DODAGID missing"):
+                DAOAck.from_bytes(encoded)
+            return
+        assert "expect_error" not in vector, f"{name}: unhandled expect_error"
         fields = vector["fields"]
         ack = DAOAck.from_bytes(encoded)
         assert ack.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
@@ -2666,11 +2675,22 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         assert rebuilt.to_bytes() == encoded, f"{name}: encode"
 
     elif msg_type == "dis":
+        if vector.get("expect_error") == "too_short":
+            with pytest.raises(RplError, match="DIS too short"):
+                DIS.from_bytes(encoded)
+            return
+        if vector.get("expect_error") == "nonzero_reserved":
+            with pytest.raises(RplError, match="reserved field must be zero"):
+                DIS.from_bytes(encoded)
+            return
+        assert "expect_error" not in vector, f"{name}: unhandled expect_error"
         fields = vector["fields"]
+        options = _parse_options(bytes.fromhex(vector.get("options_hex", "")))
         dis = DIS.from_bytes(encoded)
         assert dis.flags == fields["flags"], f"{name}: flags"
         assert dis.reserved == fields["reserved"], f"{name}: reserved"
-        rebuilt = DIS(flags=fields["flags"], reserved=fields["reserved"])
+        assert dis.options == options, f"{name}: options"
+        rebuilt = DIS(flags=fields["flags"], reserved=fields["reserved"], options=options)
         assert rebuilt.to_bytes() == encoded, f"{name}: encode"
 
     elif msg_type == "option":
