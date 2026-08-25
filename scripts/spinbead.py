@@ -22,8 +22,20 @@ import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
+
+if TYPE_CHECKING:
+    pass
+
+# --- File cache: avoid redundant reads across agents ---
+FILE_CACHE: dict[str, str] = {}
+FILE_ORIGINAL: dict[str, str] = {}  # snapshot before edits for diff
+
+# --- Bead-to-files tracking: which beads touched which files ---
+BEAD_FILES: dict[str, list[str]] = {}  # bead_id -> [files]
+FILE_BEADS: dict[str, list[str]] = {}  # file -> [bead_ids that touched it]
 
 LITELLM_URL = os.environ.get("LITELLM_URL", "http://heft:4000/v1")
 LITELLM_KEY = os.environ.get("LITELLM_KEY", "sk-litellm-local")
@@ -34,6 +46,72 @@ WAVE_CAP = int(os.environ.get("SPINBEAD_WAVE_CAP", "20"))
 # idempotent across Grok/OpenCode sessions on this machine.
 ACTOR = os.environ.get("SPINBEAD_ACTOR", "spinbead")
 READY_LIMIT = 200
+
+
+def read_file_cached(filepath: str, snapshot_original: bool = False) -> str | None:
+    """Read file with caching. Optionally snapshot for later diff."""
+    if filepath in FILE_CACHE:
+        return FILE_CACHE[filepath]
+    try:
+        path = Path(filepath)
+        if not path.exists() or path.stat().st_size > 100000:
+            return None
+        content = path.read_text()
+        FILE_CACHE[filepath] = content
+        if snapshot_original and filepath not in FILE_ORIGINAL:
+            FILE_ORIGINAL[filepath] = content
+        return content
+    except OSError:
+        return None
+
+
+def get_file_diff(filepath: str) -> str:
+    """Get unified diff between original and current content."""
+    original = FILE_ORIGINAL.get(filepath)
+    if not original:
+        return "(no original snapshot)"
+    try:
+        current = Path(filepath).read_text()
+    except OSError:
+        return "(file unreadable)"
+    if original == current:
+        return "(no changes)"
+
+    # Simple line-based diff
+    import difflib
+    orig_lines = original.splitlines(keepends=True)
+    curr_lines = current.splitlines(keepends=True)
+    diff = difflib.unified_diff(orig_lines, curr_lines, fromfile=f"a/{filepath}", tofile=f"b/{filepath}")
+    return "".join(diff)
+
+
+def track_bead_file(bead_id: str, filepath: str) -> None:
+    """Track that a bead modified a file."""
+    BEAD_FILES.setdefault(bead_id, []).append(filepath)
+    FILE_BEADS.setdefault(filepath, []).append(bead_id)
+
+
+def get_bead_summaries_for_file(filepath: str) -> str:
+    """Get summaries of all beads that touched a file."""
+    bead_ids = FILE_BEADS.get(filepath, [])
+    if not bead_ids:
+        return "(no bead context)"
+    # Fetch bead titles from bd show
+    summaries = []
+    for bid in bead_ids[:5]:  # cap at 5 to avoid huge prompts
+        proc = run_bd(["show", bid, "--json"])
+        if proc.returncode == 0:
+            try:
+                data = json.loads(proc.stdout)
+                if isinstance(data, list) and data:
+                    data = data[0]
+                title = data.get("title", bid)
+                summaries.append(f"- {bid}: {title[:100]}")
+            except (json.JSONDecodeError, KeyError):
+                summaries.append(f"- {bid}")
+        else:
+            summaries.append(f"- {bid}")
+    return "\n".join(summaries)
 
 
 @dataclass
@@ -67,6 +145,8 @@ class Finding:
     line: int | None
     issue: str
     fix: str = ""
+    confidence: str = "HIGH"  # HIGH, MEDIUM, LOW
+    verified: str = ""  # CONFIRMED, REFUTED, UNCERTAIN
 
 
 async def llm_call(client: httpx.AsyncClient, prompt: str, system: str = "") -> str:
@@ -223,13 +303,17 @@ def load_ready(limit: int = READY_LIMIT) -> list[Bead]:
     return [b for b in beads_from_ready_json(payload) if is_actionable(b)]
 
 
-def apply_edit(edit: Edit) -> bool:
+def apply_edit(edit: Edit, bead_id: str = "") -> bool:
     """Apply a search/replace edit to a file."""
     try:
         path = Path(edit.file)
         if not path.exists():
             print(f"      ⚠️  File not found: {edit.file}")
             return False
+
+        # Snapshot original before first edit
+        if edit.file not in FILE_ORIGINAL:
+            FILE_ORIGINAL[edit.file] = path.read_text()
 
         content = path.read_text()
         if edit.search not in content:
@@ -238,6 +322,12 @@ def apply_edit(edit: Edit) -> bool:
 
         new_content = content.replace(edit.search, edit.replace, 1)
         path.write_text(new_content)
+
+        # Invalidate cache, track bead-file relationship
+        FILE_CACHE.pop(edit.file, None)
+        if bead_id:
+            track_bead_file(bead_id, edit.file)
+
         return True
     except OSError as e:
         print(f"      ❌ Edit failed: {e}")
@@ -271,12 +361,9 @@ async def _fix_claimed_bead(
     file_patterns = re.findall(r"[\w/]+\.\w{1,4}", details)
     files_content = {}
     for fp in set(file_patterns):
-        try:
-            p = Path(fp)
-            if p.exists() and p.stat().st_size < 50000:
-                files_content[fp] = p.read_text()
-        except OSError:
-            pass
+        content = read_file_cached(fp, snapshot_original=True)
+        if content:
+            files_content[fp] = content
 
     files_context = "\n\n".join(
         f"=== {f} ===\n```\n{c[:4000]}\n```"
@@ -331,7 +418,7 @@ RULES:
         if not all(k in e for k in ("file", "search", "replace")):
             continue
         edit = Edit(file=e["file"], search=e["search"], replace=e["replace"])
-        if apply_edit(edit):
+        if apply_edit(edit, bead_id=bead.id):
             files_modified.add(edit.file)
             edits_applied += 1
             progress["edits"] = edits_applied
@@ -366,7 +453,7 @@ RULES:
 
 
 async def review_file(client: httpx.AsyncClient, filepath: str, sem: asyncio.Semaphore) -> list[Finding]:
-    """Review a file from 3 perspectives."""
+    """Review a file from 3 perspectives with context-aware prompt."""
     async with sem:
         print(f"   🔍 {filepath}")
 
@@ -375,23 +462,61 @@ async def review_file(client: httpx.AsyncClient, filepath: str, sem: asyncio.Sem
         except OSError:
             return []
 
-        prompt = f"""Review from 3 perspectives: CORRECTNESS, SECURITY, EDGE-CASES.
+        # Get context: diff and bead summaries
+        diff = get_file_diff(filepath)
+        bead_summaries = get_bead_summaries_for_file(filepath)
+        lang = Path(filepath).suffix.lstrip(".")
 
-FILE: {filepath}
-```
-{content[:12000]}
+        prompt = f"""You are reviewing changes to `{filepath}`.
+
+## Context
+
+These changes were made to address:
+{bead_summaries}
+
+## The Diff
+
+```diff
+{diff[:6000]}
 ```
 
-Return JSON array of findings (empty if clean):
+## Current File Content
+
+```{lang}
+{content[:8000]}
+```
+
+## Your Task
+
+Identify DEFECTS - code that will produce wrong behavior in production.
+
+DO NOT flag:
+- Style preferences ("I would have written it differently")
+- Naming opinions ("this variable name is unclear")
+- Missing features not in scope ("this could also handle X")
+- Patterns that look unusual but work correctly
+- Anything explained by the bead context above
+- Hypothetical concerns without concrete failure scenarios
+
+DO flag:
+- Logic errors (wrong result for valid input)
+- Boundary errors (off-by-one, overflow, underflow)
+- Resource leaks (memory, file handles, locks)
+- Security vulnerabilities (injection, overflow, auth bypass)
+- Undefined behavior (null deref, use-after-free, data races)
+- Spec violations (behavior contradicts documented requirements)
+
+Return JSON array of findings (empty array if clean):
 [
-  {{"severity": "P0|P1|P2", "line": 123, "issue": "one line description", "fix": "suggestion"}}
+  {{"severity": "P0|P1|P2", "confidence": "HIGH|MEDIUM|LOW", "line": 123, "issue": "one line description", "failure_scenario": "exact inputs that trigger this", "fix": "suggestion"}}
 ]
 
 P0 = crash/data-loss/security
-P1 = bug/incorrect-behavior
-P2 = code-smell/risk
+P1 = bug users will encounter
+P2 = edge case bug
 
-Skip style nits. Only real issues.
+Only HIGH confidence findings with concrete failure scenarios will be acted on.
+Saying "no issues found" is valid and respectable. Do not manufacture concerns.
 """
 
         response = await llm_call(client, prompt)
@@ -402,15 +527,104 @@ Skip style nits. Only real issues.
 
         findings = []
         for f in result:
-            if isinstance(f, dict) and f.get("severity") in ("P0", "P1", "P2"):
+            if not isinstance(f, dict):
+                continue
+            sev = f.get("severity", "")
+            conf = f.get("confidence", "HIGH")
+            if sev in ("P0", "P1", "P2") and conf == "HIGH":
                 findings.append(Finding(
-                    severity=f["severity"],
+                    severity=sev,
                     file=filepath,
                     line=f.get("line"),
                     issue=f.get("issue", ""),
                     fix=f.get("fix", ""),
+                    confidence=conf,
                 ))
         return findings
+
+
+async def verify_finding(
+    client: httpx.AsyncClient, finding: Finding, sem: asyncio.Semaphore
+) -> Finding:
+    """Adversarially verify a finding. Try to REFUTE it."""
+    async with sem:
+        # P0 security issues skip verification (too important to risk false negative)
+        if finding.severity == "P0":
+            finding.verified = "CONFIRMED"
+            return finding
+
+        print(f"      ⚖️  Verifying: {finding.file}:{finding.line} {finding.issue[:40]}")
+
+        # Get file content and bead context
+        try:
+            content = Path(finding.file).read_text()
+        except OSError:
+            finding.verified = "UNCERTAIN"
+            return finding
+
+        bead_summaries = get_bead_summaries_for_file(finding.file)
+
+        prompt = f"""A code reviewer flagged the following potential defect:
+
+## The Finding
+
+**File:** `{finding.file}`
+**Line:** {finding.line}
+**Severity:** {finding.severity}
+**Issue:** {finding.issue}
+**Suggested fix:** {finding.fix}
+
+## The Code
+
+```
+{content[:10000]}
+```
+
+## Bead Context (why this code exists)
+
+{bead_summaries}
+
+## Your Task
+
+Try to REFUTE this finding. You succeed if you can show:
+
+1. **The scenario is impossible** - The claimed inputs cannot occur due to upstream validation, type system, or invariants
+2. **The behavior is intentional** - The code does what the spec requires, even if surprising
+3. **The concern is mitigated elsewhere** - Another part of the system handles this case
+4. **The failure scenario is wrong** - The described inputs would not produce the described output
+
+Be adversarial. Assume the code author knew what they were doing. Look for reasons the finding is WRONG, not reasons it might be right.
+
+Return JSON:
+{{
+  "verdict": "CONFIRMED" | "REFUTED" | "UNCERTAIN",
+  "reasoning": "One paragraph explaining your conclusion"
+}}
+
+- CONFIRMED: You tried to refute it and failed. The bug is real.
+- REFUTED: You found a concrete reason the finding is wrong.
+- UNCERTAIN: You can't confirm or refute. Needs human judgment.
+"""
+
+        response = await llm_call(client, prompt)
+        result = extract_json(response)
+
+        if result and isinstance(result, dict):
+            verdict = result.get("verdict", "UNCERTAIN")
+            if verdict in ("CONFIRMED", "REFUTED", "UNCERTAIN"):
+                finding.verified = verdict
+                if verdict == "REFUTED":
+                    print(f"         ❌ Refuted: {result.get('reasoning', '')[:60]}")
+                elif verdict == "CONFIRMED":
+                    print(f"         ✓ Confirmed")
+                else:
+                    print(f"         ? Uncertain")
+            else:
+                finding.verified = "UNCERTAIN"
+        else:
+            finding.verified = "UNCERTAIN"
+
+        return finding
 
 
 def file_beads(findings: list[Finding]) -> list[str]:
@@ -459,8 +673,18 @@ def claim_wave(candidates: list[Bead]) -> list[Bead]:
     return claimed
 
 
+def reset_caches() -> None:
+    """Clear all caches and tracking for fresh run."""
+    FILE_CACHE.clear()
+    FILE_ORIGINAL.clear()
+    BEAD_FILES.clear()
+    FILE_BEADS.clear()
+
+
 async def spinbead(max_waves: int = 10, dry_run: bool = False) -> dict:
     """Main orchestration loop."""
+    reset_caches()
+
     print(f"🎯 Spinbead (model: {MODEL}, concurrency: {MAX_CONCURRENT})")
     print(f"   litellm: {LITELLM_URL}")
     print(f"   actor: {ACTOR}\n")
@@ -537,6 +761,33 @@ async def spinbead(max_waves: int = 10, dry_run: bool = False) -> dict:
 
         p0p1 = [f for f in all_findings if f.severity in ("P0", "P1")]
         print(f"   {len(all_findings)} findings ({len(p0p1)} P0/P1)")
+
+        # PHASE 3b: Adversarial verification
+        if p0p1:
+            print(f"\n   ⚖️  Verifying {len(p0p1)} findings...")
+            verify_tasks = [verify_finding(client, f, sem) for f in p0p1]
+            verified_findings = await asyncio.gather(*verify_tasks, return_exceptions=True)
+
+            confirmed = []
+            uncertain = []
+            refuted = 0
+            for vf in verified_findings:
+                if isinstance(vf, Finding):
+                    if vf.verified == "CONFIRMED":
+                        confirmed.append(vf)
+                    elif vf.verified == "UNCERTAIN":
+                        uncertain.append(vf)
+                    else:
+                        refuted += 1
+
+            print(f"   {len(confirmed)} confirmed, {refuted} refuted, {len(uncertain)} uncertain")
+
+            # File only confirmed findings; uncertain get tagged for human review
+            p0p1 = confirmed
+            if uncertain:
+                print(f"   ⚠️  {len(uncertain)} findings need human review:")
+                for uf in uncertain[:5]:
+                    print(f"      - {uf.file}:{uf.line} {uf.issue[:50]}")
 
         print("\n🔄 PHASE 4: Converge")
         new_beads = file_beads(p0p1)
