@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-z4l8",
+  "title": "Python: fix 4 pre-existing test failures (sim/coap)",
+  "description": "Full suite: 7519 passed, 4 failed — verified pre-existing on clean tree (git stash), unrelated to rpl/root_signature work. Failures: tests/coap/test_lci_auth.py::TestObservableAuth::test_sensors_location_no_post; tests/sim/test_integration.py::TestTwoNodeTxRx::test_bidirectional_communication; tests/sim/test_radio.py::TestDelayedRxStash::test_ge_burst_state_persists_across_transmissions; tests/sim/test_two_node_dio1_rx.py::TestTwoNodeDIO1Rx::test_bidirectional_communication. Diagnose and fix each.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T17:07:13.478989Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T17:07:13.478989Z"
+}

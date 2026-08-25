@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ji82",
+  "title": "Python: fix mypy strict errors in lichen/rpl/multi_instance.py",
+  "description": "mypy src/lichen/rpl/ reports 6 pre-existing errors in multi_instance.py (verified during root-signature bead work): lines 574-576 'No overload variant of int matches argument type object' x3; lines 662,670,946 'Missing type arguments for generic type dict' x3. CI runs mypy strict (-p lichen). Fix annotations without behavior change.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T17:07:13.589928Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T17:07:13.589928Z"
+}

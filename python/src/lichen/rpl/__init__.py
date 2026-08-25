@@ -59,6 +59,13 @@ from lichen.rpl.multi_instance import (
     resolve_slot_conflict,
     validate_rpl_instance_id,
 )
+from lichen.rpl.root_signature import (
+    RootSignatureError,
+    RootSignatureResult,
+    derive_dodagid_from_pubkey,
+    verify_dodagid_binding,
+    verify_root_signature,
+)
 from lichen.rpl.routing import (
     RoutingError,
     RoutingTable,
@@ -107,6 +114,8 @@ __all__ = [
     "RoutingError",
     "RplTarget",
     "RxFloor",
+    "RootSignatureError",
+    "RootSignatureResult",
     "TransitInformation",
     "RoutingTable",
     "RplCode",
@@ -120,6 +129,7 @@ __all__ = [
     "advance_source_route",
     "compute_dao_digest",
     "compute_signature_transcript",
+    "derive_dodagid_from_pubkey",
     "extract_unsigned_dao_bytes",
     "format_source_route",
     "from_icmpv6",
@@ -134,4 +144,6 @@ __all__ = [
     "to_icmpv6",
     "topology_from_states",
     "validate_rpl_instance_id",
+    "verify_dodagid_binding",
+    "verify_root_signature",
 ]

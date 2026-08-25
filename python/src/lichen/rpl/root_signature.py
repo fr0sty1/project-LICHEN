@@ -13,8 +13,10 @@ The DODAGID binding ensures the root's public key derives to the advertised
 DODAGID (which is a key-derived native 0200::/8 address). An attacker cannot forge a
 DIO for a DODAGID they don't control because they lack the private key.
 
-This module provides reference implementations (oracles) for test vector
-generation and cross-implementation validation.
+This module provides reference implementations (oracles) for cross-implementation
+validation. Canonical vectors live in test/vectors/root_signature.json; their
+expected results are fixed literals derived independently (see
+test/vectors/reference_schnorr48.py), never from this module.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ import hmac
 from dataclasses import dataclass
 from enum import Enum, auto
 from ipaddress import IPv6Address
+from typing import Any
 
 from lichen.crypto.identity import yggdrasil_address
 from lichen.crypto.schnorr48 import verify as schnorr_verify
@@ -163,20 +166,59 @@ def derive_dodagid_from_pubkey(pubkey: bytes) -> IPv6Address:
     return yggdrasil_address(pubkey)
 
 
-# Test vector generation support
+# Canonical-schema vector helpers (test/vectors format_version 2).
+#
+# The committed vectors in test/vectors/root_signature.json are fixed
+# literals derived independently (see test/vectors/reference_schnorr48.py).
+# These helpers exist for tooling that synthesizes or re-checks compatible
+# vector dicts; they are not the oracle for the committed files.
+
+_ERROR_BY_NAME = {
+    RootSignatureError.SIGNATURE_INVALID.name: RootSignatureError.SIGNATURE_INVALID,
+    RootSignatureError.DODAGID_MISMATCH.name: RootSignatureError.DODAGID_MISMATCH,
+    RootSignatureError.PUBKEY_INVALID.name: RootSignatureError.PUBKEY_INVALID,
+}
+
+_HEX_LEN_PUBKEY = 64  # 32-byte Ed25519 public key
+_HEX_LEN_DODAGID = 32  # 16-byte DODAGID
+_HEX_LEN_SIGNATURE = 96  # 48-byte Schnorr48 signature
+
+# Keys that may not coexist with ``binding_valid`` (binding-only vectors
+# carry no signature-expectation fields).
+_BINDING_EXCLUSIVE_KEYS = ("valid", "error", "message", "signature")
+
+
+def _hex_field(vector: dict[str, Any], key: str, hex_len: int | None = None) -> bytes:
+    """Extract a hex-encoded field, rejecting malformed values cheaply.
+
+    Length is validated on the string before decoding so absurdly large
+    inputs are rejected before allocation. ``hex_len=None`` accepts any
+    even-length hex string.
+    """
+    value = vector[key]
+    if not isinstance(value, str) or len(value) % 2 != 0:
+        raise ValueError(f"{key} must be an even-length hex string")
+    if hex_len is not None and len(value) != hex_len:
+        raise ValueError(f"{key} must be {hex_len} hex chars, got {len(value)}")
+    return bytes.fromhex(value)
+
 
 def generate_root_signature_vector(
     seed: bytes,
-    message: bytes = b"test message",
-) -> dict:
-    """Generate a test vector for root signature verification.
+    message: bytes = b"test DIO message",
+) -> dict[str, str | bool | None]:
+    """Generate a vector dict matching the canonical root_signature.json schema.
 
     Args:
         seed: 32-byte seed for deterministic key generation.
         message: Message to sign.
 
     Returns:
-        Dict with all fields needed for cross-implementation testing.
+        Dict with hex-encoded byte fields, ``valid`` set, and ``error``
+        set to None (generated vectors are always positive), per the
+        canonical schema used by test/vectors/*.json. The description is
+        deliberately seed-free: the seed derives private key material and
+        must not leak into free-text fields that may end up in logs.
     """
     from lichen.crypto.identity import Identity
     from lichen.crypto.schnorr48 import sign
@@ -186,30 +228,66 @@ def generate_root_signature_vector(
     dodagid = yggdrasil_address(identity.pubkey)
 
     return {
-        "seed_hex": seed.hex(),
-        "pubkey_hex": identity.pubkey.hex(),
-        "message_hex": message.hex(),
-        "signature_hex": signature.hex(),
-        "dodagid_hex": dodagid.packed.hex(),
+        "description": "Generated root-signature vector",
+        "seed": seed.hex(),
+        "pubkey": identity.pubkey.hex(),
+        "message": message.hex(),
+        "signature": signature.hex(),
+        "dodagid": dodagid.packed.hex(),
         "dodagid_str": str(dodagid),
-        "expected_valid": True,
+        "valid": True,
+        "error": None,
     }
 
 
-def verify_root_signature_vector(vector: dict) -> bool:
-    """Verify a root signature test vector.
+def verify_root_signature_vector(vector: dict[str, Any]) -> bool:
+    """Check a canonical-schema root signature vector against this oracle.
 
     Args:
-        vector: Dict with pubkey_hex, message_hex, signature_hex, dodagid_hex.
+        vector: Dict with canonical vector keys. Full vectors carry
+            ``message``, ``signature`` and ``valid`` (plus a non-null
+            ``error`` name exactly when invalid). Binding-only vectors
+            carry ``binding_valid`` and must omit the signature-expectation
+            fields (``valid``, ``error``, ``message``, ``signature``).
 
     Returns:
-        True if verification result matches expected_valid.
+        True if the oracle's outcome (validity and failure reason) matches
+        the vector's expectations exactly.
+
+    Raises:
+        ValueError: On malformed fields, wrong lengths, or contradictory
+            key combinations (e.g. ``binding_valid`` alongside ``valid``).
+        KeyError: On missing required keys.
     """
-    pubkey = bytes.fromhex(vector["pubkey_hex"])
-    message = bytes.fromhex(vector["message_hex"])
-    signature = bytes.fromhex(vector["signature_hex"])
-    dodagid = bytes.fromhex(vector["dodagid_hex"])
-    expected_valid = vector.get("expected_valid", True)
+    if "binding_valid" in vector:
+        present = [k for k in _BINDING_EXCLUSIVE_KEYS if k in vector]
+        if present:
+            raise ValueError(
+                f"binding_valid is mutually exclusive with: {', '.join(present)}"
+            )
+        pubkey = _hex_field(vector, "pubkey", _HEX_LEN_PUBKEY)
+        dodagid = _hex_field(vector, "dodagid", _HEX_LEN_DODAGID)
+        return bool(verify_dodagid_binding(pubkey, dodagid) == vector["binding_valid"])
+
+    # Full vectors exercise the whole pipeline: both fields are required.
+    pubkey = _hex_field(vector, "pubkey", _HEX_LEN_PUBKEY)
+    dodagid = _hex_field(vector, "dodagid", _HEX_LEN_DODAGID)
+    message = _hex_field(vector, "message")
+    signature = _hex_field(vector, "signature", _HEX_LEN_SIGNATURE)
+
+    expected_valid = vector.get("valid", True)
+    error_name = vector.get("error")
 
     result = verify_root_signature(pubkey, message, signature, dodagid)
-    return result.valid == expected_valid
+    if result.valid != expected_valid:
+        return False
+    if not result.valid:
+        if error_name is None:
+            return False
+        expected_error = _ERROR_BY_NAME.get(error_name)
+        if expected_error is None or result.error is not expected_error:
+            return False
+    elif error_name is not None:
+        # A success expectation cannot also declare a failure reason.
+        return False
+    return True

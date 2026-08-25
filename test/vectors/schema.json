@@ -44,7 +44,8 @@
               {"$ref": "#/definitions/ccp_load_balancing_vector"},
               {"$ref": "#/definitions/ipv6_malformed_vector"},
               {"$ref": "#/definitions/schc_adaptation_vector"},
-              {"$ref": "#/definitions/gcp_vector"}
+              {"$ref": "#/definitions/gcp_vector"},
+              {"$ref": "#/definitions/root_signature_vector"}
             ]
           }
         }
@@ -101,7 +102,8 @@
           {"$ref": "#/definitions/schnorr48_vector"},
           {"$ref": "#/definitions/hash_32_vector"},
           {"$ref": "#/definitions/ccp_load_balancing_vector"},
-          {"$ref": "#/definitions/gcp_vector"}
+          {"$ref": "#/definitions/gcp_vector"},
+          {"$ref": "#/definitions/root_signature_vector"}
         ]
       },
       "description": "v2 bare array root (used by ccp16-desync.json for desync test vectors)"
@@ -1215,6 +1217,69 @@
         "signature": {"$ref": "#/definitions/hex"},
         "valid": {"type": "boolean"}
       }
+    },
+    "root_signature_vector": {
+      "type": "object",
+      "required": ["description", "pubkey", "dodagid"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {"type": "string"},
+        "note": {"type": "string"},
+        "seed": {"$ref": "#/definitions/hex"},
+        "pubkey": {"$ref": "#/definitions/hex"},
+        "message": {"$ref": "#/definitions/hex"},
+        "signature": {"$ref": "#/definitions/hex"},
+        "dodagid": {"$ref": "#/definitions/hex"},
+        "dodagid_str": {"type": "string"},
+        "valid": {"type": "boolean"},
+        "error": {
+          "enum": [
+            null,
+            "SIGNATURE_INVALID",
+            "DODAGID_MISMATCH",
+            "PUBKEY_INVALID"
+          ]
+        },
+        "binding_valid": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["binding_valid"]},
+          "then": {
+            "not": {
+              "anyOf": [
+                {"required": ["valid"]},
+                {"required": ["error"]},
+                {"required": ["message"]},
+                {"required": ["signature"]}
+              ]
+            }
+          }
+        },
+        {
+          "if": {"not": {"required": ["binding_valid"]}},
+          "then": {"required": ["message", "signature", "valid"]}
+        },
+        {
+          "if": {
+            "properties": {"valid": {"const": false}},
+            "required": ["valid"]
+          },
+          "then": {
+            "required": ["error"],
+            "properties": {"error": {"type": "string"}}
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {"valid": {"const": false}},
+              "required": ["valid"]
+            }
+          },
+          "then": {"properties": {"error": {"type": "null"}}}
+        }
+      ]
     },
     "rpl_route_state_vector": {
       "type": "object",

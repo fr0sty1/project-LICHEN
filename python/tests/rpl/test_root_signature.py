@@ -156,44 +156,170 @@ class TestDeriveDodagidFromPubkey:
 
 
 class TestVectorGeneration:
-    """Tests for test vector generation and verification."""
+    """Tests for canonical-schema vector helpers."""
 
     def test_generate_and_verify_vector(self) -> None:
         """Generated vector should verify correctly."""
         seed = bytes(range(32))
         vector = generate_root_signature_vector(seed, b"test message")
 
-        assert vector["expected_valid"] is True
+        assert vector["valid"] is True
         assert verify_root_signature_vector(vector) is True
 
     def test_tampered_vector_fails(self) -> None:
-        """Tampered vector should fail verification."""
+        """Tampered vector should fail verification with matching error."""
         seed = bytes(range(32))
         vector = generate_root_signature_vector(seed, b"test message")
 
         # Tamper with the message
-        vector["message_hex"] = b"tampered".hex()
-        vector["expected_valid"] = False
+        vector["message"] = b"tampered".hex()
+        vector["valid"] = False
+        vector["error"] = "SIGNATURE_INVALID"
 
         assert verify_root_signature_vector(vector) is True  # Now expects failure
 
-    def test_vector_contains_required_fields(self) -> None:
-        """Vector should contain all required fields."""
+    def test_description_is_seed_free(self) -> None:
+        """Description must not embed the seed (it derives private keys)."""
         seed = bytes(range(32))
         vector = generate_root_signature_vector(seed)
 
-        assert "seed_hex" in vector
-        assert "pubkey_hex" in vector
-        assert "message_hex" in vector
-        assert "signature_hex" in vector
-        assert "dodagid_hex" in vector
-        assert "dodagid_str" in vector
-        assert "expected_valid" in vector
+        assert seed.hex() not in vector["description"]
+        assert vector["description"] == "Generated root-signature vector"
+        assert vector["error"] is None
+
+    def test_unknown_error_name_rejected(self) -> None:
+        """An unmapped/typo'd error name must fail, not silently pass."""
+        seed = bytes(range(32))
+        identity = Identity.from_seed(seed)
+        signature = sign(identity.privkey, identity.pubkey, b"msg")
+        vector = {
+            "pubkey": identity.pubkey.hex(),
+            "message": b"other".hex(),
+            "signature": signature.hex(),
+            "dodagid": yggdrasil_address(identity.pubkey).packed.hex(),
+            "valid": False,
+            "error": "SIGNATURE_INVLAID",  # typo
+        }
+
+        assert verify_root_signature_vector(vector) is False
+
+    def test_invalid_without_error_name_rejected(self) -> None:
+        """Invalid expectation must declare its failure reason."""
+        seed = bytes(range(32))
+        identity = Identity.from_seed(seed)
+        signature = sign(identity.privkey, identity.pubkey, b"msg")
+        vector = {
+            "pubkey": identity.pubkey.hex(),
+            "message": b"tampered".hex(),
+            "signature": signature.hex(),
+            "dodagid": yggdrasil_address(identity.pubkey).packed.hex(),
+            "valid": False,
+        }
+
+        assert verify_root_signature_vector(vector) is False
+
+    def test_valid_with_error_contradiction_rejected(self) -> None:
+        """A success expectation cannot also declare a failure reason."""
+        seed = bytes(range(32))
+        identity = Identity.from_seed(seed)
+        signature = sign(identity.privkey, identity.pubkey, b"msg")
+        vector = {
+            "pubkey": identity.pubkey.hex(),
+            "message": b"msg".hex(),
+            "signature": signature.hex(),
+            "dodagid": yggdrasil_address(identity.pubkey).packed.hex(),
+            "valid": True,
+            "error": "DODAGID_MISMATCH",
+        }
+
+        assert verify_root_signature_vector(vector) is False
+
+    def test_binding_valid_is_exclusive(self) -> None:
+        """binding_valid must not coexist with signature-expectation keys."""
+        seed = bytes(range(32))
+        identity = Identity.from_seed(seed)
+        base = {
+            "description": "x",
+            "pubkey": identity.pubkey.hex(),
+            "dodagid": yggdrasil_address(identity.pubkey).packed.hex(),
+            "binding_valid": True,
+        }
+        for extra in (
+            {"valid": True},
+            {"error": None},
+            {"message": b"x".hex()},
+            {"signature": bytes(48).hex()},
+        ):
+            with pytest.raises(ValueError, match="mutually exclusive"):
+                verify_root_signature_vector({**base, **extra})
+
+    def test_full_shape_requires_message_and_signature(self) -> None:
+        """Full vectors without binding_valid need message and signature."""
+        seed = bytes(range(32))
+        identity = Identity.from_seed(seed)
+        base = {
+            "pubkey": identity.pubkey.hex(),
+            "dodagid": yggdrasil_address(identity.pubkey).packed.hex(),
+            "valid": True,
+        }
+        with pytest.raises(KeyError):
+            verify_root_signature_vector(dict(base))
+
+    def test_wrong_length_hex_rejected(self) -> None:
+        """Fixed-size fields are length-checked before hex decoding."""
+        seed = bytes(range(32))
+        identity = Identity.from_seed(seed)
+        base = {
+            "description": "x",
+            "dodagid": yggdrasil_address(identity.pubkey).packed.hex(),
+            "binding_valid": True,
+        }
+        with pytest.raises(ValueError, match="64 hex chars"):
+            verify_root_signature_vector(
+                {**base, "pubkey": identity.pubkey.hex()[:-2]}
+            )
+
+    def test_vector_matches_canonical_schema_keys(self) -> None:
+        """Vector should contain the canonical schema fields."""
+        seed = bytes(range(32))
+        vector = generate_root_signature_vector(seed)
+
+        for key in (
+            "description",
+            "seed",
+            "pubkey",
+            "message",
+            "signature",
+            "dodagid",
+            "dodagid_str",
+            "valid",
+            "error",
+        ):
+            assert key in vector, f"missing canonical key: {key}"
 
         # Verify field sizes
-        assert len(bytes.fromhex(vector["pubkey_hex"])) == 32
-        assert len(bytes.fromhex(vector["signature_hex"])) == 48
-        assert len(bytes.fromhex(vector["dodagid_hex"])) == 16
+        assert len(bytes.fromhex(vector["pubkey"])) == 32
+        assert len(bytes.fromhex(vector["signature"])) == 48
+        assert len(bytes.fromhex(vector["dodagid"])) == 16
+
+    def test_verify_consumes_committed_vectors(self) -> None:
+        """Helper must accept the committed canonical vectors as-is.
+
+        The expected outcomes come from the committed file (independently
+        derived literals); this only proves schema compatibility of the
+        helper with the canonical format.
+        """
+        import json
+        from pathlib import Path
+
+        vectors_path = (
+            Path(__file__).resolve().parents[2] / ".." / "test" / "vectors" / "root_signature.json"
+        ).resolve()
+        doc = json.loads(vectors_path.read_text())
+        for entry in doc["vectors"]:
+            assert verify_root_signature_vector(entry), (
+                f"helper mismatch on canonical vector: {entry['description']}"
+            )
 
 
 class TestSecurityProperties:

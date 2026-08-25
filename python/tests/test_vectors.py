@@ -157,6 +157,7 @@ def test_vectors_directory_exists() -> None:
         "gateway_coordination.json",
         "gcp6_slot_coordination.json",
         "rpl_multi_instance.json",
+        "root_signature.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
