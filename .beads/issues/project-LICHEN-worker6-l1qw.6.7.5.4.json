@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.7.5.4",
   "title": "Vectors: Sequence exhaustion scenarios",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:33.923238Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:33.923238Z",
+  "updated_at": "2026-08-25T17:51:24.531625Z",
+  "closed_at": "2026-08-25T17:51:24.531625Z",
+  "close_reason": "SATISFIED: sequence/counter exhaustion is vectorized in two files. test/vectors/replay_window.json: same_epoch_sequence_wrap_rejected (seqnum 0 after 65535 in same epoch rejected as old) and terminal_counter_wrap_rejected ((255,65535)-\u003e(0,0) rejected; key rotation required). test/vectors/epoch_rollover.json: epoch_rollover_forbidden (epoch 255 rollover attempt rejected) and sender_sequence vectors incl. key_rotation_required_after exhaustion transcript and tuple_ordering_near_rollover_* boundary orderings. Consumed by the same suites: python/tests/test_vectors.py -k 'replay_window or epoch_rollover' and rust/lichen-link/tests/shared_vectors.rs::test_replay_window_vectors + ::test_epoch_rollover_vectors. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k replay_window -q =\u003e 25 passed; -k epoch_rollover -q =\u003e 22 passed; cd rust \u0026\u0026 cargo test -p lichen-link --features 'schnorr,std' --test shared_vectors =\u003e 6 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.5.4",

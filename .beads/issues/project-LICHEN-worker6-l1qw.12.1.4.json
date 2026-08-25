@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.12.1.4",
   "title": "Vectors: RFC 8613 test vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:23.458858Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:23.458858Z",
+  "updated_at": "2026-08-25T17:50:10.042491Z",
+  "closed_at": "2026-08-25T17:50:10.042491Z",
+  "close_reason": "Umbrella bead satisfied by test/vectors/oscore.json as a whole: RFC 8613 key derivation (C.1-C.3), request protection (C.4-C.6), response protection (C.7-C.8), roundtrip protect/unprotect, replay-window accept/reject/window-edge/large-jump, PIV boundary encodings 0..2^40-1 with nonce-XOR construction and piv_overflow rejection, invalid-input rejections, and SSN-restore-after-NVM-failure vectors with independently verifiable nonces. Machine-consumed by python/tests/crypto/test_oscore_vectors.py (all families) and rust/lichen-oscore/tests/vectors.rs. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/crypto/test_oscore_vectors.py -q =\u003e 23 passed; cd rust \u0026\u0026 cargo test -p lichen-oscore --test vectors =\u003e 10 passed (11 with --features edhoc).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.12.1.4",

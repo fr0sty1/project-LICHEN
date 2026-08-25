@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.9.7.5",
   "title": "Vectors: IPv6 address derivation test cases",
   "description": "Acceptance: shared test vectors for address derivation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:10.136086Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:10.136086Z",
+  "updated_at": "2026-08-25T17:53:50.201037Z",
+  "closed_at": "2026-08-25T17:53:50.201037Z",
+  "close_reason": "VERIFIED-SATISFIED. File: test/vectors/ipv6-addresses.json (v2 schema; documented stdlib-only oracle SHA-512(pubkey)-\u003eIID(U/L-cleared)-\u003efe80::/10 + native 0200::/8, generator generate_ipv6_addresses.py). 11 vectors: key-derived normals incl. RFC 8032 test key with iid_in_native cross-check; boundary/reserved inputs all_zero_pubkey, sha256(empty), all_ab, all_ff, eui64_zero, eui64_all_ff, short_0x0001/0xabcd/0xffff(broadcast); EUI-64 spec example validates U/L transform. Negative-case judgment: derivation is a total function over fixed-width inputs - no malformed-input class exists that a derivation vector could reject; the topic's actual failure modes (wrong-length EUI-64/MAC/pubkey, out-of-range short addr, bad IID, non-canonical pubkey) are covered by explicit rejection tests in the consumer module itself. Consumer: python/tests/ipv6/test_addr.py - loads the JSON and validates EVERY vector against production code (test_key_derived_ipv6_vectors_match_production_boundaries) plus per-profile unit tests. RAN: cd python \u0026\u0026 uv run --extra dev pytest tests/ipv6/test_addr.py -q =\u003e 16 passed, 0 failed, 0 skipped (-v confirms test_key_derived_ipv6_vectors_match_production_boundaries PASSED).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.7.5",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.5.3.4",
   "title": "Vectors: short address to IID cases",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:17.443446Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:17.443446Z",
+  "updated_at": "2026-08-25T17:54:43.064366Z",
+  "closed_at": "2026-08-25T17:54:43.064366Z",
+  "close_reason": "SATISFIED. File: test/vectors/ipv6-addresses.json (short_0x0001/abcd/ffff: normal+edge IID=0000:00ff:fe00:xxxx per RFC4944) + test/vectors/link-addressing.json (short_addr_reserved_null/unspecified/broadcast = negative cases with expected_error). Consumers: python/tests/ipv6/test_addr.py (VECTORS line 33) + python/tests/link/test_addressing.py (TestVectorValidation, raises ValueError on reserved). Ran: uv run --extra dev pytest tests/ipv6/test_addr.py = 16 passed; pytest tests/link/test_addressing.py = 63 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.5.3.4",

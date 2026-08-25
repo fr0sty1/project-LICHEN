@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.4.4",
   "title": "Vectors: Low-order point rejection cases",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:21.543484Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:21.543484Z",
+  "updated_at": "2026-08-25T17:50:50.192357Z",
+  "closed_at": "2026-08-25T17:50:50.192357Z",
+  "close_reason": "Satisfied by test/vectors/schnorr48.json: explicit rejection vector 'Invalid: low-order (8-torsion) point as public key' (pubkey c7176a70...037a, a point of order 8) plus companion 'Invalid: identity point as public key' — small-order/low-order subgroup rejection cases for verification. Machine-consumed by python/tests/test_vectors.py::test_schnorr_vector which asserts schnorr_verify() returns False (valid=false) for these vectors. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k schnorr -q =\u003e 16 passed (includes both low-order and identity-point cases).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.4.4",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.13.7",
   "title": "Vectors: DAO Origin Signature test vectors (8.6)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:35.284955Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.486252Z",
+  "updated_at": "2026-08-25T17:56:00.118053Z",
+  "closed_at": "2026-08-25T17:56:00.118053Z",
+  "close_reason": "SATISFIED via test/vectors/dao_origin_signature.json (51 vectors, spec 8.6): normal (valid_d1/d0_self_128, valid_withdrawal), edge (valid_high_byte_sequence, valid_max_u64_sequence, retransmission/crash reconcile), ~40 reject_* negatives. Consumers: python/tests/test_vectors.py dao suite (54 passed); generator --check exit 0 'checked 51 vectors'; rust/lichen-rpl/tests/dao_origin_vectors.rs = 2 passed; rust message.rs unit tests within cargo test -p lichen-rpl --lib message:: = 26 passed. Forced past open sibling deps 5.13.9/5.13.1 (implementation tasks, unrelated to vector completeness).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.13.7",
@@ -37,7 +39,7 @@
       "issue_id": "project-LICHEN-worker6-l1qw.5.13.7",
       "depends_on_id": "project-LICHEN-worker6-l1qw.5.13.1",
       "type": "blocks",
-      "created_at": "2026-08-08T05:21:21.486250Z",
+      "created_at": "2026-08-08T05:21:21.48625Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

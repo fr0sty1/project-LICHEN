@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.7.1.4",
   "title": "Vectors: RFC 8613 key derivation test vectors",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:51.198086Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:51.198086Z",
+  "updated_at": "2026-08-25T17:50:01.232596Z",
+  "closed_at": "2026-08-25T17:50:01.232596Z",
+  "close_reason": "Satisfied by test/vectors/oscore.json: 6 type=key_derivation vectors covering RFC 8613 Appendix C.1-C.3 (with master salt, without salt, with ID Context; client and server roles each) with expected sender_key/recipient_key/common_iv, plus error case invalid_id_too_long (sender ID \u003e7 bytes must be rejected). Machine-consumed by python/tests/crypto/test_oscore_vectors.py::TestOscoreKeyDerivation.test_key_derivation and by rust/lichen-oscore/tests/vectors.rs (test_key_derivation_vectors). Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/crypto/test_oscore_vectors.py -q =\u003e 23 passed; cd rust \u0026\u0026 cargo test -p lichen-oscore --test vectors =\u003e 10 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.1.4",

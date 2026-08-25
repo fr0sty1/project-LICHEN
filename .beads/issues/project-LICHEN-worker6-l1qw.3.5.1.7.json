@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.5.1.7",
   "title": "Vectors: Rule 1 test cases",
   "description": "Create test vectors for Rule 1. Acceptance: covers edge cases, used by all implementations for validation.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:08.56105Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:08.56105Z",
+  "updated_at": "2026-08-25T17:52:25.039572Z",
+  "closed_at": "2026-08-25T17:52:25.039572Z",
+  "close_reason": "SATISFIED by test/vectors/schc_compression.json Rule-1 coverage: normal coap_global roundtrip (compress(packet)==compressed, first byte == rule_id 1, decompress==packet) plus NEGATIVE/edge rule1_nonzero_padding (category=malformed, expect_error=noncanonical_padding) and five rule-255 fallback nonmatch negatives proving Rule-1 match failures fall back uncompressed (coap_traffic_class_nonmatch, coap_flow_label_nonmatch, coap_version_nonmatch, coap_reserved_tkl_nonmatch, coap_truncated_token_nonmatch). Machine-consumed by python/tests/test_vectors.py::test_schc_vector (parametrized over all vectors incl. malformed/fallback categories) + ::test_all_schc_rules_covered AND rust/lichen-schc/tests/shared_vectors.rs::test_schc_compression_vectors which asserts malformed categories are rejected with expected errors. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k 'schc_vector or all_schc_rules_covered' -q =\u003e 35 passed; cd rust \u0026\u0026 cargo test -p lichen-schc --test shared_vectors =\u003e 3 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.5.1.7",

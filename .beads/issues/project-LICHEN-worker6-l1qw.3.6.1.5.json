@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.6.1.5",
   "title": "Vectors: fragmentation test cases",
   "description": "Create test vectors for fragmentation. Acceptance: covers various payload sizes, MTU boundaries, used by all implementations.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:27.378945Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:27.378945Z",
+  "updated_at": "2026-08-25T17:52:58.505772Z",
+  "closed_at": "2026-08-25T17:52:58.505772Z",
+  "close_reason": "SATISFIED by test/vectors/schc_fragmentation.json (normative RSv3 fixed-profile, hand-derived with independent CRC-32/SHA-256 checks) + test/vectors/schc_fragment.json (generic RFC 8724 §8 codec): payload-size variety via regular_short_tile, 7tiles, single_fragment, multi_fragment; MTU/tile boundaries via profile_capacity and mandatory_receiver_boundary (capacity category, expect ok) and window_boundary; negatives regular_nonzero_padding, all1_without_final_tile, final_window_all0_tile, ack_success_extra_octet, malformed_control, unassigned_bitmap_bit_set, over_profile_capacity (expect packet_too_large), plus schc_fragment mic-failure vector ack_on_error_mic_fail. Machine-consumed by python/tests/test_vectors.py::test_schc_fragmentation_vector_coverage/_integrity/_production_conformance and python/tests/schc/test_fragment.py AND rust/lichen-schc/tests/fragmentation_vectors.rs::shared_vectors_drive_production_implementations + tests/shared_vectors.rs::test_schc_fragment_vectors. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k fragmentation -q =\u003e 42 passed; cd rust \u0026\u0026 cargo test -p lichen-schc --features 'std raw-fragment-codec' --test fragmentation_vectors =\u003e 1 passed; cargo test -p lichen-schc --test shared_vectors =\u003e 3 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.6.1.5",

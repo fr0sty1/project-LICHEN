@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.13.3.3",
   "title": "Vectors: EDHOC message sequences",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:49.940006Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:49.940006Z",
+  "updated_at": "2026-08-25T17:50:42.328166Z",
+  "closed_at": "2026-08-25T17:50:42.328166Z",
+  "close_reason": "Satisfied by test/vectors/edhoc.json: vector fixed_seed_sign_sign records the complete msg1/msg2/msg3 message sequence with PRK chain (prk_2e/prk_3e2m/prk_4e3m), th_2/th_3/th_4, and exported OSCORE context for both initiator and responder; plus 5 negative vectors (msg3_tampered_signature, msg3_wrong_peer_key, msg3_tampered_id_cred, msg3_truncated, msg3_all_zero) with expected_error codes. Machine-consumed by python/tests/test_vectors.py::test_edhoc_vectors_match_generator (regenerates both handshakes byte-for-byte from fixed seeds via generate.py oracle and asserts equality with the file) and rust/lichen-oscore/tests/vectors.rs::test_edhoc_vectors_parseable + feature-gated test_edhoc_exported_context_matches_vectors (full Rust handshake reproducing the vector's exported OSCORE context). Ran: cd python \u0026\u0026 uv run --extra dev pytest 'tests/test_vectors.py::test_edhoc_vectors_match_generator' -q =\u003e 1 passed; cd rust \u0026\u0026 cargo test -p lichen-oscore --features edhoc --test vectors =\u003e 11 passed. Caveat noted: the 5 negative msg3 vectors are pinned via generator-equality, not individually driven through process_message_3.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.13.3.3",

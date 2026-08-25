@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.6.2.7",
   "title": "Vectors: TOFU pin/reject scenarios",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:54.330227Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:54.330227Z",
+  "updated_at": "2026-08-25T17:50:47.471067Z",
+  "closed_at": "2026-08-25T17:50:47.471067Z",
+  "close_reason": "Satisfied by test/vectors/gcp3_trust_models.json: TOFU pin/reject coverage via tofu_valid_first_contact (expected pin_and_accept), tofu_derivation_mismatch_attack and tofu_key_mismatch_detection (expected reject_derivation_mismatch), plus key_rotation_invalid_signature (reject_invalid_signature) and tampered open-federation messages — normal pin and multiple reject scenarios with pinned_pubkey/pinned_iid fixtures. Machine-consumed by python/tests/crypto/test_trust.py which loads the file (GCP3_VECTORS) and drives its rotation vectors through the production oracle (verify_pubkey_derivation, schnorr_verify, TrustStore.verify_or_pin TOFU pinning, rotate_key_semantics_for_test expecting TrustError on rejects); matching TOFU behavior is exercised by unit tests auto_pin_on_first_contact / verify_pinned_peer / reject_key_mismatch / reject_derivation_mismatch. Note: rust trust.rs files reference this file but are orphaned modules not wired into any crate, so Python is the live consumer. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/crypto/test_trust.py -q =\u003e 58 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.6.2.7",

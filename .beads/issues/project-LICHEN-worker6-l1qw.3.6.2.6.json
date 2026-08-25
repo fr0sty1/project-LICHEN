@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.6.2.6",
   "title": "Vectors: reassembly test cases",
   "description": "Create test vectors for reassembly. Acceptance: covers out-of-order, duplicates, gaps, used by all implementations.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:41.988151Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:41.988151Z",
+  "updated_at": "2026-08-25T17:53:00.521987Z",
+  "closed_at": "2026-08-25T17:53:00.521987Z",
+  "close_reason": "SATISFIED across three files: gaps+recovery via schc_fragmentation.json recover_missing_regular_tile (drop tile_1 -\u003e ACK bitmap failure hex -\u003e retransmission transcript) and all0_window_transition (drop fcn_31 -\u003e ACK bitmap 0x...bf -\u003e retransmit); out-of-order via schc_fragment.json ooo_retransmit (expect.out_of_order=true with NACK retransmits list); DUPLICATES via schc_adaptation.json vectors carrying expect_duplicate_discarded/expect_reassembly_reset which python/tests/test_vectors.py::_assert_duplicate_tile_production executes against the real reassembly manager (same tile delivered twice at increasing seqnums: tiles unchanged, high_water advances). Machine-consumed by test_schc_fragmentation_vector* tests, python/tests/schc/test_fragment.py, rust/lichen-schc fragmentation_vectors.rs + shared_vectors.rs. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k fragmentation -q =\u003e 42 passed; -k schc_adaptation -q =\u003e 55 passed (incl. duplicate-tile production asserts); cd rust \u0026\u0026 cargo test -p lichen-schc --features 'std raw-fragment-codec' --test fragmentation_vectors =\u003e 1 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.6.2.6",

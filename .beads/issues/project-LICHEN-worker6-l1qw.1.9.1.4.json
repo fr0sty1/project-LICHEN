@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.9.1.4",
   "title": "Vectors: keypair derivation",
   "description": "Test vectors for keypair derivation. DONE - schnorr48.json",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:16.236917Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:16.236917Z",
+  "updated_at": "2026-08-25T17:48:55.217235Z",
+  "closed_at": "2026-08-25T17:48:55.217235Z",
+  "close_reason": "Satisfied by test/vectors/x25519.json (3 key_derivation vectors: all-zero seed edge, all-ones seed edge, RFC 8032 §7.1 anchored vector; explicit clamped_scalar/private_key/public_key with bit-level clamping checks) and by schnorr48.json's seed→private_key→public_key fields on all valid vectors. Machine-consumed by python/tests/test_vectors.py::test_x25519_key_derivation_vector (recomputes SHA-512+clamp and Identity.from_seed) and ::test_schnorr_vector (Identity.from_seed feeds sign()). Note: seed→Ed25519-keypair derivation is a total function on 32-byte seeds, so no rejection domain exists; edge cases are the zero/max seeds, both covered. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k x25519 -q =\u003e 3 passed; -k schnorr =\u003e 16 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.9.1.4",

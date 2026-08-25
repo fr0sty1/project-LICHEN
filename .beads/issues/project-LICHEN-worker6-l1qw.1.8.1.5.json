@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.8.1.5",
   "title": "Vectors: coordinator assignment scenarios",
   "description": "Test vectors for coordinator address assignment",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:12.211378Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:12.211378Z",
+  "updated_at": "2026-08-25T17:54:45.556073Z",
+  "closed_at": "2026-08-25T17:54:45.556073Z",
+  "close_reason": "SATISFIED via test/vectors/short_addr_dad.json: coordinator_allocate, transition_self_to_coordinator, collision_detector vectors (normal), dad_retry_exhausted/incremental_retry_exhausted (error/negative), derive edge cases (zero/ff/reserved-prefix seed). Consumer: python/tests/test_vectors.py (test_short_addr_coordinator_allocate_vector, test_short_addr_transition_vector, test_short_addr_collision_detector_vector, _short_addr_derive_cases). Ran: uv run --extra dev pytest tests/test_vectors.py -k short_addr = 30 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.8.1.5",

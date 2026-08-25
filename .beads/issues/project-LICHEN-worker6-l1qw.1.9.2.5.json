@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.9.2.5",
   "title": "Vectors: signature generation",
   "description": "Test vectors for signature generation. DONE - 5 valid vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:29.69813Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:29.69813Z",
+  "updated_at": "2026-08-25T17:48:52.970835Z",
+  "closed_at": "2026-08-25T17:48:52.970835Z",
+  "close_reason": "Satisfied by test/vectors/schnorr48.json: 5 valid signing vectors (empty message/zero seed, 'test', pangram, binary with nulls, LICHEN frame-like structure) plus a determinism vector requiring repeated sign() to reproduce the exact signature. Machine-consumed by python/tests/test_vectors.py::test_schnorr_vector, which for every valid vector rebuilds Identity.from_seed(seed) and asserts schnorr_sign(privkey,pubkey,msg) == expected 48-byte signature. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k schnorr -q =\u003e 16 passed; uv run --extra dev pytest tests/crypto/test_schnorr48.py -q =\u003e 10 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.9.2.5",

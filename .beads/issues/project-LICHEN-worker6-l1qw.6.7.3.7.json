@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.7.3.7",
   "title": "Vectors: RFC 8613 response protection vectors",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:15.820508Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:15.820508Z",
+  "updated_at": "2026-08-25T17:50:05.441034Z",
+  "closed_at": "2026-08-25T17:50:05.441034Z",
+  "close_reason": "Satisfied by test/vectors/oscore.json: 2 type=response_protection vectors covering RFC 8613 Appendix C.7 (response without new Partial IV, empty oscore option) and C.8 (response with new Partial IV), pinning nonce/oscore_option/ciphertext including the request_piv binding. Machine-consumed by python/tests/crypto/test_oscore_vectors.py::test_response_protection and rust/lichen-oscore/tests/vectors.rs::test_response_protection_vectors. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/crypto/test_oscore_vectors.py -q =\u003e 23 passed; cd rust \u0026\u0026 cargo test -p lichen-oscore --test vectors =\u003e 10 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.3.7",

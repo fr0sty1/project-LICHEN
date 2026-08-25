@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.8.11.3.5",
   "title": "Vectors: epoch floor rejection test cases",
   "description": "Test vectors for epoch floor rejection. AC: Test cases verify rejection of pre-epoch timestamps.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:47.723132Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:47.723132Z",
+  "updated_at": "2026-08-25T17:52:22.998276Z",
+  "closed_at": "2026-08-25T17:52:22.998276Z",
+  "close_reason": "SATISFIED: pre-floor epoch/counter rejection is vectorized in both replay files. test/vectors/replay_window.json: lower_epoch_rejected, lower_epoch_rejected_at_adjacent_boundary (exact floor boundary), below_window_floor_rejected, window_floor_edge (offset==WINDOW_SIZE rejected / WINDOW_SIZE-1 accepted), epoch_persistence_across_restarts and epoch_recovery_after_flash_failure pinning the persisted epoch floor across reboots; test/vectors/epoch_rollover.json adds replay_lower_epoch, replay_cross_epoch_boundary, tuple_ordering_epoch_0_seqnum_0. Consumed by python/tests/test_vectors.py (parametrized receiver-state vectors + persistence oracle tests) AND rust/lichen-link/tests/shared_vectors.rs::test_replay_window_vectors and ::test_epoch_rollover_vectors driving the real ReplayProtector incl. persisted-state paths. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k replay_window -q =\u003e 25 passed; -k epoch_rollover -q =\u003e 22 passed; cd rust \u0026\u0026 cargo test -p lichen-link --features 'schnorr,std' --test shared_vectors =\u003e 6 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.11.3.5",

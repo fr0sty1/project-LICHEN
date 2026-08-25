@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.5.5.7",
   "title": "Vectors: Rule 5 test cases",
   "description": "Create test vectors for Rule 5. Acceptance: covers OSCORE edge cases, used by all implementations.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:42.268041Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:42.268041Z",
+  "updated_at": "2026-08-25T17:52:38.475238Z",
+  "closed_at": "2026-08-25T17:52:38.475238Z",
+  "close_reason": "SATISFIED by test/vectors/schc_compression.json Rule-5 (OSCORE) coverage: normal oscore_linklocal roundtrip plus NEGATIVE/edge rule5_nonzero_padding (category=malformed, expect_error=noncanonical_padding, i.e., decompress MUST reject non-canonical padding). Machine-consumed by python/tests/test_vectors.py::test_schc_vector (parametrized; malformed_input/malformed categories asserted via pytest.raises(SchcError)) + ::test_all_schc_rules_covered AND rust/lichen-schc/tests/shared_vectors.rs::test_schc_compression_vectors (asserts category==malformed rejection with expect_error). Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k 'schc_vector or all_schc_rules_covered' -q =\u003e 35 passed; cd rust \u0026\u0026 cargo test -p lichen-schc --test shared_vectors =\u003e 3 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.5.5.7",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.5.6.7",
   "title": "Vectors: Rule 6 test cases",
   "description": "Create test vectors for Rule 6. Acceptance: covers EDHOC edge cases, used by all implementations.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:01.134233Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:01.134233Z",
+  "updated_at": "2026-08-25T17:52:40.670404Z",
+  "closed_at": "2026-08-25T17:52:40.670404Z",
+  "close_reason": "SATISFIED by test/vectors/schc_compression.json Rule-6 coverage: normal oscore_global roundtrip plus NEGATIVE/edge rule6_nonzero_padding (category=malformed, expect_error=noncanonical_padding). Machine-consumed by python/tests/test_vectors.py::test_schc_vector (parametrized over all 34 vectors incl. malformed/fallback/size_boundary categories) + ::test_all_schc_rules_covered AND rust/lichen-schc/tests/shared_vectors.rs::test_schc_compression_vectors which asserts malformed vectors are rejected with their expected error strings. Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k 'schc_vector or all_schc_rules_covered' -q =\u003e 35 passed; cd rust \u0026\u0026 cargo test -p lichen-schc --test shared_vectors =\u003e 3 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.5.6.7",

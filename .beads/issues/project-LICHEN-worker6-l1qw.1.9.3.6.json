@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.9.3.6",
   "title": "Vectors: invalid signature cases",
   "description": "Test vectors for invalid signatures. DONE - 10 vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:46.514206Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:46.514206Z",
+  "updated_at": "2026-08-25T17:48:50.658141Z",
+  "closed_at": "2026-08-25T17:48:50.658141Z",
+  "close_reason": "Satisfied by test/vectors/schnorr48.json: 10 invalid-signature vectors (valid=false) covering wrong-message binding, tampered challenge byte, tampered response byte, wrong public key, truncated 47-byte signature, all-zero signature, identity-point pubkey, low-order 8-torsion point pubkey, non-canonical s (=curve order L), and zero scalar s. Each is machine-consumed by python/tests/test_vectors.py::test_schnorr_vector which asserts schnorr_verify() rejects every valid=false vector ('invalid sig accepted' would fail). Ran: cd python \u0026\u0026 uv run --extra dev pytest tests/test_vectors.py -k schnorr -q =\u003e 16 passed (includes all 10 invalid cases); cross-checked via uv run --extra dev pytest tests/crypto/test_schnorr48.py -q =\u003e 10 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.9.3.6",
