@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-hxeu",
+  "title": "RD lookup constructor silently overwrites /rd-lookup/res on second RD",
+  "description": "ResourceDirectoryResource.__init__ always site.add_resource([rd-lookup, res], ...). aiocoap Site.add_resource overwrites. Two RD instances on one site leave POST /rd on the first RD and GET /rd-lookup/res on the second (empty). build_site constructs once so default path is fine. Guard double-mount or bind lookup to the same instance as /rd.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:05:05.042994Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-25T23:05:05.042994Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-hxeu",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.14.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T23:05:05.433564Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

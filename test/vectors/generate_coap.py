@@ -293,8 +293,44 @@ def coap_rd_vectors() -> list[dict]:
             "method": "GET",
             "uri": "/rd-lookup/res?rt=sensor",
             "query": {"rt": "sensor"},
+            "setup": [
+                {
+                    "uri": "/rd?ep=sensor-42&lt=3600",
+                    "links": [{"href": "/temperature", "rt": "sensor"}],
+                },
+                {
+                    "uri": "/rd?ep=sensor-43&lt=86400",
+                    "links": [{"href": "/humidity", "rt": "sensor"}],
+                },
+            ],
+            "expected_entries": [
+                {"href": "/temperature", "ep": "sensor-42", "rt": "sensor"},
+                {"href": "/humidity", "ep": "sensor-43", "rt": "sensor"},
+            ],
             "expected_code": int(Code.CONTENT),
-            "note": "Python ResourceDirectoryResource implements /rd; rd-lookup path is alias for GET /rd filtered by rt in future.",
+            "expected_content_format": 60,
+        }
+    )
+
+    vectors.append(
+        {
+            "name": "rd_lookup_res_no_match",
+            "description": (
+                "GET /rd-lookup/res?rt=missing returns 2.05 with an empty "
+                "CBOR list (RFC 9176 §6.2)."
+            ),
+            "method": "GET",
+            "uri": "/rd-lookup/res?rt=missing",
+            "query": {"rt": "missing"},
+            "setup": [
+                {
+                    "uri": "/rd?ep=sensor-42&lt=3600",
+                    "links": [{"href": "/temperature", "rt": "sensor"}],
+                },
+            ],
+            "expected_entries": [],
+            "expected_code": int(Code.CONTENT),
+            "expected_content_format": 60,
         }
     )
 

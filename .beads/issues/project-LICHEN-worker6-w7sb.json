@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-w7sb",
+  "title": "RD lookup href/ep filters must use RFC 6690 exact-or-trailing-*",
+  "description": "lookup_resources treats href as raw str.startswith (so href=/stat matches /status, and href=/status* misses /status). ep is exact equality only, so ep=sensor* misses sensor-42. RFC 9176 s6.2 / RFC 6690 s4.1: a criterion matches if the value is bitwise equal, or the query ends with * and is a prefix of the value. rt already does this via _rt_matches. Duplicate Uri-Query keys currently last-wins; they MUST AND. Unknown link-attribute query keys (if, ct, ...) are ignored instead of failing the AND. Fix the matcher and lock it with tests; do not keep startswith without *.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:05:03.103839Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-25T23:06:23.989417Z",
+  "started_at": "2026-08-25T23:05:13.972777Z",
+  "closed_at": "2026-08-25T23:06:23.989417Z",
+  "close_reason": "RFC 6690 matcher: href/ep use exact-or-trailing-*; duplicate query keys AND; unknown attributes fail AND. Tests: test_lookup_filter_href_exact_does_not_prefix, trailing_star, ep_trailing_star, duplicate_rt_is_and, unknown_attribute_fails_and. pytest 74 passed, 2 pre-existing xfail.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-w7sb",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.14.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T23:05:03.587099Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

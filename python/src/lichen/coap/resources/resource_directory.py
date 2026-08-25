@@ -10,9 +10,17 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-import aiocoap
 import cbor2
-from aiocoap import BAD_REQUEST, CONTENT, CREATED, DELETED, INTERNAL_SERVER_ERROR, Message, resource
+from aiocoap import (
+    BAD_REQUEST,
+    CONTENT,
+    CREATED,
+    DELETED,
+    INTERNAL_SERVER_ERROR,
+    NOT_FOUND,
+    Message,
+    resource,
+)
 
 from lichen.coap.resources.base import CBOR
 from lichen.coap.resources.cbor_validation import _decode_single_cbor
@@ -20,6 +28,52 @@ from lichen.coap.resources.cbor_validation import _decode_single_cbor
 _RD_DEFAULT_LIFETIME = 86400  # seconds (RFC 9176 7.3.1)
 _rd_id_counter = itertools.count(1)
 _RD_PATH_CHARS = frozenset(string.ascii_letters + string.digits + "-._~")
+_LOOKUP_PAGINATION = frozenset({"page", "count"})
+
+
+def _rfc6690_match(value: object, query: str, *, tokenize: bool) -> bool:
+    """RFC 6690 §4.1 / RFC 9176 §6.2: exact value, or prefix when query ends with *."""
+    if not isinstance(value, str):
+        return False
+    candidates = [token for token in value.split() if token] if tokenize else [value]
+    if query.endswith("*"):
+        prefix = query[:-1]
+        return any(candidate.startswith(prefix) for candidate in candidates)
+    return query in candidates
+
+
+def _parse_lookup_query(request: Message) -> dict[str, list[str]]:
+    filters: dict[str, list[str]] = {}
+    for item in request.opt.uri_query or []:
+        name, sep, raw = item.partition("=")
+        if not name or name in _LOOKUP_PAGINATION:
+            continue
+        filters.setdefault(name, []).append(raw if sep else "")
+    return filters
+
+
+def _link_matches(
+    entry: _RdEntry, link: dict[str, Any], filters: dict[str, list[str]]
+) -> bool:
+    for name, values in filters.items():
+        if name == "ep":
+            haystack: object = entry.ep
+            tokenize = False
+        elif name == "base":
+            haystack = entry.base
+            tokenize = False
+        elif name == "d":
+            return False
+        elif name == "href":
+            haystack = link.get("href")
+            tokenize = False
+        else:
+            haystack = link.get(name)
+            tokenize = True
+        for value in values:
+            if not _rfc6690_match(haystack, value, tokenize=tokenize):
+                return False
+    return True
 
 
 @dataclass
@@ -42,6 +96,10 @@ class ResourceDirectoryResource(resource.Resource):
     Returns ``2.01 Created`` with ``Location-Path: /rd/<id>``.
 
     **GET** returns all active registrations as a CBOR list.
+
+    Resource lookup lives at ``/rd-lookup/res`` (RFC 9176 §8.3) and is mounted
+    on ``site`` during construction so ``build_site`` does not have to know
+    the extra path.
 
     Individual registrations are managed via :class:`_RdRegistrationResource`
     mounted at ``/rd/<id>``; those resources are added dynamically to the site
@@ -66,6 +124,7 @@ class ResourceDirectoryResource(resource.Resource):
             lambda reg_id: site.remove_resource(["rd", reg_id])
         )
         self._entries: dict[str, _RdEntry] = {}  # keyed by reg_id
+        site.add_resource(["rd-lookup", "res"], _RdLookupResource(self))
 
     def _lookup(self, ep: str | None = None) -> list[dict[str, Any]]:
         """Return registrations, optionally filtered by endpoint name."""
@@ -82,6 +141,27 @@ class ResourceDirectoryResource(resource.Resource):
             }
             for r in rows
         ]
+
+    def lookup_resources(self, filters: dict[str, list[str]]) -> list[dict[str, Any]]:
+        """Return matching link descriptors for RFC 9176 resource lookup.
+
+        Every query criterion is AND-combined, including duplicate keys.
+        ``rt`` (and other link attributes) match a space-separated token, or a
+        prefix when the query ends with ``*``. ``href`` and ``ep`` match the
+        whole string the same way. Unknown attributes fail the AND.
+        """
+        hits: list[dict[str, Any]] = []
+        for entry in self._entries.values():
+            for link in entry.links:
+                if not _link_matches(entry, link, filters):
+                    continue
+                item: dict[str, Any] = {"href": link.get("href"), "ep": entry.ep}
+                if link.get("rt") is not None:
+                    item["rt"] = link["rt"]
+                if entry.base is not None:
+                    item["base"] = entry.base
+                hits.append(item)
+        return hits
 
     def remove_entry(self, reg_id: str) -> bool:
         """Atomically remove a registration route and entry."""
@@ -190,4 +270,19 @@ class _RdRegistrationResource(resource.Resource):
             removed = self._rd.remove_entry(self._reg_id)
         except Exception:
             return Message(code=INTERNAL_SERVER_ERROR)
-        return Message(code=DELETED if removed else aiocoap.NOT_FOUND)
+        return Message(code=DELETED if removed else NOT_FOUND)
+
+
+class _RdLookupResource(resource.Resource):
+    """``/rd-lookup/res`` — RFC 9176 §8.3 resource lookup."""
+
+    def __init__(self, rd: ResourceDirectoryResource) -> None:
+        super().__init__()
+        self._rd = rd
+
+    async def render_get(self, request: Message) -> Message:
+        hits = self._rd.lookup_resources(_parse_lookup_query(request))
+        # RFC 9176 §6.2: no matches is still 2.05 with an empty payload (`[]`).
+        msg = Message(code=CONTENT, payload=cbor2.dumps(hits))
+        msg.opt.content_format = CBOR
+        return msg

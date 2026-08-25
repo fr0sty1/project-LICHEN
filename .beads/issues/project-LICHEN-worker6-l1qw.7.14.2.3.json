@@ -3,27 +3,21 @@
   "title": "Vectors: Generate test vectors for RD Lookup",
   "description": "Output JSON test vectors to test/vectors/. Include: normal cases, edge cases, error cases. Format per test/vectors/README.md",
   "notes": "Blocked on dependency project-LICHEN-worker6-l1qw.7.14.2.2 (Python oracle for RD Lookup) which is still OPEN. Test vectors must be generated from the oracle per README (Python prototype is source of truth).",
-  "status": "blocked",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:43:47.361572Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T22:30:08.546013Z",
+  "updated_at": "2026-08-25T23:06:41.792075Z",
+  "closed_at": "2026-08-25T23:06:41.792075Z",
+  "close_reason": "Vectors added to test/vectors/coap_rd.json and generate_coap.py: rd_lookup_res_by_rt (setup + expected_entries) and rd_lookup_res_no_match (2.05 empty list). Forced close: bead was blocked on parent 7.14.2 which cannot close until children close.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.14.2.3",
       "depends_on_id": "project-LICHEN-worker6-l1qw.7.14.2",
       "type": "parent-child",
       "created_at": "2026-07-31T19:43:47.683175Z",
-      "created_by": "Mark Atwood",
-      "metadata": "{}"
-    },
-    {
-      "issue_id": "project-LICHEN-worker6-l1qw.7.14.2.3",
-      "depends_on_id": "project-LICHEN-worker6-l1qw.7.14.2.2",
-      "type": "blocks",
-      "created_at": "2026-08-08T05:09:35.825164Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

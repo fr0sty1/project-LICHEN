@@ -443,6 +443,208 @@ class TestRdDelete:
 
 
 # ---------------------------------------------------------------------------
+# Resource lookup (GET /rd-lookup/res, RFC 9176 §8.3)
+# ---------------------------------------------------------------------------
+
+_SENSOR_LINKS = [{"href": "/temperature", "rt": "sensor"}]
+_HUMIDITY_LINKS = [{"href": "/humidity", "rt": "sensor"}]
+
+
+class TestRdLookup:
+    async def test_lookup_by_rt_returns_matching_links(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="sensor-42", links=_SENSOR_LINKS)
+            await _register(client, ep="sensor-43", links=_HUMIDITY_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor")
+            ).response
+            assert resp.code == aiocoap.CONTENT
+            assert resp.opt.content_format == 60
+            entries = cbor2.loads(resp.payload)
+            assert entries == [
+                {"href": "/temperature", "ep": "sensor-42", "rt": "sensor"},
+                {"href": "/humidity", "ep": "sensor-43", "rt": "sensor"},
+            ]
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_by_rt_excludes_other_types(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="node-01", links=_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor")
+            ).response
+            assert resp.code == aiocoap.CONTENT
+            assert cbor2.loads(resp.payload) == []
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_empty_directory_returns_empty_list(self) -> None:
+        client, server = await _setup()
+        try:
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor")
+            ).response
+            assert resp.code == aiocoap.CONTENT
+            assert cbor2.loads(resp.payload) == []
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_without_query_returns_all_links(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="node-01", links=_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res")
+            ).response
+            assert resp.code == aiocoap.CONTENT
+            hrefs = {entry["href"] for entry in cbor2.loads(resp.payload)}
+            assert hrefs == {"/sensors", "/status"}
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_rt_prefix_star(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(
+                client,
+                ep="node-01",
+                links=[{"href": "/sensors", "rt": "senml.temp"}],
+            )
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=senml*")
+            ).response
+            entries = cbor2.loads(resp.payload)
+            assert resp.code == aiocoap.CONTENT
+            assert entries == [
+                {"href": "/sensors", "ep": "node-01", "rt": "senml.temp"},
+            ]
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_filter_ep(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="sensor-42", links=_SENSOR_LINKS)
+            await _register(client, ep="sensor-43", links=_HUMIDITY_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor&ep=sensor-42")
+            ).response
+            assert cbor2.loads(resp.payload) == [
+                {"href": "/temperature", "ep": "sensor-42", "rt": "sensor"},
+            ]
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_filter_href_exact_does_not_prefix(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="node-01", links=_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?href=/stat")
+            ).response
+            assert resp.code == aiocoap.CONTENT
+            assert cbor2.loads(resp.payload) == []
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_filter_href_trailing_star(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="node-01", links=_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?href=/stat*")
+            ).response
+            assert cbor2.loads(resp.payload) == [
+                {"href": "/status", "ep": "node-01", "rt": "status"},
+            ]
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_filter_ep_trailing_star(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="sensor-42", links=_SENSOR_LINKS)
+            await _register(client, ep="sensor-43", links=_HUMIDITY_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?ep=sensor*")
+            ).response
+            entries = cbor2.loads(resp.payload)
+            assert {entry["ep"] for entry in entries} == {"sensor-42", "sensor-43"}
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_duplicate_rt_is_and(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(
+                client,
+                ep="node-01",
+                links=[{"href": "/sensors", "rt": "senml.temp"}],
+            )
+            both = await client.request(
+                Message(
+                    code=GET,
+                    uri="coap://srv/rd-lookup/res?rt=senml.temp&rt=senml*",
+                )
+            ).response
+            only_star = await client.request(
+                Message(
+                    code=GET,
+                    uri="coap://srv/rd-lookup/res?rt=missing&rt=senml*",
+                )
+            ).response
+            assert cbor2.loads(both.payload) == [
+                {"href": "/sensors", "ep": "node-01", "rt": "senml.temp"},
+            ]
+            assert cbor2.loads(only_star.payload) == []
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_unknown_attribute_fails_and(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="sensor-42", links=_SENSOR_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor&if=core.s")
+            ).response
+            assert cbor2.loads(resp.payload) == []
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_after_delete_is_not_found(self) -> None:
+        client, server = await _setup()
+        try:
+            registration = await _register(client, ep="sensor-42", links=_SENSOR_LINKS)
+            reg_id = registration.opt.location_path[1]
+            deleted = await client.request(
+                Message(code=DELETE, uri=f"coap://srv/rd/{reg_id}")
+            ).response
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor")
+            ).response
+            assert deleted.code == aiocoap.DELETED
+            assert resp.code == aiocoap.CONTENT
+            assert cbor2.loads(resp.payload) == []
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+
+# ---------------------------------------------------------------------------
 # Not exposed without flag
 # ---------------------------------------------------------------------------
 
@@ -452,6 +654,17 @@ class TestRdNotExposed:
         client, server = await _setup(resource_directory=False)
         try:
             resp = await client.request(Message(code=GET, uri="coap://srv/rd")).response
+            assert resp.code == aiocoap.NOT_FOUND
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_rd_lookup_not_exposed_by_default(self) -> None:
+        client, server = await _setup(resource_directory=False)
+        try:
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor")
+            ).response
             assert resp.code == aiocoap.NOT_FOUND
         finally:
             await client.shutdown()

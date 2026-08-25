@@ -723,21 +723,40 @@ class TestResourceDirectoryVectors:
             await _rd_teardown(client, server)
 
     async def test_rd_lookup_res_by_rt(self) -> None:
-        """UNDRIVABLE today: no /rd-lookup resource is mounted anywhere.
-
-        The vector itself notes the alias is future work; driven here to show
-        the live behavior before skipping.
-        """
         vec = _vec(COAP_RD, "rd_lookup_res_by_rt")
         client, server = await _rd_setup()
         try:
-            await _rd_request(client, aiocoap.POST, "/rd?ep=sensor-42&lt=3600")
+            for registration in vec["setup"]:
+                created = await _rd_request(
+                    client,
+                    aiocoap.POST,
+                    registration["uri"],
+                    cbor2.dumps(registration["links"]),
+                )
+                assert created.code == aiocoap.CREATED
             response = await _rd_request(client, aiocoap.GET, vec["uri"])
-            assert response.code != vec["expected_code"]  # NOT_FOUND today
-            pytest.skip(
-                "UNDRIVABLE: /rd-lookup/res is not implemented (vector note "
-                "says alias is future work); returns NOT_FOUND instead of 69"
-            )
+            assert response.code == vec["expected_code"]
+            assert response.opt.content_format == vec["expected_content_format"]
+            assert cbor2.loads(response.payload) == vec["expected_entries"]
+        finally:
+            await _rd_teardown(client, server)
+
+    async def test_rd_lookup_res_no_match(self) -> None:
+        vec = _vec(COAP_RD, "rd_lookup_res_no_match")
+        client, server = await _rd_setup()
+        try:
+            for registration in vec["setup"]:
+                created = await _rd_request(
+                    client,
+                    aiocoap.POST,
+                    registration["uri"],
+                    cbor2.dumps(registration["links"]),
+                )
+                assert created.code == aiocoap.CREATED
+            response = await _rd_request(client, aiocoap.GET, vec["uri"])
+            assert response.code == vec["expected_code"]
+            assert response.opt.content_format == vec["expected_content_format"]
+            assert cbor2.loads(response.payload) == vec["expected_entries"]
         finally:
             await _rd_teardown(client, server)
 
@@ -788,7 +807,7 @@ class TestAllVectorsAccountedFor:
         "coap_option_malformed": 12,
         "coap_token_validation": 11,
         "coap_observe_sequence": 10,
-        "coap_rd": 14,
+        "coap_rd": 15,
     }
 
     @pytest.mark.parametrize("doc", [COAP_MESSAGES, COAP_OPTION_MALFORMED,

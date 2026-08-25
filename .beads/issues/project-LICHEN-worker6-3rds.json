@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-3rds",
+  "title": "RD lookup returns relative href+ep instead of resolved target URIs",
+  "description": "RFC 9176 s6.1: resource lookup MUST return fully resolved targets (base+href). spec/appendix-misc.md C.2 shows absolute coap://[node]/path links. Current CBOR hits are {href: /temperature, ep: sensor-42, rt: sensor}. Clients cannot form a CoAP URI without a side channel. href=coap://... queries also cannot match stored path-absolute hrefs. Needs a defined resolution rule for LICHEN (Yggdrasil /128 vs registration base vs ep name).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:05:04.124439Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-25T23:05:04.124439Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-3rds",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.14.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T23:05:04.523791Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}
