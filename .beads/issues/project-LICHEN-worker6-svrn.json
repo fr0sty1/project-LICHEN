@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-svrn",
+  "title": "Epic f4z7: CCP4 channel plan consumer",
+  "description": "Add pytest consumers driving the real lichen Python implementation through every vector in: ccp4_regional_channel_plans.json. These files are complete but have zero machine consumers. After tests pass, close the associated GAP bead(s).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:03:17.865398Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:03:17.865398Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-svrn",
+      "depends_on_id": "l1qw.2.6.10",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T18:03:18.248319Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-rgjh",
+  "title": "No pre-SRH Hop-Limit discard: srh_hop_limit_0_reject vector undrivable",
+  "description": "test/vectors/source_route_hop_limit.json vector srh_hop_limit_0_reject requires rejection (reason hop_limit_exhausted) when Hop Limit = 0 ('packet should already be discarded before SRH processing'). No Python surface implements this: lichen.rpl.routing.advance_source_route() short-circuits Segments Left == 0 (final destination) BEFORE its segments_left \u003e= hop_limit check, and no receive-path hop_limit==0 gate exists elsewhere in python/src (grep verified). Current actual behavior is pinned by test_srh_hop_limit_zero_documented_divergence in python/tests/test_ipv6_routing_relay_vectors.py (returns accept-as-final-destination); that test MUST be inverted once a pre-SRH hop-limit discard is added. Vector partition enforced by test_srh_hop_limit_vector_coverage.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:26:02.76761Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:26:02.76761Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rgjh",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.6.6.6",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T18:26:03.186438Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

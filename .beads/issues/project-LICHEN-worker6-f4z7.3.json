@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-f4z7.3",
+  "title": "Epic f4z7: CCP4 channel plan consumer",
+  "description": "Add pytest consumer driving the real lichen Python implementation through every vector in ccp4_regional_channel_plans.json. File is complete (34 vectors incl. invalid plan IDs, power limits, unknown fallbacks) but has zero machine consumers.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:03:53.113093Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:03:53.113093Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-f4z7.3",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "parent-child",
+      "created_at": "2026-08-25T18:03:53.494637Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-f4z7.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.2.6.10",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T18:03:53.831178Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

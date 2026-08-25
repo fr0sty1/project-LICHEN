@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-jq1l",
+  "title": "No originator==receiver self-announce suppression surface in Python",
+  "description": "test/vectors/announce_relay.json edge_cases vector first_announce_from_self expects drop with reason self_announce when originator_iid == receiver IID. No Python surface implements this: AnnounceProcessor.process() has no receiver-identity parameter and no self-announce reject reason, and Node._process_announce() does not compare announce.originator_iid against the local node's own IID (both read; no filter found). Decide whether the filter belongs in Node (own-TX loopback guard) or the processor, add a surface, then consume the vector. Partition currently enforced by UNDRIVABLE_ANNOUNCE in python/tests/test_ipv6_routing_relay_vectors.py::test_announce_relay_vector_coverage.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:26:11.262493Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:26:11.262493Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-jq1l",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.5.3.4",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T18:26:11.654633Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

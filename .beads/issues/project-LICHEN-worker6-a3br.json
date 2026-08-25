@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-a3br",
+  "title": "Epic f4z7: CoAP family consumers",
+  "description": "Add pytest consumers driving the real lichen Python implementation through every vector in coap_messages.json, coap_option_malformed.json, coap_token_validation.json, coap_observe_sequence.json, coap_rd.json. Files are complete but have zero machine consumers.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:03:30.294448Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:03:30.294448Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-a3br",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.7.10.1.4",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T18:03:30.70148Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

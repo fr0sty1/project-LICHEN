@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-f4z7.1",
+  "title": "Epic f4z7: Transport/LCI CBOR consumers",
+  "description": "Add pytest consumers driving the real lichen Python implementation through every vector in slip_framing.json, sos_cbor.json, neighbors_cbor.json, coap_transport.json. Files are complete but have zero machine consumers.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:03:49.902428Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:03:49.902428Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-f4z7.1",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "parent-child",
+      "created_at": "2026-08-25T18:03:50.282161Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-f4z7.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.6.1.7",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T18:03:50.632166Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

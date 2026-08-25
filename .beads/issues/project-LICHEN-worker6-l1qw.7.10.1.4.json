@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.1.4",
   "title": "Vectors: CoAP message test cases",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:57.164016Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:57.164016Z",
+  "updated_at": "2026-08-25T18:27:58.936526Z",
+  "closed_at": "2026-08-25T18:27:58.936526Z",
+  "close_reason": "Consumed via python/tests/coap/test_vector_files_consume.py driving the real lichen implementation (aiocoap codec + LichenRemote, SecureDatagramChannel._has_oscore_option strict wire gate, token correlation in _prepare_send_operation, AiocoapResourceSubscription._should_accept, ResourceDirectoryResource over InMemoryNetwork client/server). All 6 vectors in coap_messages.json executed and asserted (con_get_status, non_post_sensors_cbor, ack_205_content decode-side pins, rst_empty, content_format_table vs CONTENT_FORMATS, uri_authority_ipv6 vs parse_uri_authority). Commands: cd python \u0026\u0026 uv run --extra dev pytest tests/coap/test_vector_files_consume.py -q -\u003e 55 passed, 2 skipped, 3 xfailed (stable across 3 runs incl reversed order); uv run --extra dev pytest tests/test_vectors.py tests/test_protocol_vector_security.py -q -\u003e 674 passed; ruff check clean. Documented divergences: 3 exact vector pins xfail(strict=True) — observe_seq_large_jump_accept (diff==2**23 boundary, bead l1qw.7.11.4), rd_register_sensor42/rd_lookup_all ('if' link attribute rejected since hardening aca39ad044); 2 vectors UNDRIVABLE as skips with live evidence — payload_marker_without_payload (no LICHEN rejector; aiocoap tolerates), rd_lookup_res_by_rt (/rd-lookup not implemented per vector note). No JSON files or generators modified.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.1.4",

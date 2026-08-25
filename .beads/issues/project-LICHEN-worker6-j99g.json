@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-j99g",
+  "title": "AnnounceProcessor rejects hop_count\u003eMAX instead of install-without-relay",
+  "description": "test/vectors/announce_relay.json vector no_forward_beyond_max_hops expects hop_count 16 \u003e MAX_ANNOUNCE_HOPS=15 to yield action=accept, update_gradient=true, forward=false with reason max_hops_exceeded, matching the spec/05-routing.md section 9.3 pseudocode (install gradient unconditionally after signature/staleness checks; relay only if hop_count \u003c MAX). Python AnnounceProcessor.process() instead rejects outright with AnnounceRejectReason.HOP_LIMIT_EXCEEDED and leaves the gradient table untouched. Divergent semantics; needs a decision on which behavior is canonical before the vector can be consumed. Current behavior pinned by test_announce_beyond_max_hops_documented_divergence in python/tests/test_ipv6_routing_relay_vectors.py.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:26:07.187505Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:26:07.187505Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-j99g",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.5.2.4",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T18:26:07.581663Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

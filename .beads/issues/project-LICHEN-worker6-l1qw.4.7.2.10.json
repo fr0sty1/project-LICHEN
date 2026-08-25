@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.2.10",
   "title": "Vectors: ICMPv6 error message test cases",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:55.326346Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:55.326346Z",
+  "updated_at": "2026-08-25T18:25:07.930273Z",
+  "closed_at": "2026-08-25T18:25:07.930273Z",
+  "close_reason": "All four error vectors (dest_unreachable_no_route code 0, dest_unreachable_port code 4, packet_too_big_1280 mtu 1280, time_exceeded_hop) driven in python/tests/test_ipv6_routing_relay_vectors.py::test_icmpv6_error_vector: exact wire parse, checksum verify + corruption reject, invoking_packet quoted intact at payload[8:], and Icmpv6ErrorMessage(...).to_message().to_bytes(src,dst) rebuilds the on-wire ICMPv6 payload byte-for-byte (incl PTB mtu field); handle_icmpv6 returns None (errors consumed). Evidence: pytest tests/test_ipv6_routing_relay_vectors.py -q =\u003e 42 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.2.10",

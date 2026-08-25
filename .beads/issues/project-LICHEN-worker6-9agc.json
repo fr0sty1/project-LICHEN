@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-9agc",
+  "title": "Vector divergences surfaced by test_vector_consumers_lci.py",
+  "description": "Consumer tests (python/tests/test_vector_consumers_lci.py) assert real Python-oracle behavior where it differs from the committed vectors; each needs an owner decision (update vector or implementation):\n\n1. slip_framing.json slip_invalid_escape_sequence: vector says valid=false for ESC+undefined byte; lichen.slip.codec implements RFC 1055 recovery leniency (discard ESC, pass byte through) on both decode() and StreamDecoder.\n2. slip_framing.json slip_truncated_escape: vector says valid=false for ESC abutting closing END; decode() passes 0xC0 through as data, StreamDecoder holds partial until next END. No API raises.\n3. slip_framing.json slip_multiple_empty_frames: vector counts 3 empty sync frames in c0c0c0c0; StreamDecoder treats consecutive ENDs as idle and yields none (sync still works).\n4. slip_framing.json slip_leading_end_strip: vector expects pre-END garbage discarded; StreamDecoder emits it as its own packet at first END (consumer must drop it).\n5. neighbors_cbor.json wraps entries in {\"neighbors\": [...]}; NeighborsResource emits a bare list via get_neighbors(). LciClient.list_neighbors accepts both shapes today; wire-format owner should pick one canonical shape.\n6. sos_cbor.json sos_node_format positive examples use colon-hex IPv6 notation; SosResource POST and SosRelay/SosId require 16-char hex EUI-64 node ids (colon-notation positives would be rejected).\n7. sos_cbor.json sos_lat_lon_range expects clamp_or_reject; no lat/lon range enforcement exists anywhere in python/src/lichen (CheckInResource validates finiteness only).\n8. sos_cbor.json sos_type_validation unknown_type_handling expects reject_or_log_unknown; SosResource deliberately tolerates non-'sos' type values with no log/reject hook.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:22:38.395306Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:22:38.395306Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9agc",
+      "depends_on_id": "project-LICHEN-worker6-f4z7.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T18:22:38.802853Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

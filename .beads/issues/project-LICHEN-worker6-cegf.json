@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-cegf",
+  "title": "ccp4 vectors: get_plan/get_plan_by_name fallback entries are stale vs their own oracle",
+  "description": "In test/vectors/ccp4_regional_channel_plans.json, vectors get_plan_unknown_fallback and get_plan_by_name_unknown_fallback expect an unknown plan_id/name to resolve to EU868 ({plan_name: EU868, plan_id: 1}). That contradicts (a) spec/02a-coordinated-capacity.md:178 which requires CH0 fallback for unknown plans/versions (fall back to control channel CH0 operation, not substitution of another region's regulatory limits) and (b) the file's own header oracle declaration 'All implementations MUST match Python oracle lichen.channel_plan', whose get_plan/get_plan_by_name deliberately fail closed with UnknownPlanError; ch0_fallback_required() is the normative CH0-fallback signal. Discovered while writing consumer python/tests/test_ccp4_regional_channel_plans.py (project-LICHEN-worker6-l1qw.2.6.10), which asserts the documented fail-closed contract for these two entries and exact-match for the other 32. Fix: regenerate or amend those two vector entries to encode fail-closed rejection plus ch0_fallback_required()==true, then update the two divergent tests in the consumer to assert the JSON expectations literally.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:10:37.684699Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:10:37.684699Z"
+}

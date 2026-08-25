@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-f4z7",
+  "title": "Wire orphaned vector files to test consumers",
+  "description": "14+ test/vectors/*.json files have complete normal/edge/error coverage but zero machine consumers (verified by parallel audit 2026-08-25). Files: coap_messages, coap_option_malformed, coap_token_validation, coap_observe_sequence, coap_rd, coap_transport, slip_framing, senml_location, sos_cbor, neighbors_cbor, ipv6-icmpv6, source_route_hop_limit, forwarding, announce_relay, ccp4_regional_channel_plans. Project rule requires implementations to validate against shared vectors. Add pytest consumers driving the real Python implementation through each file; then close the corresponding GAP beads.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:02:33.335953Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:02:33.335953Z"
+}

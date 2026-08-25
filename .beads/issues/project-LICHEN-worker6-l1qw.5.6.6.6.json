@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.6.6",
   "title": "Vectors: SRH encoding test cases",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:38.942516Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:38.942516Z",
+  "updated_at": "2026-08-25T18:25:30.528684Z",
+  "closed_at": "2026-08-25T18:25:30.528684Z",
+  "close_reason": "5 of 6 vectors driven through lichen.rpl.routing.advance_source_route in python/tests/test_ipv6_routing_relay_vectors.py::test_srh_hop_limit_vector: strictly_less (hl=4,sl=3) accepts and advances to addresses[0] with sl-\u003e2 and dst rewritten; equal (3==3) and greater (3\u003e2) reject with RoutingError 'segments_left not strictly less than hop_limit'; both sl=0 vectors return final-destination (next_hop None). SourceRoutingHeader.from_ext_data validates ext_data fields against vector addresses/segments_left. srh_hop_limit_0_reject is UNDRIVABLE: no Python surface implements the pre-SRH hop-limit-exhausted discard (advance_source_route short-circuits sl==0 before its hop-limit check) - filed as separate beads issue; current behavior pinned by test_srh_hop_limit_zero_documented_divergence, partition enforced by test_srh_hop_limit_vector_coverage. Evidence: pytest tests/test_ipv6_routing_relay_vectors.py -q =\u003e 42 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.6.6",

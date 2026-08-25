@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-f4z7.2",
+  "title": "Epic f4z7: IPv6/RPL routing consumers",
+  "description": "Add pytest consumers driving the real lichen Python implementation through every vector in ipv6-icmpv6.json, source_route_hop_limit.json, forwarding.json, announce_relay.json. Files are complete but have zero machine consumers.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T18:03:51.489926Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T18:03:51.489926Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-f4z7.2",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "parent-child",
+      "created_at": "2026-08-25T18:03:51.87451Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-f4z7.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.4.7.1.5",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T18:03:52.238251Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

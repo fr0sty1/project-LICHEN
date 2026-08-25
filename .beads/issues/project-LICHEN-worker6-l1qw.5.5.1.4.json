@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.5.1.4",
   "title": "Vectors: routing decision test cases",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:41:43.625838Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:41:43.625838Z",
+  "updated_at": "2026-08-25T18:25:31.933945Z",
+  "closed_at": "2026-08-25T18:25:31.933945Z",
+  "close_reason": "All 10 forwarding.json vectors driven through Router (lichen.routing.router) in test_forwarding_decision_vector: classify_address maps link_local/mesh_local/external exactly to AddressClass per vector labels (mesh-local 0200:: nodes registered as /128 mesh prefixes), is_local_mesh asserted for every row, and route() returns FORWARD(dst) for fe80::/febf:: rows, FORWARD(gradient next_hop) for known mesh rows, DROP for all external rows incl ff02::1 multicast via border-router multicast filter. Evidence: pytest tests/test_ipv6_routing_relay_vectors.py -q =\u003e 42 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.5.1.4",
