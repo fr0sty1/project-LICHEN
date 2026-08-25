@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.10.2",
   "title": "Epoch persistence",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:48:45.075318Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:48:45.075318Z",
+  "updated_at": "2026-08-25T17:36:47.52982Z",
+  "closed_at": "2026-08-25T17:36:47.52982Z",
+  "close_reason": "All children closed: .2.1 Zephyr epoch_persist.c, .2.2 Python epoch increment epic (fully verified), .2.3 Rust seqnum wrapping + hal persistence + cross-validated receiver rules, .2.4 vectors. Spec 02 section 4.4 epoch increment/persistence semantics implemented and cross-validated across Python and Rust with shared vectors.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.10.2",
