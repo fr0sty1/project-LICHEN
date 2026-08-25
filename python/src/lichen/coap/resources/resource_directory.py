@@ -124,7 +124,7 @@ class ResourceDirectoryResource(resource.Resource):
             lambda reg_id: site.remove_resource(["rd", reg_id])
         )
         self._entries: dict[str, _RdEntry] = {}  # keyed by reg_id
-        site.add_resource(["rd-lookup", "res"], _RdLookupResource(self))
+        _ensure_rd_lookup_mounted(site)
 
     def _lookup(self, ep: str | None = None) -> list[dict[str, Any]]:
         """Return registrations, optionally filtered by endpoint name."""
@@ -273,15 +273,41 @@ class _RdRegistrationResource(resource.Resource):
         return Message(code=DELETED if removed else NOT_FOUND)
 
 
-class _RdLookupResource(resource.Resource):
-    """``/rd-lookup/res`` — RFC 9176 §8.3 resource lookup."""
+def _mounted(site: resource.Site, path: tuple[str, ...]) -> resource.Resource | None:
+    """Return the resource aiocoap has at ``path``, if any."""
+    return site._resources.get(path)
 
-    def __init__(self, rd: ResourceDirectoryResource) -> None:
+
+def _ensure_rd_lookup_mounted(site: resource.Site) -> None:
+    """Mount ``/rd-lookup/res`` once. Later RD instances must not steal it."""
+    existing = _mounted(site, ("rd-lookup", "res"))
+    if isinstance(existing, _RdLookupResource):
+        return
+    site.add_resource(["rd-lookup", "res"], _RdLookupResource(site))
+
+
+class _RdLookupResource(resource.Resource):
+    """``/rd-lookup/res`` — RFC 9176 §8.3 resource lookup.
+
+    Resolves the directory currently mounted at ``/rd`` so a second
+    ``ResourceDirectoryResource`` cannot desync lookup from registration.
+    """
+
+    def __init__(self, site: resource.Site) -> None:
         super().__init__()
-        self._rd = rd
+        self._site = site
+
+    def _directory(self) -> ResourceDirectoryResource | None:
+        mounted = _mounted(self._site, ("rd",))
+        if isinstance(mounted, ResourceDirectoryResource):
+            return mounted
+        return None
 
     async def render_get(self, request: Message) -> Message:
-        hits = self._rd.lookup_resources(_parse_lookup_query(request))
+        rd = self._directory()
+        if rd is None:
+            return Message(code=NOT_FOUND)
+        hits = rd.lookup_resources(_parse_lookup_query(request))
         # RFC 9176 §6.2: no matches is still 2.05 with an empty payload (`[]`).
         msg = Message(code=CONTENT, payload=cbor2.dumps(hits))
         msg.opt.content_format = CBOR

@@ -643,6 +643,47 @@ class TestRdLookup:
             await client.shutdown()
             await server.shutdown()
 
+    async def test_second_rd_does_not_steal_lookup(self) -> None:
+        net = InMemoryNetwork()
+        site = resource.Site()
+        rd1 = ResourceDirectoryResource(site)
+        site.add_resource(["rd"], rd1)
+        ResourceDirectoryResource(site)
+        server = await create_lichen_context(net.channel("srv"), "srv", site=site)
+        client = await create_lichen_context(net.channel("cli"), "cli")
+        try:
+            created = await _register(client, ep="sensor-42", links=_SENSOR_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor")
+            ).response
+            assert created.code == aiocoap.CREATED
+            assert cbor2.loads(resp.payload) == [
+                {"href": "/temperature", "ep": "sensor-42", "rt": "sensor"},
+            ]
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_lookup_follows_replaced_rd_mount(self) -> None:
+        net = InMemoryNetwork()
+        site = resource.Site()
+        site.add_resource(["rd"], ResourceDirectoryResource(site))
+        site.add_resource(["rd"], ResourceDirectoryResource(site))
+        server = await create_lichen_context(net.channel("srv"), "srv", site=site)
+        client = await create_lichen_context(net.channel("cli"), "cli")
+        try:
+            created = await _register(client, ep="sensor-43", links=_HUMIDITY_LINKS)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor")
+            ).response
+            assert created.code == aiocoap.CREATED
+            assert cbor2.loads(resp.payload) == [
+                {"href": "/humidity", "ep": "sensor-43", "rt": "sensor"},
+            ]
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
 
 # ---------------------------------------------------------------------------
 # Not exposed without flag
