@@ -3105,6 +3105,238 @@ def test_epoch_rollover_vector_file_integrity() -> None:
     assert "random_init_cold_boot" in names
 
 
+# --- Epoch Rollover Oracle Cross-Validation ---
+#
+# The parametrized test above verifies vector *self-consistency*. These tests
+# drive the real Python oracle (lichen.link.replay) through the same vectors,
+# mirroring rust/lichen-link/tests/shared_vectors.rs::test_epoch_rollover_vectors.
+#
+# RFC comparison (spec 4.4 vs external references):
+# - RFC 4303 §3.4.3 (ESP anti-replay) uses a similar sliding bitmap window but
+#   evaluates packets with serial-number-style comparisons and treats the
+#   counter space as modular. LICHEN deliberately diverges: ordinary unsigned
+#   ordering (counter_comparison_unsigned encodes this), a finite 24-bit
+#   counter, and mandatory key rotation at exhaustion instead of wraparound.
+# - RFC 1982 serial-number arithmetic is explicitly NOT used; the tuple
+#   ordering and comparison vectors are the executable proof.
+
+
+@pytest.mark.parametrize(
+    "name,vector",
+    [
+        (v["name"], v)
+        for v in _load("epoch_rollover.json")["vectors"]
+        if "sender_sequence" in v
+    ],
+)
+def test_epoch_rollover_sender_sequence_oracle(name: str, vector: dict) -> None:
+    """Drive the real ReplayWindow through sender_sequence vectors (spec 4.4)."""
+    import warnings
+
+    from lichen.link.replay import ReplayWindow, logical_counter
+
+    window = ReplayWindow()
+    for step in vector["sender_sequence"]:
+        computed = logical_counter(step["epoch"], step["seqnum"])
+        assert computed == step["counter"], (
+            f"{name}: counter mismatch for ({step['epoch']}, {step['seqnum']})"
+        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*approaching 24-bit limit.*")
+            result = window.check_and_update(step["epoch"], step["seqnum"])
+        assert result == step["accept"], (
+            f"{name}: ({step['epoch']}, {step['seqnum']}) expected "
+            f"{step['accept']}, got {result}"
+        )
+
+    if vector.get("key_rotation_required_after"):
+        # Spec 4.4: EPO MUST NOT wrap from 0xFF to 0x00. After the terminal
+        # counter the receiver-side analogue of key rotation is that (0, 0)
+        # is stale, never a wrap.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*approaching 24-bit limit.*")
+            assert not window.check_and_update(0, 0), (
+                f"{name}: epoch rollover after terminal counter was accepted"
+            )
+
+
+def test_epoch_rollover_receiver_state_oracle() -> None:
+    """Drive the real replay oracle through receiver_state/received vectors."""
+    import warnings
+
+    from lichen.link.replay import ReplayWindow
+
+    doc = _load("epoch_rollover.json")
+    checked = 0
+    for vector in doc["vectors"]:
+        if "receiver_state" not in vector or "received" not in vector:
+            continue
+        name = vector["name"]
+        state = vector["receiver_state"]
+        received = vector["received"]
+        expected = vector["expected"]
+
+        window = ReplayWindow()
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*approaching 24-bit limit.*")
+            if expected["reason"] == "duplicate_in_window":
+                # The recorded bitmap shows this exact frame was already seen;
+                # reconstruct that precondition through the public API and
+                # verify the recorded bits agree with the frame's offset.
+                offset = state["last_seqnum"] - received["seqnum"]
+                assert 0 < offset < 32 and (state["window"] >> offset) & 1, (
+                    f"{name}: recorded window does not mark seqnum "
+                    f"{received['seqnum']} as seen"
+                )
+                assert window.check_and_update(received["epoch"], received["seqnum"])
+                assert window.check_and_update(
+                    state["last_epoch"], state["last_seqnum"]
+                )
+            else:
+                assert window.check_and_update(
+                    state["last_epoch"], state["last_seqnum"]
+                )
+            result = window.check_and_update(received["epoch"], received["seqnum"])
+        assert result == expected["accept"], (
+            f"{name}: ({received['epoch']}, {received['seqnum']}) reason="
+            f"{expected['reason']} expected {expected['accept']}, got {result}"
+        )
+        checked += 1
+    assert checked >= 8, f"only {checked} receiver-state vectors executed"
+
+
+def test_replay_window_cross_validate_cases_oracle() -> None:
+    """Execute the cross_validate_rust_python_zephyr cases against the oracle.
+
+    These state-seeded cases were previously declared but never run anywhere;
+    the Rust side covers them implicitly via sequence parity. This closes the
+    Python half of the contract.
+    """
+    import warnings
+
+    from lichen.link.replay import ReplayWindow
+
+    doc = _load("replay_window.json")
+    vector = next(
+        v
+        for v in doc["vectors"]
+        if v["name"] == "cross_validate_rust_python_zephyr"
+    )
+    assert vector["window_size"] == 32
+
+    def seeded_window(case: dict) -> ReplayWindow:
+        window = ReplayWindow()
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*approaching 24-bit limit.*")
+            if "highest_seq" in case:
+                # Prior state: highest_seq accepted under the case's epoch with
+                # the recorded bitmap; bit 0 must be set for reconstruction.
+                assert case["bitmap"] & 1, "bitmap reconstruction requires bit 0"
+                assert window.check_and_update(case["epoch"], case["highest_seq"])
+                assert window._bitmap == case["bitmap"], (
+                    f"seeded bitmap {window._bitmap} != recorded {case['bitmap']}"
+                )
+            elif "last_epoch" in case:
+                assert window.check_and_update(case["last_epoch"], case["last_seq"])
+        return window
+
+    for case in vector["cases"]:
+        window = seeded_window(case)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*approaching 24-bit limit.*")
+            result = window.check_and_update(case["epoch"], case["seqnum"])
+        assert result == case["accept"], (
+            f"cross_validate case ({case['epoch']}, {case['seqnum']}) expected "
+            f"{case['accept']}, got {result}"
+        )
+
+
+def test_spec_44_must_coverage_map() -> None:
+    """Every MUST rule in spec 02 section 4.4 maps to covering vectors.
+
+    Mechanical guard: if a vector named here is renamed or removed, the MUST
+    it covers loses its executable witness and this test fails.
+    """
+    replay_doc = _load("replay_window.json")
+    epoch_doc = _load("epoch_rollover.json")
+    available = {v["name"] for v in replay_doc["vectors"]}
+    available |= {v["name"] for v in epoch_doc["vectors"]}
+    available |= {v["name"] for v in replay_doc["security_domain_vectors"]}
+
+    must_coverage = {
+        # counter = (EPO<<16)|SeqNum; ordinary unsigned ordering, NOT serial
+        # number arithmetic (RFC 1982 deliberately not used).
+        "counter_formula_unsigned_ordering": [
+            "logical_counter_combine",
+            "counter_comparison_unsigned",
+            "tuple_ordering_near_rollover_255_0",
+            "tuple_ordering_epoch_0_seqnum_0",
+        ],
+        # EPO MUST NOT wrap 0xFF->0x00; rotate key after terminal counter.
+        "no_epoch_wrap_key_rotation_at_exhaustion": [
+            "normal_epoch_increment",
+            "epoch_max_boundary",
+            "epoch_rollover_forbidden",
+            "terminal_counter_wrap_rejected",
+        ],
+        # Sender MUST resume above last used counter on reboot/reset.
+        "reboot_resume_above_last_counter": [
+            "epoch_persistence_across_restarts",
+            "normal_epoch_increment",
+        ],
+        # Unpersisted cold boot: uniform random epoch in [128, 255].
+        "cold_boot_random_epoch_128_255": [
+            "random_init_cold_boot",
+            "epoch_persistence_across_restarts",
+            "epoch_recovery_after_flash_failure",
+        ],
+        # Receiver applies normal numeric rules to randomized epochs.
+        "receiver_numeric_rules_apply_to_random_epoch": [
+            "epoch_skip_accepted",
+            "epoch_recovery_after_flash_failure",
+        ],
+        # Rotate key if freshness cannot be established above last use.
+        "rotate_key_when_freshness_unestablishable": [
+            "epoch_recovery_after_flash_failure",
+        ],
+        # Acceptance rules table rows.
+        "acceptance_table_rows": [
+            "first_frame_accepted",
+            "higher_epoch_accepted_even_with_lower_seqnum",
+            "lower_epoch_rejected",
+            "below_window_floor_rejected",
+            "out_of_order_within_window_accepted_once",
+            "duplicate_rejected",
+        ],
+        # Same-epoch decrease MUST NOT be interpreted as seqnum wrap.
+        "same_epoch_decrease_is_not_wrap": [
+            "same_epoch_sequence_wrap_rejected",
+        ],
+        # Replay key is (full pubkey, key generation); aliases never suffice.
+        "replay_key_identity_domain": [
+            "same_iid_alias_full_keys_are_isolated",
+            "key_rotation_starts_new_generation_and_retires_old",
+        ],
+        # Generation retirement immediately disables frames and state.
+        "generation_retirement_immediate": [
+            "key_rotation_starts_new_generation_and_retires_old",
+        ],
+        # Unsigned/invalid frames must not mutate replay state.
+        "authenticate_before_replay_mutation": [
+            "unauthenticated_high_counter_cannot_poison_window",
+        ],
+        # Persisted records bound + fail closed on rollback/corruption.
+        "durable_state_fails_closed": [
+            "durable_replay_rollback_fails_closed",
+        ],
+    }
+
+    for must_id, covering in must_coverage.items():
+        assert covering, f"{must_id}: no covering vectors declared"
+        missing = [n for n in covering if n not in available]
+        assert not missing, f"{must_id}: vectors not found: {missing}"
+
+
 # --- Gradient Entry Ranking Vectors ---
 
 
