@@ -451,6 +451,18 @@ impl<'a> CborReader<'a> {
     }
 }
 
+fn valid_node_id(node: &str) -> bool {
+    // Vector sos_node_format: IPv6 full notation, 8 colon-separated groups.
+    let mut groups = 0usize;
+    for group in node.split(':') {
+        groups += 1;
+        if group.is_empty() || group.len() > 4 || !group.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return false;
+        }
+    }
+    groups == 8
+}
+
 fn decode_alert(bytes: &[u8]) -> Result<SosAlert, SosCborError> {
     let mut r = CborReader::new(bytes);
     let (major, count) = r.header()?;
@@ -482,7 +494,11 @@ fn decode_alert(bytes: &[u8]) -> Result<SosAlert, SosCborError> {
                 if node.is_some() {
                     return Err(SosCborError::DuplicateKey);
                 }
-                node = Some(String::from(r.text()?));
+                let value = r.text()?;
+                if !valid_node_id(value) {
+                    return Err(SosCborError::InvalidValue);
+                }
+                node = Some(String::from(value));
             }
             KEY_TS => {
                 if ts.is_some() {
@@ -838,6 +854,38 @@ mod tests {
     }
 
     #[test]
+    fn cbor_rejects_invalid_node_ids() {
+        for node in ["", "192.168.1.1", "0011:2233:4455:6677"] {
+            let mut payload = Vec::new();
+            push_type_len(&mut payload, 5, 4);
+            push_text(&mut payload, "type");
+            push_text(&mut payload, "sos");
+            push_text(&mut payload, "node");
+            push_text(&mut payload, node);
+            push_text(&mut payload, "ts");
+            push_type_len(&mut payload, 0, 0);
+            push_text(&mut payload, "seq");
+            push_type_len(&mut payload, 0, 1);
+            assert_eq!(
+                SosAlert::from_cbor(&payload),
+                Err(SosCborError::InvalidValue),
+                "{node:?}"
+            );
+        }
+        let ok = SosAlert::from_cbor(
+            &SosAlert::new(
+                SosAlertType::Sos,
+                "0200:0000:0000:0000:0011:2233:4455:6677".into(),
+                0,
+                1,
+            )
+            .to_cbor(),
+        )
+        .expect("full notation");
+        assert_eq!(ok.node, "0200:0000:0000:0000:0011:2233:4455:6677");
+    }
+
+    #[test]
     fn cbor_rejects_unknown_type() {
         // {"type":"nope","node":"n","ts":0,"seq":1}
         let wire = [
@@ -849,7 +897,12 @@ mod tests {
 
     #[test]
     fn cbor_rejects_trailing_bytes() {
-        let alert = SosAlert::new(SosAlertType::Sos, "n".into(), 0, 1);
+        let alert = SosAlert::new(
+            SosAlertType::Sos,
+            "0200:0000:0000:0000:0000:0000:0000:0001".into(),
+            0,
+            1,
+        );
         let mut wire = alert.to_cbor();
         wire.push(0x00);
         assert_eq!(SosAlert::from_cbor(&wire), Err(SosCborError::TrailingData));
@@ -857,7 +910,13 @@ mod tests {
 
     #[test]
     fn cbor_rejects_non_finite_lat() {
-        let mut wire = SosAlert::new(SosAlertType::Sos, "n".into(), 0, 1).to_cbor();
+        let mut wire = SosAlert::new(
+            SosAlertType::Sos,
+            "0200:0000:0000:0000:0000:0000:0000:0001".into(),
+            0,
+            1,
+        )
+        .to_cbor();
         wire[0] = 0xa5;
         wire.extend_from_slice(&[
             0x63, b'l', b'a', b't', 0xfb, 0x7f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -867,7 +926,13 @@ mod tests {
 
     #[test]
     fn cbor_decodes_f16_zero_lat() {
-        let alert = SosAlert::new(SosAlertType::Sos, "n".into(), 0, 1).with_location(0.0, 0.0);
+        let alert = SosAlert::new(
+            SosAlertType::Sos,
+            "0200:0000:0000:0000:0000:0000:0000:0001".into(),
+            0,
+            1,
+        )
+        .with_location(0.0, 0.0);
         let canonical = alert.to_canonical_cbor();
         let decoded = SosAlert::from_cbor(&canonical).expect("canonical decode");
         assert_eq!(decoded.lat, Some(0.0));

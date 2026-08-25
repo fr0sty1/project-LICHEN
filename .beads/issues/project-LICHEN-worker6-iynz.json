@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-iynz",
+  "title": "sos_rate_limiting.json cooldown_resets_on_accept disagrees with last-alert cooldown",
+  "description": "Vector cooldown_resets_on_accept accepts a third SOS at 600000 ms after burst sends at 0 and 1000 ms. SosRateLimitState (and spec 18.4.3 10-minute cooldown) measures from the most recent accepted alert, so 599 s after t=1 s is still cooling down. Because that third send is not recorded, t=601000 ms then opens in Rust (600 s elapsed) while the vector still rejects. hourly_window_slides has a related unit issue: current_uptime_ms=3600001 with history 0/1000/2000 ms expects sos_in_window=2; integer-second conversion maps now to 3600 s and keeps all three samples. Independent oracle: spec table cooldown 10 minutes. Do not change the limiter to match the JSON without a spec change.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:55:51.410107Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-25T23:55:51.410107Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-iynz",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.7.8",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T23:55:51.829287Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}
