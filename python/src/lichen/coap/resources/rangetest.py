@@ -166,18 +166,21 @@ class RangeTestResource(resource.ObservableResource):
         if request.payload:
             try:
                 body = _decode_single_cbor(request.payload)
-                if isinstance(body, dict) and "interval_ms" in body:
-                    interval = body["interval_ms"]
-                    if (
-                        isinstance(interval, bool)
-                        or not isinstance(interval, (int, float))
-                        or (isinstance(interval, float) and not math.isfinite(interval))
-                        or interval <= 0
-                    ):
-                        return Message(code=aiocoap.BAD_REQUEST)
-                    self._interval_ms = int(interval)
             except (ValueError, OverflowError, cbor2.CBORDecodeError):
                 return Message(code=aiocoap.BAD_REQUEST)
+            # Match POST strictness: only a map may carry options (spec 18.7.3).
+            if not isinstance(body, dict):
+                return Message(code=aiocoap.BAD_REQUEST)
+            if "interval_ms" in body:
+                interval = body["interval_ms"]
+                if (
+                    isinstance(interval, bool)
+                    or not isinstance(interval, (int, float))
+                    or (isinstance(interval, float) and not math.isfinite(interval))
+                    or interval <= 0
+                ):
+                    return Message(code=aiocoap.BAD_REQUEST)
+                self._interval_ms = int(interval)
 
         # Update and return current metrics
         self._update_payload()
@@ -206,11 +209,7 @@ class RangeTestResource(resource.ObservableResource):
             # Validate seq
             if "seq" in body:
                 seq_val = body["seq"]
-                if (
-                    isinstance(seq_val, bool)
-                    or not isinstance(seq_val, int)
-                    or seq_val < 0
-                ):
+                if isinstance(seq_val, bool) or not isinstance(seq_val, int) or seq_val < 0:
                     return Message(code=aiocoap.BAD_REQUEST)
                 seq = seq_val
 
@@ -229,12 +228,7 @@ class RangeTestResource(resource.ObservableResource):
             # Validate count
             if "count" in body:
                 cnt = body["count"]
-                if (
-                    isinstance(cnt, bool)
-                    or not isinstance(cnt, int)
-                    or cnt < 1
-                    or cnt > MAX_COUNT
-                ):
+                if isinstance(cnt, bool) or not isinstance(cnt, int) or cnt < 1 or cnt > MAX_COUNT:
                     return Message(code=aiocoap.BAD_REQUEST)
                 _count = cnt  # noqa: F841
 
@@ -298,10 +292,7 @@ class TracerouteResource(resource.Resource):
         hops = self._provider.get_traceroute()
 
         # Build response
-        hops_data = [
-            {"addr": hop.addr, "rssi": hop.rssi, "rtt_ms": hop.rtt_ms}
-            for hop in hops
-        ]
+        hops_data = [{"addr": hop.addr, "rssi": hop.rssi, "rtt_ms": hop.rtt_ms} for hop in hops]
 
         total_hops = len(hops)
         total_rtt_ms = hops[-1].rtt_ms if hops else 0

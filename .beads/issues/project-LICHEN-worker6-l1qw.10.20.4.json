@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.20.4",
   "title": "Vectors: Range Testing test vectors",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:52.876473Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.517592Z",
+  "updated_at": "2026-08-25T23:46:29.62383Z",
+  "started_at": "2026-08-25T23:28:38.169959Z",
+  "closed_at": "2026-08-25T23:46:29.62383Z",
+  "close_reason": "Range Testing vectors shipped: test/vectors/rangetest.json (24 vectors: POST extended incl. seq/payload_len/count bounds+rejects, GET continuous incl. interval_ms valid/bool/negative/NaN/malformed, traceroute multi-hop+empty) with consumer python/tests/coap/test_rangetest_vectors.py driving real RangeTestResource/TracerouteResource byte-for-byte against hand-derived RFC 8428 oracles (raw cbor2, no lichen imports). Family registered as definitions/rangetest_vector in schema.json + README index row. One impl divergence found and fixed: render_get silently accepted non-dict CBOR GET bodies; now rejects 4.00 matching POST strictness. Gates: 24/24 new tests pass, full coap suite 1269 passed, ruff clean/format-clean, mypy errors pre-existing at HEAD, schema revalidation of all gated files OK.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.20.4",
@@ -21,7 +25,7 @@
       "issue_id": "project-LICHEN-worker6-l1qw.10.20.4",
       "depends_on_id": "project-LICHEN-worker6-l1qw.10.20.1",
       "type": "blocks",
-      "created_at": "2026-08-08T05:21:21.517590Z",
+      "created_at": "2026-08-08T05:21:21.51759Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

@@ -1,0 +1,1033 @@
+{
+ "$schema": "./schema.json",
+ "format_version": 2,
+ "name": "rangetest",
+ "description": "Range Testing CoAP resources per spec 12-apps.md section 18.7: extended range test (POST /diag/rangetest), continuous range test (GET /diag/rangetest), and traceroute (GET /diag/traceroute). Expected SenML/CBOR payloads are hand-derived from RFC 8428 Table 4 numeric labels and encoded with raw cbor2 independent of the lichen implementation; consumers MUST reproduce these bytes exactly.",
+ "spec": "spec/12-apps.md section 18.7; RFC 8428; RFC 7641",
+ "oracle": {
+  "kind": "hand-derived",
+  "tooling": "python3 + cbor2 (no lichen imports)",
+  "notes": "SenML label order follows RFC 8428 Table 4; floats encode as 64-bit (0xfb); bt encodes as uint32 at this magnitude."
+ },
+ "vectors": [
+  {
+   "name": "rangetest_post_default",
+   "type": "rangetest_post",
+   "description": "POST with empty body echoes seq=0 with current radio metrics as SenML+CBOR.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest"
+   },
+   "expected": {
+    "code": "2.05",
+    "content_format": 112,
+    "payload_hex": "86a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a221a66536a90a200637365710200a3006472737369016364426d02fbc055400000000000a30063736e720162644202fb401e000000000000a2006273660209a300646672657101634d487a02fb408c570000000000",
+    "records": [
+     {
+      "-2": "urn:dev:mac:0102030405060708:",
+      "-3": 1716742800
+     },
+     {
+      "0": "seq",
+      "2": 0
+     },
+     {
+      "0": "rssi",
+      "1": "dBm",
+      "2": -85.0
+     },
+     {
+      "0": "snr",
+      "1": "dB",
+      "2": 7.5
+     },
+     {
+      "0": "sf",
+      "2": 9
+     },
+     {
+      "0": "freq",
+      "1": "MHz",
+      "2": 906.875
+     }
+    ]
+   }
+  },
+  {
+   "name": "rangetest_post_seq_payload_count",
+   "type": "rangetest_post",
+   "description": "POST body {seq,payload_len,count} within limits is accepted; response echoes seq.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a363736571016b7061796c6f61645f6c656e182065636f756e7405"
+   },
+   "expected": {
+    "code": "2.05",
+    "content_format": 112,
+    "payload_hex": "86a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a221a66536a90a200637365710201a3006472737369016364426d02fbc055400000000000a30063736e720162644202fb401e000000000000a2006273660209a300646672657101634d487a02fb408c570000000000",
+    "records": [
+     {
+      "-2": "urn:dev:mac:0102030405060708:",
+      "-3": 1716742800
+     },
+     {
+      "0": "seq",
+      "2": 1
+     },
+     {
+      "0": "rssi",
+      "1": "dBm",
+      "2": -85.0
+     },
+     {
+      "0": "snr",
+      "1": "dB",
+      "2": 7.5
+     },
+     {
+      "0": "sf",
+      "2": 9
+     },
+     {
+      "0": "freq",
+      "1": "MHz",
+      "2": 906.875
+     }
+    ]
+   }
+  },
+  {
+   "name": "rangetest_post_max_payload_len",
+   "type": "rangetest_post",
+   "description": "payload_len at the MAX_PAYLOAD_LEN bound (255) is accepted.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a16b7061796c6f61645f6c656e18ff"
+   },
+   "expected": {
+    "code": "2.05",
+    "content_format": 112,
+    "payload_hex": "86a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a221a66536a90a200637365710200a3006472737369016364426d02fbc055400000000000a30063736e720162644202fb401e000000000000a2006273660209a300646672657101634d487a02fb408c570000000000",
+    "records": [
+     {
+      "-2": "urn:dev:mac:0102030405060708:",
+      "-3": 1716742800
+     },
+     {
+      "0": "seq",
+      "2": 0
+     },
+     {
+      "0": "rssi",
+      "1": "dBm",
+      "2": -85.0
+     },
+     {
+      "0": "snr",
+      "1": "dB",
+      "2": 7.5
+     },
+     {
+      "0": "sf",
+      "2": 9
+     },
+     {
+      "0": "freq",
+      "1": "MHz",
+      "2": 906.875
+     }
+    ]
+   }
+  },
+  {
+   "name": "rangetest_post_count_max",
+   "type": "rangetest_post",
+   "description": "count at the MAX_COUNT bound (100) is accepted.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a165636f756e741864"
+   },
+   "expected": {
+    "code": "2.05",
+    "content_format": 112,
+    "payload_hex": "86a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a221a66536a90a200637365710200a3006472737369016364426d02fbc055400000000000a30063736e720162644202fb401e000000000000a2006273660209a300646672657101634d487a02fb408c570000000000",
+    "records": [
+     {
+      "-2": "urn:dev:mac:0102030405060708:",
+      "-3": 1716742800
+     },
+     {
+      "0": "seq",
+      "2": 0
+     },
+     {
+      "0": "rssi",
+      "1": "dBm",
+      "2": -85.0
+     },
+     {
+      "0": "snr",
+      "1": "dB",
+      "2": 7.5
+     },
+     {
+      "0": "sf",
+      "2": 9
+     },
+     {
+      "0": "freq",
+      "1": "MHz",
+      "2": 906.875
+     }
+    ]
+   }
+  },
+  {
+   "name": "rangetest_err_post_malformed_cbor",
+   "type": "rangetest_post",
+   "description": "Malformed CBOR body (0xff break-code) MUST be rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "ff"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_post_non_dict_body",
+   "type": "rangetest_post",
+   "description": "Non-map CBOR body (integer 1) MUST be rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "01"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_post_seq_bool",
+   "type": "rangetest_post",
+   "description": "seq must be an integer; CBOR true is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a163736571f5"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_post_seq_negative",
+   "type": "rangetest_post",
+   "description": "Negative seq is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a16373657120"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_post_seq_string",
+   "type": "rangetest_post",
+   "description": "String seq is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a1637365716131"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_post_payload_len_over",
+   "type": "rangetest_post",
+   "description": "payload_len above MAX_PAYLOAD_LEN (255) is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a16b7061796c6f61645f6c656e190100"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_post_payload_len_negative",
+   "type": "rangetest_post",
+   "description": "Negative payload_len is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a16b7061796c6f61645f6c656e20"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_post_count_zero",
+   "type": "rangetest_post",
+   "description": "count below lower bound (1) is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a165636f756e7400"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_post_count_over",
+   "type": "rangetest_post",
+   "description": "count above MAX_COUNT (100) is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "POST",
+    "uri": "/diag/rangetest",
+    "body_hex": "a165636f756e741865"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_get_default",
+   "type": "rangetest_get",
+   "description": "GET without payload returns the current metrics pack (seq stays at its initial 0).",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/rangetest"
+   },
+   "expected": {
+    "code": "2.05",
+    "content_format": 112,
+    "payload_hex": "86a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a221a66536a90a200637365710200a3006472737369016364426d02fbc055400000000000a30063736e720162644202fb401e000000000000a2006273660209a300646672657101634d487a02fb408c570000000000",
+    "records": [
+     {
+      "-2": "urn:dev:mac:0102030405060708:",
+      "-3": 1716742800
+     },
+     {
+      "0": "seq",
+      "2": 0
+     },
+     {
+      "0": "rssi",
+      "1": "dBm",
+      "2": -85.0
+     },
+     {
+      "0": "snr",
+      "1": "dB",
+      "2": 7.5
+     },
+     {
+      "0": "sf",
+      "2": 9
+     },
+     {
+      "0": "freq",
+      "1": "MHz",
+      "2": 906.875
+     }
+    ]
+   }
+  },
+  {
+   "name": "rangetest_get_empty_map",
+   "type": "rangetest_get",
+   "description": "GET body that is an empty CBOR map carries no options and is accepted.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/rangetest",
+    "body_hex": "a0"
+   },
+   "expected": {
+    "code": "2.05",
+    "content_format": 112,
+    "payload_hex": "86a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a221a66536a90a200637365710200a3006472737369016364426d02fbc055400000000000a30063736e720162644202fb401e000000000000a2006273660209a300646672657101634d487a02fb408c570000000000",
+    "records": [
+     {
+      "-2": "urn:dev:mac:0102030405060708:",
+      "-3": 1716742800
+     },
+     {
+      "0": "seq",
+      "2": 0
+     },
+     {
+      "0": "rssi",
+      "1": "dBm",
+      "2": -85.0
+     },
+     {
+      "0": "snr",
+      "1": "dB",
+      "2": 7.5
+     },
+     {
+      "0": "sf",
+      "2": 9
+     },
+     {
+      "0": "freq",
+      "1": "MHz",
+      "2": 906.875
+     }
+    ]
+   }
+  },
+  {
+   "name": "rangetest_get_interval_valid",
+   "type": "rangetest_get",
+   "description": "GET body {interval_ms} within bounds configures the update interval and returns current metrics.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/rangetest",
+    "body_hex": "a16b696e74657276616c5f6d731903e8"
+   },
+   "expected": {
+    "code": "2.05",
+    "content_format": 112,
+    "payload_hex": "86a221781d75726e3a6465763a6d61633a303130323033303430353036303730383a221a66536a90a200637365710200a3006472737369016364426d02fbc055400000000000a30063736e720162644202fb401e000000000000a2006273660209a300646672657101634d487a02fb408c570000000000",
+    "records": [
+     {
+      "-2": "urn:dev:mac:0102030405060708:",
+      "-3": 1716742800
+     },
+     {
+      "0": "seq",
+      "2": 0
+     },
+     {
+      "0": "rssi",
+      "1": "dBm",
+      "2": -85.0
+     },
+     {
+      "0": "snr",
+      "1": "dB",
+      "2": 7.5
+     },
+     {
+      "0": "sf",
+      "2": 9
+     },
+     {
+      "0": "freq",
+      "1": "MHz",
+      "2": 906.875
+     }
+    ]
+   }
+  },
+  {
+   "name": "rangetest_get_interval_min_boundary",
+   "type": "rangetest_get",
+   "description": "interval_ms=0 violates the strict positivity rule and MUST be rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/rangetest",
+    "body_hex": "a16b696e74657276616c5f6d7300"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_get_interval_negative",
+   "type": "rangetest_get",
+   "description": "Negative interval_ms is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/rangetest",
+    "body_hex": "a16b696e74657276616c5f6d733901f3"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_get_interval_bool",
+   "type": "rangetest_get",
+   "description": "CBOR true is not a valid interval_ms; rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/rangetest",
+    "body_hex": "a16b696e74657276616c5f6d73f5"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_get_interval_nan",
+   "type": "rangetest_get",
+   "description": "NaN interval_ms must be rejected 4.00 (half-precision 0xf97e00).",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/rangetest",
+    "body_hex": "a16b696e74657276616c5f6d73f97e00"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_get_malformed_cbor",
+   "type": "rangetest_get",
+   "description": "Malformed CBOR GET payload (0xff) is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/rangetest",
+    "body_hex": "ff"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "rangetest_err_get_non_dict_payload",
+   "type": "rangetest_get",
+   "description": "Non-map GET payload (integer 1) is rejected 4.00.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/rangetest",
+    "body_hex": "01"
+   },
+   "expected": {
+    "code": "4.00"
+   }
+  },
+  {
+   "name": "traceroute_multi_hop",
+   "type": "traceroute",
+   "description": "Two-hop mesh path; total_rtt_ms equals the last hop's RTT.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": [
+     {
+      "addr": "fe80::1111",
+      "rssi": -65.0,
+      "rtt_ms": 120.0
+     },
+     {
+      "addr": "fe80::2222",
+      "rssi": -78.0,
+      "rtt_ms": 340.0
+     }
+    ]
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/traceroute"
+   },
+   "expected": {
+    "code": "2.05",
+    "content_format": 60,
+    "payload_hex": "a364686f707382a364616464726a666538303a3a313131316472737369fbc050400000000000667274745f6d73fb405e000000000000a364616464726a666538303a3a323232326472737369fbc053800000000000667274745f6d73fb40754000000000006a746f74616c5f686f7073026c746f74616c5f7274745f6d73fb4075400000000000",
+    "records": {
+     "hops": [
+      {
+       "addr": "fe80::1111",
+       "rssi": -65.0,
+       "rtt_ms": 120.0
+      },
+      {
+       "addr": "fe80::2222",
+       "rssi": -78.0,
+       "rtt_ms": 340.0
+      }
+     ],
+     "total_hops": 2,
+     "total_rtt_ms": 340.0
+    }
+   }
+  },
+  {
+   "name": "traceroute_no_hops",
+   "type": "traceroute",
+   "description": "Empty hop list yields total_hops=0 and total_rtt_ms=0.",
+   "provider": {
+    "node_eui64": "0102030405060708",
+    "rssi": -85.0,
+    "snr": 7.5,
+    "sf": 9,
+    "freq": 906.875,
+    "hops": []
+   },
+   "now": 1716742800,
+   "request": {
+    "method": "GET",
+    "uri": "/diag/traceroute"
+   },
+   "expected": {
+    "code": "2.05",
+    "content_format": 60,
+    "payload_hex": "a364686f7073806a746f74616c5f686f7073006c746f74616c5f7274745f6d7300",
+    "records": {
+     "hops": [],
+     "total_hops": 0,
+     "total_rtt_ms": 0
+    }
+   }
+  }
+ ]
+}

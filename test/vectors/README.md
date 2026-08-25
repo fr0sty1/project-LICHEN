@@ -7,7 +7,7 @@ Language-neutral conformance vectors for the LICHEN protocol using **format_vers
 
 ## File Index
 
-Complete index of every vector file (111 files). Byte strings are lowercase hex (possibly empty).
+Complete index of every vector file (112 files). Byte strings are lowercase hex (possibly empty).
 
 ### Schema
 
@@ -129,8 +129,10 @@ Complete index of every vector file (111 files). Byte strings are lowercase hex 
 | `neighbors_cbor.json` | GET /status/neighbors CBOR encoding (spec 8.4) |
 | `position_privacy_auth.json` | Position-sharing public/group/private auth modes (spec 18.1) |
 | `presence_cbor.json` | Presence/presence-cache CBOR encoding (spec 18.5.1) |
+| `rangetest.json` | Range testing: /diag/rangetest POST/GET and /diag/traceroute (spec 18.7) |
 | `raw_diag_ttl.json` | Raw-diagnostic TTL arming/auto-disable (LCI 17.5.4) |
 | `receipt_cbor.json` | Delivery-receipt CBOR fields id/status/ts (spec 18.1.2) |
+| `ipso_smart_objects.json` | IPSO object/instance/resource SenML names and CBOR records (appendix-senml F.2.1) |
 | `senml_location.json` | SenML location profile (spec appendix-senml F.3) |
 | `slip_framing.json` | SLIP (RFC 1055) framing for LCI serial transport |
 | `sos_cbor.json` | SOS alert full-field CBOR encoding (spec 18.4.2) |
