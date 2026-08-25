@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-faek",
+  "title": "SOS CBOR codec accepts any node string including empty",
+  "description": "SosAlert::from_cbor stores node as an arbitrary UTF-8 tstr. test/vectors/sos_cbor.json sos_node_format invalid_node_examples include empty string and IPv4. Python POST /sos rejects non-EUI64 node ids. Spec 18.4.2 shows colon-hex IPv6. Codec vs policy: decide one node grammar and reject at decode or at the resource.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:23:10.780833Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-25T23:23:10.780833Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-faek",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.7.1.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T23:23:11.235684Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -23,6 +23,7 @@
 extern crate alloc;
 
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt;
 
 /// SOS alert type per spec 18.4.2.
@@ -140,6 +141,403 @@ impl SosAlert {
         self.msg = Some(msg);
         self
     }
+
+    /// Decode a spec 18.4.2 SOS payload map from CBOR.
+    pub fn from_cbor(bytes: &[u8]) -> Result<Self, SosCborError> {
+        decode_alert(bytes)
+    }
+
+    /// Encode as CoAP-wire CBOR matching `test/vectors/sos_cbor.json`.
+    ///
+    /// Key order is the spec example order (`type`, `node`, `ts`, `lat`,
+    /// `lon`, `msg`, `seq`) with absent optionals omitted. Lat/lon use
+    /// IEEE-754 binary64. This matches `cbor2.dumps(payload)` without
+    /// `canonical=True`.
+    pub fn to_cbor(&self) -> Vec<u8> {
+        encode_alert(self, CborKeyOrder::Wire)
+    }
+
+    /// RFC 8949 deterministic CBOR for origin signatures.
+    ///
+    /// Keys are sorted by encoded form (length-first). Integers use shortest
+    /// form. Floats use the shortest encoding that round-trips (Python
+    /// `cbor2.dumps(..., canonical=True)`).
+    pub fn to_canonical_cbor(&self) -> Vec<u8> {
+        encode_alert(self, CborKeyOrder::Canonical)
+    }
+}
+
+/// SOS CBOR decode failure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SosCborError {
+    /// Input ended before a complete map.
+    Truncated,
+    /// Top-level item is not a definite CBOR map.
+    NotAMap,
+    /// Extra bytes after the map.
+    TrailingData,
+    /// Duplicate map key.
+    DuplicateKey,
+    /// Unknown map key.
+    UnknownKey,
+    /// Required field `type`, `node`, `ts`, or `seq` missing.
+    MissingField,
+    /// Field had the wrong CBOR type.
+    UnexpectedType,
+    /// Text was not UTF-8, or `type` was not a spec 18.4.2 token.
+    InvalidValue,
+    /// Integer did not fit the field width.
+    OutOfRange,
+}
+
+#[derive(Clone, Copy)]
+enum CborKeyOrder {
+    Wire,
+    Canonical,
+}
+
+const KEY_TYPE: &str = "type";
+const KEY_NODE: &str = "node";
+const KEY_TS: &str = "ts";
+const KEY_LAT: &str = "lat";
+const KEY_LON: &str = "lon";
+const KEY_MSG: &str = "msg";
+const KEY_SEQ: &str = "seq";
+
+fn encode_alert(alert: &SosAlert, order: CborKeyOrder) -> Vec<u8> {
+    let mut pairs: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
+    push_text_pair(&mut pairs, KEY_TYPE, alert.alert_type.as_str());
+    push_text_pair(&mut pairs, KEY_NODE, &alert.node);
+    push_uint_pair(&mut pairs, KEY_TS, alert.ts);
+    if let Some(lat) = alert.lat {
+        push_float_pair(&mut pairs, KEY_LAT, lat, order);
+    }
+    if let Some(lon) = alert.lon {
+        push_float_pair(&mut pairs, KEY_LON, lon, order);
+    }
+    if let Some(ref msg) = alert.msg {
+        push_text_pair(&mut pairs, KEY_MSG, msg);
+    }
+    push_uint_pair(&mut pairs, KEY_SEQ, u64::from(alert.seq));
+
+    if matches!(order, CborKeyOrder::Canonical) {
+        pairs.sort_by(|a, b| a.0.cmp(&b.0));
+    }
+
+    let mut out = Vec::new();
+    push_type_len(&mut out, 5, pairs.len() as u64);
+    for (key, value) in pairs {
+        out.extend_from_slice(&key);
+        out.extend_from_slice(&value);
+    }
+    out
+}
+
+fn push_text_pair(pairs: &mut Vec<(Vec<u8>, Vec<u8>)>, key: &str, value: &str) {
+    let mut k = Vec::new();
+    push_text(&mut k, key);
+    let mut v = Vec::new();
+    push_text(&mut v, value);
+    pairs.push((k, v));
+}
+
+fn push_uint_pair(pairs: &mut Vec<(Vec<u8>, Vec<u8>)>, key: &str, value: u64) {
+    let mut k = Vec::new();
+    push_text(&mut k, key);
+    let mut v = Vec::new();
+    push_type_len(&mut v, 0, value);
+    pairs.push((k, v));
+}
+
+fn push_float_pair(
+    pairs: &mut Vec<(Vec<u8>, Vec<u8>)>,
+    key: &str,
+    value: f64,
+    order: CborKeyOrder,
+) {
+    let mut k = Vec::new();
+    push_text(&mut k, key);
+    let mut v = Vec::new();
+    push_float(&mut v, value, matches!(order, CborKeyOrder::Canonical));
+    pairs.push((k, v));
+}
+
+fn push_text(buf: &mut Vec<u8>, s: &str) {
+    let bytes = s.as_bytes();
+    push_type_len(buf, 3, bytes.len() as u64);
+    buf.extend_from_slice(bytes);
+}
+
+fn push_type_len(buf: &mut Vec<u8>, major: u8, n: u64) {
+    let mt = major << 5;
+    if n < 24 {
+        buf.push(mt | (n as u8));
+    } else if n <= 0xff {
+        buf.push(mt | 24);
+        buf.push(n as u8);
+    } else if n <= 0xffff {
+        buf.push(mt | 25);
+        buf.extend_from_slice(&(n as u16).to_be_bytes());
+    } else if n <= 0xffff_ffff {
+        buf.push(mt | 26);
+        buf.extend_from_slice(&(n as u32).to_be_bytes());
+    } else {
+        buf.push(mt | 27);
+        buf.extend_from_slice(&n.to_be_bytes());
+    }
+}
+
+fn push_float(buf: &mut Vec<u8>, value: f64, preferred: bool) {
+    if preferred {
+        if let Some(half) = f64_to_f16_exact(value) {
+            buf.push(0xf9);
+            buf.extend_from_slice(&half.to_be_bytes());
+            return;
+        }
+        let single = value as f32;
+        if (single as f64).to_bits() == value.to_bits() {
+            buf.push(0xfa);
+            buf.extend_from_slice(&single.to_bits().to_be_bytes());
+            return;
+        }
+    }
+    buf.push(0xfb);
+    buf.extend_from_slice(&value.to_bits().to_be_bytes());
+}
+
+fn f64_to_f16_exact(value: f64) -> Option<u16> {
+    let bits = value.to_bits();
+    let sign = ((bits >> 63) as u16) & 1;
+    let exp = ((bits >> 52) & 0x7ff) as i32;
+    let frac = bits & ((1u64 << 52) - 1);
+    if exp == 0 && frac == 0 {
+        return Some(sign << 15);
+    }
+    if exp == 0x7ff {
+        return None;
+    }
+    let unbiased = exp - 1023;
+    if !(-14..=15).contains(&unbiased) {
+        return None;
+    }
+    if frac & ((1u64 << 42) - 1) != 0 {
+        return None;
+    }
+    let half_exp = (unbiased + 15) as u16;
+    let half_frac = (frac >> 42) as u16;
+    let half = (sign << 15) | (half_exp << 10) | half_frac;
+    if f16_to_f64(half).to_bits() == bits {
+        Some(half)
+    } else {
+        None
+    }
+}
+
+fn f16_to_f64(bits: u16) -> f64 {
+    let sign = u64::from((bits >> 15) & 1);
+    let exp = (bits >> 10) & 0x1f;
+    let frac = u64::from(bits & 0x3ff);
+    let out = if exp == 0 {
+        if frac == 0 {
+            sign << 63
+        } else {
+            let mut m = frac;
+            let mut e: i32 = -14;
+            while m & 0x400 == 0 {
+                m <<= 1;
+                e -= 1;
+            }
+            m &= 0x3ff;
+            let exp_bits = (e + 1023) as u64;
+            (sign << 63) | (exp_bits << 52) | (m << 42)
+        }
+    } else if exp == 31 {
+        (sign << 63) | (0x7ffu64 << 52) | (frac << 42)
+    } else {
+        let exp_bits = u64::from(exp) - 15 + 1023;
+        (sign << 63) | (exp_bits << 52) | (frac << 42)
+    };
+    f64::from_bits(out)
+}
+
+struct CborReader<'a> {
+    buf: &'a [u8],
+    pos: usize,
+}
+
+impl<'a> CborReader<'a> {
+    fn new(buf: &'a [u8]) -> Self {
+        Self { buf, pos: 0 }
+    }
+
+    fn rest(&self) -> usize {
+        self.buf.len().saturating_sub(self.pos)
+    }
+
+    fn take(&mut self, n: usize) -> Result<&'a [u8], SosCborError> {
+        if self.rest() < n {
+            return Err(SosCborError::Truncated);
+        }
+        let start = self.pos;
+        self.pos += n;
+        Ok(&self.buf[start..self.pos])
+    }
+
+    fn take_u8(&mut self) -> Result<u8, SosCborError> {
+        Ok(self.take(1)?[0])
+    }
+
+    fn header(&mut self) -> Result<(u8, u64), SosCborError> {
+        let first = self.take_u8()?;
+        let major = first >> 5;
+        let ai = first & 0x1f;
+        let n = match ai {
+            0..=23 => u64::from(ai),
+            24 => u64::from(self.take_u8()?),
+            25 => {
+                let b = self.take(2)?;
+                u64::from(u16::from_be_bytes([b[0], b[1]]))
+            }
+            26 => {
+                let b = self.take(4)?;
+                u64::from(u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
+            }
+            27 => {
+                let b = self.take(8)?;
+                u64::from_be_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]])
+            }
+            _ => return Err(SosCborError::UnexpectedType),
+        };
+        Ok((major, n))
+    }
+
+    fn text(&mut self) -> Result<&'a str, SosCborError> {
+        let (major, n) = self.header()?;
+        if major != 3 {
+            return Err(SosCborError::UnexpectedType);
+        }
+        let n = usize::try_from(n).map_err(|_| SosCborError::OutOfRange)?;
+        let bytes = self.take(n)?;
+        core::str::from_utf8(bytes).map_err(|_| SosCborError::InvalidValue)
+    }
+
+    fn uint(&mut self) -> Result<u64, SosCborError> {
+        let (major, n) = self.header()?;
+        if major != 0 {
+            return Err(SosCborError::UnexpectedType);
+        }
+        Ok(n)
+    }
+
+    fn float(&mut self) -> Result<f64, SosCborError> {
+        let first = self.take_u8()?;
+        match first {
+            0xf9 => {
+                let b = self.take(2)?;
+                Ok(f16_to_f64(u16::from_be_bytes([b[0], b[1]])))
+            }
+            0xfa => {
+                let b = self.take(4)?;
+                Ok(f32::from_bits(u32::from_be_bytes([b[0], b[1], b[2], b[3]])) as f64)
+            }
+            0xfb => {
+                let b = self.take(8)?;
+                Ok(f64::from_bits(u64::from_be_bytes([
+                    b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+                ])))
+            }
+            _ => Err(SosCborError::UnexpectedType),
+        }
+    }
+}
+
+fn decode_alert(bytes: &[u8]) -> Result<SosAlert, SosCborError> {
+    let mut r = CborReader::new(bytes);
+    let (major, count) = r.header()?;
+    if major != 5 {
+        return Err(SosCborError::NotAMap);
+    }
+    // Spec 18.4.2 has at most 7 keys. Reject huge declared counts before looping.
+    if count > 16 {
+        return Err(SosCborError::OutOfRange);
+    }
+    let mut alert_type = None;
+    let mut node = None;
+    let mut ts = None;
+    let mut lat = None;
+    let mut lon = None;
+    let mut msg = None;
+    let mut seq = None;
+    for _ in 0..count {
+        let key = r.text()?;
+        match key {
+            KEY_TYPE => {
+                if alert_type.is_some() {
+                    return Err(SosCborError::DuplicateKey);
+                }
+                let raw = r.text()?;
+                alert_type = Some(SosAlertType::from_str(raw).ok_or(SosCborError::InvalidValue)?);
+            }
+            KEY_NODE => {
+                if node.is_some() {
+                    return Err(SosCborError::DuplicateKey);
+                }
+                node = Some(String::from(r.text()?));
+            }
+            KEY_TS => {
+                if ts.is_some() {
+                    return Err(SosCborError::DuplicateKey);
+                }
+                ts = Some(r.uint()?);
+            }
+            KEY_LAT => {
+                if lat.is_some() {
+                    return Err(SosCborError::DuplicateKey);
+                }
+                let value = r.float()?;
+                if !value.is_finite() {
+                    return Err(SosCborError::InvalidValue);
+                }
+                lat = Some(value);
+            }
+            KEY_LON => {
+                if lon.is_some() {
+                    return Err(SosCborError::DuplicateKey);
+                }
+                let value = r.float()?;
+                if !value.is_finite() {
+                    return Err(SosCborError::InvalidValue);
+                }
+                lon = Some(value);
+            }
+            KEY_MSG => {
+                if msg.is_some() {
+                    return Err(SosCborError::DuplicateKey);
+                }
+                msg = Some(String::from(r.text()?));
+            }
+            KEY_SEQ => {
+                if seq.is_some() {
+                    return Err(SosCborError::DuplicateKey);
+                }
+                let n = r.uint()?;
+                seq = Some(u32::try_from(n).map_err(|_| SosCborError::OutOfRange)?);
+            }
+            _ => return Err(SosCborError::UnknownKey),
+        }
+    }
+    if r.pos != r.buf.len() {
+        return Err(SosCborError::TrailingData);
+    }
+    Ok(SosAlert {
+        alert_type: alert_type.ok_or(SosCborError::MissingField)?,
+        node: node.ok_or(SosCborError::MissingField)?,
+        ts: ts.ok_or(SosCborError::MissingField)?,
+        lat,
+        lon,
+        msg,
+        seq: seq.ok_or(SosCborError::MissingField)?,
+    })
 }
 
 /// Rate limit configuration for SOS alerts (spec 18.4.3).
@@ -424,6 +822,57 @@ mod tests {
         assert_eq!(alert.lat, None);
         assert_eq!(alert.lon, None);
         assert_eq!(alert.msg, None);
+    }
+
+    #[test]
+    fn cbor_roundtrip_minimal() {
+        let alert = SosAlert::new(
+            SosAlertType::Medical,
+            "0200:0000:0000:0000:aabb:ccdd:eeff:0011".into(),
+            1716742900,
+            2,
+        );
+        let wire = alert.to_cbor();
+        let decoded = SosAlert::from_cbor(&wire).expect("decode");
+        assert_eq!(decoded, alert);
+    }
+
+    #[test]
+    fn cbor_rejects_unknown_type() {
+        // {"type":"nope","node":"n","ts":0,"seq":1}
+        let wire = [
+            0xa4, 0x64, b't', b'y', b'p', b'e', 0x64, b'n', b'o', b'p', b'e', 0x64, b'n', b'o',
+            b'd', b'e', 0x61, b'n', 0x62, b't', b's', 0x00, 0x63, b's', b'e', b'q', 0x01,
+        ];
+        assert_eq!(SosAlert::from_cbor(&wire), Err(SosCborError::InvalidValue));
+    }
+
+    #[test]
+    fn cbor_rejects_trailing_bytes() {
+        let alert = SosAlert::new(SosAlertType::Sos, "n".into(), 0, 1);
+        let mut wire = alert.to_cbor();
+        wire.push(0x00);
+        assert_eq!(SosAlert::from_cbor(&wire), Err(SosCborError::TrailingData));
+    }
+
+    #[test]
+    fn cbor_rejects_non_finite_lat() {
+        let mut wire = SosAlert::new(SosAlertType::Sos, "n".into(), 0, 1).to_cbor();
+        wire[0] = 0xa5;
+        wire.extend_from_slice(&[
+            0x63, b'l', b'a', b't', 0xfb, 0x7f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ]);
+        assert_eq!(SosAlert::from_cbor(&wire), Err(SosCborError::InvalidValue));
+    }
+
+    #[test]
+    fn cbor_decodes_f16_zero_lat() {
+        let alert = SosAlert::new(SosAlertType::Sos, "n".into(), 0, 1).with_location(0.0, 0.0);
+        let canonical = alert.to_canonical_cbor();
+        let decoded = SosAlert::from_cbor(&canonical).expect("canonical decode");
+        assert_eq!(decoded.lat, Some(0.0));
+        assert_eq!(decoded.lon, Some(0.0));
+        assert_eq!(decoded.to_canonical_cbor(), canonical);
     }
 
     #[test]

@@ -73,8 +73,8 @@ pub use identity::{human_address_from_pubkey, iid_from_pubkey};
 pub use lichen_core::addr::ygg_addr_from_pubkey;
 
 pub use sos::{
-    SosAlert, SosAlertType, SosRateLimitConfig, SosRateLimitConfigError, SosRateLimitResult,
-    SosRateLimitState,
+    SosAlert, SosAlertType, SosCborError, SosRateLimitConfig, SosRateLimitConfigError,
+    SosRateLimitResult, SosRateLimitState,
 };
 
 #[cfg(all(feature = "schnorr", feature = "std"))]
