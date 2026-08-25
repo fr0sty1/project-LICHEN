@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-pggr",
+  "title": "CCP sync/hop/desync/rendezvous vector consumers: 8 vector-vs-implementation divergences",
+  "description": "x",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T19:54:38.627976Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T19:54:54.136993Z",
+  "closed_at": "2026-08-25T19:54:54.136993Z",
+  "close_reason": "Accidental empty duplicate created by an id-lookup probe; the real bead is project-LICHEN-worker6-laol"
+}

@@ -38,7 +38,7 @@ evidence** across 4 parallel fanout waves. Key structural wins:
 
 - `385o` — test_lci_auth expects 4.04 for unauth location POST, resource returns 4.05. Product decision needed.
 - `ewlm` — 3 sim/radio test failures, proven pre-existing at HEAD.
-- Real divergences filed: `s9e2` (SCHC py/rust decompress), `cegf` (ccp4 JSON stale vs oracle), `9agc` (SLIP/SOS/neighbors leniency), Go-Yggdrasil docstring falsity bead.
+- Real divergences filed: `s9e2` (SCHC py/rust decompress), `cegf` (ccp4 JSON stale vs oracle), `9agc` (SLIP/SOS/neighbors leniency), `laol` (CCP-12 dual formula hazard mod n-1 vs mod n), **`a6qg` (P1: /sos performs NO signature verification — spec 18.3 violation; SOS/confessions burst+Retry-After gaps; group OSCORE distribution unimplemented)**, Go-Yggdrasil docstring falsity bead.
 
 ## Test State
 
