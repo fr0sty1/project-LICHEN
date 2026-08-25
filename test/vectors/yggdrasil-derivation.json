@@ -1,7 +1,6 @@
 [
   {
-    "description": "Yggdrasil address derivation test vector. Seed all-0x01, matches Rust ygg_addr_from_pubkey, C lichen_identity_ygg_addr_from_ed25519, and Python yggdrasil_address.",
-    "seed": "0101010101010101010101010101010101010101010101010101010101010101",
+    "description": "Yggdrasil address derivation test vector with an arbitrary input pubkey (SHA-256 of empty string). Matches Rust ygg_addr_from_pubkey, C lichen_identity_ygg_addr_from_ed25519, and Python yggdrasil_address. NOTE: this pubkey is a raw hash value used as input, not the Ed25519 public key of any seed; a previous revision wrongly labeled it as derived from seed 0x01*32 (the true keypair for that seed has pubkey 8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c).",
     "pubkey": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "ygg_addr": "026b4e6c1fe36504694e6c1fe36504e1",
     "iid": "694e6c1fe36504e1",

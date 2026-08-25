@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.6.1.5",
   "title": "Vectors: SenML CBOR test cases",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:38.190923Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:38.190923Z",
+  "updated_at": "2026-08-25T18:40:32.370658Z",
+  "closed_at": "2026-08-25T18:40:32.370658Z",
+  "close_reason": "senml_location.json now consumed byte-exactly by python/tests/coap/test_senml_location_vectors.py via lichen.senml profiles.location()+codec.pack(); added 7 oracle-derived error vectors (4 encode rejects: lat range high/low, lon range, NaN; 3 decode rejects: unit-not-string, value-not-numeric, multiple-value-fields). Missing-base-fields documented as legal, not an error.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.6.1.5",

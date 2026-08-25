@@ -125,6 +125,7 @@ Complete index of every vector file (111 files). Byte strings are lowercase hex 
 | `confessions_rate.json` | Confessions rate limits: 1/30s and 12/hr (spec 18.10.3) |
 | `deaddrop.json` | /deaddrop DTN store-and-forward, OSCORE-wrapped SenML (RFC 7252/8613/8428) |
 | `keystore_iid.json` | Keystore IID format/path validation (LCI 17.5.5) |
+| `messaging.json` | Messaging /msg/inbox POST, /msg/sent GET, /msg/ack POST exchanges incl. rejects (LCI 17.5.7, spec 18.1) |
 | `neighbors_cbor.json` | GET /status/neighbors CBOR encoding (spec 8.4) |
 | `position_privacy_auth.json` | Position-sharing public/group/private auth modes (spec 18.1) |
 | `presence_cbor.json` | Presence/presence-cache CBOR encoding (spec 18.5.1) |
@@ -135,6 +136,7 @@ Complete index of every vector file (111 files). Byte strings are lowercase hex 
 | `sos_cbor.json` | SOS alert full-field CBOR encoding (spec 18.4.2) |
 | `sos_rate_limiting.json` | SOS limits: 10-min cooldown, 3/hr, burst 2 (spec 18.3) |
 | `sos_signature.json` | SOS signature verification; unsigned/invalid silently dropped (spec 18.3) |
+| `waypoint.json` | Waypoint CBOR encoding (ordered map, spec 18.3.1) incl. truncated-CBOR rejects |
 
 ### Announce
 
@@ -178,7 +180,7 @@ Complete index of every vector file (111 files). Byte strings are lowercase hex 
 | `node_address.json` | Base32-from-SHA-512(pubkey[:8]) 13-char node address (**content-overlaps `node-addresses.json`**) |
 | `yggdrasil-derivation.json` | Seed→address derivation matched across Rust/C/Python |
 | `yggdrasil.json` | `ygg_addr_from_pubkey` spot vectors (e.g. SHA-256(b"") key) |
-| `yggdrasil_address.json` | Native Yggdrasil AddrForKey vector copied from upstream Go reference |
+| `yggdrasil_address.json` | Native Yggdrasil-range derivation corpus: verbatim upstream Go `AddrForKey` anchor (divergence pinned) + LICHEN SHA-512 profile cases incl. length-rejections |
 
 ### Simulation Models
 

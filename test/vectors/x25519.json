@@ -2,7 +2,7 @@
   "$schema": "./schema.json",
   "format_version": 2,
   "name": "x25519",
-  "description": "X25519/Ed25519 key derivation and clamping test vectors. Verifies RFC 8032 clamping is correctly applied during key generation.",
+  "description": "X25519/Ed25519 link-key derivation and clamping test vectors. Verifies RFC 8032 clamping is correctly applied during key generation, that the full seed->key-material bundle (Ed25519 keypair, X25519 static DH public, IID, native 02xx address) is consistent and deterministic (consumers MUST derive each bundle twice and require identical bytes across calls), and that non-32-byte seeds are rejected.",
   "spec": "https://www.rfc-editor.org/rfc/rfc8032",
   "vectors": [
     {
@@ -14,7 +14,10 @@
       "expected": {
         "clamped_scalar": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
         "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
-        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29"
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "x25519_public": "5bf55c73b82ebe22be80f3430667af570fae2556a6415e6b30d4065300aa947d",
+        "iid": "7dd5cfc679ab6342",
+        "ygg_addr": "027dd5cfc679ab637dd5cfc679ab6342"
       },
       "clamping_checks": {
         "byte0": "0x50",
@@ -33,7 +36,10 @@
       "expected": {
         "clamped_scalar": "20cd6935864716a79d74dd5fabbd8964304051ca41a31c4659158ebb7c3d0b57",
         "private_key": "20cd6935864716a79d74dd5fabbd8964304051ca41a31c4659158ebb7c3d0b57",
-        "public_key": "76a1592044a6e4f511265bca73a604d90b0529d1df602be30a19a9257660d1f5"
+        "public_key": "76a1592044a6e4f511265bca73a604d90b0529d1df602be30a19a9257660d1f5",
+        "x25519_public": "d1fa3f01826bd8b78e057c086c7b22c7ad4358ca918099cd7b7e5d3acd7e285b",
+        "iid": "f57a7baa1226b50c",
+        "ygg_addr": "02f77a7baa1226b5f57a7baa1226b50c"
       },
       "clamping_checks": {
         "byte0": "0x20",
@@ -49,10 +55,40 @@
       "type": "key_derivation",
       "description": "RFC 8032 Section 7.1 test vector 1: verifies key derivation matches standard",
       "seed": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+      "raw_hash_low32": "357c83864f2833cb427a2ef1c00a013cfdff2768d980c0a3a520f006904de90f",
       "expected": {
-        "public_key": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+        "clamped_scalar": "307c83864f2833cb427a2ef1c00a013cfdff2768d980c0a3a520f006904de94f",
+        "private_key": "307c83864f2833cb427a2ef1c00a013cfdff2768d980c0a3a520f006904de94f",
+        "public_key": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+        "x25519_public": "d85e07ec22b0ad881537c2f44d662d1a143cf830c57aca4305d85c7a90f6b62e",
+        "iid": "0c02a50225b4baaa",
+        "ygg_addr": "020e02a50225b4ba0c02a50225b4baaa"
       },
-      "note": "SHA-512 of empty message signed with this key is the RFC 8032 test signature"
+      "note": "SHA-512 of empty message signed with this key is the RFC 8032 test signature. public_key is the RFC 8032 constant (external anchor). iid/ygg_addr match test/vectors/yggdrasil-derivation.json vector 3; x25519_public cross-checked with the cryptography-library X25519 implementation."
+    },
+    {
+      "name": "invalid_seed_length_empty",
+      "type": "invalid_seed_length",
+      "description": "Empty seed MUST be rejected by both derive_keypair() and Identity.from_seed()",
+      "seed": "",
+      "seed_length": 0,
+      "expect_error": "value_error"
+    },
+    {
+      "name": "invalid_seed_length_31",
+      "type": "invalid_seed_length",
+      "description": "31-byte (one short) seed MUST be rejected by both derive_keypair() and Identity.from_seed()",
+      "seed": "00000000000000000000000000000000000000000000000000000000000000",
+      "seed_length": 31,
+      "expect_error": "value_error"
+    },
+    {
+      "name": "invalid_seed_length_33",
+      "type": "invalid_seed_length",
+      "description": "33-byte (one long) seed MUST be rejected by both derive_keypair() and Identity.from_seed()",
+      "seed": "000000000000000000000000000000000000000000000000000000000000000000",
+      "seed_length": 33,
+      "expect_error": "value_error"
     }
   ]
 }

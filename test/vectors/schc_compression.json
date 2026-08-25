@@ -25,6 +25,13 @@
       "compressed": "02400000000000000001000000000000000280abcd000770696e67"
     },
     {
+      "name": "icmpv6_echo_reply",
+      "rule_id": 2,
+      "description": "Link-local ICMPv6 Echo Reply exercises the second Echo discriminator value carried verbatim in the residue",
+      "packet": "60000000000c3a40fe800000000000000000000000000001fe8000000000000000000000000000028100907f1234002a706f6e67",
+      "compressed": "024000000000000000010000000000000002811234002a706f6e67"
+    },
+    {
       "name": "rpl_dio",
       "rule_id": 3,
       "description": "Link-local RPL DIO",
@@ -159,6 +166,22 @@
       "compressed": "ff60000000000d1140fe800000000000010000000000000001fe80000000000001000000000000000216331633000d0c324001123478"
     },
     {
+      "name": "rpl_dio_flags_nonmatch",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "Rule 3 elides zero RPL.flags (EQUAL), so a valid DIO with flags 0x01 falls back unchanged.",
+      "packet": "60000000001c3a40fe800000000000000000000000000001fe8000000000000000000000000000029b01df1f0001010088000100fe800000000000000000000000000001",
+      "compressed": "ff60000000001c3a40fe800000000000000000000000000001fe8000000000000000000000000000029b01df1f0001010088000100fe800000000000000000000000000001"
+    },
+    {
+      "name": "rpl_dao_no_dodagid_nonmatch",
+      "category": "fallback",
+      "rule_id": 255,
+      "description": "Rule 4 requires the DAO D flag (bit 6) and DODAGID, so a valid D-flag-clear DAO falls back unchanged.",
+      "packet": "6000000000083a40fe800000000000000000000000000001fe8000000000000000000000000000029b0267ad00040005",
+      "compressed": "ff6000000000083a40fe800000000000000000000000000001fe8000000000000000000000000000029b0267ad00040005"
+    },
+    {
       "name": "coap_invalid_udp_checksum",
       "category": "malformed_input",
       "description": "A plaintext CoAP packet with a corrupted mandatory IPv6 UDP checksum is rejected rather than repaired.",
@@ -255,6 +278,30 @@
       "rule_id": 7,
       "compressed": "0740900086dc0000000000000000000000008000000000000000000000000000000004e20078",
       "expect_error": "invalid_destination"
+    },
+    {
+      "name": "icmpv6_echo_truncated_residue",
+      "category": "malformed",
+      "rule_id": 2,
+      "description": "A Rule 2 packet one octet short of its 22-byte residue must be rejected before any reconstruction.",
+      "compressed": "02400000000000000001000000000000000280abcd00",
+      "expect_error": "truncated_residue"
+    },
+    {
+      "name": "rpl_dio_truncated_residue",
+      "category": "malformed",
+      "rule_id": 3,
+      "description": "A Rule 3 packet one octet short of its 39-byte residue must be rejected before any reconstruction.",
+      "compressed": "034000000000000000010000000000000002000101008800fe8000000000000000000000000000",
+      "expect_error": "truncated_residue"
+    },
+    {
+      "name": "rpl_dao_truncated_residue",
+      "category": "malformed",
+      "rule_id": 4,
+      "description": "A Rule 4 packet one octet short of its 36-byte residue must be rejected before any reconstruction.",
+      "compressed": "044000000000000000010000000000000002004005fe8000000000000000000000000000",
+      "expect_error": "truncated_residue"
     }
   ]
 }

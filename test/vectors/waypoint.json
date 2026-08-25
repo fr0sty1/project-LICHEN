@@ -289,6 +289,27 @@
         "creator": "0200::4000"
       },
       "encoded_hex": "a6626964677770742d303230646e616d656f44617465204c696e6520506f696e74636c6174fb0000000000000000636c6f6efb40667fff2e48e8a767637265617465641a66536a906763726561746f726a303230303a3a34303030"
+    },
+    {
+      "name": "reject_truncated_minimal_required",
+      "description": "Truncated tail of minimal_required (last 2 bytes removed mid-creator-string); decoders MUST reject.",
+      "derived_from": "minimal_required",
+      "encoded_hex": "a6626964677770742d303031646e616d657152616c6c7920506f696e7420416c706861636c6174fb4042e330df9bdc6a636c6f6efbc05e9ad7b634dad367637265617465641a66536a906763726561746f726a303230303a3a3131",
+      "reject": "truncated_cbor"
+    },
+    {
+      "name": "reject_truncated_all_fields",
+      "description": "Truncated tail of all_fields (last byte removed mid-expires-uint); decoders MUST reject.",
+      "derived_from": "all_fields",
+      "encoded_hex": "ab626964677770742d303032646e616d656c576174657220536f75726365636c6174fb4042e3d70a3d70a4636c6f6efbc05e9ae147ae147b63616c74fb40250000000000006469636f6e65776174657265636f6c6f726723303030304646656e6f74657377506f7461626c6520776174657220617661696c61626c6567637265617465641a66536a906763726561746f726a303230303a3a3232323267657870697265731a6654bc",
+      "reject": "truncated_cbor"
+    },
+    {
+      "name": "reject_bare_map_header",
+      "description": "Map header announcing 6 pairs with no content (first byte of zero_coords); decoders MUST reject.",
+      "derived_from": "zero_coords",
+      "encoded_hex": "a6",
+      "reject": "truncated_cbor"
     }
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "description": "SenML location profile test vectors per spec appendix-senml F.3",
+  "description": "SenML location profile test vectors per spec appendix-senml F.3. Error vectors carry an 'error' field holding the exact oracle rejection message; encode rejects have no cbor_hex because the encoder refuses the input. Missing base fields (bn/bt) are legal per RFC 8428 and deliberately NOT an error case (see senml-location-minimal).",
   "vectors": [
     {
       "id": "senml-location-full",
@@ -60,6 +60,60 @@
         "vacc": 5.0
       },
       "cbor_hex": "85a221781d75726e3a6465763a6d61633a303031313232333334343535363637373a221a66536a90a300636c617401636c617402fb4042e330df9bdc6aa300636c6f6e01636c6f6e02fbc05e9ad7b634dad3a300646861636301616d02fb4004000000000000a300647661636301616d02fb4014000000000000"
+    },
+    {
+      "id": "senml-location-err-lat-above-range",
+      "description": "Encoder MUST reject latitude above +90 (lichen.senml.profiles.location range check).",
+      "fields": {
+        "lat": 91.0,
+        "lon": 0.0
+      },
+      "error": "lat 91.0 out of range [-90, 90]"
+    },
+    {
+      "id": "senml-location-err-lat-below-range",
+      "description": "Encoder MUST reject latitude below -90 (lichen.senml.profiles.location range check).",
+      "fields": {
+        "lat": -90.5,
+        "lon": 0.0
+      },
+      "error": "lat -90.5 out of range [-90, 90]"
+    },
+    {
+      "id": "senml-location-err-lon-out-of-range",
+      "description": "Encoder MUST reject longitude outside [-180, 180] (lichen.senml.profiles.location range check).",
+      "fields": {
+        "lat": 0.0,
+        "lon": 180.5
+      },
+      "error": "lon 180.5 out of range [-180, 180]"
+    },
+    {
+      "id": "senml-location-err-lat-nan",
+      "description": "Encoder MUST reject NaN coordinates (lichen.senml.profiles.location finite check). The \"NaN\" string sentinel stands in for float('nan') when driving the oracle.",
+      "fields": {
+        "lat": "NaN",
+        "lon": 0.0
+      },
+      "error": "lat nan is NaN or Inf"
+    },
+    {
+      "id": "senml-location-err-unit-not-string",
+      "description": "Decoder MUST reject a non-string unit label (RFC 8428 u must be tstr; lichen.senml.codec.unpack type check). Bytes emitted by the reference CBOR codec.",
+      "cbor_hex": "81a300636c617401187b02fb4042e330df9bdc6a",
+      "error": "SenML field 'u' must be a string, got int"
+    },
+    {
+      "id": "senml-location-err-value-not-numeric",
+      "description": "Decoder MUST reject a non-numeric value (RFC 8428 v must be num; lichen.senml.codec.unpack type check). Bytes emitted by the reference CBOR codec.",
+      "cbor_hex": "81a300636c617401636c6174026533372e3737",
+      "error": "SenML field 'v' must be a number, got str"
+    },
+    {
+      "id": "senml-location-err-multiple-value-fields",
+      "description": "Decoder MUST reject a record carrying more than one value field (RFC 8428 one-of v/vs/vb/vd; lichen.senml.codec.unpack check). Bytes emitted by the reference CBOR codec.",
+      "cbor_hex": "81a400636c617401636c617402fb3ff80000000000000363312e35",
+      "error": "SenML record must have at most one value field"
     }
   ]
 }

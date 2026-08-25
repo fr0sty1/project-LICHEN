@@ -1989,13 +1989,25 @@ def test_x25519_key_derivation_vector(name: str, vector: dict) -> None:
 
     These vectors verify RFC 8032 clamping is correctly applied during key generation.
     The clamped_scalar/private_key is used for both Ed25519 signing and X25519 ECDH.
+    Derivation-consistency vectors additionally pin the full seed->key-material bundle
+    (Ed25519 keypair, X25519 public, IID, native 02xx address), require identical
+    bytes across repeated derivation calls, and cover non-32-byte seed rejection.
     """
     from hashlib import sha512
 
     from lichen.crypto.identity import Identity
-    from lichen.crypto.schnorr48 import clamp
+    from lichen.crypto.schnorr48 import clamp, derive_keypair
 
     seed = bytes.fromhex(vector["seed"])
+
+    if vector.get("type") == "invalid_seed_length":
+        assert len(seed) == vector["seed_length"], f"{name}: seed_length mismatch"
+        with pytest.raises(ValueError, match="[Ss]eed must be 32 bytes"):
+            derive_keypair(seed)
+        with pytest.raises(ValueError, match="seed must be 32 bytes"):
+            Identity.from_seed(seed)
+        return
+
     expected = vector["expected"]
 
     # Verify clamped scalar derivation (if present in vector)
@@ -2006,17 +2018,78 @@ def test_x25519_key_derivation_vector(name: str, vector: dict) -> None:
             f"{name}: clamped_scalar mismatch"
         )
 
-    # Verify private key derivation (should match clamped scalar)
-    if "private_key" in expected:
-        identity = Identity.from_seed(seed)
-        assert identity.privkey.hex() == expected["private_key"], f"{name}: private_key mismatch"
+    # Derive the full bundle twice: cross-call determinism is mandatory.
+    identity = Identity.from_seed(seed)
+    again = Identity.from_seed(seed)
+    derived = {
+        "private_key": identity.privkey,
+        "public_key": identity.pubkey,
+        "x25519_public": identity.x25519_public,
+        "iid": identity.iid,
+        "ygg_addr": identity.ygg_addr,
+    }
+    derived_again = {
+        "private_key": again.privkey,
+        "public_key": again.pubkey,
+        "x25519_public": again.x25519_public,
+        "iid": again.iid,
+        "ygg_addr": again.ygg_addr,
+    }
+    assert derived == derived_again, f"{name}: derivation is not deterministic"
 
-    # Verify Ed25519 public key derivation
-    if "public_key" in expected:
-        identity = Identity.from_seed(seed)
-        assert identity.pubkey.hex() == expected["public_key"], (
-            f"{name}: Ed25519 public_key mismatch"
-        )
+    # Verify each pinned field against the vector.
+    for field, value in derived.items():
+        if field in expected:
+            assert value.hex() == expected[field], f"{name}: {field} mismatch"
+
+
+def _yggdrasil_derivation_cases():
+    doc = _load("yggdrasil-derivation.json")
+    assert isinstance(doc, list) and doc, "expected bare-array derivation vectors"
+    return [(entry.get("name", entry.get("description", "")[:40]), entry) for entry in doc]
+
+
+@pytest.mark.parametrize("name,vector", _yggdrasil_derivation_cases())
+def test_yggdrasil_derivation_vector(name: str, vector: dict) -> None:
+    """Consume seed->address derivation consistency vectors.
+
+    Gives test/vectors/yggdrasil-derivation.json a Python machine consumer
+    alongside the Zephyr C hardcoded checks: every positive entry is re-derived
+    from its pubkey via yggdrasil_address/_pubkey_to_iid, the binding-invariant
+    entry proves ygg_addr[8:16] == iid, and the negative entry proves an
+    attacker pubkey cannot derive a victim's IID.
+    """
+    from lichen.crypto.identity import _pubkey_to_iid, yggdrasil_address
+
+    if vector.get("test_type") == "negative":
+        attacker = bytes.fromhex(vector["attacker_pubkey"])
+        victim_iid = bytes.fromhex(vector["victim_iid"])
+        first = _pubkey_to_iid(attacker)
+        second = _pubkey_to_iid(attacker)
+        assert first == second, f"{name}: IID derivation not deterministic"
+        assert first != victim_iid, f"{name}: attacker pubkey must not derive victim IID"
+        return
+
+    if vector.get("test_type") == "binding_invariant":
+        pubkey = bytes.fromhex(vector["pubkey"])
+        addr = yggdrasil_address(pubkey)
+        iid = _pubkey_to_iid(pubkey)
+        assert bytes(addr.packed[8:16]) == iid, f"{name}: ygg lower-64 != IID"
+        return
+
+    pubkey = bytes.fromhex(vector["pubkey"])
+    # Determinism: identical outputs on repeated derivation.
+    addr_a = yggdrasil_address(pubkey)
+    addr_b = yggdrasil_address(pubkey)
+    assert addr_a == addr_b, f"{name}: address derivation not deterministic"
+
+    if "ygg_addr" in vector:
+        assert addr_a.packed.hex() == vector["ygg_addr"], f"{name}: ygg_addr mismatch"
+    if "iid" in vector:
+        iid = _pubkey_to_iid(pubkey)
+        again = _pubkey_to_iid(pubkey)
+        assert iid == again, f"{name}: IID derivation not deterministic"
+        assert iid.hex() == vector["iid"], f"{name}: iid mismatch"
 
 
 def _rpl_messages_cases():

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.6.6.1.7",
   "title": "Vectors: Yggdrasil address derivation (yggdrasil_address.json)",
   "notes": "Already implemented",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:42.851953Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:42.851953Z",
+  "updated_at": "2026-08-25T18:42:44.874748Z",
+  "closed_at": "2026-08-25T18:42:44.874748Z",
+  "close_reason": "yggdrasil_address.json now has machine consumers driving the real implementation through every case: python/tests/crypto/test_yggdrasil_address_vectors.py (15 pytest cases: 11 byte-exact LICHEN-native incl. IID binding invariant + U/L rule, verbatim-anchor guard against upstream Go constants as external oracle, documented-divergence assertion, 2 ValueError length rejections, corpus-shape gate \u003e=10) and rust/lichen-core/tests/yggdrasil_addr_vectors.rs (3 tests incl. byte-exact pass over all 11 native vectors; length errors are type-enforced by \u0026[u8;32] so not expressible at runtime — noted in file doc). Commands+counts: uv run --extra dev pytest tests/crypto/test_yggdrasil_address_vectors.py -q =\u003e 15 passed; tests/test_vectors.py -q =\u003e 656 passed (stays green); cargo test -p lichen-core --test yggdrasil_addr_vectors =\u003e 3 passed; cargo clippy -p lichen-core --all-features -- -D warnings clean; cargo fmt + ruff format applied. yggdrasil-derivation.json itself did NOT get a new consumer in this task because its schema differs (seed-based, binding_invariant/negative test-type entries needing per-type oracles) and its vector-1 seed field is stale (discovered: seed 0x01*32 does not derive recorded pubkey) — filed as discovered bead for follow-up instead of consuming questionable data; its address values were nonetheless used as three-way cross-checks for 5 of the expanded vectors here.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.6.1.7",

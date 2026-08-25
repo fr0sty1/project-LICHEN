@@ -1,14 +1,131 @@
 {
   "format_version": 1,
-  "description": "Native Yggdrasil AddrForKey vector copied from the upstream Go reference test.",
-  "source": "https://github.com/yggdrasil-network/yggdrasil-go/blob/422836eeb21a99790caa286aa63d493bbc4766d7/src/address/address_test.go",
-  "algorithm": "AddrForKey",
+  "description": "Native Yggdrasil-range address derivation corpus for the LICHEN 0200::/8 profile, plus one genuine upstream Go AddrForKey reference vector kept verbatim.",
+  "profiles": {
+    "upstream_go_addr_for_key": "Upstream yggdrasil-go algorithm: bit-invert the Ed25519 public key, count leading 1 bits into addr[1], drop the first 0 bit, then bit-pack the remainder into addr[2:16]. No hashing involved.",
+    "lichen_native_sha512": "LICHEN native profile (spec/06-security.md §8.5, spec/03-addressing.md): addr[0]=0x02, addr[1:8]=SHA-512(pubkey)[0:7], addr[8:16]=IID=SHA-512(pubkey)[0:8] with the U/L bit (0x02) cleared. Binding invariant: lower 64 bits of the address MUST equal the IID."
+  },
+  "divergence_note": "The upstream Go anchor is NOT reproducible by the lichen_native_sha512 profile and vice versa: upstream bit-packs the inverted key with no hash, while LICHEN derives from SHA-512. The two schemes agree only on the leading 0x02 byte. All lichen_native vectors below are cross-checked across the Python oracle (lichen.crypto.identity.yggdrasil_address), Rust (lichen-core::addr::ygg_addr_from_pubkey), C (lichen_identity_ygg_addr_from_ed25519), and sibling files test/vectors/yggdrasil.json and test/vectors/yggdrasil-derivation.json where noted.",
+  "source": [
+    "https://github.com/yggdrasil-network/yggdrasil-go/blob/422836eeb21a99790caa286aa63d493bbc4766d7/src/address/address_test.go",
+    "spec/06-security.md §8.5",
+    "spec/03-addressing.md"
+  ],
   "vectors": [
     {
       "name": "upstream_addr_for_key",
       "public_key": "bdbacfd82240de3dcd123924cbb55256fb8dab08aa98e305528ab84f419e6efb",
       "address": "0200848a604fbb7e438465db8db66895",
       "ipv6": "200:848a:604f:bb7e:4384:65db:8db6:6895"
+    },
+    {
+      "name": "lichen_sha256_empty_string_key",
+      "profile": "lichen_native_sha512",
+      "public_key": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "address": "026b4e6c1fe36504694e6c1fe36504e1",
+      "ipv6": "26b:4e6c:1fe3:6504:694e:6c1f:e365:4e1",
+      "iid": "694e6c1fe36504e1",
+      "cross_check": "test/vectors/yggdrasil.json#sha256_empty key (same address)",
+      "note": "pubkey bytes are SHA-256(\"\"); shared spot vector with yggdrasil.json"
+    },
+    {
+      "name": "lichen_all_zero_key",
+      "profile": "lichen_native_sha512",
+      "public_key": "0000000000000000000000000000000000000000000000000000000000000000",
+      "address": "025046adc1dba8385046adc1dba83886",
+      "ipv6": "250:46ad:c1db:a838:5046:adc1:dba8:3886",
+      "iid": "5046adc1dba83886",
+      "cross_check": "test/vectors/yggdrasil.json zero-pubkey vector and test/vectors/yggdrasil-derivation.json (same address)"
+    },
+    {
+      "name": "lichen_rfc8032_test1_key",
+      "profile": "lichen_native_sha512",
+      "public_key": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+      "address": "020e02a50225b4ba0c02a50225b4baaa",
+      "ipv6": "20e:2a5:225:b4ba:c02:a502:25b4:baaa",
+      "iid": "0c02a50225b4baaa",
+      "cross_check": "test/vectors/yggdrasil-derivation.json official-suite vector (same address)",
+      "note": "public key from RFC 8032 §7.1 TEST 1 (external key provenance)"
+    },
+    {
+      "name": "lichen_repeated_02_key_ul_forced_clear",
+      "profile": "lichen_native_sha512",
+      "public_key": "0202020202020202020202020202020202020202020202020202020202020202",
+      "address": "02aa3c626bc9c38ca83c626bc9c38c8c",
+      "ipv6": "2aa:3c62:6bc9:c38c:a83c:626b:c9c3:8c8c",
+      "iid": "a83c626bc9c38c8c",
+      "cross_check": "test/vectors/yggdrasil-derivation.json U/L forced-clear vector (same address)",
+      "note": "SHA-512(pubkey)[0]=0xaa; U/L bit (0x02) must be cleared to 0xa8 in the IID"
+    },
+    {
+      "name": "lichen_repeated_01_key_ul_naturally_clear",
+      "profile": "lichen_native_sha512",
+      "public_key": "0101010101010101010101010101010101010101010101010101010101010101",
+      "address": "025ce86efb75fa4e5ce86efb75fa4e2c",
+      "ipv6": "25c:e86e:fb75:fa4e:5ce8:6efb:75fa:4e2c",
+      "iid": "5ce86efb75fa4e2c",
+      "cross_check": "test/vectors/yggdrasil-derivation.json U/L naturally-clear vector (same address)",
+      "note": "SHA-512(pubkey)[0]=0x5c; U/L bit already clear, IID unchanged by masking"
+    },
+    {
+      "name": "lichen_deadbeef_cafebabe_key",
+      "profile": "lichen_native_sha512",
+      "public_key": "deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe",
+      "address": "0251b8c29238a84051b8c29238a8403e",
+      "ipv6": "251:b8c2:9238:a840:51b8:c292:38a8:403e",
+      "iid": "51b8c29238a8403e",
+      "cross_check": "key shared with test/vectors/yggdrasil-derivation.json binding-invariant vector",
+      "note": "binding invariant case: address[8:16] MUST equal iid"
+    },
+    {
+      "name": "lichen_all_ff_key",
+      "profile": "lichen_native_sha512",
+      "public_key": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "address": "0227cd693586471625cd6935864716a7",
+      "ipv6": "227:cd69:3586:4716:25cd:6935:8647:16a7",
+      "iid": "25cd6935864716a7",
+      "note": "all-one-bits key edge shape"
+    },
+    {
+      "name": "lichen_bit0_set_key",
+      "profile": "lichen_native_sha512",
+      "public_key": "8000000000000000000000000000000000000000000000000000000000000000",
+      "address": "0287ace3a7aaf20085ace3a7aaf200b3",
+      "ipv6": "287:ace3:a7aa:f200:85ac:e3a7:aaf2:b3",
+      "iid": "85ace3a7aaf200b3",
+      "note": "single bit set at position 0 (MSB of byte 0)"
+    },
+    {
+      "name": "lichen_bit_mid_set_key",
+      "profile": "lichen_native_sha512",
+      "public_key": "0000000000000000000000000000000080000000000000000000000000000000",
+      "address": "0212b1f8b17a7c2610b1f8b17a7c26c1",
+      "ipv6": "212:b1f8:b17a:7c26:10b1:f8b1:7a7c:26c1",
+      "iid": "10b1f8b17a7c26c1",
+      "note": "single bit set at position 128 (MSB of byte 16, midpoint of the key)"
+    },
+    {
+      "name": "lichen_bit_last_set_key",
+      "profile": "lichen_native_sha512",
+      "public_key": "0000000000000000000000000000000000000000000000000000000000000001",
+      "address": "02f168e2f7ccc3eef168e2f7ccc3eee2",
+      "ipv6": "2f1:68e2:f7cc:c3ee:f168:e2f7:ccc3:eee2",
+      "iid": "f168e2f7ccc3eee2",
+      "note": "single bit set at position 255 (LSB of byte 31)"
+    },
+    {
+      "name": "pubkey_31_bytes_rejected",
+      "profile": "error_case",
+      "expect_error": "pubkey_length",
+      "public_key": "00000000000000000000000000000000000000000000000000000000000000",
+      "note": "31-byte key MUST raise ValueError in every implementation surface"
+    },
+    {
+      "name": "pubkey_33_bytes_rejected",
+      "profile": "error_case",
+      "expect_error": "pubkey_length",
+      "public_key": "000000000000000000000000000000000000000000000000000000000000000000",
+      "note": "33-byte key MUST raise ValueError in every implementation surface"
     }
   ]
 }
