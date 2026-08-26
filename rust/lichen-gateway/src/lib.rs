@@ -8,6 +8,7 @@ pub mod config;
 pub mod discovery;
 pub mod gateway;
 pub mod handoff;
+pub mod membership;
 pub mod resources;
 pub mod slip;
 pub mod slot;

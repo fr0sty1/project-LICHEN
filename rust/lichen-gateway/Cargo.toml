@@ -50,6 +50,7 @@ libc = "0.2"
 lichen-node = { path = "../lichen-node", features = ["std", "raw-rpl-test-api"] }
 lichen-link = { path = "../lichen-link", features = ["std", "schnorr"] }
 hex-literal = "0.4"
+serde_json = "1.0"
 
 [[bin]]
 name = "lichend"

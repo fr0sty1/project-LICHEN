@@ -1,0 +1,23 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Group messaging and position from spec/12-apps.md 18.8.4. Independent of resource modules.",
+  "vectors": [
+    {
+      "name": "group_inbox_post",
+      "method": "POST",
+      "path": "/msg/inbox",
+      "payload": {"body": "Team Alpha, rally at checkpoint 2"},
+      "expected_code": "2.01"
+    },
+    {
+      "name": "group_pos_put",
+      "method": "PUT",
+      "path": "/pos",
+      "content_format": 112,
+      "lat": 48.2049,
+      "lon": 16.371,
+      "expected_code": "2.04"
+    }
+  ]
+}

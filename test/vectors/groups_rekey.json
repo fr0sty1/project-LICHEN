@@ -1,0 +1,16 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Group rekey after member removal (spec/12-apps.md 18.8.2). Grace period is 1 hour.",
+  "grace_s": 3600,
+  "vectors": [
+    {
+      "name": "removal_increments_epoch",
+      "initial_epoch": 1,
+      "after_removal_epoch": 2,
+      "removed_member": "0200:0000:0000:0000:0000:0000:0000:3333",
+      "old_epoch_accepted_before_grace": true,
+      "old_epoch_accepted_after_grace": false
+    }
+  ]
+}

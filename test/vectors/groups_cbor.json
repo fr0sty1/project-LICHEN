@@ -1,0 +1,36 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Group CBOR documents from spec/12-apps.md 18.8.1 and 18.8.4. Independent of resource implementations.",
+  "vectors": [
+    {
+      "name": "group_document",
+      "kind": "group",
+      "payload": {
+        "id": "team-alpha",
+        "name": "Team Alpha",
+        "mcast": "ff35:40:0200:1234:5678:9abc::1",
+        "owner": "0200:0000:0000:0000:0000:0000:0000:1111",
+        "admins": ["0200:0000:0000:0000:0000:0000:0000:2222"],
+        "members": [
+          "0200:0000:0000:0000:0000:0000:0000:1111",
+          "0200:0000:0000:0000:0000:0000:0000:2222",
+          "0200:0000:0000:0000:0000:0000:0000:3333"
+        ],
+        "key_id": "key-alpha-001",
+        "created": 1716742800,
+        "key_epoch": 1
+      }
+    },
+    {
+      "name": "groups_list",
+      "kind": "list",
+      "payload": {
+        "groups": [
+          {"id": "team-alpha", "name": "Team Alpha", "members": 3},
+          {"id": "all", "name": "All Nodes", "members": 12}
+        ]
+      }
+    }
+  ]
+}

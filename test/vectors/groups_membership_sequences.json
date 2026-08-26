@@ -1,0 +1,41 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Group membership protocol sequence (spec/12-apps.md 18.8.2). Independent oracle.",
+  "vectors": [
+    {
+      "name": "create_then_members",
+      "steps": [
+        {"op": "create", "name": "Team Alpha", "encrypted": true},
+        {
+          "op": "members",
+          "expected": {
+            "owner_is_member": true,
+            "admins": [],
+            "member_count": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "invite_then_join_key_then_members",
+      "steps": [
+        {"op": "create", "name": "Team Alpha", "encrypted": true},
+        {
+          "op": "invite",
+          "role": "member",
+          "inviter_is_owner": true
+        },
+        {"op": "join_key", "node": "0200:0000:0000:0000:0000:0000:0000:3333"},
+        {
+          "op": "members",
+          "expected": {
+            "owner_is_member": true,
+            "member_count": 2,
+            "contains": "0200:0000:0000:0000:0000:0000:0000:3333"
+          }
+        }
+      ]
+    }
+  ]
+}

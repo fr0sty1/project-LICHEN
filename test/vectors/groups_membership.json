@@ -1,0 +1,43 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Group invitation and removal maps from spec/12-apps.md 18.8.2. Independent of implementation types.",
+  "vectors": [
+    {
+      "name": "invite_member",
+      "kind": "invitation",
+      "payload": {
+        "group_id": "team-alpha",
+        "group_name": "Team Alpha",
+        "mcast": "ff35:0040:0000:0000:0000:0000:0000:0001",
+        "inviter": "0200:0000:0000:0000:0000:0000:0000:1111",
+        "role": "member",
+        "expires": 1716829200,
+        "signature_hex": "11"
+      }
+    },
+    {
+      "name": "invite_admin",
+      "kind": "invitation",
+      "payload": {
+        "group_id": "team-alpha",
+        "group_name": "Team Alpha",
+        "mcast": "ff35:0040:0000:0000:0000:0000:0000:0001",
+        "inviter": "0200:0000:0000:0000:0000:0000:0000:1111",
+        "role": "admin",
+        "expires": 1716829200,
+        "signature_hex": "22"
+      }
+    },
+    {
+      "name": "remove_member",
+      "kind": "removal",
+      "payload": {
+        "group_id": "team-alpha",
+        "removed_by": "0200:0000:0000:0000:0000:0000:0000:1111",
+        "reason": "no longer on team",
+        "signature_hex": "33"
+      }
+    }
+  ]
+}
