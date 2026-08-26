@@ -8,6 +8,7 @@ RAM-only storage, no-log guarantee, observable feed with SenML+CBOR payloads.
 from __future__ import annotations
 
 import hashlib
+import math
 import time
 from typing import Any
 
@@ -134,12 +135,12 @@ class ConfessionsResource(resource.ObservableResource, resource.PathCapable):
         if timestamps:
             time_since_last = now - timestamps[-1]
             if time_since_last < CONFESSION_COOLDOWN_S:
-                return (False, int(CONFESSION_COOLDOWN_S - time_since_last) + 1)
+                return (False, math.ceil(CONFESSION_COOLDOWN_S - time_since_last))
 
         # Check hourly max: must have fewer than 12 requests in last hour
         if len(timestamps) >= CONFESSION_HOURLY_MAX:
             oldest_in_window = timestamps[0]
-            retry_after = int(3600 - (now - oldest_in_window)) + 1
+            retry_after = math.ceil(3600 - (now - oldest_in_window))
             return (False, retry_after)
 
         return (True, 0)

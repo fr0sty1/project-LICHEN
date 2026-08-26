@@ -79,7 +79,7 @@ class DeadDropResource(resource.ObservableResource):
         ):
             raise ValueError("storage_limit must be a positive integer")
         self._storage_limit = storage_limit
-        self._time_func = time_func if time_func is not None else time.time
+        self._time_func = time_func if time_func is not None else time.monotonic
         # drops: dict[drop_id -> {payload, created, ttl, context, size}]
         self._drops: dict[str, dict[str, Any]] = {}
         self._drop_order: list[str] = []  # oldest first for FIFO
@@ -296,7 +296,7 @@ class DeadDropResource(resource.ObservableResource):
         for record in payload:
             if isinstance(record, dict) and record.get("n") == "ttl":
                 ttl_val = record.get("v")
-                if isinstance(ttl_val, (int, float)) and not isinstance(ttl_val, bool):
+                if isinstance(ttl_val, (int, float)) and not isinstance(ttl_val, bool) and ttl_val > 0:
                     ttl = min(int(ttl_val), DEADDROP_MAX_TTL)
                 break
         # Check storage availability

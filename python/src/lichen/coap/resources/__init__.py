@@ -18,8 +18,10 @@ Observable resources (RFC 7641):
   current sensor readings; clients subscribe with ``Observe: 0`` and receive
   pushed updates whenever the node calls :meth:`~SenMLSensorsResource.update`.
 
-* :class:`SenMLLocationResource` — ``/location`` — SenML+CBOR lat/lon/alt pack;
-  updated by calling :meth:`~SenMLLocationResource.update`.
+* :class:`SenMLLocationResource` — ``/sensors/location`` — observable
+  SenML+CBOR position pack; updated by calling
+  :meth:`~SenMLLocationResource.update`. ``/location`` remains a compatibility
+  alias.
 
 * :class:`PresenceResource` — ``/presence`` — CBOR list of recently-heard
   neighbour nodes; updated by calling :meth:`~PresenceResource.seen` whenever a

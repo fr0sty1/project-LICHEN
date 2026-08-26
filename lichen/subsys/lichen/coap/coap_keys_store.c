@@ -12,6 +12,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include <monocypher.h>
 #include <lichen/coap_keys.h>
 #include "coap_keys_internal.h"
 
@@ -31,20 +32,11 @@ K_MUTEX_DEFINE(s_mutex);
  * Internal helpers
  * -------------------------------------------------------------------------- */
 
-int key_ct_compare(const uint8_t *a, const uint8_t *b, size_t len)
-{
-	volatile uint8_t diff = 0U;
-	for (size_t i = 0; i < len; i++) {
-		diff |= a[i] ^ b[i];
-	}
-	return diff;
-}
-
 int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
 	for (int i = 0; i < CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES; i++) {
 		if (s_keys[i].valid &&
-		    key_ct_compare(s_keys[i].iid, iid, LICHEN_KEY_IID_LEN) == 0) {
+		    memcmp(s_keys[i].iid, iid, LICHEN_KEY_IID_LEN) == 0) {
 			return i;
 		}
 	}
@@ -90,7 +82,7 @@ int lichen_key_store_put(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
 		 * SECURITY: TOFU key pinning - existing keys cannot have their
 		 * pubkey changed. Reject if pubkey differs.
 		 */
-		if (key_ct_compare(s_keys[slot].pubkey, pubkey, LICHEN_KEY_PUBKEY_LEN) != 0) {
+		if (crypto_verify32(s_keys[slot].pubkey, pubkey) != 0) {
 			k_mutex_unlock(&s_mutex);
 			LOG_WRN("Key update rejected: pubkey mismatch (TOFU violation)");
 			return -EEXIST;
@@ -158,7 +150,7 @@ int lichen_key_store_delete(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 		return -ENOENT;
 	}
 
-	memset(&s_keys[slot], 0, sizeof(s_keys[slot]));
+	crypto_wipe(&s_keys[slot], sizeof(s_keys[slot]));
 	k_mutex_unlock(&s_mutex);
 	return 0;
 }
@@ -221,7 +213,7 @@ int lichen_key_store_touch(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN], uint3
 void lichen_key_store_test_reset(void)
 {
 	k_mutex_lock(&s_mutex, K_FOREVER);
-	memset(s_keys, 0, sizeof(s_keys));
+	crypto_wipe(s_keys, sizeof(s_keys));
 	k_mutex_unlock(&s_mutex);
 }
 #endif

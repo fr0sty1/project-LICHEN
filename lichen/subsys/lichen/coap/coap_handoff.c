@@ -51,6 +51,7 @@
 #include <lichen/coap_handoff.h>
 #include <lichen/coap_server.h>
 #include <lichen/coap_oscore.h>
+#include <lichen_util.h>
 
 LOG_MODULE_REGISTER(lichen_handoff, CONFIG_LICHEN_COAP_HANDOFF_LOG_LEVEL);
 
@@ -189,7 +190,7 @@ int lichen_handoff_unregister_node(const uint8_t *address)
 	}
 
 	/* SECURITY: Wipe sensitive data before invalidating */
-	memset(entry->oscore.master_secret, 0, sizeof(entry->oscore.master_secret));
+	secure_zero(entry->oscore.master_secret, sizeof(entry->oscore.master_secret));
 	entry->valid = false;
 
 	k_mutex_unlock(&s_registry_lock);
@@ -366,7 +367,7 @@ int lichen_handoff_process_request(const struct lichen_handoff_request *request,
 	       entry->parent_count * LICHEN_IPV6_ADDR_LEN);
 
 	/* SECURITY: Wipe sensitive data and release ownership */
-	memset(entry->oscore.master_secret, 0, sizeof(entry->oscore.master_secret));
+	secure_zero(entry->oscore.master_secret, sizeof(entry->oscore.master_secret));
 	entry->valid = false;
 
 	k_mutex_unlock(&s_registry_lock);
@@ -609,7 +610,7 @@ int lichen_handoff_encode_response(const struct lichen_handoff_response *respons
 	if (response->status == LICHEN_HANDOFF_SUCCESS) {
 		count += 3;  /* node_address, dao_sequence, path_sequence */
 		if (response->oscore.valid) {
-			count += 2;  /* oscore_params, oscore_sender_seq, oscore_replay */
+			count += 3;  /* oscore_params, oscore_sender_seq, oscore_replay */
 		}
 		if (response->freshness.valid) {
 			count++;

@@ -804,7 +804,7 @@ static void routes_notify(struct coap_resource *resource,
 	struct lichen_coap_route routes[CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES];
 	uint8_t default_route[16];
 	bool has_default = false;
-	size_t cbor_len;
+	ssize_t cbor_len;
 	int count;
 	int r;
 
@@ -823,7 +823,7 @@ static void routes_notify(struct coap_resource *resource,
 	cbor_len = lichen_coap_encode_routes_cbor(cbor_buf, sizeof(cbor_buf),
 						  routes, (size_t)count,
 						  has_default ? default_route : NULL);
-	if (cbor_len == 0) {
+	if (cbor_len <= 0) {
 		return;
 	}
 
@@ -870,6 +870,12 @@ static int routes_get(struct coap_resource *resource,
 	bool has_default = false;
 	ssize_t len;
 	int count;
+	int r;
+
+	r = coap_resource_parse_observe(resource, request, addr);
+	if (r < 0 && r != -ENOENT) {
+		LOG_WRN("Observe parse failed: %d", r);
+	}
 
 	if (!s_initialized || !s_config.routes_get) {
 		len = lichen_coap_encode_routes_cbor(cbor_buf, sizeof(cbor_buf),

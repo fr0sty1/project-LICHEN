@@ -154,12 +154,12 @@ def build_site(
     """Build an aiocoap Site exposing the LICHEN node resources.
 
     Pass pre-constructed observable resources to expose ``/sensors``,
-    ``/location``, ``/metrics``, ``/presence``, ``/msg/inbox``, ``/msg/ack``,
-    ``/sos``, ``/rollcall``, and/or ``/checkin`` for conference demo (messaging,
-    presence, rollcall, check-in, position beacons with SenML). Callers hold
-    references and call update() methods to push LCI notifications. Pass
-    ``rollcall_resource`` to enable conference rollcall demo using LCI and SenML
-    per spec 18.
+    ``/sensors/location`` (plus the historical ``/location`` alias), ``/metrics``,
+    ``/presence``, ``/msg/inbox``, ``/msg/ack``, ``/sos``, ``/rollcall``, and/or
+    ``/checkin`` for conference demo (messaging, presence, rollcall, check-in,
+    position beacons with SenML). Callers hold references and call update()
+    methods to push LCI notifications. Pass ``rollcall_resource`` to enable
+    conference rollcall demo using LCI and SenML per spec 18.
 
     Pass ``neighbors_resource`` to hold a reference for calling
     :meth:`NeighborsResource.notify_changed` when neighbours change.
@@ -197,6 +197,9 @@ def build_site(
     if sensors_resource is not None:
         site.add_resource(["sensors"], sensors_resource)
     if location_resource is not None:
+        site.add_resource(["sensors", "location"], location_resource)
+        # Compatibility with early Python clients, before the resource path was
+        # aligned with appendix-senml F.3 and applications section 18.2.
         site.add_resource(["location"], location_resource)
     if position_beacon_resource is not None:
         site.add_resource(["pos"], position_beacon_resource)
@@ -227,6 +230,7 @@ def build_site(
     if checkin_resource is not None:
         site.add_resource(["checkin"], checkin_resource)
     if resource_directory:
+
         def remove_rd_registration(reg_id: str) -> None:
             site.remove_resource(["rd", reg_id])
 

@@ -29,6 +29,7 @@ class SenMLSensorsResource(resource.ObservableResource):
     def __init__(self) -> None:
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
+
         self._records: list[Any] = []
         self._payload: bytes = pack([])
 
@@ -51,9 +52,10 @@ class SenMLSensorsResource(resource.ObservableResource):
 
 
 class SenMLLocationResource(resource.ObservableResource):
-    """Observable ``/location`` — SenML+CBOR lat/lon(/alt) pack.
+    """Observable ``/sensors/location`` — current position as SenML+CBOR.
 
-    Callers push position fixes by calling :meth:`update`.
+    Callers push position fixes by calling :meth:`update`.  ``build_site`` also
+    mounts the resource at the historical ``/location`` path for compatibility.
 
     Example::
 
@@ -65,26 +67,60 @@ class SenMLLocationResource(resource.ObservableResource):
     def __init__(self) -> None:
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
+
         self._payload: bytes = pack([])
 
-    def update(self, lat: float, lon: float, alt: float | None = None) -> None:
+    def update(
+        self,
+        lat: float,
+        lon: float,
+        alt: float | None = None,
+        speed: float | None = None,
+        heading: float | None = None,
+        hacc: float | None = None,
+        vacc: float | None = None,
+    ) -> None:
         """Set the current position and notify all observers.
 
         Args:
             lat: Latitude in decimal degrees (WGS-84).
             lon: Longitude in decimal degrees (WGS-84).
             alt: Altitude in metres above WGS-84 ellipsoid, or None to omit.
+            speed: Ground speed in metres per second, or None to omit.
+            heading: Heading in degrees, or None to omit.
+            hacc: Horizontal accuracy in metres, or None to omit.
+            vacc: Vertical accuracy in metres, or None to omit.
         """
         from lichen.senml.codec import pack
         from lichen.senml.profiles import location
 
-        self._payload = pack(location(lat, lon, alt))
+        self._payload = pack(
+            location(
+                lat=lat,
+                lon=lon,
+                alt=alt,
+                speed=speed,
+                heading=heading,
+                hacc=hacc,
+                vacc=vacc,
+            )
+        )
         self.updated_state()
 
     async def render_get(self, request: Message) -> Message:
         msg = Message(code=CONTENT, payload=self._payload)
         msg.opt.content_format = SENML_CBOR
         return msg
+
+    def get_link_description(self) -> dict[str, Any]:
+        """Describe the observable location sensor for CoRE discovery."""
+        return {
+            "rt": "senml",
+            "if": "sensor",
+            "ct": str(int(SENML_CBOR)),
+            "obs": None,
+            "geo": "*",
+        }
 
 
 class PositionBeaconResource(resource.ObservableResource):
@@ -125,9 +161,7 @@ class PositionBeaconResource(resource.ObservableResource):
         self._positions: dict[str, dict[str, Any]] = {}
         self._on_position = on_position
 
-    def _extract_position(
-        self, records: list[Any]
-    ) -> tuple[str | None, dict[str, Any]]:
+    def _extract_position(self, records: list[Any]) -> tuple[str | None, dict[str, Any]]:
         """Extract sender ID and position from SenML records.
 
         Returns:
@@ -256,6 +290,7 @@ class SenMLMetricsResource(resource.ObservableResource):
         """Initialize with empty SenML pack."""
         super().__init__()
         from lichen.senml.codec import pack  # noqa: PLC0415
+
         self._payload: bytes = pack([])
 
     def update(
@@ -269,6 +304,7 @@ class SenMLMetricsResource(resource.ObservableResource):
         """Update telemetry+battery readings and notify all observers."""
         from lichen.senml.codec import pack  # noqa: PLC0415
         from lichen.senml.profiles import metrics  # noqa: PLC0415
+
         self._payload = pack(
             metrics(
                 rssi=rssi,

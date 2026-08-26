@@ -96,7 +96,6 @@ extern struct k_mutex s_mutex;
 int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN]);
 int find_free_slot_locked(void);
 uint32_t get_unix_time(void);
-int key_ct_compare(const uint8_t *a, const uint8_t *b, size_t len);
 
 #ifdef __cplusplus
 }
