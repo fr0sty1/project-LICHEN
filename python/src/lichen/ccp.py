@@ -306,3 +306,28 @@ def slot_hash(eui64: bytes, sfn: int, num_slots: int = 8) -> int:
         ValueError: If num_slots is less than 1.
     """
     return slot_for(eui64, sfn, num_slots)
+
+
+def interference_score(busy_pct: float, per: float) -> float:
+    """Compute the CCP-15 channel interference score.
+
+    Per test/vectors/ccp-interference.json (independent math oracle):
+    score = busy_pct + PER * 100, i.e. channel-busy percentage plus
+    packet-error rate expressed in percent points.
+
+    Args:
+        busy_pct: Fraction of recent airtime the channel was busy,
+            in percent [0, 100].
+        per: Packet error rate as a fraction [0.0, 1.0].
+
+    Returns:
+        Interference score in percent-equivalent points.
+
+    Raises:
+        ValueError: If busy_pct or per is outside its valid range.
+    """
+    if not 0.0 <= busy_pct <= 100.0:
+        raise ValueError(f"busy_pct {busy_pct} out of range [0, 100]")
+    if isinstance(per, bool) or not 0.0 <= per <= 1.0:
+        raise ValueError(f"per {per} out of range [0.0, 1.0]")
+    return busy_pct + per * 100.0

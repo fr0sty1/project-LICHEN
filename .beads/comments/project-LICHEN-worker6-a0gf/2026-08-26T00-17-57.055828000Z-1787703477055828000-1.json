@@ -1,0 +1,7 @@
+{
+  "id": "1787703477055828000-1",
+  "issue_id": "project-LICHEN-worker6-a0gf",
+  "author": "Mark Atwood",
+  "text": "HUMAN DECISION NEEDED on backoff_jitter_ms column in test/vectors/ccp-interference.json: the 6 values (0/50/200/500/25/150) match no closed form of (busy_pct, per), no spec text defines jitter, and no generator exists in history (file rode in on unrelated DTN commit e5f7128cda). Options: (a) seeded-RNG output from a lost script, (b) drop the column, (c) annotate as illustrative-only. interference_score half is DONE and consumed: lichen.ccp.interference_score + tests/test_ccp_interference_vectors.py (6 oracle vectors + range validation, 10 pass). Bead stays open pending jitter resolution.",
+  "created_at": "2026-08-26T00:17:57.055828Z"
+}
