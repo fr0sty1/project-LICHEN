@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-y8n6",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/oscore/oscore_ctx.c:547 oscore_ctx_get_seq_remaining() and oscore_ctx_check_freshnes",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:34:31.614734Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:34:31.614734Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

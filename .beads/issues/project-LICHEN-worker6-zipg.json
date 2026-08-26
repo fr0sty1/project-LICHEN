@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-zipg",
   "title": "Remove custom constant-time/zeroization from coap_keys_store.c",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T18:23:19.055051Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T18:23:19.055051Z",
+  "updated_at": "2026-08-25T22:06:05.381747Z",
+  "started_at": "2026-08-25T22:04:02.435974Z",
+  "closed_at": "2026-08-25T22:06:05.381747Z",
+  "close_reason": "Fixed by wave-fix",
   "labels": [
     "cleanup",
     "c"

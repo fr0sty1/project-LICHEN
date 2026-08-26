@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-18l0",
   "title": "Remove custom constant-time/zeroization from replay.c",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T18:23:17.667474Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T18:23:17.667474Z",
+  "updated_at": "2026-08-25T22:06:28.667609Z",
+  "started_at": "2026-08-25T22:04:43.925547Z",
+  "closed_at": "2026-08-25T22:06:28.667609Z",
+  "close_reason": "Fixed by wave-fix",
   "labels": [
     "cleanup",
     "c"

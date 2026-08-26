@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-v9ul",
+  "title": "Resolve a6qg: SOS auth/rate gaps, group OSCORE, vector fixes",
+  "description": "Epic for fixing all 7 a6qg findings: SOS signature gate, burst allowance, Retry-After, monotonic clocks, origin-sequence validator, group OSCORE key distribution, provably-wrong vector pins. Spec/vectors/Python only.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T21:19:20.451041Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T21:19:20.451041Z"
+}

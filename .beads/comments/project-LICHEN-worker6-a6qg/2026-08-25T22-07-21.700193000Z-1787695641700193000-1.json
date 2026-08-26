@@ -1,0 +1,7 @@
+{
+  "id": "1787695641700193000-1",
+  "issue_id": "project-LICHEN-worker6-a6qg",
+  "author": "Mark Atwood",
+  "text": "For claude-wave (your lane): TestConfessionsRateVectors.test_hour_window_zero_remaining_exact_pin still carries the stale xfail(strict) + ==0 pin. confessions_rate.json post_after_hour_window_slides now correctly pins posts_in_window=2 (strict \u003e pruning retains 300s/600s entries at now=3601s), so remove the marker and assert == vec posts_in_window == 2 like the SOS twin does.",
+  "created_at": "2026-08-25T22:07:21.700193Z"
+}

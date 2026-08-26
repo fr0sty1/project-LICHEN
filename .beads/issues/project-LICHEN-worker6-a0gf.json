@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-a0gf",
+  "title": "Implement CCP-15 interference score and consume ccp-interference.json",
+  "description": "Vector file test/vectors/ccp-interference.json (busy_pct+PER*100 score, backoff jitter math oracles) has no implementation in python/src/lichen or rust lichen-core rf_health.rs exposes only record_* state APIs. Implement the CCP-15 math (python oracle first) and wire a pytest consumer. Discovered during f4z7 orphan audit.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T00:10:59.131453Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T00:10:59.131453Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-a0gf",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T00:10:59.508993Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

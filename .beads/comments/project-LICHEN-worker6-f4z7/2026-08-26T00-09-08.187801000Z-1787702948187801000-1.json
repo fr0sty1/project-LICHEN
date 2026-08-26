@@ -1,0 +1,7 @@
+{
+  "id": "1787702948187801000-1",
+  "issue_id": "project-LICHEN-worker6-f4z7",
+  "author": "Mark Atwood",
+  "text": "Orphan audit 2026-08-25: 17 repo-wide-unreferenced vector files found. Wired gcp_iid_comparison.json (7 vectors, all pass). Triage of remainder in progress.",
+  "created_at": "2026-08-26T00:09:08.187801Z"
+}

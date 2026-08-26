@@ -1,0 +1,7 @@
+{
+  "id": "1787695470827153000-1",
+  "issue_id": "project-LICHEN-worker6-v9ul",
+  "author": "Mark Atwood",
+  "text": "SCOPE SPLIT (approved by Mark): Two agents were editing a6qg concurrently. Partition: opencode session (ox-alpha) owns ALL SOS/signature/rate-limit/group-oscore work: emergency.py, sos_origin.py, sos_relay.py, crypto/group_oscore.py, test_sos_resource.py, and the TestSos*/TestGroupOscore* classes in test_security_app_vector_consumers.py, plus vectors sos_signature.json + sos_rate_limiting.json. claude-wave owns confessions/dead-drop/receipts/announce vectors + TestConfessionsRateVectors/TestReceiptCbor* classes and confessions_rate.json. NOTE: confessions.py impl already carries the exact math.ceil retry_after fix (int(remaining)+1 removed) - wave's test pins 15/20/26 depend on it, do not revert. Shared-file protocol: touch only your own classes; module docstring/imports coordinated minimally. GroupKeyManager in lichen/crypto/group_oscore.py is COMPLETE and passes all 10 group_oscore_key.json behaviors - the skip-block revert was based on an intermediate broken state.",
+  "created_at": "2026-08-25T22:04:30.827153Z"
+}

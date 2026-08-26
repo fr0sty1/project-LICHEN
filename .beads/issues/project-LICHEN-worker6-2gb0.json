@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-2gb0",
+  "title": "lichen/subsys/lichen/gcp/gcp_trust.c:78 Buffer over-read: crypto_verify64() called on 8-byte buffers",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T22:56:16.554003Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:05:03.591856Z",
+  "started_at": "2026-08-25T23:04:33.019627Z",
+  "closed_at": "2026-08-25T23:05:03.591856Z",
+  "close_reason": "Fixed by wave-fix",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

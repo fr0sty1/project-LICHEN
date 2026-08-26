@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-xj9v",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/python/src/lichen/coap/resources/emergency.py:480 CheckInResource._prune_oldest called unconditionally, deletes unrelated entry when updating existing node at capacity",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:34:45.322283Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:34:45.322283Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

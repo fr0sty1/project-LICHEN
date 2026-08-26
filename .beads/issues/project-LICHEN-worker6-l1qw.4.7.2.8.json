@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.2.8",
   "title": "Rust: Time Exceeded",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:51.668077Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:51.668077Z",
+  "updated_at": "2026-08-25T23:15:00.38482Z",
+  "started_at": "2026-08-25T23:15:00.38482Z",
+  "lease_expires_at": "2026-08-25T23:20:00.38482Z",
+  "heartbeat_at": "2026-08-25T23:15:00.38482Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.2.8",

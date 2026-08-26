@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-t6bb",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/oscore/oscore_ctx.c:402 NVM read callback invoked with uint32_t* where signature exp",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:34:22.756037Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:34:22.756037Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

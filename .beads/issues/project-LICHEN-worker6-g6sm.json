@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-g6sm",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/python/src/lichen/coap/resources/emergency.py:354 RollcallResource allows far-future timestamps that never exp",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:34:38.443794Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:34:38.443794Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

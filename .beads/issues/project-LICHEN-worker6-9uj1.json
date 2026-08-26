@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-9uj1",
   "title": "Remove unnecessary constant-time/zeroization from schnorr48.py",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:45:32.126752Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:45:32.126752Z",
+  "updated_at": "2026-08-25T22:07:28.408761Z",
+  "started_at": "2026-08-25T22:06:15.95037Z",
+  "closed_at": "2026-08-25T22:07:28.408761Z",
+  "close_reason": "Fixed by wave-fix",
   "labels": [
     "cleanup",
     "python"

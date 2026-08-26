@@ -1,14 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.8.2",
   "title": "Rust: Trickle state machine",
-  "notes": "Already implemented in trickle.rs",
-  "status": "open",
+  "notes": "Verified existing RFC 6206 Trickle state machine against current LICHEN timing specs and focused unit tests. Added rust/lichen-rpl/tests/trickle_vectors.rs to enforce canonical packets-timing.json constants and deterministic state transitions. cargo test and clippy green.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:02.191106Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:02.191106Z",
+  "updated_at": "2026-08-25T23:35:39.347496Z",
+  "started_at": "2026-08-25T23:33:14.419202Z",
+  "closed_at": "2026-08-25T23:35:39.347496Z",
+  "close_reason": "Existing Rust Trickle state machine verified; canonical vector coverage added; focused tests, rustfmt, and Clippy pass",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.8.2",

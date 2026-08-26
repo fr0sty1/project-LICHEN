@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-uhs8",
+  "title": "Group OSCORE key distribution manager",
+  "description": "Greenfield per group_oscore_key.json vectors (operative contract; spec 18.8.5 thin): new module lichen/crypto/group_oscore.py with GroupKeyManager: pairwise wrap via X25519(crypto_scalarmult)+HKDF-SHA256+ChaCha20Poly1305-IETF (pynacl vetted primitives), unique wrapped key per member pubkey; u32 key_epoch monotonic wraps_at 2^32-1; oscore id_context = group_id||epoch(u32 BE); 1h grace window old-key valid until rekey+3600s strict-expiry at 3600001ms; epoch validation reject \u003ccurrent (rollback) and \u003ecurrent+1 (future unknown); rekey distributes to all current members; removed member gets no new key (old decryptable in grace); new member current key only no historical. Replace 9 UNDRIVABLE pytest.skips in TestGroupOscoreKeyVectors with real driving tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "feature",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T21:20:03.278165Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T21:20:43.305496Z",
+  "started_at": "2026-08-25T21:20:43.305496Z",
+  "lease_expires_at": "2026-08-25T21:25:43.305496Z",
+  "heartbeat_at": "2026-08-25T21:20:43.305496Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-uhs8",
+      "depends_on_id": "project-LICHEN-worker6-v9ul",
+      "type": "parent-child",
+      "created_at": "2026-08-25T21:20:03.683083Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

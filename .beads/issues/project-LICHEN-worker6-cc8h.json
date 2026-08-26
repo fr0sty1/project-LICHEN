@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-cc8h",
+  "title": "python/src/lichen/announce/processor.py:163 Off-by-one: condition `len(self._pinned_keys) \u003e MAX_ENTRIES`",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:35:10.521995Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:35:10.521995Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

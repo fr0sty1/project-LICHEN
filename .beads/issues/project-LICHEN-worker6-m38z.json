@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-m38z",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/python/src/lichen/crypto/edhoc.py:471 CBOR double-encoding: id_cred_r_raw and cred_r are already C",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:33:09.377697Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:33:09.377697Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

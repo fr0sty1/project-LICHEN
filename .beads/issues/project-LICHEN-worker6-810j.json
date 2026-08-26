@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-810j",
+  "title": "SOS origin-signature enforcement on POST /sos",
+  "description": "Spec 18.4.1: SOS MUST carry valid origin signature; unsigned/invalid silently dropped. Extend POST /sos wire body with envelope fields pubkey(32B)+seq(u64)+sig(56B SosOriginSignature wire). Verify: pubkey derives to claimed node IID, verify_sos_origin over canonical CBOR of core alert dict (envelope fields excluded), per-node monotonic seq gate, optional TrustStore TOFU pin. Failure -\u003e 4.01 (non-success per pinned test). Update test_sos_resource.py POST bodies with signed helper; add good/missing/bad-sig/wrong-key/replay tests; flip xfail test_unsigned_sos_must_be_silently_dropped and rewrite reality-twin :290.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T21:19:29.834463Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T21:35:43.96836Z",
+  "started_at": "2026-08-25T21:33:34.806072Z",
+  "closed_at": "2026-08-25T21:35:43.96836Z",
+  "close_reason": "Fixed by wave-fix"
+}

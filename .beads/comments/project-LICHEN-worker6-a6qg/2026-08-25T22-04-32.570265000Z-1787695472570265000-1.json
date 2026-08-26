@@ -1,0 +1,7 @@
+{
+  "id": "1787695472570265000-1",
+  "issue_id": "project-LICHEN-worker6-a6qg",
+  "author": "Mark Atwood",
+  "text": "Scope split recorded on epic v9ul: ox-alpha session = SOS/signature/burst/group-oscore; claude-wave = confessions/vectors. GroupKeyManager IS fully implemented (crypto/group_oscore.py); driving tests will be restored under TestGroupOscoreKeyVectors by ox-alpha.",
+  "created_at": "2026-08-25T22:04:32.570265Z"
+}

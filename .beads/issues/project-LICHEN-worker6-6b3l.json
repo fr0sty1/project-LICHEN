@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-6b3l",
+  "title": "Audit remaining wall-clock defaults: deaddrop, rangetest, RollcallResource",
+  "description": "Discovered during a6qg work: deaddrop.py:82 and rangetest.py:126 share the SosResource/ConfessionsResource time.time-default pattern (dead-drop spec 18.9 also mandates monotonic uptime), and RollcallResource hardcodes int(time.time()) non-injectably. Out of a6qg scope; audit and align defaults + injectability.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T21:20:05.732329Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T22:04:28.126668Z",
+  "started_at": "2026-08-25T22:02:39.184288Z",
+  "closed_at": "2026-08-25T22:04:28.126668Z",
+  "close_reason": "Fixed by wave-fix",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6b3l",
+      "depends_on_id": "project-LICHEN-worker6-v9ul",
+      "type": "discovered-from",
+      "created_at": "2026-08-25T21:20:06.109884Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

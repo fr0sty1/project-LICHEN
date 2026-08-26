@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.4.5",
   "title": "Rust: port dispatch for 568x and 10883",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:29.399903Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:29.399903Z",
+  "updated_at": "2026-08-25T21:49:54.343808Z",
+  "started_at": "2026-08-25T21:47:50.087596Z",
+  "closed_at": "2026-08-25T21:49:54.343808Z",
+  "close_reason": "Verified existing Rust UDP port dispatch implementation covers Compact CoT 5681, SenML 5682, CoAP 5683, reserved 5684 rejection, Cayenne 5685, APRS-IS 5686, NMEA 5687, MQTT-SN 10883, unknown ports, SCHC range detection, and Node IPv6/UDP destination-port integration. Focused tests, package fmt, and clippy pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.4.5",

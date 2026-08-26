@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-rc0z",
+  "title": "Implement position privacy auth modes and consume position_privacy_auth.json",
+  "description": "test/vectors/position_privacy_auth.json (public/group/private modes per spec 18.1) unconsumed; no mode-based auth found in python/src/lichen/coap/resources/position.py. Implement modes + pytest consumer.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T00:11:00.949051Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T00:11:00.949051Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rc0z",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T00:11:01.348449Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

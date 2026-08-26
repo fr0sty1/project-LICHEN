@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.2.4",
   "title": "Python: Packet Too Big",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:44.055377Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:44.055377Z",
+  "updated_at": "2026-08-25T23:14:47.708234Z",
+  "started_at": "2026-08-25T23:14:47.708234Z",
+  "lease_expires_at": "2026-08-25T23:19:47.708234Z",
+  "heartbeat_at": "2026-08-25T23:14:47.708234Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.2.4",

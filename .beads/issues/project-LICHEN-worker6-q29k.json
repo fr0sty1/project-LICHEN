@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-q29k",
+  "title": "rust/lichen-rpl/src/message.rs:533 DaoAck::from_bytes and DaoAck::write_to do not validate rpl_instance_id for local range (0xC0-0xFF), unlike DIO and DAO which reject these values with RplError::LocalInstanceId",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:35:18.258175Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:35:18.258175Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

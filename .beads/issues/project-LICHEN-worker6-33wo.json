@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-33wo",
+  "title": "lichen/subsys/lichen/routing/announce.c:332 LOG_ERR used at line 332 without logging module - \u003czephyr/logging/log.h\u003e include and LOG_MODULE_REGISTER are inside #ifdef CONFIG_LICHEN_ANNOUNCE_SCHEDULER (lines 549, 558), but LOG_ERR usage is outside this block in lichen_announce_ingest_authenticated(). Code fails to compile when CONFIG_LICHEN_ANNOUNCE_SCHEDULER is disabled.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T23:33:46.811249Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:33:46.811249Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

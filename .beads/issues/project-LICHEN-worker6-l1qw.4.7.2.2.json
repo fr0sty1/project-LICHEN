@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.2.2",
   "title": "Rust: Destination Unreachable",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:39.525987Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:39.525987Z",
+  "updated_at": "2026-08-25T23:02:42.550507Z",
+  "started_at": "2026-08-25T22:56:15.516121Z",
+  "closed_at": "2026-08-25T23:02:42.550507Z",
+  "close_reason": "Implemented typed RFC 4443 Destination Unreachable build/parse support with canonical no-route and port-unreachable vector tests, code coverage, bounded quote truncation, and malformed-body rejection; cargo fmt/test/clippy green.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.2.2",

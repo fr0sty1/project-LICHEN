@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.2.7",
   "title": "Python: Time Exceeded",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:49.826952Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:49.826952Z",
+  "updated_at": "2026-08-25T21:33:18.461141Z",
+  "started_at": "2026-08-25T21:32:00.117477Z",
+  "closed_at": "2026-08-25T21:33:18.461141Z",
+  "close_reason": "Already implemented and documented as DONE: Python ICMPv6 Time Exceeded supports RFC 4443 type 3 codes 0/1, reserved header layout, bounded packet quotation, checksummed serialization, public exports, and canonical vector coverage. Verified 61 focused ICMPv6/routing-vector tests and ruff clean.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.2.7",

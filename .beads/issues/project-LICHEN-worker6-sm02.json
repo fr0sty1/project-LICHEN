@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-sm02",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/rust/lichen-core/src/loadng.rs:480 with_incremented_hop_count can produce RREP with hop_count \u003e MAX_HOP_LIMIT (16), which will be rejected by downstream parser as HopLimitExceeded",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-25T22:56:59.141452Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-25T23:07:52.280373Z",
+  "started_at": "2026-08-25T23:06:46.527534Z",
+  "closed_at": "2026-08-25T23:07:52.280373Z",
+  "close_reason": "Fixed by wave-fix",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}
