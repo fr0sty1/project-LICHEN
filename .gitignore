@@ -46,3 +46,4 @@ build-provenance*.md
 build-logs*/
 twister-out*/
 *.rlib
+opencode.json
