@@ -34,6 +34,15 @@ extern "C" {
 #define LICHEN_ANNOUNCE_ACCEPT_SEQ_RESET 1
 #define LICHEN_ANNOUNCE_OBSERVER_F_ALLOW_SEQ_RESET 0x01U
 
+/** GATEWAY flag for GCP-4.2 LoRa fallback discovery (bit 7 of type byte). */
+#define LICHEN_GATEWAY_FLAG 0x80U
+
+/** LoRa gateway announce payload length (type[1] + iid_short[4] + epoch[4] + channel[1]). */
+#define LICHEN_LORA_GW_ANNOUNCE_LEN 10U
+
+/** Short IID length in LoRa gateway announce (last 4 bytes of IID). */
+#define LICHEN_LORA_GW_IID_SHORT_LEN 4U
+
 /*
  * LOCK ORDERING (see announce.c for full rules):
  * ingest_mutex > announce_mutex > observer_mutex. Ingest must be outermost.
@@ -72,6 +81,32 @@ typedef int (*lichen_announce_app_data_fn)(
 int lichen_announce_parse(const uint8_t *_Nonnull data, size_t len,
 			  struct lichen_announce_view *_Nonnull announce);
 
+/**
+ * @brief Check if an announce should be relayed.
+ *
+ * Returns true if the hop count is below the maximum, indicating the
+ * announce can be re-broadcast. Does not consider sequence deduplication;
+ * the caller should check announce_ingest_authenticated() separately.
+ *
+ * @param announce Parsed announce view
+ * @return true if hop_count < LICHEN_ANNOUNCE_MAX_HOPS
+ */
+bool lichen_announce_should_relay(
+	const struct lichen_announce_view *_Nonnull announce);
+
+/**
+ * @brief Prepare an announce frame for relay by incrementing hop count.
+ *
+ * Modifies the frame in-place by incrementing the hop count byte at offset 2.
+ * The frame must be a valid announce frame (type 0x01 at offset 0).
+ *
+ * @param frame Mutable announce frame buffer (starts with type byte)
+ * @param len   Frame length (must be >= 3)
+ * @return 0 on success, -EINVAL if frame too short or wrong type,
+ *         -ERANGE if hop count would exceed LICHEN_ANNOUNCE_MAX_HOPS
+ */
+int lichen_announce_relay_frame(uint8_t *_Nonnull frame, size_t len);
+
 int lichen_announce_ingest_authenticated(
 	const uint8_t *_Nonnull data, size_t len,
 	const struct lichen_announce_rx_meta *_Nullable meta);
@@ -104,6 +139,54 @@ int lichen_announce_register_app_data_observer_ex(
 void lichen_announce_unregister_all_app_data_observers(void);
 
 void lichen_announce_reset(void);
+
+/**
+ * @brief LoRa gateway announce for GCP-4.2 fallback discovery.
+ *
+ * When backbone discovery is unavailable, gateways announce on LoRa with
+ * the GATEWAY flag set (0x80) in the type byte. Wire format is compact:
+ * TYPE[1] + IID_SHORT[4] + EPOCH[4] + CHANNEL[1] = 10 bytes.
+ */
+struct lichen_lora_gw_announce {
+	uint8_t iid_short[LICHEN_LORA_GW_IID_SHORT_LEN]; /**< Last 4 bytes of gateway IID */
+	uint32_t superframe_epoch;                        /**< Unix timestamp of superframe */
+	uint8_t channel_id;                               /**< Current channel (0-15) */
+};
+
+/**
+ * @brief Check if a frame has the GATEWAY flag set (GCP-4.2).
+ *
+ * @param[in] data   Frame data (at least 1 byte)
+ * @param[in] len    Frame length
+ * @return true if GATEWAY flag is set in first byte
+ */
+bool lichen_is_gateway_announce(const uint8_t *_Nonnull data, size_t len);
+
+/**
+ * @brief Parse LoRa gateway announce from wire format.
+ *
+ * Per GCP-4.2, this decodes the compact 10-byte format with GATEWAY flag.
+ *
+ * @param[in]  data      Wire data (must be at least LICHEN_LORA_GW_ANNOUNCE_LEN bytes)
+ * @param[in]  len       Data length
+ * @param[out] announce  Parsed announce structure
+ * @return 0 on success, -EMSGSIZE if too short, -EINVAL if GATEWAY flag not set
+ */
+int lichen_lora_gw_announce_parse(const uint8_t *_Nonnull data, size_t len,
+				  struct lichen_lora_gw_announce *_Nonnull announce);
+
+/**
+ * @brief Encode LoRa gateway announce to wire format.
+ *
+ * Produces a 10-byte frame with GATEWAY flag set.
+ *
+ * @param[in]  announce  Announce structure to encode
+ * @param[out] buf       Output buffer (at least LICHEN_LORA_GW_ANNOUNCE_LEN bytes)
+ * @param[in]  buf_len   Buffer size
+ * @return Bytes written (10), or -ENOMEM if buffer too small, -EINVAL if channel > 15
+ */
+int lichen_lora_gw_announce_encode(const struct lichen_lora_gw_announce *_Nonnull announce,
+				   uint8_t *_Nonnull buf, size_t buf_len);
 
 #ifdef CONFIG_LICHEN_ANNOUNCE_SCHEDULER
 

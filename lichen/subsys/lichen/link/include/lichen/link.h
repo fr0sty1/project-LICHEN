@@ -52,6 +52,17 @@ extern "C" {
 
 /** Maximum LICHEN frame payload size (LoRa SF10 255B - overhead) */
 #define LICHEN_MAX_PAYLOAD 200
+
+/** Maximum total frame length including LENGTH byte */
+#ifndef LICHEN_MAX_FRAME_LEN
+#define LICHEN_MAX_FRAME_LEN 255
+#endif
+
+/** Maximum frame body length (LICHEN_MAX_FRAME_LEN minus LENGTH byte) */
+#ifndef LICHEN_MAX_FRAME_BODY_LEN
+#define LICHEN_MAX_FRAME_BODY_LEN 254
+#endif
+
 #define SLOT_DURATION_MS 250 /* spec/02a-coordinated-capacity.md:2a.2 (100ms guard, hash slot) */
 #define GUARD_TIME_MS 100 /* spec/02a-coordinated-capacity.md:2a.2 validated by ccp16.json */
 
@@ -75,9 +86,36 @@ BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 20);
 #define LICHEN_TDMA_CONTENTION_RETRIES 5 /* Max DAO retransmissions in contention slot */
 #define LICHEN_TDMA_CONTENTION_BACKOFF_MIN_MS 100 /* CSMA min backoff */
 #define LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS 1000 /* CSMA max backoff */
+#define LICHEN_TDMA_MISSED_BEACON_THRESHOLD 3 /* >3 missed beacons triggers DRIFTING per 09-packets-timing.md FSM */
 
 #ifdef CONFIG_LICHEN_TDMA
 struct lichen_tdma_slot {uint8_t id;uint8_t assigned;uint32_t next;};
+
+/**
+ * @brief CCP FSM states per spec/09-packets-timing.md section 14.8
+ *
+ * State machine for desync/rejoin robustness. See test/vectors/tdma_ccp_fsm.json.
+ */
+enum lichen_ccp_state {
+	LICHEN_CCP_UNJOINED = 0,   /**< Power-on/reset; CH0 listen only */
+	LICHEN_CCP_ACQUIRING = 1,  /**< Listening for valid beacon */
+	LICHEN_CCP_SYNCED = 2,     /**< TDMA slot assigned; normal operation */
+	LICHEN_CCP_DRIFTING = 3,   /**< Lost sync; extended CH0 listen */
+	LICHEN_CCP_REJOINING = 4,  /**< Re-acquiring via DAO */
+};
+
+/**
+ * @brief CCP FSM events per spec/09-packets-timing.md section 14.8
+ */
+enum lichen_ccp_event {
+	LICHEN_CCP_EVENT_INIT = 0,             /**< lichen_node_init() called */
+	LICHEN_CCP_EVENT_VALID_BEACON = 1,     /**< Valid beacon received (sig verified) */
+	LICHEN_CCP_EVENT_BEACON_IN_SLOT = 2,   /**< Beacon rx in assigned slot */
+	LICHEN_CCP_EVENT_MISSED_BEACON = 3,    /**< Missed beacon count update */
+	LICHEN_CCP_EVENT_RPL_VERSION = 4,      /**< RPL version increment */
+	LICHEN_CCP_EVENT_INVALID_BEACON = 5,   /**< Invalid beacon (sig fail) */
+	LICHEN_CCP_EVENT_DAO_ACK_SLOT = 6,     /**< DAO-ACK with slot assignment */
+};
 #endif
 
 
@@ -188,7 +226,24 @@ struct lichen_tdma_ctx {
 	uint8_t n_slots;
 	uint16_t slot_duration;
 	bool synced;
+	enum lichen_ccp_state ccp_state;     /**< CCP FSM state */
+	uint8_t missed_beacons;              /**< Consecutive missed beacon count */
 };
+
+/**
+ * @brief Process a CCP FSM event and transition state.
+ *
+ * Implements the state machine from spec/09-packets-timing.md section 14.8.
+ * Test vectors: test/vectors/tdma_ccp_fsm.json.
+ *
+ * @param[in,out] tdma   TDMA context
+ * @param[in]     event  FSM event
+ * @param[in]     missed Missed beacon count (only for MISSED_BEACON event)
+ * @return 0 on success, -EINVAL on NULL tdma
+ */
+int lichen_ccp_fsm_event(struct lichen_tdma_ctx *_Nonnull tdma,
+			 enum lichen_ccp_event event,
+			 uint8_t missed);
 #endif
 
 	/**
@@ -256,6 +311,35 @@ int lichen_link_tx(struct lichen_link_ctx *_Nonnull ctx,
 		   const uint8_t *_Nonnull ipv6_pkt, size_t ipv6_len,
 		   const uint8_t *_Nullable dst_eui64,
 		   uint8_t *_Nonnull out_frame, size_t *_Nonnull out_len);
+
+/**
+ * @brief Re-sign a raw payload for relay with local link signature.
+ *
+ * Used for SOS relay and other cases where authenticated frames must be
+ * re-broadcast with the relaying node's link signature. The inner payload
+ * (which may contain origin signatures) is preserved; only the link-layer
+ * signature is replaced with the relayer's.
+ *
+ * This function does NOT compress the payload (caller provides raw bytes).
+ * For relaying, the payload is typically already-compressed content from
+ * a received frame.
+ *
+ * @param[in]     ctx        Link context with keypair and sequence state
+ * @param[in]     payload    Raw payload bytes to relay
+ * @param[in]     payload_len Length of payload
+ * @param[in]     dst_eui64  Destination EUI-64 (NULL for broadcast)
+ * @param[out]    out_frame  Output buffer for LICHEN frame
+ * @param[in,out] out_len    In: buffer size, Out: frame length
+ * @return 0 on success, negative error code on failure
+ *         -EINVAL: NULL parameter
+ *         -ENOMEM: Output buffer too small
+ *         -EMSGSIZE: Frame would exceed 255 bytes
+ *         -ENOKEY: No signing key loaded
+ */
+int lichen_link_relay_raw(struct lichen_link_ctx *_Nonnull ctx,
+			  const uint8_t *_Nonnull payload, size_t payload_len,
+			  const uint8_t *_Nullable dst_eui64,
+			  uint8_t *_Nonnull out_frame, size_t *_Nonnull out_len);
 
 /* ─── RX path ─────────────────────────────────────────────────────────────── */
 
@@ -389,13 +473,99 @@ int lichen_link_channel_select(const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN],
 			       uint8_t num_channels,
 			       uint8_t *_Nonnull channel);
 
+/* ---- Time Synchronization (spec 09 section 14.6) ---- */
+
+/**
+ * @brief Time source class (provenance of wall-clock sample)
+ *
+ * Wire strings match Python lichen.timing.time_sync.SourceClass.
+ */
+enum lichen_time_source_class {
+	LICHEN_TIME_SOURCE_GNSS = 0,        /**< GNSS receiver (GPS/Galileo) */
+	LICHEN_TIME_SOURCE_NETWORK = 1,     /**< NTS/Roughtime/SNTP/mesh DIO */
+	LICHEN_TIME_SOURCE_LOCAL_CLIENT = 2,/**< Phone/app via LCI, gpsd */
+	LICHEN_TIME_SOURCE_MANUAL = 3,      /**< Operator-provisioned static */
+	LICHEN_TIME_SOURCE_INTERNAL_RTC = 4,/**< On-board RTC */
+	LICHEN_TIME_SOURCE_MONOTONIC = 5,   /**< Uptime only; no wall clock */
+};
+
+/**
+ * @brief Time stratum values for DIO Time Option
+ */
+#define LICHEN_TIME_STRATUM_NO_SYNC        0  /**< No valid wall-clock source */
+#define LICHEN_TIME_STRATUM_CONSERVATIVE   1  /**< Conservative synchronized */
+#define LICHEN_TIME_STRATUM_ROUGHTIME      2  /**< Roughtime (BR) */
+#define LICHEN_TIME_STRATUM_NTS            3  /**< NTS (BR) */
+#define LICHEN_TIME_STRATUM_GNSS_GPSD      4  /**< GNSS or verified gpsd */
+
+/**
+ * @brief Board provision epoch evaluation status
+ */
+enum lichen_provision_status {
+	LICHEN_PROVISION_MISSING = 0,       /**< No provision metadata */
+	LICHEN_PROVISION_ACCEPTED = 1,      /**< Authenticated, floor raised */
+	LICHEN_PROVISION_UNAUTHENTICATED = 2,/**< Raw integer ignored */
+	LICHEN_PROVISION_BEFORE_BUILD = 3,  /**< Earlier than firmware epoch */
+	LICHEN_PROVISION_BEYOND_LEAD = 4,   /**< Exceeds configured lead bound */
+};
+
+/**
+ * @brief DIO Time Option (provisional Type 0x15)
+ *
+ * Wire layout: Type(1) + Len(1) + Stratum(1) + Reserved(1) + Timestamp(4)
+ */
+#define LICHEN_DIO_TIME_OPTION_TYPE     0x15
+#define LICHEN_DIO_TIME_OPTION_DATA_LEN 6   /**< Length field value */
+#define LICHEN_DIO_TIME_OPTION_LEN      8   /**< Total encoded size */
+
+struct lichen_dio_time_option {
+	uint8_t stratum;    /**< Time stratum 0-4 */
+	uint32_t timestamp; /**< Unix epoch seconds (BE on wire) */
+};
+
 #ifdef CONFIG_LICHEN_CCP_TIME_SYNC
+/* Time source class helpers */
+const char *lichen_time_source_class_str(enum lichen_time_source_class source);
+bool lichen_time_source_can_establish_wall_clock(enum lichen_time_source_class source);
+
+/* Time stratum validation */
+bool lichen_time_stratum_valid(uint8_t stratum);
+
+/* Epoch floor (firmware build + optional board provision) */
+int lichen_epoch_floor_init(uint32_t firmware_build_epoch);
+int lichen_epoch_floor_set_provision(uint32_t provision_epoch,
+				     bool authenticated,
+				     uint32_t max_lead_s,
+				     enum lichen_provision_status *_Nonnull status);
+uint32_t lichen_epoch_floor_get(void);
+bool lichen_epoch_floor_accepts(uint32_t unix_time);
+const char *lichen_provision_status_str(enum lichen_provision_status status);
+
+/* DIO Time Option encode/decode */
+int lichen_dio_time_option_encode(const struct lichen_dio_time_option *_Nonnull opt,
+				  uint8_t *_Nonnull buf, size_t buflen);
+int lichen_dio_time_option_decode(const uint8_t *_Nonnull buf, size_t buflen,
+				  struct lichen_dio_time_option *_Nonnull opt);
+
+/* Wall clock management */
+int lichen_wall_clock_set(uint32_t unix_time,
+			  enum lichen_time_source_class source,
+			  uint8_t stratum);
+bool lichen_wall_clock_valid(void);
+uint32_t lichen_wall_clock_get(void);
+enum lichen_time_source_class lichen_wall_clock_source(void);
+void lichen_wall_clock_invalidate(void);
+
+/* SFN and sync state */
 int lichen_time_sync_init(void);
 uint32_t lichen_time_sync_get_sfn(void);
 int lichen_time_sync_set_sfn(uint32_t sfn);
 bool lichen_time_sync_is_synced(void);
 void lichen_time_sync_advance_sfn(void);
 void lichen_time_sync_desync(void);
+uint8_t lichen_time_sync_get_stratum(void);
+int lichen_time_sync_set_stratum(uint8_t stratum);
+int lichen_time_sync_update_from_parent(uint32_t sfn, uint8_t parent_stratum);
 #endif
 
 #ifdef __cplusplus

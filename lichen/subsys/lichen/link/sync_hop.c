@@ -47,3 +47,30 @@ uint32_t lichen_sfn_from_unix_ms(uint64_t unix_time_ms)
 
     return (uint32_t)((unix_time_ms - EPOCH_BASE_MS) / superframe_ms);
 }
+
+int lichen_asn_sfn_derive(uint64_t unix_time_us,
+                          uint64_t epoch_base_us,
+                          uint64_t interval_duration_us,
+                          struct lichen_asn_sfn_result *result)
+{
+    if (result == NULL) {
+        return -EINVAL;
+    }
+
+    /* SECURITY: Clamp to zero for invalid inputs per spec 09-packets-timing.md 14.7 */
+    if (interval_duration_us == 0 || unix_time_us < epoch_base_us) {
+        result->asn = 0;
+        result->sfn = 0;
+        result->clamped = true;
+        return 0;
+    }
+
+    /* Compute ASN as unbounded u64 quotient */
+    result->asn = (unix_time_us - epoch_base_us) / interval_duration_us;
+
+    /* SFN is the low 32 bits of ASN */
+    result->sfn = (uint32_t)(result->asn & 0xFFFFFFFFULL);
+    result->clamped = false;
+
+    return 0;
+}

@@ -18,9 +18,6 @@
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/constants.h>
 
-BUILD_ASSERT((sizeof(unsigned long) & (sizeof(unsigned long) - 1)) == 0,
-	     "secure_zero alignment mask requires power-of-two unsigned long size");
-
 /*
  * LICHEN-specific error codes (only when link layer is available).
  * Uses defined() rather than IS_ENABLED() to work in host-side tests
@@ -42,93 +39,12 @@ BUILD_ASSERT((sizeof(unsigned long) & (sizeof(unsigned long) - 1)) == 0,
 
 /*
  * SECURITY: Secure memset that won't be optimized away.
- * Standard memset() on dead buffers can be removed by the compiler.
- * The volatile pointer forces each store to actually execute.
- * The memory barrier prevents LTO removal and ensures ordering.
- *
- * PLATFORM ASSUMPTIONS:
- * This implementation is designed for ARM Cortex-M targets (the primary
- * LICHEN deployment platform). Cortex-M processors have no data cache
- * to flush, no out-of-order execution for speculative-load concerns,
- * and no virtual memory for swapping. On such targets the volatile
- * stores + compiler_barrier() pattern is sufficient to ensure memory
- * is actually cleared in bounded time.
- *
- * On more complex CPUs (Cortex-A, x86) additional mitigations would
- * be needed: cache-line flushes (dcbf/dcivac), data memory barriers
- * (dsb), and/or explicit_bzero() / memset_s() which use platform-
- * specific instructions to prevent both compiler and hardware
- * optimization of the clear. LICHEN does not target such platforms,
- * so these are not implemented here.
- *
- * The code does NOT use explicit_bzero() because:
- * 1. Zephyr does not expose it in the standard toolchain headers
- * 2. Cortex-M targets have no cache to flush, so volatile + barrier
- *    is equivalent in effect
- * 3. The volatile approach is portable across all LICHEN targets
- *    (nRF52840, ESP32-S3, STM32WL, RP2040) without conditional
- *    compilation
- *
- * Performance: Uses word-aligned writes for larger buffers (>= 32 bytes)
- * to reduce latency when clearing structures like lichen_link_ctx (~100 bytes)
- * while holding mutexes. (project-LICHEN-gy7h.18)
- *
- * Implementation: Uses memcpy to write zero words, avoiding strict aliasing
- * violations. memcpy is allowed to alias any type, and the volatile read-back
- * prevents the compiler from optimizing away the stores.
+ * The volatile pointer forces each store to execute. The compiler_barrier()
+ * prevents LTO removal and ensures ordering relative to subsequent code.
  */
 static inline void secure_zero(void *ptr, size_t len)
 {
-    /* SECURITY: Explicit NULL check with warning - never silently ignore NULL.
-     * This catches caller bugs even in release builds where __ASSERT is disabled. */
-    __ASSERT(ptr != NULL, "secure_zero called with NULL pointer");
-    if (ptr == NULL) {
-        printk("WARN: secure_zero called with NULL pointer\n");
-        return;
-    }
-    if (len == 0) {
-        compiler_barrier();
-        return;
-    }
     volatile uint8_t *p = ptr;
-
-    /* For larger buffers, use word-aligned writes.
-     *
-     * SECURITY: Word-sized writes go through a volatile unsigned long pointer,
-     * ensuring the compiler cannot optimize away any stores. The volatile
-     * qualifier applies to the full word write - no separate readback needed.
-     *
-     * The cast through uintptr_t (line 84) is safe because:
-     *   1. p is already word-aligned at this point (alignment loop above)
-     *   2. Writing zeros through any pointer type is well-defined
-     *   3. The volatile qualifier is preserved on the target pointer
-     *
-     * No explicit read-back verification (project-LICHEN-tvfm.94):
-     * The volatile qualifier on both word and byte writes is the security
-     * mechanism - it forces the stores to execute. Read-back would be belt-
-     * and-suspenders paranoia but adds code complexity and provides no
-     * additional protection beyond what volatile already guarantees. The
-     * compiler_barrier() at function end prevents LTO from removing any
-     * stores and ensures ordering relative to subsequent code.
-     */
-    if (len >= 32) {
-        /* Align to word boundary first using byte writes */
-        while (len > 0 && ((uintptr_t)p & (sizeof(unsigned long) - 1)) != 0) {
-            *p++ = 0;
-            len--;
-        }
-        /* Word-sized writes for the bulk (p is now word-aligned).
-         * Cast through uintptr_t to get word-aligned volatile pointer. */
-        volatile unsigned long *wp = (volatile unsigned long *)(uintptr_t)p;
-        while (len >= sizeof(unsigned long)) {
-            *wp++ = 0;
-            len -= sizeof(unsigned long);
-        }
-        /* Update byte pointer for remainder */
-        p = (volatile uint8_t *)wp;
-    }
-
-    /* Byte cleanup for remainder (or small buffers) */
     while (len--) {
         *p++ = 0;
     }

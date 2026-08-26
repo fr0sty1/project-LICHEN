@@ -9,6 +9,7 @@
 #ifndef LICHEN_L2_PAYLOAD_H_
 #define LICHEN_L2_PAYLOAD_H_
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -31,12 +32,14 @@ extern "C" {
 
 #define LICHEN_L2_DISPATCH_SCHC 0x14U
 #define LICHEN_L2_DISPATCH_ROUTING 0x15U
+#define LICHEN_L2_DISPATCH_SOS 0x16U
 #define LICHEN_L2_ROUTING_TYPE_ANNOUNCE 0x01U
 
 enum lichen_l2_payload_kind {
 	LICHEN_L2_PAYLOAD_UNKNOWN = 0,
 	LICHEN_L2_PAYLOAD_SCHC = 1,
 	LICHEN_L2_PAYLOAD_ROUTING = 2,
+	LICHEN_L2_PAYLOAD_SOS = 3,
 };
 
 static inline enum lichen_l2_payload_kind
@@ -51,7 +54,41 @@ lichen_l2_payload_classify(const uint8_t *_Nullable payload, size_t len)
 	if (payload[0] == LICHEN_L2_DISPATCH_ROUTING) {
 		return LICHEN_L2_PAYLOAD_ROUTING;
 	}
+	if (payload[0] == LICHEN_L2_DISPATCH_SOS) {
+		return LICHEN_L2_PAYLOAD_SOS;
+	}
 	return LICHEN_L2_PAYLOAD_UNKNOWN;
+}
+
+/**
+ * @brief Check if SOS payload should be accepted based on signature state.
+ *
+ * Per spec 18.4.1: "SOS messages MUST carry a valid link-layer signature
+ * from the originating node... Unsigned or invalid SOS messages are
+ * silently dropped."
+ *
+ * SECURITY: This function enforces the mandatory signature requirement
+ * for SOS payloads. SOS alerts trigger network-wide flooding; without
+ * authentication, fake SOS floods cause denial of service.
+ *
+ * @param payload      Raw payload bytes
+ * @param len          Payload length
+ * @param sig_present  True if frame carried a valid link-layer signature
+ * @return true if SOS should be accepted, false if it should be silently dropped
+ */
+static inline bool
+lichen_l2_sos_signature_required(const uint8_t *_Nullable payload, size_t len,
+				 bool sig_present)
+{
+	if (payload == NULL || len == 0U) {
+		return false;
+	}
+	/* Only SOS payloads require signatures; other types handled elsewhere */
+	if (payload[0] != LICHEN_L2_DISPATCH_SOS) {
+		return true;
+	}
+	/* SECURITY: Reject unsigned SOS silently (spec 18.4.1) */
+	return sig_present;
 }
 
 static inline const uint8_t *_Nullable

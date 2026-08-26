@@ -18,23 +18,6 @@
 #include <string.h>
 #include <lichen/replay.h>
 
-/**
- * @brief Constant-time comparison for public keys
- *
- * Prevents timing side-channels when comparing public keys.
- * Returns 0 if equal, non-zero otherwise.
- */
-static int public_key_ct_compare(const uint8_t a[LICHEN_PK_LEN],
-				 const uint8_t b[LICHEN_PK_LEN])
-{
-	volatile uint8_t diff = 0;
-
-	for (size_t i = 0; i < LICHEN_PK_LEN; i++) {
-		diff |= a[i] ^ b[i];
-	}
-	return diff;
-}
-
 void lichen_replay_init(struct lichen_replay_window *rw)
 {
 	rw->last_seq = 0;
@@ -111,11 +94,12 @@ struct lichen_replay_window *lichen_replay_get(struct lichen_replay_table *table
 
 	size_t free_slot = CONFIG_LICHEN_LINK_MAX_NEIGHBORS; /* invalid sentinel */
 
-	/* Search for an existing entry or the first free slot. */
+	/* Search for an existing entry or the first free slot.
+	 * Uses memcmp (not constant-time) because public keys are public. */
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
 		if (table->peers[i].active) {
-			if (public_key_ct_compare(table->peers[i].public_key,
-					  public_key) == 0) {
+			if (memcmp(table->peers[i].public_key,
+				   public_key, LICHEN_PK_LEN) == 0) {
 				/* Found: retain its replay history. */
 				return &table->peers[i].window;
 			}
@@ -146,8 +130,8 @@ void lichen_replay_remove(struct lichen_replay_table *table,
 
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
 		if (table->peers[i].active &&
-		    public_key_ct_compare(table->peers[i].public_key,
-					  public_key) == 0) {
+		    memcmp(table->peers[i].public_key, public_key,
+			   LICHEN_PK_LEN) == 0) {
 			table->peers[i].active = false;
 			return;
 		}

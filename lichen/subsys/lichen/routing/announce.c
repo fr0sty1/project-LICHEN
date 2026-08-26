@@ -12,9 +12,13 @@
 
 #include <tinycrypt/sha256.h>
 
+#include <zephyr/logging/log.h>
+
 #include <lichen/l2_payload.h>
 #include <lichen/schnorr48.h>
 #include <monocypher.h>
+
+LOG_MODULE_REGISTER(lichen_announce, LOG_LEVEL_INF);
 
 #define ANNOUNCE_SIGNED_PREFIX_LEN \
 	(LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 2U + 1U)
@@ -255,6 +259,32 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 	return 0;
 }
 
+bool lichen_announce_should_relay(const struct lichen_announce_view *announce)
+{
+	if (announce == NULL) {
+		return false;
+	}
+	return announce->hop_count < LICHEN_ANNOUNCE_MAX_HOPS;
+}
+
+int lichen_announce_relay_frame(uint8_t *frame, size_t len)
+{
+	if (frame == NULL) {
+		return -EINVAL;
+	}
+	if (len < 3U) {
+		return -EINVAL;
+	}
+	if (frame[0] != LICHEN_ANNOUNCE_TYPE) {
+		return -EINVAL;
+	}
+	if (frame[2] >= LICHEN_ANNOUNCE_MAX_HOPS) {
+		return -ERANGE;
+	}
+	frame[2] = frame[2] + 1U;
+	return 0;
+}
+
 int lichen_announce_ingest_authenticated(
 	const uint8_t *data, size_t len,
 	const struct lichen_announce_rx_meta *meta)
@@ -349,8 +379,13 @@ int lichen_announce_ingest_authenticated(
 		memcpy(peer->iid, announce.originator_iid, LICHEN_ANNOUNCE_IID_LEN);
 		memcpy(peer->pubkey, announce.pubkey, LICHEN_ANNOUNCE_PUBKEY_LEN);
 	}
-	peer->seq_num = announce.wire_seq_num;
-	peer->location_seq_num = location_seq_num;
+	/* SECURITY: Only update sequence state for fresh announces here. Stale
+	 * announces have their state update deferred until after notify_observers
+	 * accepts, preventing replay attacks that roll back seq_num. */
+	if (!seq_stale_for_pin) {
+		peer->seq_num = announce.wire_seq_num;
+		peer->location_seq_num = location_seq_num;
+	}
 	peer->last_seen_uptime_s = observed_uptime_s;
 	k_mutex_unlock(&announce_mutex);
 
@@ -360,6 +395,15 @@ int lichen_announce_ingest_authenticated(
 	if (ret < 0) {
 		k_mutex_unlock(&ingest_mutex);
 		return ret;
+	}
+
+	/* SECURITY: Update sequence state for accepted stale announces. This
+	 * is safe since ingest_mutex serializes all ingest operations. */
+	if (seq_stale_for_pin) {
+		k_mutex_lock(&announce_mutex, K_FOREVER);
+		peer->seq_num = announce.wire_seq_num;
+		peer->location_seq_num = location_seq_num;
+		k_mutex_unlock(&announce_mutex);
 	}
 
 	k_mutex_unlock(&ingest_mutex);
@@ -437,14 +481,106 @@ int lichen_announce_register_app_data_observer_ex(
 	return 0;
 }
 
-void lichen_announce_reset(void)
+void lichen_announce_unregister_all_app_data_observers(void)
 {
-	k_mutex_lock(&announce_mutex, K_FOREVER);
-	memset(announce_peers, 0, sizeof(announce_peers));
-	k_mutex_unlock(&announce_mutex);
 	k_mutex_lock(&observer_mutex, K_FOREVER);
 	memset(announce_observers, 0, sizeof(announce_observers));
 	k_mutex_unlock(&observer_mutex);
+}
+
+void lichen_announce_reset(void)
+{
+	/* SECURITY: Acquire ingest_mutex first to serialize with any in-flight
+	 * lichen_announce_ingest_authenticated() calls. Without this, reset could
+	 * clear the peer table while ingest (between lines 364-377) holds a stale
+	 * pointer, causing writes to cleared slots (ghost state). */
+	k_mutex_lock(&ingest_mutex, K_FOREVER);
+	k_mutex_lock(&announce_mutex, K_FOREVER);
+	memset(announce_peers, 0, sizeof(announce_peers));
+	k_mutex_unlock(&announce_mutex);
+	k_mutex_unlock(&ingest_mutex);
+	k_mutex_lock(&observer_mutex, K_FOREVER);
+	memset(announce_observers, 0, sizeof(announce_observers));
+	k_mutex_unlock(&observer_mutex);
+}
+
+/* =========================================================================
+ * LoRa Gateway Announce (GCP-4.2 Fallback Discovery)
+ * ========================================================================= */
+
+bool lichen_is_gateway_announce(const uint8_t *data, size_t len)
+{
+	if (data == NULL || len < 1U) {
+		return false;
+	}
+	return (data[0] & LICHEN_GATEWAY_FLAG) != 0U;
+}
+
+int lichen_lora_gw_announce_parse(const uint8_t *data, size_t len,
+				  struct lichen_lora_gw_announce *announce)
+{
+	if (data == NULL || announce == NULL) {
+		return -EINVAL;
+	}
+	if (len < LICHEN_LORA_GW_ANNOUNCE_LEN) {
+		return -EMSGSIZE;
+	}
+
+	/* Check GATEWAY flag is set */
+	if ((data[0] & LICHEN_GATEWAY_FLAG) == 0U) {
+		return -EINVAL;
+	}
+
+	/* Check base type is announce (0x01) */
+	if ((data[0] & ~LICHEN_GATEWAY_FLAG) != LICHEN_ANNOUNCE_TYPE) {
+		return -EPROTONOSUPPORT;
+	}
+
+	/* Parse fields: TYPE[1] + IID_SHORT[4] + EPOCH[4] + CHANNEL[1] */
+	memcpy(announce->iid_short, &data[1], LICHEN_LORA_GW_IID_SHORT_LEN);
+	announce->superframe_epoch = ((uint32_t)data[5] << 24) |
+				     ((uint32_t)data[6] << 16) |
+				     ((uint32_t)data[7] << 8) |
+				     (uint32_t)data[8];
+	announce->channel_id = data[9];
+
+	/* Validate channel range */
+	if (announce->channel_id > 15U) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int lichen_lora_gw_announce_encode(const struct lichen_lora_gw_announce *announce,
+				   uint8_t *buf, size_t buf_len)
+{
+	if (announce == NULL || buf == NULL) {
+		return -EINVAL;
+	}
+	if (buf_len < LICHEN_LORA_GW_ANNOUNCE_LEN) {
+		return -ENOMEM;
+	}
+	if (announce->channel_id > 15U) {
+		return -EINVAL;
+	}
+
+	/* Type byte: ANNOUNCE | GATEWAY_FLAG */
+	buf[0] = LICHEN_ANNOUNCE_TYPE | LICHEN_GATEWAY_FLAG;
+
+	/* IID short (4 bytes) */
+	memcpy(&buf[1], announce->iid_short, LICHEN_LORA_GW_IID_SHORT_LEN);
+
+	/* Superframe epoch (4 bytes, big-endian) */
+	buf[5] = (uint8_t)(announce->superframe_epoch >> 24);
+	buf[6] = (uint8_t)(announce->superframe_epoch >> 16);
+	buf[7] = (uint8_t)(announce->superframe_epoch >> 8);
+	buf[8] = (uint8_t)announce->superframe_epoch;
+
+	/* Channel ID (1 byte) */
+	buf[9] = announce->channel_id;
+
+	return LICHEN_LORA_GW_ANNOUNCE_LEN;
 }
 
 /* =========================================================================
@@ -453,7 +589,6 @@ void lichen_announce_reset(void)
 
 #ifdef CONFIG_LICHEN_ANNOUNCE_SCHEDULER
 
-#include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
 #include <lichen/link_ctx.h>
 
@@ -461,8 +596,6 @@ void lichen_announce_reset(void)
 #ifndef ENOKEY
 #define ENOKEY ENOENT
 #endif
-
-LOG_MODULE_REGISTER(announce_sched, LOG_LEVEL_INF);
 
 /* L2 routing/control dispatch byte (spec 9.2) */
 #define L2_ROUTING_DISPATCH 0x15U

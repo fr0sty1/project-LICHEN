@@ -49,7 +49,17 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 
 #if defined(CONFIG_LICHEN_TDMA)
 	{
-		struct lichen_tdma_ctx tdma = {0};
+		/* SECURITY: Static TDMA context persists across calls so external
+		 * code can sync it via lichen_link_set_slot(). A zero-initialized
+		 * local context would have synced=false, making tdma_tx_allowed()
+		 * always return true (collision check bypassed). */
+		static struct lichen_tdma_ctx tdma;
+		static bool tdma_init_done;
+		if (!tdma_init_done) {
+			(void)lichen_tdma_init(&tdma, ctx);
+			tdma_init_done = true;
+		}
+		/* FIXME: Pass actual time once TDMA time source is wired up */
 		if (!tdma_tx_allowed(&tdma, 0)) {
 			return -EBUSY;
 		}
@@ -195,5 +205,121 @@ cleanup:
 	memset(signature, 0, sizeof(signature));
 	memset(l2_payload, 0, sizeof(l2_payload));
 	memset(compressed, 0, sizeof(compressed));
+	return ret;
+}
+
+int lichen_link_relay_raw(struct lichen_link_ctx *ctx,
+			  const uint8_t *payload, size_t payload_len,
+			  const uint8_t *dst_eui64,
+			  uint8_t *out_frame, size_t *out_len)
+{
+	uint8_t payload_buf[256];
+	uint8_t signature[SCHNORR48_SIG_LEN];
+	uint8_t addr_mode;
+	uint8_t dst_addr[8];
+	uint8_t dst_addr_len;
+	uint8_t epoch;
+	uint16_t seqnum;
+	size_t off;
+	size_t frame_body_len;
+	uint8_t mic_len;
+	int ret;
+
+	if (ctx == NULL || payload == NULL || out_frame == NULL || out_len == NULL) {
+		return -EINVAL;
+	}
+
+	if (!ctx->has_key) {
+		return -ENOKEY;
+	}
+
+	/* Validate payload length */
+	if (payload_len == 0 || payload_len > LICHEN_MAX_PAYLOAD) {
+		return -EINVAL;
+	}
+
+	/* Minimum output buffer size check (assumes signature) */
+	if (*out_len < 16) {
+		return -ENOMEM;
+	}
+
+	/* Determine address mode and destination */
+	if (dst_eui64 != NULL) {
+		addr_mode = LICHEN_ADDR_EUI64;
+		memcpy(dst_addr, dst_eui64, 8);
+		dst_addr_len = 8;
+	} else {
+		addr_mode = LICHEN_ADDR_BROADCAST;
+		dst_addr_len = 0;
+	}
+
+	/* LLSec byte: S=1 (bit 5) for signature */
+	uint8_t llsec = (addr_mode & 0x03U) | 0x20U;
+
+	/* Preflight size checks BEFORE consuming nonce */
+	if (payload_len > sizeof(payload_buf)) {
+		return -EMSGSIZE;
+	}
+	mic_len = SCHNORR48_SIG_LEN;
+	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
+			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
+	if (frame_body_len > LICHEN_MAX_FRAME_BODY_LEN) {
+		return -EMSGSIZE;
+	}
+	if (1 + frame_body_len > *out_len) {
+		return -ENOMEM;
+	}
+
+	/* Allocate nonce only after preflight */
+	int seq_err = lichen_link_next_tx(ctx, &epoch, &seqnum);
+	if (seq_err != 0) {
+		return seq_err;
+	}
+
+	/* Sign with local keys (replaces any previous link signature) */
+	memcpy(payload_buf, payload, payload_len);
+	if (schnorr48_sign_frame((uint8_t)frame_body_len, llsec, epoch, seqnum,
+				 dst_addr, dst_addr_len,
+				 NULL, 0,
+				 payload_buf, payload_len,
+				 ctx->ed25519_sk, ctx->ed25519_pk, signature) != 0) {
+		ret = -EINVAL;
+		goto relay_cleanup;
+	}
+
+	/* Build wire frame (LENGTH || LLSec || EPO || SEQ || DST || PLD || SIG) */
+	off = 0;
+	out_frame[off++] = (uint8_t)frame_body_len;
+	out_frame[off++] = llsec;
+	out_frame[off++] = epoch;
+	out_frame[off++] = (uint8_t)(seqnum >> 8);
+	out_frame[off++] = (uint8_t)(seqnum & 0xFF);
+	if (dst_addr_len > 0) {
+		memcpy(&out_frame[off], dst_addr, dst_addr_len);
+		off += dst_addr_len;
+	}
+	memcpy(&out_frame[off], payload, payload_len);
+	off += payload_len;
+	memcpy(&out_frame[off], signature, SCHNORR48_SIG_LEN);
+	off += SCHNORR48_SIG_LEN;
+
+	*out_len = off;
+
+	/* Push to TX queue as urgent (SOS relay is high priority) */
+	{
+		int q_ret = tx_queue_push_default_deadline(&ctx->tx_queue,
+							   out_frame, off,
+							   TX_PRIORITY_URGENT);
+		if (q_ret < 0) {
+			ret = q_ret;
+			goto relay_cleanup;
+		}
+	}
+	ret = 0;
+
+relay_cleanup:
+	/* SECURITY: Wipe stack buffers */
+	memset(payload_buf, 0, sizeof(payload_buf));
+	memset(signature, 0, sizeof(signature));
 	return ret;
 }

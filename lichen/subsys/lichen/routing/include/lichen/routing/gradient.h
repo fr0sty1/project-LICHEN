@@ -216,23 +216,35 @@ void lichen_gradient_sf_update(struct lichen_gradient_table *table,
 /**
  * @brief Select TX spreading factor for a neighbor based on tracked state.
  *
- * Implements the CCP-16 adaptive_sf_select pseudocode:
- * - Default: SF10 (or entry.current_sf if previously set)
- * - Upgrade (decrease SF): if snr_ema > threshold AND density < threshold
- * - Downgrade (increase SF): if snr < threshold OR density > threshold
+ * Implements the CCP-16 adaptive_sf_select pseudocode from
+ * spec/02a-coordinated-capacity.md section 2a.7:
+ * 1. SF = AssignedSF (or entry.current_sf if absent)
+ * 2. IF SF absent THEN SF = 10
+ * 3. IF (Density > 10) OR (Utilization > 150) THEN SF = MIN(12, SF + 2)
+ * 4. IF (Neighbor.EMA_SNR > 8) AND (Density < 5) THEN SF = MAX(7, SF - 1)
+ * 5. IF (Neighbor.EMA_Loss > 0.25) OR (Utilization > 200) THEN
+ *       SF = MIN(12, SF + 1)
+ *       IF Utilization > 200 THEN RETURN (SF, false)
+ * 6. RETURN (SF, true)
  *
  * @param table       Gradient table.
  * @param neighbor_iid 8-byte IID of the destination neighbor.
  * @param density     Current network density estimate (nodes heard).
- * @param utilization Current channel utilization (airtime ms per window).
+ * @param utilization Current channel utilization (0-255 scale).
+ * @param ema_loss_fp EMA packet loss ratio in Q16.16 fixed-point (0 = 0%, 65536 = 100%).
+ * @param now_ms      Current time in milliseconds (for expiry check).
  * @param out_sf      Output: selected spreading factor (7-12).
- * @return 0 on success, -ENOENT if no gradient entry for neighbor.
+ * @param out_tx_allowed Output: true if transmission is permitted, false if blocked.
+ * @return 0 on success, -ENOENT if no gradient entry for neighbor or entry expired.
  */
 int lichen_gradient_sf_select(struct lichen_gradient_table *table,
 			      const uint8_t neighbor_iid[8],
 			      uint8_t density,
 			      uint16_t utilization,
-			      uint8_t *out_sf);
+			      uint32_t ema_loss_fp,
+			      uint32_t now_ms,
+			      uint8_t *out_sf,
+			      bool *out_tx_allowed);
 #endif /* CONFIG_LICHEN_ADAPTIVE_SF_ENABLED */
 
 #ifdef __cplusplus

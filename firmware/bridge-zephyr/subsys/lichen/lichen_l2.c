@@ -76,6 +76,10 @@ LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
 #include <lichen/replay.h>
 #include <lichen/schc.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_ANNOUNCE_SCHEDULER)
+#include <lichen/routing/announce.h>
+#endif
+
 #if !IS_ENABLED(CONFIG_LICHEN_LINK)
 #error "CONFIG_LICHEN_LINK is required: raw IPv6-over-LoRa provides no security, compression, or interoperability."
 #endif
@@ -568,6 +572,7 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	 * start index (start = random % count, wrap around).
 	 */
 	int found_idx = -1;
+	size_t found_out_len = 0;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
 		if (!peer_table[i].active) {
@@ -582,6 +587,7 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 				     out_ipv6, out_len, src_eui64);
 		if (ret == 0) {
 			found_idx = (int)i;
+			found_out_len = *out_len;
 #ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
 			break;
 #else
@@ -600,16 +606,7 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	if (found_idx >= 0) {
 		ctx->peer_pubkey = peer_table[found_idx].pubkey;
 		ctx->peer_eui64 = peer_table[found_idx].eui64;
-		*out_len = saved_out_len;
-		ret = lichen_link_rx(ctx, replay, frame, frame_len,
-				     out_ipv6, out_len, src_eui64);
-		if (ret < 0) {
-			ctx->peer_pubkey = saved_peer_pubkey;
-			ctx->peer_eui64 = saved_peer_eui64;
-			*out_len = saved_out_len;
-			return ret;
-		}
-
+		*out_len = found_out_len;
 		peer_table[found_idx].last_seen = k_uptime_get();
 		LOG_DBG("lichen_l2: RX auth ok (peer ..%02x:%02x)",
 			peer_table[found_idx].eui64[6], peer_table[found_idx].eui64[7]);
@@ -818,6 +815,24 @@ int lichen_peer_remove(const uint8_t eui64[8])
 /* Forward declarations */
 static void lora_rx_callback(const uint8_t *data, size_t len,
                              int16_t rssi, int8_t snr, void *user_data);
+
+#if IS_ENABLED(CONFIG_LICHEN_ANNOUNCE_SCHEDULER)
+/**
+ * @brief TX callback for announce scheduler.
+ *
+ * Wraps lichen_lora_l2_tx() to match lichen_announce_tx_fn signature.
+ */
+static int announce_tx_callback(const uint8_t *data, size_t data_len,
+				void *user_data)
+{
+	ARG_UNUSED(user_data);
+	/*
+	 * Cast away const: lichen_lora_l2_tx takes non-const for flexibility,
+	 * but does not modify the buffer. This is safe.
+	 */
+	return lichen_lora_l2_tx((uint8_t *)data, data_len);
+}
+#endif /* CONFIG_LICHEN_ANNOUNCE_SCHEDULER */
 
 /**
  * @brief L2 receive handler
@@ -1620,6 +1635,31 @@ void lichen_l2_iface_init(struct net_if *iface)
 		/* Must undo RX callback registration; see fail_late_init cleanup */
 		goto fail_late_init;
 	}
+
+#if IS_ENABLED(CONFIG_LICHEN_ANNOUNCE_SCHEDULER)
+	/*
+	 * Start periodic announce transmission (spec 9.4).
+	 * Non-fatal if it fails - node can still operate, just won't announce.
+	 */
+	{
+		struct lichen_announce_sched_config announce_config = {
+			.link_ctx = &link_ctx,
+			.tx_fn = announce_tx_callback,
+			.tx_user_data = NULL,
+			.seq_change_fn = NULL,
+			.seq_user_data = NULL,
+			.app_data = NULL,
+			.app_data_len = 0,
+			.rx_channel = 0,
+		};
+		ret = lichen_announce_sched_start(&announce_config);
+		if (ret < 0) {
+			LOG_WRN("lichen_l2: announce scheduler failed to start (%d)", ret);
+		} else {
+			LOG_INF("lichen_l2: announce scheduler started");
+		}
+	}
+#endif /* CONFIG_LICHEN_ANNOUNCE_SCHEDULER */
 
 	LOG_INF("lichen_l2: initialized (full framing)");
 	return;

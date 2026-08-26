@@ -288,30 +288,39 @@ void lichen_gradient_sf_update(struct lichen_gradient_table *table,
 	}
 }
 
+/* Q16.16 fixed-point threshold for 25% loss (0.25 * 65536 = 16384) */
+#define LICHEN_EMA_LOSS_THRESHOLD_FP 16384u
+
 int lichen_gradient_sf_select(struct lichen_gradient_table *table,
 			      const uint8_t neighbor_iid[8],
 			      uint8_t density,
 			      uint16_t utilization,
-			      uint8_t *out_sf)
+			      uint32_t ema_loss_fp,
+			      uint32_t now_ms,
+			      uint8_t *out_sf,
+			      bool *out_tx_allowed)
 {
-	if (table == NULL || neighbor_iid == NULL || out_sf == NULL) {
+	if (table == NULL || neighbor_iid == NULL || out_sf == NULL || out_tx_allowed == NULL) {
 		return -EINVAL;
 	}
 
-	struct lichen_gradient_entry *entry = lichen_gradient_lookup(table, neighbor_iid, 0);
+	struct lichen_gradient_entry *entry = lichen_gradient_lookup(table, neighbor_iid, now_ms);
 	if (entry == NULL) {
 		return -ENOENT;
 	}
 
+	/* Step 1-2: Start with assigned SF or default of 10 */
 	uint8_t sf = entry->sf.current_sf;
 	if (sf < 7 || sf > 12) {
 		sf = CONFIG_LICHEN_DEFAULT_SF;
 	}
 
+	/* Step 3: High density or high utilization triggers SF +2 */
 	if (density > 10 || utilization > 150) {
 		sf = LICHEN_MIN(12, sf + 2);
 	}
 
+	/* Step 4: Good SNR and low density allows SF -1 upgrade */
 	if (entry->sf.snr_ewma > LICHEN_SNR_UPGRADE_THRESHOLD &&
 	    density < LICHEN_DENSITY_UPGRADE_MAX &&
 	    entry->sf.upgrade_count >= LICHEN_UPGRADE_COUNT_THRESHOLD &&
@@ -319,17 +328,20 @@ int lichen_gradient_sf_select(struct lichen_gradient_table *table,
 		sf = LICHEN_MAX(7, sf - 1);
 	}
 
-	if (entry->sf.snr_ewma < LICHEN_SNR_DOWNGRADE_THRESHOLD &&
-	    sf < 12) {
+	/* Step 5: High loss OR very high utilization triggers SF +1 */
+	bool tx_allowed = true;
+	if (ema_loss_fp > LICHEN_EMA_LOSS_THRESHOLD_FP || utilization > 200) {
 		sf = LICHEN_MIN(12, sf + 1);
-	}
-
-	if (utilization > 200) {
-		sf = 12;
+		if (utilization > 200) {
+			/* Per spec: utilization > 200 forces SF=12 and blocks tx */
+			sf = 12;
+			tx_allowed = false;
+		}
 	}
 
 	entry->sf.current_sf = sf;
 	*out_sf = sf;
+	*out_tx_allowed = tx_allowed;
 	return 0;
 }
 #endif /* CONFIG_LICHEN_ADAPTIVE_SF_ENABLED */

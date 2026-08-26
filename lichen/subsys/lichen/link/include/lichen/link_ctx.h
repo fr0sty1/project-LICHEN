@@ -318,9 +318,11 @@ int lichen_link_copy_identity(const struct lichen_link_ctx *_Nonnull ctx,
 /**
  * @brief Derive 16-byte Yggdrasil address from Ed25519 public key
  *
- * Implements the exact `AddrForKey` algorithm from yggdrasil-go
- * (`src/address/address.go`), matching the official Yggdrasil daemon
- * bit-for-bit:
+ * LICHEN native profile inspired by Yggdrasil 0200::/8 range; NOT
+ * wire-compatible with upstream AddrForKey (which bit-packs the pubkey
+ * without hashing). See test/vectors/yggdrasil_address.json for divergence.
+ *
+ * Algorithm:
  *   1. Compute `h = SHA-512(pubkey)`
  *   2. `addr = [0x02] || h[0:7] || h[0:8]`
  *   3. Clear U/L bit in IID byte: `addr[8] &= 0xfd`
@@ -330,7 +332,7 @@ int lichen_link_copy_identity(const struct lichen_link_ctx *_Nonnull ctx,
  * Bytes 8-15 (from `h[0:8]`) form the IID, binding the address to the pubkey.
  *
  * Matches test vectors in test/vectors/yggdrasil-derivation.json (cross-validated
- * with official Yggdrasil, Rust, Python, C oracles).
+ * across Rust, Python, C implementations).
  *
  * @param pubkey 32-byte Ed25519 public key
  * @param ygg_addr Output buffer for 16-byte address
