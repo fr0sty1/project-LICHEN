@@ -1,0 +1,63 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Spec 09 14.8 TDMA CCP FSM table. Independent literals from the state table; missed-beacon desync is strictly greater than 3.",
+  "vectors": [
+    {
+      "name": "power_on_acquiring",
+      "from": "UNJOINED",
+      "event": "init",
+      "to": "ACQUIRING"
+    },
+    {
+      "name": "valid_beacon_syncs",
+      "from": "ACQUIRING",
+      "event": "valid_beacon",
+      "to": "SYNCED"
+    },
+    {
+      "name": "beacon_in_slot_stays_synced",
+      "from": "SYNCED",
+      "event": "beacon_in_slot",
+      "to": "SYNCED"
+    },
+    {
+      "name": "three_misses_stay_synced",
+      "from": "SYNCED",
+      "event": "missed_beacons",
+      "missed": 3,
+      "to": "SYNCED"
+    },
+    {
+      "name": "four_misses_enter_drifting",
+      "from": "SYNCED",
+      "event": "missed_beacons",
+      "missed": 4,
+      "to": "DRIFTING"
+    },
+    {
+      "name": "rpl_version_enters_drifting",
+      "from": "SYNCED",
+      "event": "rpl_version_increment",
+      "to": "DRIFTING"
+    },
+    {
+      "name": "drifting_valid_beacon_acquires",
+      "from": "DRIFTING",
+      "event": "valid_beacon",
+      "to": "ACQUIRING"
+    },
+    {
+      "name": "drifting_invalid_beacon_stays",
+      "from": "DRIFTING",
+      "event": "invalid_beacon",
+      "to": "DRIFTING"
+    },
+    {
+      "name": "rejoining_dao_ack_syncs",
+      "from": "REJOINING",
+      "event": "dao_ack_with_slot",
+      "to": "SYNCED"
+    }
+  ]
+}
