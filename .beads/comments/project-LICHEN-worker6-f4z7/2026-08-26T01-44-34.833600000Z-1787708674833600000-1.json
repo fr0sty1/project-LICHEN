@@ -1,0 +1,7 @@
+{
+  "id": "1787708674833600000-1",
+  "issue_id": "project-LICHEN-worker6-f4z7",
+  "author": "Mark Atwood",
+  "text": "coap_lci_auth.json (14 vectors, is_local_admin/unauthorized semantics) has no python impl yet; test_lci_auth.py went dirty under the active LCI-auth claim (l1qw.6mij family). Consumer wiring should ride with that lane - do not duplicate. Orphan ledger now: consumed=rangetest, gcp_iid_comparison, lr_fhss_capability, access_levels, position_privacy_auth, raw_diag_ttl, local_evidence, broadcast_rate_limiting(deterministic subset), no_silent_drops(all components), tx_queue x4; human-blocked=ccp-interference(jitter), broadcast(yellow-zone); lane-blocked=suite_negotiation(EDHOC), node_handoff+gcp_psk_oscore(GCP).",
+  "created_at": "2026-08-26T01:44:34.8336Z"
+}

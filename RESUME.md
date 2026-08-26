@@ -22,7 +22,15 @@ Range Testing epic (l1qw.10.20) complete except Zephyr/review-blocked children:
   B2.5 gate (16 tests), heog broadcast_limit.py budgets+windows+idle expiry
   (22 tests; yellow-zone RNG semantics flagged HUMAN on heog — the vector
   file contradicts itself: count=100 'probabilistic' vs count=199 'relay').
-  171-test combined sweep green.
+   171-test combined sweep green.
+- Second wave of children CLOSED: z3k8 no-silent-drops components
+  (ForwardingBuffer/Router-pending WARNING log upgrades + icmpv6
+  make_resource_exhausted factory; 4 tests), rc0z position_privacy.py
+  (12 tests), 91rv raw_diag.py TTL state machine (11 tests).
+  coap_lci_auth.json consumer should ride with the active LCI-auth
+  claimant (6mij lane, test_lci_auth.py now dirty). Combined sweep
+  across all units: 198 passed / 1 intentional skip. Human decisions
+  still pending: a0gf backoff_jitter_ms, heog yellow-zone.
 
 ## CURRENT PROJECT PHASE
 
