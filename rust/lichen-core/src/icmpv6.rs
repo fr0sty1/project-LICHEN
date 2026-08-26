@@ -107,6 +107,13 @@ fn build(
     total
 }
 
+/// RFC 4443 section 2.3: verify the ICMPv6 checksum before other processing.
+///
+/// Returns false for truncated messages or a bad checksum (silent drop).
+pub fn checksum_valid(src: &Ipv6Addr, dst: &Ipv6Addr, icmpv6: &[u8]) -> bool {
+    crate::checksum::upper_layer_checksum_valid(&src.0, &dst.0, next_header::ICMPV6, icmpv6)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,6 +158,10 @@ mod tests {
         let mut buf2 = [0u8; 52];
         echo_request(&ll(1), &ll(2), 1, 1, b"test", &mut buf2);
         assert_eq!(buf, buf2);
+        assert!(checksum_valid(&ll(1), &ll(2), &buf[40..52]));
+        buf[51] ^= 0xff;
+        assert!(!checksum_valid(&ll(1), &ll(2), &buf[40..52]));
+        assert!(!checksum_valid(&ll(1), &ll(2), &buf[40..43]));
     }
 
     #[test]

@@ -75,6 +75,20 @@ pub fn upper_layer_checksum(
     !(sum as u16)
 }
 
+/// True when `payload` already carries a valid checksum field.
+///
+/// RFC 1071: summing the pseudo-header plus the received payload (checksum
+/// bytes included) yields 0 after inversion. Payloads shorter than 4 bytes
+/// cannot be a valid upper-layer header and are rejected.
+pub fn upper_layer_checksum_valid(
+    src: &[u8; 16],
+    dst: &[u8; 16],
+    next_header: u8,
+    payload: &[u8],
+) -> bool {
+    payload.len() >= 4 && upper_layer_checksum(src, dst, next_header, payload) == 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,6 +96,20 @@ mod tests {
     /// Link-local address helper for tests.
     fn ll(iid: u8) -> [u8; 16] {
         [0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid]
+    }
+
+    #[test]
+    fn filled_checksum_verifies() {
+        let src = ll(1);
+        let dst = ll(2);
+        let mut payload = [0x80, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01];
+        let csum = upper_layer_checksum(&src, &dst, 58, &payload);
+        payload[2] = (csum >> 8) as u8;
+        payload[3] = csum as u8;
+        assert!(upper_layer_checksum_valid(&src, &dst, 58, &payload));
+        payload[7] ^= 0xff;
+        assert!(!upper_layer_checksum_valid(&src, &dst, 58, &payload));
+        assert!(!upper_layer_checksum_valid(&src, &dst, 58, &payload[..3]));
     }
 
     #[test]

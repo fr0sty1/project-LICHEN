@@ -20,6 +20,18 @@ pub fn classify(payload: &[u8]) -> L2PayloadKind {
     }
 }
 
+/// Unknown L2 dispatch byte (or empty payload).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnknownDispatch;
+
+/// Classify and reject unknown dispatch bytes.
+pub fn classify_known(payload: &[u8]) -> Result<L2PayloadKind, UnknownDispatch> {
+    match classify(payload) {
+        L2PayloadKind::Unknown => Err(UnknownDispatch),
+        kind => Ok(kind),
+    }
+}
+
 pub fn body(payload: &[u8]) -> &[u8] {
     payload.get(1..).unwrap_or(&[])
 }
@@ -45,5 +57,19 @@ mod tests {
     fn unwrapped_first_byte_is_unknown() {
         assert_eq!(classify(&[RULE_GLOBAL_COAP, 0x00]), L2PayloadKind::Unknown);
         assert_eq!(classify(&[]), L2PayloadKind::Unknown);
+        assert_eq!(
+            classify_known(&[RULE_GLOBAL_COAP, 0x00]),
+            Err(UnknownDispatch)
+        );
+        assert_eq!(classify_known(&[]), Err(UnknownDispatch));
+        assert_eq!(classify_known(&[0x16]), Err(UnknownDispatch));
+        assert_eq!(
+            classify_known(&[L2_DISPATCH_SCHC, RULE_GLOBAL_COAP]),
+            Ok(L2PayloadKind::Schc)
+        );
+        assert_eq!(
+            classify_known(&[L2_DISPATCH_ROUTING, L2_ROUTING_TYPE_ANNOUNCE]),
+            Ok(L2PayloadKind::Routing)
+        );
     }
 }
