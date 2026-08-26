@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from ipaddress import IPv6Address
 
 import aiocoap
 import cbor2
@@ -25,9 +26,15 @@ from lichen.coap.resources.emergency import (
     SOS_COOLDOWN_S,
     SOS_HOURLY_MAX,
 )
+from lichen.coap.sos_origin import sign_sos_origin
 from lichen.coap.transport import InMemoryNetwork, create_lichen_context
+from lichen.crypto.identity import _pubkey_to_iid
+from lichen.crypto.schnorr48 import derive_keypair
 
-_EUI = bytes.fromhex("0102030405060708")
+# Deterministic signer identity; /sos requires origin signatures (spec 18.4.1),
+# so the POSTing node's EUI-64 must be the one its pubkey derives to.
+_SOS_PRIV, _SOS_PUB = derive_keypair(bytes(range(64, 96)))
+_EUI = _pubkey_to_iid(_SOS_PUB)
 _T0 = 1_700_000_000.0
 
 
@@ -36,9 +43,28 @@ _T0 = 1_700_000_000.0
 # ---------------------------------------------------------------------------
 
 
+def _origin_addr(iid: bytes) -> IPv6Address:
+    return IPv6Address(b"\x02\x00" + b"\x00" * 6 + iid)
+
+
+def _signed_body(
+    t: float = _T0,
+    seq: int = 1,
+    *,
+    priv: bytes = _SOS_PRIV,
+    pub: bytes = _SOS_PUB,
+    **overrides: object,
+) -> bytes:
+    """Build a spec-18.4.1 signed /sos POST body."""
+    core: dict[str, object] = {"from": _EUI.hex(), "t": t}
+    core.update(overrides)
+    sig = sign_sos_origin(priv, pub, _origin_addr(_EUI), seq, core)
+    return cbor2.dumps({**core, "pubkey": pub, "sig": sig.to_bytes()})
+
+
 async def _setup() -> tuple[aiocoap.Context, aiocoap.Context, SosResource]:
     net = InMemoryNetwork()
-    sos = SosResource()
+    sos = SosResource(time_func=lambda: _T0)
     info = StaticNodeInfo(status={"rank": 256})
     site = build_site(info, sos_resource=sos)
     server = await create_lichen_context(net.channel("srv"), "srv", site=site)
@@ -114,9 +140,13 @@ class TestSosPutDelete:
     async def test_put_with_body_activates(self) -> None:
         client, server, sos = await _setup()
         try:
-            body = cbor2.dumps({"from": _EUI.hex(), "t": _T0})
             resp = await client.request(
-                Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
+                Message(
+                    code=POST,
+                    uri="coap://srv/sos",
+                    payload=_signed_body(),
+                    content_format=60,
+                )
             ).response
             assert resp.code == aiocoap.CREATED
             assert sos._active is True
@@ -221,19 +251,32 @@ class TestSosPutDelete:
     async def test_delete_cancels_sos(self) -> None:
         client, server, sos = await _setup()
         try:
-            sos.activate(_EUI, _T0)
-            resp = await client.request(Message(code=DELETE, uri="coap://srv/sos")).response
+            # Activate with seq=1, then cancel with seq=2
+            activate_body = _signed_body(seq=1)
+            await client.request(
+                Message(code=POST, uri="coap://srv/sos", payload=activate_body, content_format=60)
+            ).response
+            assert sos._active is True
+            # Cancel requires signed payload with higher seq
+            cancel_body = _signed_body(seq=2)
+            resp = await client.request(
+                Message(code=DELETE, uri="coap://srv/sos", payload=cancel_body, content_format=60)
+            ).response
             assert resp.code == aiocoap.DELETED
             assert sos._active is False
         finally:
             await client.shutdown()
             await server.shutdown()
 
-    async def test_delete_when_idle_is_harmless(self) -> None:
+    async def test_delete_when_idle_returns_not_found(self) -> None:
         client, server, _ = await _setup()
         try:
-            resp = await client.request(Message(code=DELETE, uri="coap://srv/sos")).response
-            assert resp.code == aiocoap.DELETED
+            # Per spec, DELETE on idle SOS returns NOT_FOUND (nothing to cancel)
+            cancel_body = _signed_body(seq=1)
+            resp = await client.request(
+                Message(code=DELETE, uri="coap://srv/sos", payload=cancel_body, content_format=60)
+            ).response
+            assert resp.code == aiocoap.NOT_FOUND
         finally:
             await client.shutdown()
             await server.shutdown()
@@ -245,24 +288,49 @@ class TestSosPutDelete:
 
 
 class TestSosRateLimiting:
-    """Tests for SOS per-source rate limiting (10min cooldown, 3/hour max)."""
+    """Tests for SOS per-source rate limiting.
+
+    Semantics per spec 18.4.1 and test/vectors/sos_rate_limiting.json:
+    hourly max 3, cooldown periods of 10 minutes anchored at period start,
+    and a burst allowance of 2 messages per open period.
+    """
 
     def test_first_request_allowed(self) -> None:
         """First request from a source should always be allowed."""
         sos = SosResource()
         assert sos.check_rate_limit(_EUI.hex()) is True
 
-    def test_request_within_cooldown_blocked(self) -> None:
-        """Request within 10-minute cooldown should be blocked."""
+    def test_second_within_period_is_burst_allowed(self) -> None:
+        """Second request inside an open cooldown period is the burst allowance."""
         current_time = _T0
         sos = SosResource(time_func=lambda: current_time)
-        # First request allowed
-        assert sos.check_rate_limit(_EUI.hex()) is True
         sos._record_request(_EUI.hex())
-        # Request 5 minutes later should be blocked (within 10min cooldown)
+        current_time = _T0 + 1
+        sos._time_func = lambda: current_time
+        assert sos.check_rate_limit(_EUI.hex()) is True
+
+    def test_third_request_within_cooldown_blocked(self) -> None:
+        """Third request while the period's burst budget is spent is blocked."""
+        current_time = _T0
+        sos = SosResource(time_func=lambda: current_time)
+        # Fill the period: original + one burst, both at t0.
+        sos._record_request(_EUI.hex())
+        sos._record_request(_EUI.hex())
+        # Request 5 minutes later should be blocked (burst budget spent)
         current_time = _T0 + 300  # 5 minutes
         sos._time_func = lambda: current_time
         assert sos.check_rate_limit(_EUI.hex()) is False
+
+    def test_burst_retry_after_anchors_on_period_start(self) -> None:
+        """4.29 retry_after counts down to period_start + cooldown."""
+        current_time = _T0
+        sos = SosResource(time_func=lambda: current_time)
+        sos._record_request(_EUI.hex())  # period starts at t0
+        sos._record_request(_EUI.hex())  # burst consumes the budget
+        current_time = _T0 + 300
+        sos._time_func = lambda: current_time
+        allowed, retry_after, reason = sos.evaluate_rate_limit(_EUI.hex())
+        assert (allowed, retry_after, reason) == (False, 300, "cooldown_active")
 
     def test_request_after_cooldown_allowed(self) -> None:
         """Request after 10-minute cooldown should be allowed."""
@@ -274,6 +342,17 @@ class TestSosRateLimiting:
         current_time = _T0 + 660  # 11 minutes
         sos._time_func = lambda: current_time
         assert sos.check_rate_limit(_EUI.hex()) is True
+
+    def test_cooldown_boundary_is_inclusive_from_period_start(self) -> None:
+        """A request exactly at period_start + cooldown opens a new period."""
+        current_time = _T0
+        sos = SosResource(time_func=lambda: current_time)
+        sos._record_request(_EUI.hex())
+        sos._record_request(_EUI.hex())  # burst consumes the budget
+        current_time = _T0 + SOS_COOLDOWN_S
+        sos._time_func = lambda: current_time
+        allowed, _retry, reason = sos.evaluate_rate_limit(_EUI.hex())
+        assert (allowed, reason) == (True, "cooldown_elapsed")
 
     def test_hourly_max_enforced(self) -> None:
         """4th request within an hour should be blocked."""
@@ -311,30 +390,173 @@ class TestSosRateLimiting:
         sos = SosResource(time_func=lambda: current_time)
         source_a = "0102030405060708"
         source_b = "0807060504030201"
-        # Source A makes a request
+        # Source A exhausts its burst budget
+        sos._record_request(source_a)
         sos._record_request(source_a)
         # Source B should still be allowed immediately
         assert sos.check_rate_limit(source_b) is True
-        # Source A should be blocked (within cooldown)
+        # Source A should be blocked (burst budget spent within its period)
         assert sos.check_rate_limit(source_a) is False
+
+    def test_default_time_source_is_monotonic(self) -> None:
+        """Spec 18.4.1: rate limiting uses monotonic uptime, not wall clock."""
+        sos = SosResource()
+        assert sos._time_func is time.monotonic
+
+
+class TestSosSignatureEnforcement:
+    """POST /sos origin-signature gate per spec 18.4.1."""
+
+    async def test_valid_signature_accepted(self) -> None:
+        client, server, sos = await _setup()
+        try:
+            resp = await client.request(
+                Message(code=POST, uri="coap://srv/sos", payload=_signed_body(), content_format=60)
+            ).response
+            assert resp.code == aiocoap.CREATED
+            assert sos._active is True
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_unsigned_post_dropped(self) -> None:
+        client, server, sos = await _setup()
+        try:
+            body = cbor2.dumps({"from": _EUI.hex(), "t": _T0})
+            resp = await client.request(
+                Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
+            ).response
+            assert resp.code.is_successful() is False
+            assert sos._active is False
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_tampered_signature_dropped(self) -> None:
+        client, server, sos = await _setup()
+        try:
+            body = bytearray(_signed_body())
+            # Flip a bit late in the payload (inside the 48-byte sig).
+            body[-1] ^= 0x01
+            resp = await client.request(
+                Message(code=POST, uri="coap://srv/sos", payload=bytes(body), content_format=60)
+            ).response
+            assert resp.code.is_successful() is False
+            assert sos._active is False
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_wrong_key_signature_dropped(self) -> None:
+        client, server, sos = await _setup()
+        try:
+            other_priv, other_pub = derive_keypair(bytes(range(96, 128)))
+            body = _signed_body(priv=other_priv, pub=other_pub)
+            resp = await client.request(
+                Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
+            ).response
+            # Other key does not derive to the claimed IID: binding gate fires.
+            assert resp.code.is_successful() is False
+            assert sos._active is False
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_replayed_sequence_dropped(self) -> None:
+        client, server, sos = await _setup()
+        try:
+            first = Message(
+                code=POST, uri="coap://srv/sos", payload=_signed_body(seq=7), content_format=60
+            )
+            assert (await client.request(first).response).code == aiocoap.CREATED
+            replay = Message(
+                code=POST, uri="coap://srv/sos", payload=_signed_body(seq=7), content_format=60
+            )
+            resp = await client.request(replay).response
+            assert resp.code.is_successful() is False
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_sequence_must_advance(self) -> None:
+        client, server, sos = await _setup()
+        try:
+            first = Message(
+                code=POST, uri="coap://srv/sos", payload=_signed_body(seq=9), content_format=60
+            )
+            assert (await client.request(first).response).code == aiocoap.CREATED
+            stale = Message(
+                code=POST, uri="coap://srv/sos", payload=_signed_body(seq=8), content_format=60
+            )
+            resp = await client.request(stale).response
+            assert resp.code.is_successful() is False
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+
+class TestSosBurstOverCoap:
+    """Burst allowance visible over the full CoAP stack."""
+
+    async def test_burst_second_created_third_rate_limited(self) -> None:
+        net = InMemoryNetwork()
+        clock = {"t": _T0}
+        sos = SosResource(time_func=lambda: clock["t"])
+        info = StaticNodeInfo(status={"rank": 256})
+        site = build_site(info, sos_resource=sos)
+        server = await create_lichen_context(net.channel("srv"), "srv", site=site)
+        client = await create_lichen_context(net.channel("cli"), "cli")
+        try:
+            first = Message(
+                code=POST, uri="coap://srv/sos", payload=_signed_body(seq=1), content_format=60
+            )
+            assert (await client.request(first).response).code == aiocoap.CREATED
+            # Second within the open period: burst allowance accepts.
+            second = Message(
+                code=POST,
+                uri="coap://srv/sos",
+                payload=_signed_body(t=_T0, seq=2),
+                content_format=60,
+            )
+            assert (await client.request(second).response).code == aiocoap.CREATED
+            # Third while the period is still open: 4.29 with Retry-After.
+            third = Message(
+                code=POST,
+                uri="coap://srv/sos",
+                payload=_signed_body(t=_T0, seq=3),
+                content_format=60,
+            )
+            resp = await client.request(third).response
+            assert resp.code == aiocoap.TOO_MANY_REQUESTS
+            retry_after = cbor2.loads(resp.payload)["retry_after"]
+            assert retry_after == int(SOS_COOLDOWN_S)
+        finally:
+            await client.shutdown()
+            await server.shutdown()
 
     async def test_post_rate_limited_returns_too_many_requests(self) -> None:
         """POST that violates rate limit returns TOO_MANY_REQUESTS."""
         net = InMemoryNetwork()
-        current_time = _T0
-        sos = SosResource(time_func=lambda: current_time)
+        sos = SosResource(time_func=lambda: _T0)
         info = StaticNodeInfo(status={"rank": 256})
         site = build_site(info, sos_resource=sos)
         server = await create_lichen_context(net.channel("srv"), "srv", site=site)
         client = await create_lichen_context(net.channel("cli"), "cli")
         try:
             # First POST succeeds
-            body = cbor2.dumps({"from": _EUI.hex(), "t": _T0})
+            body = _signed_body()
             resp = await client.request(
                 Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
             ).response
             assert resp.code == aiocoap.CREATED
-            # Second POST within cooldown should be rate limited
+            # Burst second POST also succeeds
+            body = _signed_body(seq=2)
+            resp = await client.request(
+                Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
+            ).response
+            assert resp.code == aiocoap.CREATED
+            # Third POST with the burst budget spent is rate limited
+            body = _signed_body(seq=3)
             resp = await client.request(
                 Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
             ).response
@@ -346,22 +568,23 @@ class TestSosRateLimiting:
     async def test_post_succeeds_after_cooldown(self) -> None:
         """POST succeeds after cooldown period passes."""
         net = InMemoryNetwork()
-        current_time = [_T0]  # Use list to allow mutation in closure
-        sos = SosResource(time_func=lambda: current_time[0])
+        clock = {"t": _T0}
+        sos = SosResource(time_func=lambda: clock["t"])
         info = StaticNodeInfo(status={"rank": 256})
         site = build_site(info, sos_resource=sos)
         server = await create_lichen_context(net.channel("srv"), "srv", site=site)
         client = await create_lichen_context(net.channel("cli"), "cli")
         try:
             # First POST succeeds
-            body = cbor2.dumps({"from": _EUI.hex(), "t": _T0})
+            body = _signed_body(seq=1)
             resp = await client.request(
                 Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
             ).response
             assert resp.code == aiocoap.CREATED
             # Advance time past cooldown
-            current_time[0] = _T0 + SOS_COOLDOWN_S + 1
-            # Second POST should succeed
+            clock["t"] = _T0 + SOS_COOLDOWN_S + 1
+            # Second POST (fresh sequence) should succeed
+            body = _signed_body(t=_T0 + SOS_COOLDOWN_S + 1, seq=2)
             resp = await client.request(
                 Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
             ).response
@@ -440,9 +663,13 @@ class TestSosObserve:
             await req.response
 
             obs_iter = req.observation.__aiter__()
-            body = cbor2.dumps({"from": _EUI.hex(), "t": _T0})
             await client.request(
-                Message(code=POST, uri="coap://srv/sos", payload=body, content_format=60)
+                Message(
+                    code=POST,
+                    uri="coap://srv/sos",
+                    payload=_signed_body(),
+                    content_format=60,
+                )
             ).response
             note = await asyncio.wait_for(obs_iter.__anext__(), timeout=5.0)
             assert cbor2.loads(note.payload)["active"] is True
@@ -458,7 +685,8 @@ class TestSosObserve:
 
 async def _setup_rollcall() -> tuple[aiocoap.Context, aiocoap.Context, RollcallResource]:
     net = InMemoryNetwork()
-    rollcall = RollcallResource()
+    # time_func must return compatible values for ts validation (started > now + 60)
+    rollcall = RollcallResource(time_func=lambda: _T0)
     info = StaticNodeInfo(status={"rank": 256})
     site = build_site(info, rollcall_resource=rollcall)
     server = await create_lichen_context(net.channel("srv"), "srv", site=site)
@@ -638,7 +866,7 @@ class TestRollcallPostValidation:
                     Message(
                         code=POST,
                         uri="coap://srv/rollcall",
-                        payload=_rollcall_post_body(id=f"roll-{i}", ts=int(time.time())),
+                        payload=_rollcall_post_body(id=f"roll-{i}", ts=int(_T0)),
                         content_format=60,
                     )
                 ).response
@@ -672,7 +900,7 @@ class TestRollcallPostValidation:
         try:
             rollcall._rollcalls["stale"] = {
                 "id": "stale",
-                "started": int(time.time()) - 3600,
+                "started": int(rollcall._time_func()) - 3600,
                 "timeout_s": 60,
                 "responded": [],
                 "missing": [],
@@ -706,7 +934,7 @@ class TestRollcallPostValidation:
         rollcall = RollcallResource()
         for i in range(MAX_ROLLCALLS):
             rollcall.update(f"roll-{i}")
-        rollcall._rollcalls["roll-0"]["started"] = int(time.time()) - 3600
+        rollcall._rollcalls["roll-0"]["started"] = int(rollcall._time_func()) - 3600
         rollcall.update("fresh")
         assert "fresh" in rollcall._rollcalls
         assert len(rollcall._rollcalls) == MAX_ROLLCALLS

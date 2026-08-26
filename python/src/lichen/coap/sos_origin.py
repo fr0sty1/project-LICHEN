@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import struct
+from collections import OrderedDict
 from dataclasses import dataclass
 from ipaddress import IPv6Address
 
@@ -177,9 +178,40 @@ def verify_sos_origin(
     return verify(pubkey, transcript, signature.signature)
 
 
+class OriginSequenceTracker:
+    """Per-originator monotonic sequence gate (spec 18.4.1 replay protection).
+
+    Accepts a sequence number only if it is strictly greater than the highest
+    sequence previously accepted from the same origin. Stale-but-unseen
+    sequences (e.g. ``last_seen=10``, received ``8``) are rejected, closing
+    the exact-``(node, seq)`` dedup gap where an attacker could replay old
+    captures that the relay never observed.
+    """
+
+    def __init__(self, max_origins: int = 256) -> None:
+        self._last: OrderedDict[str, int] = OrderedDict()
+        self._max_origins = max_origins
+
+    def accept(self, origin: str, seq: int) -> bool:
+        """Return True and record *seq* if it advances *origin*'s counter."""
+        last = self._last.get(origin)
+        if last is not None and seq <= last:
+            return False
+        self._last[origin] = seq
+        self._last.move_to_end(origin)
+        while len(self._last) > self._max_origins:
+            self._last.popitem(last=False)
+        return True
+
+    def last_seen(self, origin: str) -> int | None:
+        """Highest accepted sequence for *origin*, or None if unseen."""
+        return self._last.get(origin)
+
+
 __all__ = [
     "SOS_ORIGIN_DOMAIN",
     "SOS_ORIGIN_SIGNATURE_LENGTH",
+    "OriginSequenceTracker",
     "SosOriginSignature",
     "canonicalize_sos_payload",
     "compute_sos_transcript",

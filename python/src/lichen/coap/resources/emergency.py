@@ -14,14 +14,27 @@ from aiocoap import CHANGED, CONTENT, CREATED, Message, resource
 
 from lichen.coap.resources.base import CBOR
 from lichen.coap.resources.cbor_validation import _decode_single_cbor
+from lichen.coap.sos_origin import (
+    OriginSequenceTracker,
+    SosOriginSignature,
+    canonicalize_sos_payload,
+    verify_sos_origin,
+)
+from lichen.crypto.identity import _pubkey_to_iid
+from lichen.crypto.trust import TrustError
 
 MAX_ROLLCALLS = 256
 MAX_ROLLCALL_TIMEOUT_S = 7 * 86400
 MAX_CHECKINS = 256  # Maximum stored check-ins
 
 # SOS rate limiting per spec (per-source limits)
-SOS_COOLDOWN_S = 600  # 10-minute minimum between requests from same source
+SOS_COOLDOWN_S = 600  # 10-minute cooldown period per source
 SOS_HOURLY_MAX = 3  # Maximum 3 requests per hour from same source
+SOS_BURST_MAX = 2  # Max messages per cooldown period ("Burst allowance: 2")
+
+# Fields carrying the origin-signature envelope; excluded from the signed
+# core alert dict (spec 18.4.1 signs only the alert payload).
+_SOS_ENVELOPE_FIELDS = frozenset({"pubkey", "sig"})
 
 # Valid check-in status values per spec 18.6.1
 CHECKIN_STATUS_VALUES = frozenset({"ok", "help", "delayed"})
@@ -35,7 +48,13 @@ class SosResource(resource.ObservableResource):
         {"active": true, "from": "<hex-eui64>", "t": <float>}  # active
         {"active": false, "from": null, "t": null}              # idle
 
-    **POST** activates with ``{"type":"sos", "node":..., "ts":...}`` (or legacy {"from","t"}).
+    **POST** activates with ``{"type":"sos", "node":..., "ts":...}`` plus the
+    origin-signature envelope ``{"pubkey": <32B>, "sig": <56B>}`` (or legacy
+    {"from","t"} core fields).  Per spec 18.4.1 the origin signature is
+    REQUIRED: the pubkey must derive to the claimed node IID, the Schnorr48
+    signature must verify over the canonical CBOR of the core alert dict,
+    and the origin sequence must strictly advance; anything else is dropped
+    with 4.01.
     **DELETE** cancels.  **GET** and **Observe** expose the current state to all
     subscribers so neighbouring nodes can relay/escalate the alert.
 
@@ -43,25 +62,42 @@ class SosResource(resource.ObservableResource):
     application layer driving :meth:`retrigger`; the resource itself only
     tracks state and notifies on changes.
 
-    Rate limiting: each source node is limited to 3 requests per hour with a
-    minimum 10-minute cooldown between requests. This prevents SOS flooding
-    while allowing legitimate emergency use.
+    Rate limiting (spec 18.4.1, over monotonic uptime): each source gets at
+    most SOS_HOURLY_MAX messages per rolling hour; a new cooldown period
+    starts whenever a message arrives at or after ``period_start +
+    SOS_COOLDOWN_S``; within an open period at most SOS_BURST_MAX messages
+    are allowed ("burst allowance"). Excess requests get 4.29 with a CBOR
+    ``{"retry_after": N}`` payload.
     """
 
-    def __init__(self, time_func: Any = None) -> None:
+    def __init__(
+        self,
+        time_func: Any = None,
+        trust_store: Any = None,
+    ) -> None:
         """Initialize SOS resource.
 
         Args:
-            time_func: Optional callable returning current time (for testing).
-                       Defaults to time.time.
+            time_func: Optional callable returning current monotonic time
+                       (for testing). Defaults to time.monotonic per spec
+                       18.4.1 ("rate limiting uses monotonic uptime").
+            trust_store: Optional TrustStore for TOFU pinning of verified
+                         origin pubkeys. When None, only cryptographic
+                         verification (key-to-IID binding + signature) is
+                         enforced.
         """
         super().__init__()
         self._active = False
         self._from: str | None = None
         self._t: float | None = None
-        self._time_func = time_func if time_func is not None else time.time
+        self._time_func = time_func if time_func is not None else time.monotonic
+        self._trust_store = trust_store
         # Per-source rate limiting: maps source hex -> list of request timestamps
         self._request_times: dict[str, list[float]] = {}
+        # Cooldown period anchor per source (burst budget resets each period)
+        self._period_start: dict[str, float] = {}
+        # Monotonic origin-sequence gate for signed POSTs
+        self._sequences = OriginSequenceTracker()
 
     def _prune_old_requests(self, source_hex: str) -> None:
         """Remove request timestamps older than 1 hour for the given source."""
@@ -72,35 +108,68 @@ class SosResource(resource.ObservableResource):
         self._request_times[source_hex] = [
             ts for ts in self._request_times[source_hex] if ts > cutoff
         ]
-        if not self._request_times[source_hex]:
+        timestamps = self._request_times[source_hex]
+        if not timestamps:
             del self._request_times[source_hex]
+            self._period_start.pop(source_hex, None)
+        else:
+            # Keep the period anchor inside the retained window; if the old
+            # anchor was pruned, the oldest retained entry starts the period.
+            anchor = self._period_start.get(source_hex)
+            if anchor is None or anchor < timestamps[0]:
+                self._period_start[source_hex] = timestamps[0]
+
+    def evaluate_rate_limit(self, source_hex: str) -> tuple[bool, int, str]:
+        """Evaluate rate limits for *source_hex*.
+
+        Returns:
+            ``(allowed, retry_after_s, reason)`` where *reason* is one of
+            ``first_sos``, ``cooldown_elapsed``, ``within_burst``,
+            ``cooldown_active``, or ``hourly_limit_exceeded``.
+
+        Semantics (spec 18.4.1 rate table):
+        - hourly gate first: >= SOS_HOURLY_MAX requests in the past hour -> deny
+        - at/after ``period_start + SOS_COOLDOWN_S`` a new period begins -> allow
+        - within an open period: allowed while fewer than SOS_BURST_MAX
+          messages have been sent since ``period_start``
+        - otherwise denied until the current period's cooldown expires
+        """
+        self._prune_old_requests(source_hex)
+        now = self._time_func()
+        timestamps = self._request_times.get(source_hex)
+        if not timestamps:
+            return True, 0, "first_sos"
+        if len(timestamps) >= SOS_HOURLY_MAX:
+            retry_after = math.ceil(3600 - (now - timestamps[0]))
+            return False, max(1, int(retry_after)), "hourly_limit_exceeded"
+        period_start = self._period_start.get(source_hex, timestamps[0])
+        if now - period_start >= SOS_COOLDOWN_S:
+            return True, 0, "cooldown_elapsed"
+        period_count = sum(1 for ts in timestamps if ts >= period_start)
+        if period_count < SOS_BURST_MAX:
+            return True, 0, "within_burst"
+        retry_after = math.ceil(period_start + SOS_COOLDOWN_S - now)
+        return False, max(1, int(retry_after)), "cooldown_active"
 
     def check_rate_limit(self, source_hex: str) -> bool:
         """Check if source is within rate limits.
 
         Returns True if request is allowed, False if rate-limited.
 
-        Rate limits:
-        - 10-minute cooldown between requests from same source
-        - Maximum 3 requests per hour from same source
+        See :meth:`evaluate_rate_limit` for the full semantics and the
+        retry-after value carried on 4.29 responses.
         """
-        self._prune_old_requests(source_hex)
-        if source_hex not in self._request_times:
-            return True
-        timestamps = self._request_times[source_hex]
-        now = self._time_func()
-        # Check cooldown: most recent request must be > 10 min ago
-        if timestamps and (now - timestamps[-1]) < SOS_COOLDOWN_S:
-            return False
-        # Check hourly max: must have fewer than 3 requests in last hour
-        return len(timestamps) < SOS_HOURLY_MAX
+        allowed, _retry_after, _reason = self.evaluate_rate_limit(source_hex)
+        return allowed
 
     def _record_request(self, source_hex: str) -> None:
         """Record a successful request timestamp for rate limiting."""
         now = self._time_func()
-        if source_hex not in self._request_times:
-            self._request_times[source_hex] = []
-        self._request_times[source_hex].append(now)
+        timestamps = self._request_times.setdefault(source_hex, [])
+        anchor = self._period_start.get(source_hex)
+        if not timestamps or anchor is None or now - anchor >= SOS_COOLDOWN_S:
+            self._period_start[source_hex] = now
+        timestamps.append(now)
 
     def _state_payload(self) -> bytes:
         return cbor2.dumps({"active": self._active, "from": self._from, "t": self._t})
@@ -158,14 +227,101 @@ class SosResource(resource.ObservableResource):
             or timestamp < 0
         ):
             return Message(code=aiocoap.BAD_REQUEST)
+        # Spec 18.4.1: SOS MUST carry a valid origin signature; unsigned or
+        # invalid messages are dropped. The envelope carries the signer's
+        # pubkey (32 B) and the wire origin signature (8 B seq + 48 B sig).
+        pubkey = body.get("pubkey")
+        sig_blob = body.get("sig")
+        if (
+            not isinstance(pubkey, bytes)
+            or len(pubkey) != 32
+            or not isinstance(sig_blob, bytes)
+        ):
+            return Message(code=aiocoap.UNAUTHORIZED)
+        try:
+            origin_sig = SosOriginSignature.from_bytes(sig_blob)
+        except ValueError:
+            return Message(code=aiocoap.UNAUTHORIZED)
+        iid = bytes.fromhex(from_hex.lower())
+        if _pubkey_to_iid(pubkey) != iid:
+            return Message(code=aiocoap.UNAUTHORIZED)
+        core_alert = {k: v for k, v in body.items() if k not in _SOS_ENVELOPE_FIELDS}
+        origin_addr = b"\x02\x00" + b"\x00" * 6 + iid
+        if not verify_sos_origin(
+            pubkey, origin_addr, canonicalize_sos_payload(core_alert), origin_sig
+        ):
+            return Message(code=aiocoap.UNAUTHORIZED)
+        if self._trust_store is not None:
+            try:
+                self._trust_store.verify_or_pin(pubkey, iid)
+            except TrustError:
+                return Message(code=aiocoap.UNAUTHORIZED)
+        # Replay gate: only strictly advancing sequences may activate.
+        source_key = from_hex.lower()
+        last_seq = self._sequences.last_seen(source_key)
+        if last_seq is not None and origin_sig.origin_sequence <= last_seq:
+            return Message(code=aiocoap.UNAUTHORIZED)
         # Check rate limit before activating
-        if not self.check_rate_limit(from_hex):
-            return Message(code=aiocoap.TOO_MANY_REQUESTS)
-        self._record_request(from_hex)
+        allowed, retry_after, _reason = self.evaluate_rate_limit(source_key)
+        if not allowed:
+            msg = Message(code=aiocoap.TOO_MANY_REQUESTS)
+            msg.payload = cbor2.dumps({"retry_after": retry_after})
+            msg.opt.content_format = CBOR
+            return msg
+        self._sequences.accept(source_key, origin_sig.origin_sequence)
+        self._record_request(source_key)
         self.activate(bytes.fromhex(from_hex), timestamp)
         return Message(code=CREATED)
 
     async def render_delete(self, request: Message) -> Message:
+        """DELETE /sos cancels an active alert. Requires origin authentication.
+
+        Only the originator of the active alert may cancel it. The request must
+        carry a valid origin-signature envelope (pubkey + sig) and the pubkey
+        must derive to the IID of the active SOS originator.
+        """
+        # SECURITY: Require active alert to cancel
+        if not self._active or self._from is None:
+            return Message(code=aiocoap.NOT_FOUND)
+        # SECURITY: Require signed payload for authentication
+        if not request.payload:
+            return Message(code=aiocoap.UNAUTHORIZED)
+        try:
+            body = _decode_single_cbor(request.payload)
+        except (ValueError, OverflowError, cbor2.CBORDecodeError):
+            return Message(code=aiocoap.BAD_REQUEST)
+        if not isinstance(body, dict):
+            return Message(code=aiocoap.BAD_REQUEST)
+        # SECURITY: Require origin-signature envelope
+        pubkey = body.get("pubkey")
+        sig_blob = body.get("sig")
+        if (
+            not isinstance(pubkey, bytes)
+            or len(pubkey) != 32
+            or not isinstance(sig_blob, bytes)
+        ):
+            return Message(code=aiocoap.UNAUTHORIZED)
+        try:
+            origin_sig = SosOriginSignature.from_bytes(sig_blob)
+        except ValueError:
+            return Message(code=aiocoap.UNAUTHORIZED)
+        # SECURITY: Verify requester is the originator of the active alert
+        active_iid = bytes.fromhex(self._from.lower())
+        if _pubkey_to_iid(pubkey) != active_iid:
+            return Message(code=aiocoap.UNAUTHORIZED)
+        # SECURITY: Verify signature over canonical cancel payload
+        core_cancel = {k: v for k, v in body.items() if k not in _SOS_ENVELOPE_FIELDS}
+        origin_addr = b"\x02\x00" + b"\x00" * 6 + active_iid
+        if not verify_sos_origin(
+            pubkey, origin_addr, canonicalize_sos_payload(core_cancel), origin_sig
+        ):
+            return Message(code=aiocoap.UNAUTHORIZED)
+        # SECURITY: Replay gate for cancel requests
+        source_key = self._from.lower()
+        last_seq = self._sequences.last_seen(source_key)
+        if last_seq is not None and origin_sig.origin_sequence <= last_seq:
+            return Message(code=aiocoap.UNAUTHORIZED)
+        self._sequences.accept(source_key, origin_sig.origin_sequence)
         self.cancel()
         return Message(code=aiocoap.DELETED)
 
@@ -176,12 +332,19 @@ class RollcallResource(resource.ObservableResource):
     Used by LCI-based conference demo application.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, time_func: Any = None) -> None:
+        """Initialize Rollcall resource.
+
+        Args:
+            time_func: Optional callable returning current time (for testing).
+                       Defaults to time.monotonic per spec 18.6.
+        """
         super().__init__()
+        self._time_func = time_func if time_func is not None else time.monotonic
         self._rollcalls: dict[str, dict[str, Any]] = {}
 
     def _prune_expired(self) -> None:
-        now = int(time.time())
+        now = int(self._time_func())
         expired = [
             roll_id
             for roll_id, entry in self._rollcalls.items()
@@ -203,7 +366,7 @@ class RollcallResource(resource.ObservableResource):
                 return
             self._rollcalls[roll_id] = {
                 "id": roll_id,
-                "started": int(time.time()),
+                "started": int(self._time_func()),
                 "timeout_s": 60,
                 "responded": [],
                 "missing": [],
@@ -227,7 +390,7 @@ class RollcallResource(resource.ObservableResource):
             return Message(code=aiocoap.BAD_REQUEST)
         if not isinstance(data, dict) or "id" not in data:
             return Message(code=aiocoap.BAD_REQUEST)
-        started = data.get("ts", int(time.time()))
+        started = data.get("ts", int(self._time_func()))
         timeout_s = data.get("timeout_s", 60)
         for value in (started, timeout_s):
             if (
@@ -236,7 +399,9 @@ class RollcallResource(resource.ObservableResource):
                 or (isinstance(value, float) and not math.isfinite(value))
             ):
                 return Message(code=aiocoap.BAD_REQUEST)
-        if started < 0 or not 0 < timeout_s <= MAX_ROLLCALL_TIMEOUT_S:
+        now = int(self._time_func())
+        # Reject far-future timestamps that would never expire; allow 60s clock skew
+        if started < 0 or started > now + 60 or not 0 < timeout_s <= MAX_ROLLCALL_TIMEOUT_S:
             return Message(code=aiocoap.BAD_REQUEST)
         roll_id = str(data["id"])
         self._prune_expired()
@@ -361,8 +526,9 @@ class CheckInResource(resource.Resource):
         if msg is not None and not isinstance(msg, str):
             return Message(code=aiocoap.BAD_REQUEST)
 
-        # Store the check-in
-        self._prune_oldest()
+        # Store the check-in (only prune if this is a new node)
+        if node not in self._checkins:
+            self._prune_oldest()
         entry: dict[str, Any] = {
             "node": node,
             "ts": ts,

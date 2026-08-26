@@ -24,6 +24,8 @@ from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from lichen.coap.sos_origin import OriginSequenceTracker
+
 logger = logging.getLogger(__name__)
 
 # Default maximum TTL for SOS messages (limits flood propagation)
@@ -98,6 +100,12 @@ class SosRelay:
         default_factory=OrderedDict, init=False, repr=False
     )
 
+    # Monotonic per-originator sequence gate: rejects stale-but-unseen
+    # sequences (spec 18.4.1 origin-signature replay protection).
+    _sequences: OriginSequenceTracker = field(
+        default_factory=OriginSequenceTracker, init=False, repr=False
+    )
+
     def check_relay(
         self,
         node: str,
@@ -151,6 +159,14 @@ class SosRelay:
                 reason=f"already relayed SOS from {node} seq={seq}",
             )
 
+        # Reject stale-but-unseen origin sequences (monotonic per node).
+        if not self._sequences.accept(node, seq):
+            last = self._sequences.last_seen(node)
+            return SosRelayResult(
+                should_relay=False,
+                reason=f"stale origin sequence from {node}: seq={seq} <= {last}",
+            )
+
         # Record this SOS as seen
         self._record_seen(sos_id)
 
@@ -200,6 +216,7 @@ class SosRelay:
         """
         count = len(self._seen)
         self._seen.clear()
+        self._sequences = OriginSequenceTracker()
         return count
 
     def _record_seen(self, sos_id: SosId) -> None:

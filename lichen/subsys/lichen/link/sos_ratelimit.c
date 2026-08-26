@@ -19,6 +19,7 @@ void sos_ratelimit_config_init(struct sos_ratelimit_config *config)
 	}
 	config->cooldown_ms = SOS_RATELIMIT_COOLDOWN_MS;
 	config->max_per_hour = SOS_RATELIMIT_MAX_PER_HOUR;
+	config->burst_allowance = SOS_RATELIMIT_BURST_ALLOWANCE;
 }
 
 void sos_ratelimit_state_init(struct sos_ratelimit_state *state)
@@ -133,15 +134,17 @@ enum sos_ratelimit_result sos_ratelimit_check(
 		return SOS_RATELIMIT_HOURLY_EXCEEDED;
 	}
 
-	/* Check cooldown from most recent alert */
-	int64_t last = most_recent(state);
-	if (last > 0) {
-		int64_t elapsed = now_ms - last;
-		if (elapsed < (int64_t)config->cooldown_ms) {
-			if (remaining_ms != NULL) {
-				*remaining_ms = (uint32_t)((int64_t)config->cooldown_ms - elapsed);
+	/* Check cooldown from most recent alert (only after burst exhausted) */
+	if (valid_count >= config->burst_allowance) {
+		int64_t last = most_recent(state);
+		if (last > 0) {
+			int64_t elapsed = now_ms - last;
+			if (elapsed < (int64_t)config->cooldown_ms) {
+				if (remaining_ms != NULL) {
+					*remaining_ms = (uint32_t)((int64_t)config->cooldown_ms - elapsed);
+				}
+				return SOS_RATELIMIT_COOLDOWN_ACTIVE;
 			}
-			return SOS_RATELIMIT_COOLDOWN_ACTIVE;
 		}
 	}
 

@@ -39,6 +39,9 @@ extern "C" {
 /** Default maximum alerts per hour per source. */
 #define SOS_RATELIMIT_MAX_PER_HOUR 3U
 
+/** Default burst allowance before cooldown applies. */
+#define SOS_RATELIMIT_BURST_ALLOWANCE 2U
+
 /** Hourly window duration (milliseconds). */
 #define SOS_RATELIMIT_HOUR_MS (3600U * 1000U)
 
@@ -63,12 +66,15 @@ enum sos_ratelimit_result {
  * Default values per spec 18.4.3:
  * - cooldown_ms: 600000 (10 minutes)
  * - max_per_hour: 3
+ * - burst_allowance: 2 (rapid alerts before cooldown applies)
  */
 struct sos_ratelimit_config {
 	/** Minimum milliseconds between alerts from the same source. */
 	uint32_t cooldown_ms;
 	/** Maximum alerts per hour per source. */
 	uint8_t max_per_hour;
+	/** Number of alerts allowed before cooldown applies. */
+	uint8_t burst_allowance;
 };
 
 /**
@@ -157,6 +163,64 @@ void sos_ratelimit_record(struct sos_ratelimit_state *state, int64_t now_ms);
  */
 bool sos_ratelimit_has_activity(const struct sos_ratelimit_state *state,
 				int64_t now_ms);
+
+/*
+ * Zephyr convenience wrappers using monotonic uptime.
+ *
+ * These inline functions automatically obtain the current monotonic
+ * timestamp via k_uptime_get(), eliminating the need for callers to
+ * explicitly pass the time parameter. Use these in Zephyr builds for
+ * simpler call sites.
+ */
+#ifdef CONFIG_ZEPHYR
+
+#include <zephyr/kernel.h>
+
+/**
+ * @brief Check rate limit using current monotonic uptime.
+ *
+ * Convenience wrapper that calls sos_ratelimit_check() with k_uptime_get().
+ *
+ * @param[in] state      Per-source state (not modified)
+ * @param[in] config     Rate limit configuration
+ * @param[out] remaining_ms  If denied, estimated ms until allowed (may be NULL)
+ * @return Rate limit result
+ */
+static inline enum sos_ratelimit_result sos_ratelimit_check_now(
+	const struct sos_ratelimit_state *state,
+	const struct sos_ratelimit_config *config,
+	uint32_t *remaining_ms)
+{
+	return sos_ratelimit_check(state, k_uptime_get(), config, remaining_ms);
+}
+
+/**
+ * @brief Record alert using current monotonic uptime.
+ *
+ * Convenience wrapper that calls sos_ratelimit_record() with k_uptime_get().
+ *
+ * @param[in,out] state  Per-source state to update
+ */
+static inline void sos_ratelimit_record_now(struct sos_ratelimit_state *state)
+{
+	sos_ratelimit_record(state, k_uptime_get());
+}
+
+/**
+ * @brief Check activity using current monotonic uptime.
+ *
+ * Convenience wrapper that calls sos_ratelimit_has_activity() with k_uptime_get().
+ *
+ * @param[in] state  Per-source state
+ * @return true if source has recent activity, false if stale
+ */
+static inline bool sos_ratelimit_has_activity_now(
+	const struct sos_ratelimit_state *state)
+{
+	return sos_ratelimit_has_activity(state, k_uptime_get());
+}
+
+#endif /* CONFIG_ZEPHYR */
 
 #ifdef __cplusplus
 }
