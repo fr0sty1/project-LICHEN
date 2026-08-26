@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-xt5y",
   "title": "Implement LOADng local evidence records and consume local_evidence.json",
   "description": "test/vectors/local_evidence.json (appendix-loadng B2.5, spec/05-routing.md section 11) unconsumed: no evidence-record implementation found. Implement + consumer.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T00:12:49.407394Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T00:12:49.407394Z",
+  "updated_at": "2026-08-26T01:25:44.488414Z",
+  "closed_at": "2026-08-26T01:25:44.488414Z",
+  "close_reason": "Local-evidence gate oracle shipped: lichen/rpl/evidence.py (EvidenceTable + GradientEntry) implementing B2.5 semantics - evidence exists iff an entry for the destination is present and now \u003c expires (inclusive-expired boundary pinned by the exactly-at-boundary vector); all four authenticated sources (announce/rrep/rpl/data) gate identically; fe80/fd00/200:: address families share one rule. 16 pytest cases consume every section of local_evidence.json. Integration into the main GradientTable deferred to the routing lane owner since rpl/routing.py is under active edit by another claimant.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-xt5y",
