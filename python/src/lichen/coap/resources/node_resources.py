@@ -12,13 +12,28 @@ from lichen.coap.resources.base import CBOR, NodeInfo, _cbor_response, _ReadReso
 from lichen.coap.resources.cbor_validation import _decode_single_cbor
 
 
-class StatusResource(_ReadResource):
-    """``/status`` — node status (uptime, rank, parent, battery, ...)."""
+class StatusResource(resource.ObservableResource):
+    """``/status`` — node status (uptime, rank, parent, battery, ...).
+
+    Observable per spec/11-lci.md 17.5.3 (``obs`` on ``</status>``). Call
+    :meth:`notify_changed` when status fields change.
+    """
 
     rt = "status"
 
+    def __init__(self, node_info: NodeInfo) -> None:
+        super().__init__()
+        self.node_info = node_info
+
+    def notify_changed(self) -> None:
+        """Notify RFC 7641 observers that status has changed."""
+        self.updated_state()
+
     async def render_get(self, request: Message) -> Message:
         return _cbor_response(self.node_info.get_status())
+
+    def get_link_description(self) -> dict[str, Any]:
+        return {"rt": self.rt, "ct": str(int(CBOR)), "obs": None}
 
 
 class NeighborsResource(resource.ObservableResource):
