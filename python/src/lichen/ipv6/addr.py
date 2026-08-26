@@ -114,6 +114,28 @@ def native_address_from_pubkey(pubkey: bytes) -> IPv6Address:
     return address
 
 
+def multicast_scope(addr: IPv6Address | str | bytes) -> int | None:
+    """Return the 4-bit multicast scope, or None if the address is unicast.
+
+    RFC 4291: the low nibble of the second octet is the scope. Unflagged
+    well-known scopes used by LICHEN are ``ff01`` (interface) through
+    ``ff0e`` (global).
+    """
+    packed = to_ipv6(addr).packed
+    if packed[0] != 0xFF:
+        return None
+    return packed[1] & 0x0F
+
+
+def is_unflagged_multicast(addr: IPv6Address | str | bytes) -> bool:
+    """True for ``ff01::``-``ff0e::`` (flags nibble 0, scope 1..14)."""
+    packed = to_ipv6(addr).packed
+    if packed[0] != 0xFF:
+        return False
+    flags_and_scope = packed[1]
+    return flags_and_scope & 0xF0 == 0 and 0x01 <= flags_and_scope <= 0x0E
+
+
 def link_local_from_pubkey(pubkey: bytes) -> IPv6Address:
     """Return the link-local address bound to the same Ed25519 public key."""
     if type(pubkey) is not bytes:

@@ -18,9 +18,11 @@ from lichen.crypto.identity import Identity
 from lichen.ipv6.addr import (
     AddrError,
     eui64_to_iid,
+    is_unflagged_multicast,
     link_local_from_pubkey,
     mac48_to_eui64,
     make_link_local,
+    multicast_scope,
     native_address_from_pubkey,
     short_addr_to_iid,
 )
@@ -113,3 +115,27 @@ def test_key_derived_ipv6_vectors_match_production_boundaries() -> None:
         assert native_address_from_pubkey(public_key).packed.hex() == vector["native_packed"]
         assert str(native_address_from_pubkey(public_key)) == vector["native"]
         assert link_local_from_pubkey(public_key).packed.hex() == vector["link_local_packed"]
+
+
+@pytest.mark.parametrize(
+    ("text", "scope"),
+    [
+        ("ff01::1", 1),
+        ("ff02::1", 2),
+        ("ff05::2", 5),
+        ("ff08::1", 8),
+        ("ff0e::1", 0xE),
+    ],
+)
+def test_unflagged_multicast_scopes_ff01_to_ff0e(text: str, scope: int) -> None:
+    addr = IPv6Address(text)
+    assert multicast_scope(addr) == scope
+    assert is_unflagged_multicast(addr)
+
+
+def test_unicast_has_no_multicast_scope() -> None:
+    assert multicast_scope(IPv6Address("fe80::1")) is None
+    assert not is_unflagged_multicast(IPv6Address("fe80::1"))
+    assert not is_unflagged_multicast(IPv6Address("ff00::1"))
+    assert not is_unflagged_multicast(IPv6Address("ff11::1"))
+    assert multicast_scope(IPv6Address("ff12::1")) == 2
