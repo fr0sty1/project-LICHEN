@@ -11,6 +11,7 @@ pub mod handoff;
 pub mod resources;
 pub mod slip;
 pub mod slot;
+pub mod time_status;
 pub mod trust;
 #[cfg(target_os = "linux")]
 pub mod tun;
