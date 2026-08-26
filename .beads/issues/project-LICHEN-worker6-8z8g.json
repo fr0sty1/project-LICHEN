@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-8z8g",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/python/src/lichen/crypto/edhoc.py:477 CBOR double-encoding: cred_r is already CBOR-encoded bytes but cbor2.dumps(cred_r) wraps it in an extra bstr, corrupting external_aad_2.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-25T23:33:17.436895Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-25T23:33:17.436895Z",
+  "updated_at": "2026-08-26T01:14:34.748027Z",
+  "started_at": "2026-08-26T01:13:48.396038Z",
+  "closed_at": "2026-08-26T01:14:34.748027Z",
+  "close_reason": "Fixed by wave-fix: cred_r is now used directly without cbor2.dumps wrapper in external_aad_2",
   "labels": [
     "codereview",
     "wave-fix"

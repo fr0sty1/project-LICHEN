@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-z3k8",
+  "title": "Consume no_silent_drops.json ForwardingBuffer/ICMPv6/Router vectors",
+  "description": "tx_queue component vectors in no_silent_drops.json are covered by the TxQueue oracle (wr0b). Remaining components need implementations first: ForwardingBuffer per-source backpressure + WARNING-logged eviction, icmpv6 make_resource_exhausted() (DEST_UNREACHABLE/ADMIN_PROHIBITED), Router pending-queue oldest-drop with WARNING log.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T01:10:16.795418Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T01:10:16.795418Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-z3k8",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T01:10:18.377531Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

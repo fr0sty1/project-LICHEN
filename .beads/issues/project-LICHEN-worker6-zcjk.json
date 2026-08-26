@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-zcjk",
   "title": "python/src/lichen/crypto/edhoc.py:472 Double CBOR encoding of ID_CRED and CRED in context/external",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-25T23:34:01.578435Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-25T23:34:01.578435Z",
+  "updated_at": "2026-08-26T01:12:44.787609Z",
+  "started_at": "2026-08-26T01:12:44.787609Z",
+  "lease_expires_at": "2026-08-26T01:17:44.787609Z",
+  "heartbeat_at": "2026-08-26T01:12:44.787609Z",
   "labels": [
     "codereview",
     "wave-fix"

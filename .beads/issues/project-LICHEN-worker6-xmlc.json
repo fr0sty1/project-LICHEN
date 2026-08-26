@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-xmlc",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/python/src/lichen/crypto/edhoc.py:497 CBOR double-encoding: id_cred_i and cred_i are already CBOR-",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-25T23:33:24.727869Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-25T23:33:24.727869Z",
+  "updated_at": "2026-08-26T01:14:49.220337Z",
+  "started_at": "2026-08-26T01:13:37.973032Z",
+  "closed_at": "2026-08-26T01:14:49.220337Z",
+  "close_reason": "Fixed by wave-fix",
   "labels": [
     "codereview",
     "wave-fix"

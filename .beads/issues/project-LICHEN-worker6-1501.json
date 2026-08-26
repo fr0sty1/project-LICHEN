@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-1501",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/python/src/lichen/crypto/edhoc.py:763 Responder has same CBOR double-encoding bug: id_cred_i_raw a",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-25T23:33:39.103078Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-25T23:33:39.103078Z",
+  "updated_at": "2026-08-26T01:13:39.091451Z",
+  "started_at": "2026-08-26T01:12:58.50034Z",
+  "closed_at": "2026-08-26T01:13:39.091451Z",
+  "close_reason": "Fixed by wave-fix",
   "labels": [
     "codereview",
     "wave-fix"
