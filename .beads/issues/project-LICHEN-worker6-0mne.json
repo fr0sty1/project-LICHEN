@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-0mne",
+  "title": "Consume suite_negotiation.json once EDHOC lane stabilizes",
+  "description": "test/vectors/suite_negotiation.json (spec/06-security.md section 8.9) unconsumed. python/src/lichen/crypto/edhoc.py is under active repair by another claimant (beads uk36.3 et al). Coordinate before wiring a consumer to avoid stepping on in-flight changes.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T00:13:04.914012Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T00:13:04.914012Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0mne",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T00:13:06.405859Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

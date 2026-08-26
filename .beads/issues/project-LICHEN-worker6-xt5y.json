@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-xt5y",
+  "title": "Implement LOADng local evidence records and consume local_evidence.json",
+  "description": "test/vectors/local_evidence.json (appendix-loadng B2.5, spec/05-routing.md section 11) unconsumed: no evidence-record implementation found. Implement + consumer.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T00:12:49.407394Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T00:12:49.407394Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xt5y",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T00:12:50.890275Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

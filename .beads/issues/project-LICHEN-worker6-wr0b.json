@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-wr0b",
+  "title": "Implement bufferbloat TX-queue oracle family and consume no_silent_drops + tx_queue_*.json",
+  "description": "test/vectors/no_silent_drops.json, tx_queue_bounded.json, tx_queue_expiry.json, tx_queue_priority.json, tx_queue_implementation.json (appendix-bufferbloat.md) unconsumed. Only a Zephyr C tx_queue header exists; no python/rust oracle implementation. Implement the TX-queue semantics (constants already pinned by vectors: constants field present) and wire all five files.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T00:13:09.450623Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T00:13:09.450623Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-wr0b",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T00:13:10.929986Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

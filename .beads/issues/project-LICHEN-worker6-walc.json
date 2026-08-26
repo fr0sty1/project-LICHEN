@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-walc",
+  "title": "Implement LCI access levels and consume access_levels.json",
+  "description": "test/vectors/access_levels.json (LCI 17.6.3) unconsumed: no AccessLevel model exists in python/src/lichen. Implement + pytest consumer.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T00:12:47.141996Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T00:12:47.141996Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-walc",
+      "depends_on_id": "project-LICHEN-worker6-f4z7",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T00:12:48.623687Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
