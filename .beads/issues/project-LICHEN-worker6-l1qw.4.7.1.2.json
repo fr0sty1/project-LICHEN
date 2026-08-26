@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.1.2",
   "title": "Rust: Echo Request/Reply",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:28.398358Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T01:23:32.980539Z",
+  "updated_at": "2026-08-26T01:26:54.592395Z",
   "started_at": "2026-08-26T01:23:32.980539Z",
-  "lease_expires_at": "2026-08-26T01:28:32.980539Z",
-  "heartbeat_at": "2026-08-26T01:23:32.980539Z",
+  "closed_at": "2026-08-26T01:26:54.592395Z",
+  "close_reason": "Already implemented: lichen-core icmpv6 echo_request/echo_reply builders plus node/gateway round-trip tests.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.1.2",

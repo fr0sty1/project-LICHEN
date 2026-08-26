@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.8.4",
   "title": "Duplicate Address Detection (DAD)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:17.674731Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:17.674731Z",
+  "updated_at": "2026-08-26T01:38:39.5727Z",
+  "started_at": "2026-08-26T01:38:36.15302Z",
+  "closed_at": "2026-08-26T01:38:39.5727Z",
+  "close_reason": "Already implemented: lichen-ipv6 NS handler performs RFC 4861 DAD (unspecified source, solicited-node dest check, NA with solicited=false to all-nodes).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.8.4",

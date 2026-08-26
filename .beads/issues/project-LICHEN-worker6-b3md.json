@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-b3md",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/oscore/oscore_ctx.c:408 Format specifier %u used for uint64_t stored_ssn in LOG_DBG/",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T01:28:49.799832Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T01:37:12.509005Z",
+  "started_at": "2026-08-26T01:36:41.463794Z",
+  "closed_at": "2026-08-26T01:37:12.509005Z",
+  "close_reason": "Fixed by wave-fix",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

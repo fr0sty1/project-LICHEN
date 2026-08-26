@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-dv68",
+  "title": "lichen/subsys/lichen/routing/announce.c:465 Race condition: lichen_announce_reset() acquires only announce_mutex, not ingest_mutex. If called while lichen_announce_ingest_authenticated() is between releasing announce_mutex (line 364) and re-acquiring it (line 377), reset clears the peer table while ingest still holds a pointer to a peer slot. The subsequent write to peer-\u003eseq_num (line 378) corrupts a cleared slot, leaving ghost state with active=false but non-zero seq_num.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T01:29:28.134275Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T01:37:17.306523Z",
+  "started_at": "2026-08-26T01:36:41.500918Z",
+  "closed_at": "2026-08-26T01:37:17.306523Z",
+  "close_reason": "Fixed by wave-fix",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

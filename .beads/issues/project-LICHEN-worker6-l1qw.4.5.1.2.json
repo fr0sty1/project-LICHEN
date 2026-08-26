@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.5.1.2",
   "title": "Rust: EUI-64 U/L bit flip",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:57.072336Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:57.072336Z",
+  "updated_at": "2026-08-26T01:33:00.592536Z",
+  "started_at": "2026-08-26T01:31:43.951151Z",
+  "closed_at": "2026-08-26T01:33:00.592536Z",
+  "close_reason": "EUI-64 U/L bit flip is XOR 0x02 in NodeId::addr_with_prefix and Addr::link_local_from_eui64; unit test link_local_flips_ul_bit.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.5.1.2",

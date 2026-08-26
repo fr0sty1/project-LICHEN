@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.4.2.2",
   "title": "Rust: AddrForKey(Ed25519 pubkey) derivation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:33.891608Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:33.891608Z",
+  "updated_at": "2026-08-26T01:32:58.788433Z",
+  "started_at": "2026-08-26T01:31:42.750415Z",
+  "closed_at": "2026-08-26T01:32:58.788433Z",
+  "close_reason": "LICHEN native AddrForKey is ygg_addr_from_pubkey (SHA-512 profile). Upstream yggdrasil-go bit-pack is documented as intentionally divergent in yggdrasil_addr_vectors.rs.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.4.2.2",

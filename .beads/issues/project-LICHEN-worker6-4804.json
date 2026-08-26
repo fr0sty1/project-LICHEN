@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-4804",
+  "title": "python/src/lichen/crypto/edhoc.py:237 IndexError crash when both C_I and C_R are empty byte string",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T01:29:13.756922Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T01:37:12.949062Z",
+  "started_at": "2026-08-26T01:36:40.749048Z",
+  "closed_at": "2026-08-26T01:37:12.949062Z",
+  "close_reason": "Fixed by wave-fix",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

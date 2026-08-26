@@ -1,0 +1,7 @@
+{
+  "id": "1787708318382506000-1",
+  "issue_id": "project-LICHEN-worker6-yqy6.9.3",
+  "author": "claude-wave",
+  "text": "Blocked on hardware: requires physical T1000-E and SX126X nodes for bench testing. Cannot be fixed through code changes.",
+  "created_at": "2026-08-26T01:38:38.382506Z"
+}

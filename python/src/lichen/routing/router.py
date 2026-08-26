@@ -470,9 +470,7 @@ class Router:
         # Rationale: mesh broadcasts are not meaningful globally, prevents
         # flood amplification, and protects mesh from external multicast storms.
         if self.is_border_router and dst.is_multicast and not self.multicast_peering_enabled:
-            logger.debug(
-                "BR multicast filter: dropping multicast %s (peering disabled)", dst
-            )
+            logger.debug("BR multicast filter: dropping multicast %s (peering disabled)", dst)
             return RouteDecision.DROP, None
 
         addr_class = self.classify_address(dst)
@@ -593,7 +591,7 @@ class Router:
         if len(queue) >= self.max_pending_per_dest:
             # Drop oldest packet (O(1) with deque.popleft())
             queue.popleft()
-            logger.debug("pending queue full for %s, dropped oldest", dst)
+            logger.warning("pending queue full for %s, dropped oldest", dst)
 
         queue.append(pending)
         logger.debug("queued packet for %s, queue depth=%d", dst, len(queue))

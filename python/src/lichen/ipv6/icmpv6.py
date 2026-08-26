@@ -223,6 +223,11 @@ def make_dest_unreachable(invoking_packet: bytes, code: DestUnreachableCode) -> 
     return Icmpv6ErrorMessage(Icmpv6Type.DEST_UNREACHABLE, int(code), invoking_packet)
 
 
+def make_resource_exhausted(invoking_packet: bytes) -> Icmpv6ErrorMessage:
+    """Build a DEST_UNREACHABLE/ADMIN_PROHIBITED NACK (no-silent-drops B.2.5)."""
+    return make_dest_unreachable(invoking_packet, DestUnreachableCode.ADMIN_PROHIBITED)
+
+
 def make_time_exceeded(
     invoking_packet: bytes, code: TimeExceededCode = TimeExceededCode.HOP_LIMIT_EXCEEDED
 ) -> Icmpv6ErrorMessage:

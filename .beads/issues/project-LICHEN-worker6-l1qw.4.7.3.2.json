@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.3.2",
   "title": "Rust: NS/NA",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:05.069122Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:05.069122Z",
+  "updated_at": "2026-08-26T01:29:44.840602Z",
+  "started_at": "2026-08-26T01:27:50.409375Z",
+  "closed_at": "2026-08-26T01:29:44.840602Z",
+  "close_reason": "Already implemented in lichen-ipv6 NeighborSolicitation/NeighborAdvertisement build+parse and RFC 4861 NS handling including DAD.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.3.2",

@@ -220,7 +220,7 @@ class ForwardingBuffer:
             evicted_queue = self._buffer.pop(oldest_iid, [])
             evicted_count = len(evicted_queue)
             self.stats.packets_evicted += evicted_count
-            logger.debug(
+            logger.warning(
                 "forwarding buffer LRU evict: source=%s packets=%d",
                 oldest_iid.hex(),
                 evicted_count,

@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.2.20.3",
   "title": "Zephyr: Channel Agility and Adaptive SF implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:22:07.354731Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.500930Z",
+  "updated_at": "2026-08-26T01:40:26.028113Z",
+  "started_at": "2026-08-26T01:37:21.55132Z",
+  "closed_at": "2026-08-26T01:40:26.028113Z",
+  "close_reason": "Fixed by wave-fix: Updated lichen_gradient_sf_select to implement full CCP-16 adaptive_sf_select pseudocode with ema_loss parameter and tx_allowed output per spec/02a-coordinated-capacity.md section 2a.7",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.2.20.3",

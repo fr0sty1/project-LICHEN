@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-z3k8",
   "title": "Consume no_silent_drops.json ForwardingBuffer/ICMPv6/Router vectors",
   "description": "tx_queue component vectors in no_silent_drops.json are covered by the TxQueue oracle (wr0b). Remaining components need implementations first: ForwardingBuffer per-source backpressure + WARNING-logged eviction, icmpv6 make_resource_exhausted() (DEST_UNREACHABLE/ADMIN_PROHIBITED), Router pending-queue oldest-drop with WARNING log.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T01:10:16.795418Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T01:10:16.795418Z",
+  "updated_at": "2026-08-26T01:40:29.072054Z",
+  "closed_at": "2026-08-26T01:40:29.072054Z",
+  "close_reason": "All no_silent_drops component vectors now consumed. ForwardingBuffer: per-source BACKPRESSURE and LRU EVICTED results asserted with stats; eviction log upgraded debug-\u003ewarning per B.2.5 (vector pins WARNING). Router pending queue: drop-oldest behavior verified via route-pending path, log upgraded debug-\u003ewarning (vector pins WARNING). ICMPv6: added make_resource_exhausted() factory producing DEST_UNREACHABLE/ADMIN_PROHIBITED NACK. 4 pytest cases in tests/routing/test_no_silent_drops_vectors.py using caplog WARNING assertions; combined routing/link/timing sweep 1526 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-z3k8",

@@ -1,14 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.4.1.2",
   "title": "Rust: Schnorr48 sign (lichen-link/src/schnorr.rs)",
-  "notes": "Already implemented",
-  "status": "open",
+  "notes": "Verified the existing rust/lichen-link/src/schnorr.rs Schnorr48 sign re-export against draft-lichen-schnorr-00 section 4.2 and the canonical corpus. Preserved rust/lichen-link/tests/schnorr48_determinism.rs, which proves repeated signing yields the exact canonical determinism signature and verifies it. Existing module tests cover all five positive signing vectors and fail-closed identity, low-order/torsion, non-canonical-s, and zero-s cases. Green gates: focused determinism 1/1; Schnorr module 19/19; lichen-link all-features 130 unit + 16 integration + 2 doc; cargo fmt check; clippy all-targets/all-features -D warnings; no_std schnorr lib check and clippy. No production change, no codereview per batch-wave instruction.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:00.096692Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:00.096692Z",
+  "updated_at": "2026-08-26T01:32:08.317343Z",
+  "started_at": "2026-08-26T01:29:29.907082Z",
+  "closed_at": "2026-08-26T01:32:08.317343Z",
+  "close_reason": "Verified implementation and added canonical determinism regression coverage; all Rust package, lint, format, and no_std gates green",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.4.1.2",

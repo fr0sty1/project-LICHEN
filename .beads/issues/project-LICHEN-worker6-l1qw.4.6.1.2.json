@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.6.1.2",
   "title": "Rust: scope detection",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:26.345151Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:26.345151Z",
+  "updated_at": "2026-08-26T01:33:04.1956Z",
+  "started_at": "2026-08-26T01:31:46.280961Z",
+  "closed_at": "2026-08-26T01:33:04.1956Z",
+  "close_reason": "Addr implements is_link_local (fe80::/10), is_multicast (ff00::/8), is_ula (fc00::/7), is_gua (2000::/3).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.6.1.2",
