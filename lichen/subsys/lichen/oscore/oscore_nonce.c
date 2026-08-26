@@ -77,8 +77,9 @@ void compute_nonce(const uint8_t *sender_id, size_t sender_id_len,
 
 /*
  * Encode PIV (sequence number) as variable-length big-endian.
+ * Supports up to 40-bit sequence numbers per RFC 8613 (5-byte PIV max).
  */
-size_t encode_piv(uint32_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN])
+size_t encode_piv(uint64_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN])
 {
 	if (seq == 0) {
 		piv[0] = 0;
@@ -87,7 +88,7 @@ size_t encode_piv(uint32_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN])
 
 	/* Find number of bytes needed */
 	size_t len = 0;
-	uint32_t tmp = seq;
+	uint64_t tmp = seq;
 	while (tmp > 0) {
 		len++;
 		tmp >>= 8;
@@ -104,10 +105,11 @@ size_t encode_piv(uint32_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN])
 
 /*
  * Decode PIV to sequence number.
+ * Supports up to 40-bit sequence numbers per RFC 8613 (5-byte PIV max).
  */
-uint32_t decode_piv(const uint8_t *piv, size_t piv_len)
+uint64_t decode_piv(const uint8_t *piv, size_t piv_len)
 {
-	uint32_t seq = 0;
+	uint64_t seq = 0;
 	for (size_t i = 0; i < piv_len; i++) {
 		seq = (seq << 8) | piv[i];
 	}

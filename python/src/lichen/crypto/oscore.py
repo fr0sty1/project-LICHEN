@@ -34,25 +34,34 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import TYPE_CHECKING
 
-from aiocoap.oscore import (  # type: ignore[import-untyped]  # no official stubs
+from aiocoap.oscore import (
     DEFAULT_ALGORITHM,
     DEFAULT_HASHFUNCTION,
     DEFAULT_WINDOWSIZE,
     CanProtect,
     CanUnprotect,
+    ProtectionInvalid,
     ReplayWindow,
+    RequestIdentifiers,
     SecurityContextUtils,
     algorithms,
     hashfunctions,
 )
 
 if TYPE_CHECKING:
+    from aiocoap.message import Message
+
     from .edhoc import OscoreContext
 
 
 # SECURITY: Maximum partial IV per RFC 8613 Section 5.2 (5 bytes = 40 bits).
 # Exceeding this would cause nonce reuse, breaking AEAD security.
 _MAX_SEQUENCE_NUMBER = (1 << 40) - 1
+# Wire-format maximum PIV length per RFC 8613 Section 5.2: the Partial IV is
+# encoded in at most 5 bytes. aiocoap's option parser accepts any length the
+# 3-bit n field can express (up to 7), so incoming oversized PIVs MUST be
+# rejected here before nonce construction.
+_MAX_PIV_LENGTH = 5
 MAX_OSCORE_SEQUENCE_NUMBER = _MAX_SEQUENCE_NUMBER
 OSCORE_SEQUENCE_EXHAUSTED = _MAX_SEQUENCE_NUMBER + 1
 
@@ -80,7 +89,7 @@ class OscoreContextParameters:
     id_context: bytes | None
 
 
-class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):  # type: ignore[misc]  # aiocoap lacks py.typed
+class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
     """In-memory OSCORE security context for aiocoap.
 
     Unlike FilesystemSecurityContext, this stores all state in memory. Suitable
@@ -359,6 +368,24 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):  # 
     def post_seqnoincrease(self) -> None:
         """Hook called after sequence number increment (no-op for memory context)."""
         pass
+
+    def unprotect(
+        self,
+        protected_message: Message,
+        request_id: RequestIdentifiers | None = None,
+    ) -> tuple[Message, RequestIdentifiers]:
+        """Unprotect a message, rejecting wire formats aiocoap is lax about.
+
+        Rejects OSCORE options whose announced Partial IV exceeds 5 bytes.
+        RFC 8613 Section 5.2 caps the PIV at 40 bits; a longer value violates
+        the nonce construction and MUST be discarded (see test vector
+        ``piv_overflow_rejected`` in test/vectors/oscore.json).
+        """
+        option_data = protected_message.opt.oscore
+        if option_data and (option_data[0] & 0x07) > _MAX_PIV_LENGTH:
+            raise ProtectionInvalid("Partial IV exceeds the RFC 8613 maximum of 5 bytes")
+        outer_message, request_identifiers = super().unprotect(protected_message, request_id)
+        return outer_message, request_identifiers
 
     def get_persisted_sequence_number(self) -> int:
         """Return the sequence number to persist for state recovery.

@@ -37,13 +37,13 @@ struct oscore_ctx {
 	uint8_t sender_id[OSCORE_ID_MAX_LEN];   /**< Sender ID */
 	uint8_t sender_id_len;                  /**< Sender ID length */
 	uint8_t sender_key[OSCORE_KEY_LEN];     /**< Sender Key */
-	uint32_t sender_seq;                    /**< Sender Sequence Number */
+	uint64_t sender_seq;                    /**< Sender Sequence Number (40-bit max per RFC 8613) */
 
 	/* Recipient context */
 	uint8_t recipient_id[OSCORE_ID_MAX_LEN]; /**< Recipient ID */
 	uint8_t recipient_id_len;                /**< Recipient ID length */
 	uint8_t recipient_key[OSCORE_KEY_LEN];   /**< Recipient Key */
-	uint32_t recipient_seq;                  /**< Last received seq */
+	uint64_t recipient_seq;                  /**< Last received seq (40-bit max per RFC 8613) */
 	uint32_t replay_window;                  /**< Replay window bitmap */
 
 	/* Peer identity (optional EUI-64 for per-peer lookup) */
@@ -96,19 +96,19 @@ int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 		     uint8_t *buf, size_t buf_len);
 
 /* Internal function declarations - oscore_replay.c */
-bool replay_check_acceptable(const struct oscore_ctx *ctx, uint32_t seq);
-int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_idx, uint32_t seq);
-void replay_clear_pending_locked(int ctx_idx, uint32_t seq);
+bool replay_check_acceptable(const struct oscore_ctx *ctx, uint64_t seq);
+int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_idx, uint64_t seq);
+void replay_clear_pending_locked(int ctx_idx, uint64_t seq);
 void replay_clear_pending_context_locked(int ctx_idx);
-bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq);
+bool replay_update_window(struct oscore_ctx *ctx, uint64_t seq);
 
 /* Internal function declarations - oscore_nonce.c */
 void compute_nonce(const uint8_t *sender_id, size_t sender_id_len,
 		   const uint8_t *piv, size_t piv_len,
 		   const uint8_t *common_iv,
 		   uint8_t nonce[OSCORE_NONCE_LEN]);
-size_t encode_piv(uint32_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN]);
-uint32_t decode_piv(const uint8_t *piv, size_t piv_len);
+size_t encode_piv(uint64_t seq, uint8_t piv[OSCORE_PIV_MAX_LEN]);
+uint64_t decode_piv(const uint8_t *piv, size_t piv_len);
 
 /* Internal function declarations - oscore_protect.c */
 size_t find_coap_payload_marker(const uint8_t *data, size_t len);

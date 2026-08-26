@@ -31,7 +31,7 @@ LOG_MODULE_DECLARE(oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 struct oscore_replay_pending {
 	bool active;
 	int ctx_idx;
-	uint32_t seq;
+	uint64_t seq;
 };
 
 static struct oscore_replay_pending s_replay_pending[OSCORE_REPLAY_PENDING_MAX];
@@ -40,7 +40,7 @@ static struct oscore_replay_pending s_replay_pending[OSCORE_REPLAY_PENDING_MAX];
  * Check if sequence number would be acceptable (without updating state).
  * Returns true if acceptable, false if replay or too old.
  */
-bool replay_check_acceptable(const struct oscore_ctx *ctx, uint32_t seq)
+bool replay_check_acceptable(const struct oscore_ctx *ctx, uint64_t seq)
 {
 	uint32_t window_size = CONFIG_LICHEN_OSCORE_REPLAY_WINDOW;
 
@@ -73,7 +73,7 @@ bool replay_check_acceptable(const struct oscore_ctx *ctx, uint32_t seq)
  *
  * Caller must hold s_ctx_mutex.
  */
-int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_idx, uint32_t seq)
+int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_idx, uint64_t seq)
 {
 	int free_idx = -1;
 
@@ -107,7 +107,7 @@ int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_idx, uin
 /*
  * Clear a pending reservation. Caller must hold s_ctx_mutex.
  */
-void replay_clear_pending_locked(int ctx_idx, uint32_t seq)
+void replay_clear_pending_locked(int ctx_idx, uint64_t seq)
 {
 	for (int i = 0; i < OSCORE_REPLAY_PENDING_MAX; i++) {
 		if (s_replay_pending[i].active &&
@@ -145,7 +145,7 @@ void replay_clear_pending_context_locked(int ctx_idx)
  * processing, even though decryption succeeded. This is conservative
  * but necessary to avoid gaps in replay protection.
  */
-bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
+bool replay_update_window(struct oscore_ctx *ctx, uint64_t seq)
 {
 	if (seq > ctx->recipient_seq) {
 		/* New highest seq - shift window */

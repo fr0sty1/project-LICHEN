@@ -90,7 +90,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	int opt_len;
 	int ret;
 	int ctx_idx;
-	uint32_t seq;
+	uint64_t seq;
 
 	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
 	    oscore_opt == NULL || oscore_opt_len == NULL) {
@@ -128,8 +128,8 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		goto cleanup_protect_request;
 	}
 
-	/* Check for sender sequence number exhaustion before use */
-	if (ctx->sender_seq == UINT32_MAX) {
+	/* Check for sender sequence number exhaustion before use (40-bit limit per RFC 8613) */
+	if (ctx->sender_seq >= OSCORE_SSN_MAX) {
 		k_mutex_unlock(&s_ctx_mutex);
 		LOG_ERR("OSCORE sender sequence exhausted - key rotation required");
 		ret = OSCORE_ERR_SEQ_EXHAUSTED;
