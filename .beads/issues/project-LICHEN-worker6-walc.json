@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-walc",
   "title": "Implement LCI access levels and consume access_levels.json",
   "description": "test/vectors/access_levels.json (LCI 17.6.3) unconsumed: no AccessLevel model exists in python/src/lichen. Implement + pytest consumer.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T00:12:47.141996Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T00:12:47.141996Z",
+  "updated_at": "2026-08-26T01:24:14.121877Z",
+  "closed_at": "2026-08-26T01:24:14.121877Z",
+  "close_reason": "LCI access-control oracle shipped: lichen/coap/access.py with AccessLevel ordering, transport-\u003elevel bindings (usb/serial/ipc=admin, ble/wifi=standard), longest-prefix resource rules with per-method minimum levels, and the vector-pinned error-code conventions (4.04 unknown resource before level checks, 4.05 method-not-on-resource regardless of level, 4.01 underprivileged mutation/observe-below-standard, 4.03 underprivileged /diag/raw/* read). 32 pytest cases consume every section of access_levels.json (transport_binding, all three level matrices, edge_cases incl. diag-raw subpath, put-status-blocked-all, wellknown discovery). Full-file coverage; ruff/format clean.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-walc",
