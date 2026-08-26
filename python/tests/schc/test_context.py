@@ -24,6 +24,11 @@ from lichen.schc import (
     versions_compatible,
 )
 from lichen.schc.context import AuthenticatedPeerSchcContext
+from lichen.schc.rules import (
+    GLOBAL_OSCORE_RULE,
+    LINK_LOCAL_OSCORE_RULE,
+    RULE_ID_UNCOMPRESSED,
+)
 
 # A small two-rule context with disjoint EQUAL matches for deterministic tests.
 RULE_A = Rule(
@@ -80,13 +85,47 @@ def test_select_rule_picks_matching() -> None:
     assert ctx.select_rule({"F.kind": 9, "F.val": 7}) is None
 
 
-def test_select_rule_is_deterministic_by_ascending_id() -> None:
+@pytest.mark.parametrize("rule_order", [(6, 5), (5, 6)])
+def test_select_rule_is_deterministic_by_ascending_id(rule_order: tuple[int, int]) -> None:
     # Two rules both match (ignore-only); the lower ID wins.
     r_lo = Rule(5, (FieldDescriptor("X", 8, MO.IGNORE, CDA.VALUE_SENT),))
     r_hi = Rule(6, (FieldDescriptor("X", 8, MO.IGNORE, CDA.VALUE_SENT),))
-    ctx = SchcContext({6: r_hi, 5: r_lo})
+    rules = {rule_id: {5: r_lo, 6: r_hi}[rule_id] for rule_id in rule_order}
+    ctx = SchcContext(rules)
     selected = ctx.select_rule({"X": 1})
     assert selected is not None and selected.rule_id == 5
+
+
+@pytest.mark.parametrize(
+    ("security_rule", "expected_plain_rule"),
+    [(LINK_LOCAL_OSCORE_RULE, 0), (GLOBAL_OSCORE_RULE, 1)],
+)
+def test_default_selection_rejects_unproven_oscore_ambiguity(
+    security_rule: Rule, expected_plain_rule: int
+) -> None:
+    """Descriptor equality alone cannot assert authenticated OSCORE content."""
+    fields = {
+        descriptor.field_id: (
+            descriptor.mapping[0]
+            if descriptor.mo is MO.MATCH_MAPPING and descriptor.mapping is not None
+            else descriptor.target_value
+        )
+        for descriptor in security_rule.fields
+    }
+
+    selected = SchcContext().select_rule(fields)
+
+    assert selected is not None
+    assert selected.rule_id == expected_plain_rule
+
+
+def test_rule255_is_never_selected_as_a_descriptor_fallback() -> None:
+    fallback = Rule(RULE_ID_UNCOMPRESSED, ())
+    context = SchcContext({RULE_ID_UNCOMPRESSED: fallback})
+
+    assert context.select_rule({}) is None
+    with pytest.raises(NoMatchingRuleError, match="no SCHC rule matches"):
+        context.compress({})
 
 
 def test_context_uses_dict_keys_not_rule_id() -> None:

@@ -11,7 +11,12 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from lichen.constants import SCHC_FRAGMENT_M, SCHC_FRAGMENT_N
+from lichen.constants import (
+    SCHC_FRAGMENT_M,
+    SCHC_FRAGMENT_N,
+    SCHC_FRAGMENT_T,
+    SCHC_RETRANSMISSION_TIMEOUT_S,
+)
 from lichen.crypto.identity import PeerIdentity
 from lichen.ipv6.addr import iid_to_eui64
 from lichen.link.frame import AddrMode
@@ -27,7 +32,12 @@ WINDOW_SIZE = MAX_WINDOW_SIZE
 DEFAULT_WINDOW_SIZE = WINDOW_SIZE
 MIC_LENGTH = 4
 RULE_IDS = (0x78, 0x79)
-TILE_SIZE = 179
+FRAGMENT_RULE_ID_BITS = 8
+FRAGMENT_ENVELOPE_MTU = 185
+FRAGMENT_HEADER_BITS = (
+    FRAGMENT_RULE_ID_BITS + SCHC_FRAGMENT_T + SCHC_FRAGMENT_M + SCHC_FRAGMENT_N
+)
+TILE_SIZE = (FRAGMENT_ENVELOPE_MTU * 8 - FRAGMENT_HEADER_BITS - MIC_LENGTH * 8) // 8
 _PROFILE_WINDOW_COUNT = 1 << SCHC_FRAGMENT_M
 MAX_PACKET_SIZE = _PROFILE_WINDOW_COUNT * WINDOW_SIZE * TILE_SIZE
 MAX_SCHC_PACKET = 1281
@@ -46,6 +56,7 @@ MAX_PENDING_ACK_RECEIPTS = 16
 MAX_ISSUED_FRAGMENT_WIRES_PER_SESSION = _PROFILE_WINDOW_COUNT * WINDOW_SIZE * MAX_ACK_REQUESTS
 MAX_ISSUED_FRAGMENT_WIRES = MAX_SENDER_SESSION_RECORDS * MAX_ISSUED_FRAGMENT_WIRES_PER_SESSION
 SESSION_IDLE_TIMEOUT_SECONDS = 60.0
+RETRANSMISSION_TIMEOUT_SECONDS = float(SCHC_RETRANSMISSION_TIMEOUT_S)
 PREPARED_SENDER_TTL_SECONDS = 60.0
 
 _W_SHIFT = 6
@@ -140,6 +151,83 @@ def _issued_manager(sender: FragmentSender) -> SchcSessionManager | None:
 
 class FragmentError(Exception):
     pass
+
+
+_U64_MAX = (1 << 64) - 1
+
+
+def _tile_size_input(name: str, value: int) -> int:
+    if type(value) is not int or not 0 <= value <= _U64_MAX:
+        raise FragmentError(f"{name} must be an unsigned 64-bit integer")
+    return value
+
+
+def fragment_payload_capacity(
+    mtu_bytes: int,
+    *,
+    rule_id_bits: int,
+    dtag_bits: int,
+    window_bits: int,
+    fcn_bits: int,
+    rcs_bits: int = 0,
+) -> int:
+    """Return the number of whole payload bytes fitting one SCHC fragment.
+
+    The calculation is bit-exact: the Rule ID, DTag, window, FCN, and optional
+    RCS consume bits before trailing padding is added to the fragment. Inputs
+    use the same unsigned 64-bit domain as the Rust implementation so vector
+    results and overflow failures are portable across implementations.
+    """
+    mtu_bytes = _tile_size_input("mtu_bytes", mtu_bytes)
+    if mtu_bytes == 0:
+        raise FragmentError("mtu_bytes must be positive")
+    widths = (
+        ("rule_id_bits", rule_id_bits),
+        ("dtag_bits", dtag_bits),
+        ("window_bits", window_bits),
+        ("fcn_bits", fcn_bits),
+        ("rcs_bits", rcs_bits),
+    )
+    overhead_bits = 0
+    for name, value in widths:
+        width = _tile_size_input(name, value)
+        if overhead_bits > _U64_MAX - width:
+            raise FragmentError("fragment overhead arithmetic overflow")
+        overhead_bits += width
+    if mtu_bytes > _U64_MAX // 8:
+        raise FragmentError("MTU arithmetic overflow")
+    available_bits = mtu_bytes * 8
+    if available_bits < overhead_bits + 8:
+        raise FragmentError("fragment cannot carry one whole payload byte")
+    return (available_bits - overhead_bits) // 8
+
+
+def tile_size_for_mtu(
+    mtu_bytes: int,
+    *,
+    rule_id_bits: int,
+    dtag_bits: int,
+    window_bits: int,
+    fcn_bits: int,
+    rcs_bits: int,
+) -> int:
+    """Return a tile size that fits both regular/All-0 and All-1 fragments."""
+    regular = fragment_payload_capacity(
+        mtu_bytes,
+        rule_id_bits=rule_id_bits,
+        dtag_bits=dtag_bits,
+        window_bits=window_bits,
+        fcn_bits=fcn_bits,
+    )
+    terminal = fragment_payload_capacity(
+        mtu_bytes,
+        rule_id_bits=rule_id_bits,
+        dtag_bits=dtag_bits,
+        window_bits=window_bits,
+        fcn_bits=fcn_bits,
+        rcs_bits=rcs_bits,
+    )
+    return min(regular, terminal)
 
 
 class _ValidatedSchcClock:
@@ -401,6 +489,7 @@ class _SessionRecord:
     active: bool = True
     hold_down_until: float = 0.0
     idle_expires_at: float = 0.0
+    retransmit_at: float | None = None
     outcome: str | None = None
     pending: OrderedDict[int, RxFrame] = field(default_factory=OrderedDict)
 
@@ -522,6 +611,13 @@ class SchcSessionManager:
         except FragmentError:
             self._fail_clock_unlocked()
             raise
+
+    @staticmethod
+    def _retransmission_deadline(now: float) -> float:
+        deadline = now + RETRANSMISSION_TIMEOUT_SECONDS
+        if not math.isfinite(deadline) or deadline <= now:
+            raise FragmentError("SCHC retransmission deadline is not representable")
+        return deadline
 
     def _issue_fragment_wire_unlocked(
         self,
@@ -819,6 +915,7 @@ class SchcSessionManager:
             baseline = self._replay_protector.highest(remote)
             if baseline >= MAX_LINK_REPLAY_COUNTER:
                 raise FragmentError("remote replay counter exhausted; link rekey required")
+            retransmit_at = self._retransmission_deadline(now)
             self._pin_replay(remote)
             self._records[key] = _SessionRecord(
                 sender=sender,
@@ -829,6 +926,7 @@ class SchcSessionManager:
                 fragments=prepared.fragments,
                 high_water=baseline,
                 idle_expires_at=now + SESSION_IDLE_TIMEOUT_SECONDS,
+                retransmit_at=retransmit_at,
             )
             self._sender_records[id(sender)] = self._records[key]
             self._prepared.pop(id(sender), None)
@@ -1065,6 +1163,14 @@ class SchcSessionManager:
                 return record.attempts
             return sender._attempts
 
+    def sender_retransmission_deadline(self, sender: FragmentSender) -> float | None:
+        with self._lock:
+            self._expire_all_unlocked()
+            record = self._sender_records.get(id(sender))
+            if record is not None and record.sender is sender and record.active:
+                return record.retransmit_at
+            return None
+
     def sender_fragments(self, sender: FragmentSender) -> tuple[Fragment, ...]:
         with self._lock:
             prepared = self._prepared.get(id(sender))
@@ -1087,6 +1193,7 @@ class SchcSessionManager:
         record.hold_down_until = self._now_unlocked() + SESSION_HOLD_DOWN_SECONDS
         record.outcome = outcome
         record.status = outcome
+        record.retransmit_at = None
         record.pending.clear()
         self._drop_issued_wires_unlocked(sender)
         self._drop_issued_sender_controls_unlocked(sender, preserve=preserve_control)
@@ -1097,7 +1204,7 @@ class SchcSessionManager:
     def transition_ack(self, sender: FragmentSender, received: RxFrame) -> list[bytes]:
         """Authenticate, transition, finish, and produce output in one transaction."""
         with self._lock:
-            self._expire_records_unlocked()
+            now = self._expire_records_unlocked()
             record = self._active_record_unlocked(sender)
             registered = record.pending.pop(id(received), None)
             if registered is not received:
@@ -1124,9 +1231,8 @@ class SchcSessionManager:
                 raise FragmentError(
                     "ACK/control replay counter is not newer than the session high-water"
                 )
-            record.high_water = replay_counter
-            record.idle_expires_at = self._now_unlocked() + SESSION_IDLE_TIMEOUT_SECONDS
             if data == receiver_abort(record.rule_id):
+                record.high_water = replay_counter
                 self._finish_unlocked(sender, record, "aborted")
                 return []
             ack_window = data[1] >> 7
@@ -1139,9 +1245,16 @@ class SchcSessionManager:
                 raise FragmentError("ACK window is outside the active transfer")
             if ack.complete and ack.window != final_window:
                 raise FragmentError("C=1 ACK must identify the final window")
+            next_retransmit_at = None if ack.complete else self._retransmission_deadline(now)
+            record.high_water = replay_counter
+            # Only a structurally and semantically valid control is session
+            # activity.  In particular, an authenticated malformed ACK must
+            # not keep a stale transfer alive until an attacker stops sending.
+            record.idle_expires_at = now + SESSION_IDLE_TIMEOUT_SECONDS
             if ack.complete:
                 self._finish_unlocked(sender, record, "succeeded")
                 return []
+            record.retransmit_at = next_retransmit_at
 
             missing_regular: list[Fragment] = []
             missing_all_1: Fragment | None = None
@@ -1226,36 +1339,57 @@ class SchcSessionManager:
                 self._state_change()
             return repair_output
 
-    def transition_timeout(self, sender: FragmentSender) -> bytes:
-        """Handle timeout and output atomically with respect to key rotation."""
-        with self._lock:
-            self._expire_records_unlocked()
-            record = self._sender_records.get(id(sender))
-            if record is None or record.sender is not sender or not record.active:
-                return b""
-            if record.attempts >= MAX_ACK_REQUESTS:
-                output = self._issue_control_wire_unlocked(
-                    sender_abort(record.rule_id),
-                    record.remote_signer_identity,
-                    record.key_generation,
-                    response=False,
-                    owner=sender,
-                )
-                self._finish_unlocked(sender, record, "aborted", preserve_control=output)
-                return output
-            record.attempts += 1
-            sender._set_security_state(attempts=record.attempts)
-            record.idle_expires_at = self._now_unlocked() + SESSION_IDLE_TIMEOUT_SECONDS
+    def _transition_timeout_unlocked(
+        self,
+        sender: FragmentSender,
+        record: _SessionRecord,
+        now: float,
+    ) -> bytes:
+        if record.attempts >= MAX_ACK_REQUESTS:
             output = self._issue_control_wire_unlocked(
-                ack_request(record.rule_id, record.fragments[-1].window),
+                sender_abort(record.rule_id),
                 record.remote_signer_identity,
                 record.key_generation,
                 response=False,
                 owner=sender,
             )
-            if self._state_change is not None:
-                self._state_change()
+            self._finish_unlocked(sender, record, "aborted", preserve_control=output)
             return output
+        next_retransmit_at = self._retransmission_deadline(now)
+        record.attempts += 1
+        sender._set_security_state(attempts=record.attempts)
+        record.idle_expires_at = now + SESSION_IDLE_TIMEOUT_SECONDS
+        record.retransmit_at = next_retransmit_at
+        output = self._issue_control_wire_unlocked(
+            ack_request(record.rule_id, record.fragments[-1].window),
+            record.remote_signer_identity,
+            record.key_generation,
+            response=False,
+            owner=sender,
+        )
+        if self._state_change is not None:
+            self._state_change()
+        return output
+
+    def transition_timeout(self, sender: FragmentSender) -> bytes:
+        """Force one timeout transition after an external timer has fired."""
+        with self._lock:
+            now = self._expire_records_unlocked()
+            record = self._sender_records.get(id(sender))
+            if record is None or record.sender is not sender or not record.active:
+                return b""
+            return self._transition_timeout_unlocked(sender, record, now)
+
+    def transition_timeout_if_due(self, sender: FragmentSender) -> bytes:
+        """Poll the fixed 10-second timer without firing early or twice."""
+        with self._lock:
+            now = self._expire_records_unlocked()
+            record = self._sender_records.get(id(sender))
+            if record is None or record.sender is not sender or not record.active:
+                return b""
+            if record.retransmit_at is None or now < record.retransmit_at:
+                return b""
+            return self._transition_timeout_unlocked(sender, record, now)
 
     def cancel_with_abort(self, sender: FragmentSender) -> bytes | None:
         """Atomically terminate an active sender and issue its one-use abort."""
@@ -1429,6 +1563,12 @@ class FragmentSender:
         manager = _issued_manager(self)
         return self._status if manager is None else manager.sender_status(self)
 
+    @property
+    def retransmission_deadline(self) -> float | None:
+        """Absolute monotonic deadline for the next authenticated retry."""
+        manager = _issued_manager(self)
+        return None if manager is None else manager.sender_retransmission_deadline(self)
+
     def _bind_session(
         self,
         manager: SchcSessionManager,
@@ -1528,6 +1668,13 @@ class FragmentSender:
         if manager is None:
             return b""
         return manager.transition_timeout(self)
+
+    def timeout_if_due(self) -> bytes:
+        """Fire the fixed retransmission timer only at or after its deadline."""
+        manager = _issued_manager(self)
+        if manager is None:
+            return b""
+        return manager.transition_timeout_if_due(self)
 
     def cancel(self) -> None:
         """Release this sender or terminate its live session exactly once."""

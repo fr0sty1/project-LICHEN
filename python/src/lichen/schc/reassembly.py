@@ -277,8 +277,7 @@ class FragmentReceiver:
             self._release()
             return ReceiverResult(aborted=True)
         if data == receiver_abort(rule_id):
-            self._release()
-            return ReceiverResult(aborted=True)
+            raise FragmentError("receiver-abort is a sender-facing control")
         window = data[1] >> 7
         if data == ack_request(rule_id, window):
             if self._rule_id == 0:
@@ -291,6 +290,12 @@ class FragmentReceiver:
             if self._tiles and all((0, fcn) in self._tiles for fcn in range(63)):
                 window = 1
             return self._respond(Ack(rule_id, window, self._bitmap(window)))
+        try:
+            Ack.from_bytes(data)
+        except FragmentError:
+            pass
+        else:
+            raise FragmentError("ACK is a sender-facing control")
         try:
             return self.receive(Fragment.from_bytes(data, window_size=self.window_size))
         except FragmentError:
@@ -340,13 +345,22 @@ class ReassemblyManager:
         if len(data) < 2:
             self._contexts.pop(context_key, None)
             return ReceiverResult(response=receiver_abort(rule_id), aborted=True)
-        if data in (sender_abort(rule_id), receiver_abort(rule_id)):
+        if data == sender_abort(rule_id):
             receiver = self._contexts.pop(context_key, None)
             if receiver is not None:
                 receiver.receive_bytes(data)
             return ReceiverResult(aborted=True)
+        if data == receiver_abort(rule_id):
+            raise FragmentError("receiver-abort is a sender-facing control")
         window = data[1] >> 7
         is_ack_request = data == ack_request(rule_id, window)
+        if not is_ack_request:
+            try:
+                Ack.from_bytes(data)
+            except FragmentError:
+                pass
+            else:
+                raise FragmentError("ACK is a sender-facing control")
         if not is_ack_request:
             try:
                 fragment = Fragment.from_bytes(data, window_size=WINDOW_SIZE)
@@ -561,9 +575,10 @@ class _AuthenticatedReassemblyManager:
             window = data[1] >> 7 if len(data) >= 2 else 0
             is_receiver_control = data in (
                 sender_abort(rule_id),
-                receiver_abort(rule_id),
                 ack_request(rule_id, window),
             )
+            if data == receiver_abort(rule_id):
+                return ReceiverResult(), None
             if not is_receiver_control:
                 try:
                     Ack.from_bytes(data)

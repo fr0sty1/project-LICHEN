@@ -163,11 +163,12 @@ def test_expire_and_abort_controls_release() -> None:
     assert receiver.expire() == bytes.fromhex("78ffff")
     assert receiver.expire() is None
 
-    for control in (bytes.fromhex("78fe"), bytes.fromhex("78ffff")):
-        receiver = FragmentReceiver()
-        receiver.receive_bytes(TILE_0)
-        result = receiver.receive_bytes(control)
-        assert result.aborted and result.response is None and receiver.done
+    # Only sender_abort (78fe) should cause graceful abort.
+    # receiver_abort (78ffff) is sender-facing and should be rejected.
+    receiver = FragmentReceiver()
+    receiver.receive_bytes(TILE_0)
+    result = receiver.receive_bytes(bytes.fromhex("78fe"))  # sender_abort
+    assert result.aborted and result.response is None and receiver.done
 
 
 def test_malformed_input_and_resource_limit_abort() -> None:

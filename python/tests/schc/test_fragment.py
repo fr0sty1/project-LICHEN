@@ -42,6 +42,8 @@ from lichen.schc.fragment import (
     MAX_SCHC_PACKET,
     MAX_SENDER_SESSION_RECORDS,
     MIC_LENGTH,
+    RETRANSMISSION_TIMEOUT_SECONDS,
+    SESSION_IDLE_TIMEOUT_SECONDS,
     TILE_SIZE,
     WINDOW_SIZE,
     Ack,
@@ -57,7 +59,11 @@ from lichen.schc.fragment import (
     sender_abort,
 )
 from lichen.schc.headers import compress_packet, decompress_packet, encode_rule255
-from lichen.schc.reassembly import AUTHENTICATED_HOLD_DOWN_SECONDS
+from lichen.schc.reassembly import (
+    AUTHENTICATED_HOLD_DOWN_SECONDS,
+    FragmentReceiver,
+    ReassemblyManager,
+)
 from lichen.schc.rules import SchcRuleVersionOption
 from lichen.timing.time_sync import MonotonicClock
 
@@ -413,6 +419,54 @@ def test_fragmentation_rule_direction_uses_full_canonical_signer_order() -> None
         fragmentation_rule_for_sender(LOCAL_IDENTITY, LOCAL_IDENTITY)
 
 
+def test_receiver_routes_abort_by_role_without_cross_session_cleanup() -> None:
+    opener = Fragment(0x78, 0, 62, bytes(TILE_SIZE)).to_bytes()
+    receiver = FragmentReceiver()
+    assert receiver.receive_bytes(opener).response is None
+    retained = dict(receiver._tiles)
+
+    for sender_facing in (
+        receiver_abort(0x78),
+        Ack(0x78, 0, complete=True).to_bytes(),
+    ):
+        with pytest.raises(FragmentError, match="sender-facing control"):
+            receiver.receive_bytes(sender_facing)
+        assert receiver._tiles == retained
+        assert not receiver.done
+
+    result = receiver.receive_bytes(sender_abort(0x78))
+    assert result.aborted
+    assert result.response is None
+    assert receiver.done
+    assert receiver._tiles == {}
+
+    manager = ReassemblyManager(max_contexts=4)
+    assert manager.receive_bytes("peer-a", opener).response is None
+    assert manager.receive_bytes("peer-b", opener).response is None
+    contexts = dict(manager._contexts)
+    with pytest.raises(FragmentError, match="sender-facing control"):
+        manager.receive_bytes("peer-a", receiver_abort(0x78))
+    assert manager._contexts == contexts
+
+    assert manager.receive_bytes("peer-a", sender_abort(0x78)).aborted
+    assert set(manager._contexts) == {("peer-b", 0x78)}
+    assert manager.receive_bytes("peer-a", sender_abort(0x78)).aborted
+    assert set(manager._contexts) == {("peer-b", 0x78)}
+
+
+@pytest.mark.parametrize("wire", [b"\x78\xfe\x00", b"\x78\xff\x00", b"\x78\xff\xff\x00"])
+def test_malformed_abort_variants_fail_closed_and_release_state(wire: bytes) -> None:
+    receiver = FragmentReceiver()
+    receiver.receive_bytes(Fragment(0x78, 0, 62, bytes(TILE_SIZE)).to_bytes())
+
+    result = receiver.receive_bytes(wire)
+
+    assert result.aborted
+    assert result.response == receiver_abort(0x78)
+    assert receiver.done
+    assert receiver._tiles == {}
+
+
 def test_all_zero_ack_bitmap_round_trip() -> None:
     ack = Ack(0x78, 0, (False,) * 63)
     assert ack.to_bytes() == bytes.fromhex("78000000000000000000")
@@ -711,6 +765,90 @@ def test_timeout_rounds_exhaust_budget_once() -> None:
     assert sender.timeout() == b""
 
 
+def test_fixed_retransmission_timer_starts_resets_and_aborts_exactly() -> None:
+    now = [0.0]
+    harness = SessionHarness(-1, receipt_clock=MonotonicClock(lambda: now[0]))
+    sender = _link_sender(harness, b"timer")
+    sender.start()
+    assert RETRANSMISSION_TIMEOUT_SECONDS == 10.0
+    assert sender.retransmission_deadline == 10.0
+
+    now[0] = 9.999
+    assert sender.timeout_if_due() == b""
+    assert sender.attempts == 1
+    assert sender.retransmission_deadline == 10.0
+
+    for expected_attempt, deadline in ((2, 20.0), (3, 30.0), (4, 40.0)):
+        now[0] += 0.001
+        assert sender.timeout_if_due() == ack_request(0x78, 0)
+        assert sender.attempts == expected_attempt
+        assert sender.retransmission_deadline == deadline
+        assert sender.timeout_if_due() == b""
+        now[0] = deadline - 0.001
+        assert sender.timeout_if_due() == b""
+
+    now[0] = 40.0
+    assert sender.timeout_if_due() == sender_abort(0x78)
+    assert sender.status == "aborted"
+    assert sender.attempts == MAX_ACK_REQUESTS
+    assert sender.retransmission_deadline is None
+    assert sender.timeout_if_due() == b""
+
+
+def test_ack_timer_reset_requires_valid_fresh_control() -> None:
+    now = [0.0]
+    harness = SessionHarness(-1, receipt_clock=MonotonicClock(lambda: now[0]))
+    sender = _link_sender(harness, b"timer")
+    sender.start()
+    initial_deadline = sender.retransmission_deadline
+
+    now[0] = 5.0
+    malformed = Ack(0x78, 0, (True,) + (False,) * 62).to_bytes()
+    received = harness.receive(malformed, 1)
+    assert isinstance(received, RxFrame)
+    with pytest.raises(FragmentError, match="unassigned bitmap bit"):
+        sender.handle_ack_frame(received)
+    assert sender.retransmission_deadline == initial_deadline
+    assert sender.attempts == 1
+
+    now[0] = 6.0
+    missing_all_1 = Ack(0x78, 0, (False,) * WINDOW_SIZE).to_bytes()
+    progress = harness.receive(missing_all_1, 2)
+    assert isinstance(progress, RxFrame)
+    assert sender.handle_ack_frame(progress) == [sender.all_fragments()[-1].to_bytes()]
+    assert sender.retransmission_deadline == 16.0
+    assert sender.attempts == 2
+    with pytest.raises(FragmentError, match="receive receipt"):
+        sender.handle_ack_frame(progress)
+    assert sender.retransmission_deadline == 16.0
+    assert sender.attempts == 2
+
+    now[0] = 7.0
+    complete = harness.receive(Ack(0x78, 0, complete=True).to_bytes(), 3)
+    assert isinstance(complete, RxFrame)
+    assert sender.handle_ack_frame(complete) == []
+    assert sender.status == "succeeded"
+    assert sender.retransmission_deadline is None
+
+
+def test_retransmission_timer_clock_regression_and_overflow_fail_closed() -> None:
+    now = [10.0]
+    harness = SessionHarness(-1, receipt_clock=MonotonicClock(lambda: now[0]))
+    sender = _link_sender(harness, b"timer")
+    sender.start()
+    now[0] = 9.0
+    with pytest.raises(FragmentError, match="clock regressed"):
+        sender.timeout_if_due()
+    assert sender.status == "invalidated"
+    assert sender.retransmission_deadline is None
+
+    huge = [float.fromhex("0x1.fffffffffffffp+1023")]
+    overflow = SessionHarness(-1, receipt_clock=MonotonicClock(lambda: huge[0]))
+    with pytest.raises(FragmentError, match="deadline is not representable"):
+        overflow.local_link._schc_session_manager._retransmission_deadline(huge[0])
+    assert not overflow.local_link._schc_session_manager._records
+
+
 def test_active_sender_rejects_unassigned_ack_bits_without_transition() -> None:
     harness, sender = bound_sender(replay_counter=0)
     sender.start()
@@ -723,6 +861,48 @@ def test_active_sender_rejects_unassigned_ack_bits_without_transition() -> None:
         sender.handle_ack_frame(received)
 
     assert (sender.status, sender.attempts) == before
+
+
+def test_invalid_ack_does_not_refresh_inactivity_deadline() -> None:
+    now = [0.0]
+    harness = SessionHarness(-1, receipt_clock=MonotonicClock(lambda: now[0]))
+    sender = _link_sender(harness, b"inactivity")
+    sender.start()
+    manager = harness.local_link._schc_session_manager
+    record = manager._sender_records[id(sender)]
+    assert record.idle_expires_at == SESSION_IDLE_TIMEOUT_SECONDS
+
+    now[0] = SESSION_IDLE_TIMEOUT_SECONDS / 2
+    malformed = Ack(0x78, 0, (True,) + (False,) * 62).to_bytes()
+    received = harness.receive(malformed, 1)
+    assert isinstance(received, RxFrame)
+    with pytest.raises(FragmentError, match="unassigned bitmap bit"):
+        sender.handle_ack_frame(received)
+
+    assert record.idle_expires_at == SESSION_IDLE_TIMEOUT_SECONDS
+    now[0] = SESSION_IDLE_TIMEOUT_SECONDS
+    assert sender.timeout() == b""
+    assert sender.status == "expired"
+
+
+def test_valid_ack_refreshes_inactivity_deadline_exactly_once() -> None:
+    now = [0.0]
+    harness = SessionHarness(-1, receipt_clock=MonotonicClock(lambda: now[0]))
+    sender = _link_sender(harness, b"inactivity")
+    sender.start()
+    manager = harness.local_link._schc_session_manager
+    record = manager._sender_records[id(sender)]
+
+    now[0] = 10.0
+    missing = Ack(0x78, 0, (False,) * WINDOW_SIZE).to_bytes()
+    received = harness.receive(missing, 1)
+    assert isinstance(received, RxFrame)
+    assert sender.handle_ack_frame(received)
+    assert record.idle_expires_at == 10.0 + SESSION_IDLE_TIMEOUT_SECONDS
+
+    now[0] = record.idle_expires_at
+    assert sender.timeout() == b""
+    assert sender.status == "expired"
 
 
 def test_sender_rejects_wrong_peer_prior_session_and_replayed_ack() -> None:

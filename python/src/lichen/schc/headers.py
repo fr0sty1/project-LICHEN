@@ -679,7 +679,7 @@ class RplDioProfile(_RplProfile):
 
 
 class RplDaoProfile(_RplProfile):
-    """RPL DAO with DODAGID over routable IPv6 (SCHC rule 4, multi-hop source model)."""
+    """RPL DAO with DODAGID over link-local IPv6 (SCHC rule 4)."""
 
     rule = RPL_DAO_RULE
     code = 2
@@ -701,6 +701,11 @@ class RplDaoProfile(_RplProfile):
             "RPL.seq": base[3],
             "RPL.dodagid": int.from_bytes(base[4:20], "big"),
         }
+
+    def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
+        if not _require_field(fields, "RPL.kd_flags") & 0x40:
+            raise SchcError("Rule 4 DAO residue has the D flag clear")
+        return super().build(fields, tail)
 
     def _build_base(self, fields: dict[str, int | None]) -> bytes:
         return bytes(
