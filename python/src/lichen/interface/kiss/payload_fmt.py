@@ -102,7 +102,7 @@ def _try_json(data: bytes) -> str | None:
         return None
 
 
-def _compact_repr(obj, depth: int = 0) -> str:
+def _compact_repr(obj: object, depth: int = 0) -> str:
     """Compact JSON-like representation.
 
     More readable than json.dumps for display in TNC apps.

@@ -6,17 +6,10 @@ Drives ``lichen.channel_plan`` (the oracle declared by the vector file header)
 through all committed CCP-4 regional channel plan vectors per spec
 02a-coordinated-capacity.md:164-182.
 
-Known divergence (deliberate, documented, tracked in beads): the vectors
-``get_plan_unknown_fallback`` and ``get_plan_by_name_unknown_fallback`` expect
-an unknown plan id/name to resolve to EU868. Neither spec 02a:178 nor the
-current oracle supports that reading. Spec 02a:178 requires *CH0 fallback*
-(operate on control channel CH0), not substitution of another region's
-regulatory limits; ``lichen.channel_plan.get_plan`` /
-``get_plan_by_name`` fail closed with :class:`UnknownPlanError`, and
-:func:`lichen.channel_plan.ch0_fallback_required` is the normative signal for
-the required CH0 fallback. These two tests therefore assert the oracle's
-fail-closed contract and the CH0-fallback signal instead of the stale EU868
-substitution expectation. All other vectors are asserted byte-exact.
+All vectors match the fail-closed oracle contract: ``get_plan`` and
+``get_plan_by_name`` raise :class:`UnknownPlanError` for unknown plan ids/names,
+and :func:`ch0_fallback_required` signals when CH0 fallback is required per
+spec 02a:178.
 """
 
 from __future__ import annotations
@@ -72,9 +65,7 @@ def _load() -> dict[str, Any]:
 
 def _cases(vector_type: str) -> list[tuple[str, dict[str, Any]]]:
     cases = [
-        (vector["name"], vector)
-        for vector in _load()["vectors"]
-        if vector["type"] == vector_type
+        (vector["name"], vector) for vector in _load()["vectors"] if vector["type"] == vector_type
     ]
     assert cases, f"{VECTOR_FILE} lost its {vector_type} vectors"
     return cases
@@ -115,27 +106,40 @@ def test_is_valid_power_vector(name: str, vector: dict[str, Any]) -> None:
 
 
 @pytest.mark.parametrize("name,vector", _cases("get_plan"))
-def test_get_plan_unknown_fails_closed_with_ch0_fallback(
-    name: str, vector: dict[str, Any]
-) -> None:
-    """Divergence from the stale vector expectation, see module docstring.
+def test_get_plan_vector(name: str, vector: dict[str, Any]) -> None:
+    """Validate get_plan vectors against the oracle.
 
-    The JSON expects ``{"plan_name": "EU868", "plan_id": 1}``; the declared
-    oracle raises :class:`UnknownPlanError` (fail-closed) and signals the
-    spec-required CH0 fallback via :func:`ch0_fallback_required`.
+    Vectors with ``error: true`` expect :class:`UnknownPlanError` (fail-closed)
+    and verify ``ch0_fallback_required`` matches the expectation.
     """
-    with pytest.raises(UnknownPlanError):
-        get_plan(vector["input"]["plan_id"])
-    assert ch0_fallback_required(vector["input"]["plan_id"]) is True
+    output = vector["output"]
+    if output.get("error"):
+        assert output.get("error_type") == "UnknownPlanError"
+        with pytest.raises(UnknownPlanError):
+            get_plan(vector["input"]["plan_id"])
+        assert ch0_fallback_required(vector["input"]["plan_id"]) is output["ch0_fallback_required"]
+    else:
+        plan = get_plan(vector["input"]["plan_id"])
+        assert plan.name == output["plan_name"]
+        assert plan.plan_id == output["plan_id"]
 
 
 @pytest.mark.parametrize("name,vector", _cases("get_plan_by_name"))
-def test_get_plan_by_name_unknown_fails_closed_with_ch0_fallback(
-    name: str, vector: dict[str, Any]
-) -> None:
-    """Divergence from the stale vector expectation, see module docstring."""
-    with pytest.raises(UnknownPlanError, match="UNKNOWN"):
-        get_plan_by_name(vector["input"]["plan_name"])
+def test_get_plan_by_name_vector(name: str, vector: dict[str, Any]) -> None:
+    """Validate get_plan_by_name vectors against the oracle.
+
+    Vectors with ``error: true`` expect :class:`UnknownPlanError` (fail-closed).
+    The ``ch0_fallback_required`` field documents that CH0 fallback applies.
+    """
+    output = vector["output"]
+    if output.get("error"):
+        assert output.get("error_type") == "UnknownPlanError"
+        with pytest.raises(UnknownPlanError):
+            get_plan_by_name(vector["input"]["plan_name"])
+    else:
+        plan = get_plan_by_name(vector["input"]["plan_name"])
+        assert plan.name == output["plan_name"]
+        assert plan.plan_id == output["plan_id"]
 
 
 @pytest.mark.parametrize("name,vector", _cases("channel_frequency"))
@@ -170,7 +174,7 @@ def test_channel_spacing_vector(name: str, vector: dict[str, Any]) -> None:
     plan = get_plan_by_name(vector["input"]["plan_name"])
     spacings = {
         later.frequency_hz - earlier.frequency_hz
-        for earlier, later in zip(plan.channels, plan.channels[1:])
+        for earlier, later in zip(plan.channels, plan.channels[1:], strict=False)
     }
     assert len(spacings) == 1
     assert spacings.pop() == vector["output"]["spacing_hz"]

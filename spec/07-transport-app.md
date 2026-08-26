@@ -153,14 +153,18 @@ The first byte identifies the CoT event type:
 +--------+--------+--------+--------+--------+--------+
 ```
 
-Total: 18 bytes for full PLI (vs 400+ bytes XML).
+Total: 17 bytes for full PLI (vs 400+ bytes XML).
 
 Field encoding:
-- Latitude/longitude: int32 microdegrees (±180° in 32 bits)
-- Altitude: int16 decimeters
+- Latitude: int32 microdegrees, -90,000,000 to +90,000,000
+- Longitude: int32 microdegrees, -180,000,000 to +180,000,000
+- Altitude: int16 decimeters (-32,768 to +32,767)
 - Course: uint16 centidegrees (0-35999)
-- Speed: uint16 cm/s
-- Team/role: enumerated bytes (Blue=1, Red=2, etc.)
+- Speed: uint16 cm/s (0-65535)
+- Team/role: uint8 enumerated bytes (Blue=1, Red=2, etc.)
+
+Receivers MUST reject PLI datagrams that are not exactly 17 bytes, coordinates
+outside the geographic ranges above, or courses greater than 35999.
 
 **Chat Encoding (subtype 0x01):**
 

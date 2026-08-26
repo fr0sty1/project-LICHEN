@@ -487,7 +487,7 @@ def test_packets_formats_vectors_against_oracle() -> None:
 def test_packets_timing_vectors_against_oracle() -> None:
     doc = _load("packets-timing.json")
     assert doc["format_version"] == 2
-    assert len(doc["vectors"]) == 34
+    assert len(doc["vectors"]) == 38
     assert len({vector["name"] for vector in doc["vectors"]}) == len(doc["vectors"])
     assert all({"name", "description", "category"} <= vector.keys() for vector in doc["vectors"])
     assert {vector["category"] for vector in doc["vectors"]} == {
@@ -508,6 +508,7 @@ def test_packets_timing_vectors_against_oracle() -> None:
         "sfn_slot",
         "tdma_constants",
         "time_adoption",
+        "monotonic_time",
         "time_stratum",
         "time_sync",
         "time_sync_trust",
@@ -566,6 +567,175 @@ def test_packets_timing_vectors_against_oracle() -> None:
     assert DioTimeOption.decode(enc).timestamp == 1700000000
 
     by_name = {vector["name"]: vector for vector in doc["vectors"]}
+    profile = by_name["trickle_profile_math"]
+    assert set(profile) == {
+        "name",
+        "description",
+        "category",
+        "Imin_ms",
+        "Imax_doublings",
+        "Imax_exact_ms",
+        "Imax_seconds",
+        "k",
+        "interval_sequence_ms",
+        "transmit_cases",
+        "suppression_counter_boundary",
+        "reset_interval_ms",
+    }
+    assert profile["Imin_ms"] == 4000
+    assert profile["Imax_doublings"] == 8
+    assert profile["Imax_exact_ms"] == profile["Imin_ms"] << profile["Imax_doublings"]
+    assert profile["Imax_seconds"] == 1024
+    assert profile["interval_sequence_ms"] == [
+        4_000,
+        8_000,
+        16_000,
+        32_000,
+        64_000,
+        128_000,
+        256_000,
+        512_000,
+        1_024_000,
+        1_024_000,
+    ]
+    for case in profile["transmit_cases"]:
+        assert set(case) == {
+            "interval_ms",
+            "rand_offset_ms",
+            "expected_transmit_offset_ms",
+        }
+        assert 0 <= case["rand_offset_ms"] < case["interval_ms"] // 2
+        assert case["expected_transmit_offset_ms"] == (
+            case["interval_ms"] // 2 + case["rand_offset_ms"]
+        )
+        assert case["expected_transmit_offset_ms"] < case["interval_ms"]
+
+    consistency = by_name["trickle_consistency_detection"]
+    assert set(consistency) == {
+        "name",
+        "description",
+        "category",
+        "Imin_ms",
+        "k",
+        "scope_dodag_id_hex",
+        "scope_version",
+        "cases",
+    }
+    assert len(bytes.fromhex(consistency["scope_dodag_id_hex"])) == 16
+    assert consistency["scope_version"] == 7
+    assert {case["name"] for case in consistency["cases"]} == {
+        "stopped_exact_scope",
+        "active_exact_scope",
+        "active_wrong_version",
+        "active_wrong_dodag",
+        "waiting_expire_exact_scope",
+        "suppression_boundary",
+        "saturating_counter",
+    }
+    for case in consistency["cases"]:
+        assert set(case) == {
+            "name",
+            "active",
+            "after_transmit",
+            "counter_before",
+            "observed_dodag_id_hex",
+            "observed_version",
+            "expected_accepted",
+            "expected_counter_after",
+            "expected_should_transmit",
+            "expected_interval_unchanged",
+        }
+        assert len(bytes.fromhex(case["observed_dodag_id_hex"])) == 16
+        assert case["expected_interval_unchanged"] is True
+
+    reset = by_name["trickle_inconsistency_resets"]
+    assert set(reset) == {
+        "name",
+        "description",
+        "category",
+        "Imin_ms",
+        "k",
+        "initial_rand_offset_ms",
+        "steps",
+    }
+    assert reset["Imin_ms"] == 4000
+    assert [step["state_before"] for step in reset["steps"]] == [
+        "waiting_transmit_at_imin",
+        "waiting_expire_at_imin",
+        "repeated_inconsistency_at_imin",
+    ]
+    for step in reset["steps"]:
+        assert set(step) == {
+            "state_before",
+            "fire_before_reset",
+            "now_ms",
+            "rand_offset_ms",
+            "expected_interval_ms",
+            "expected_counter",
+            "expected_transmit_time_ms",
+            "expected_interval_end_ms",
+        }
+        assert type(step["fire_before_reset"]) is bool
+        assert 0 <= step["rand_offset_ms"] < reset["Imin_ms"] // 2
+        assert step["expected_interval_ms"] == reset["Imin_ms"]
+        assert step["expected_counter"] == 0
+        assert step["expected_transmit_time_ms"] == (
+            step["now_ms"] + reset["Imin_ms"] // 2 + step["rand_offset_ms"]
+        )
+        assert step["expected_interval_end_ms"] == step["now_ms"] + reset["Imin_ms"]
+
+    monotonic = by_name["monotonic_uptime_sequences"]
+    assert set(monotonic) == {"name", "description", "category", "scope", "unit", "cases"}
+    assert monotonic["scope"] == "single_power_cycle"
+    assert monotonic["unit"] == "implementation_defined_ticks"
+    assert {case["name"] for case in monotonic["cases"]} == {
+        "boot_origin_zero",
+        "strictly_increasing",
+        "equal_observations_allowed",
+        "regression_rejected",
+        "wrap_to_zero_rejected",
+    }
+
+    from lichen.crypto.identity import Identity
+    from lichen.link.link_layer import LinkLayer, LinkSecurityClockError
+    from lichen.timing.time_sync import MonotonicClock
+
+    identity = Identity.from_seed(bytes(range(32)))
+    for case in monotonic["cases"]:
+        assert set(case) == {"name", "observations", "expected_acceptance"}
+        assert case["observations"]
+        assert len(case["observations"]) == len(case["expected_acceptance"])
+        assert all(
+            type(value) is int and 0 <= value <= 0xFFFFFFFFFFFFFFFF
+            for value in case["observations"]
+        )
+        assert all(type(value) is bool for value in case["expected_acceptance"])
+        high_water = -1
+        expected = []
+        for observation in case["observations"]:
+            accepted = observation >= high_water
+            expected.append(accepted)
+            if accepted:
+                high_water = observation
+        assert expected == case["expected_acceptance"]
+
+        observations = iter(case["observations"])
+        link = LinkLayer(
+            radio=object(),  # type: ignore[arg-type]
+            identity=identity,
+            peer_lookup=lambda _iid: None,
+            receipt_clock=MonotonicClock(lambda stream=observations: next(stream)),
+        )
+        acceptance = []
+        for _ in case["observations"]:
+            try:
+                link._receipt_now()
+            except LinkSecurityClockError:
+                acceptance.append(False)
+            else:
+                acceptance.append(True)
+        assert acceptance == case["expected_acceptance"], case["name"]
+
     assert by_name["dio_time_option"]["option_type"] == 21
     assert by_name["dio_time_option"]["no_sync_encoded_hex"] == "1506000000000000"
     board = bytes(range(32))

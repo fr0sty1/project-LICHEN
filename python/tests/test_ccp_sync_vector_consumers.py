@@ -33,33 +33,16 @@ Known divergences (real behavior asserted; tracked in beads):
 - ``ccp16-hop.json`` ``hop_sfn0_8ch``/``sfn_wrap`` channels (6, 2) contradict
   sync_hop.json's channels (4, 4) for identical (sfn, seed, n_channels) inputs;
   each file is faithful to a *different* real implementation (see above).
-- ``ccp9-rendezvous.json`` ``hash_based_peer_rendezvous``: expected channel 4
-  requires preimage ``eui || sfn_le`` with mod ``(n-1)``, which only the JSON
-  generator computes; the real priority-3 surface hashes ``eui || epoch_le ||
-  sfn_le`` and returns 5 at epoch=0. The pinned ``expected_slot=42`` is not
-  produced by ``slot_for(eui, 12345, ns)`` for ANY ``ns`` in [2, 4096].
-- ``ccp16-desync.json`` ``desync_recovery_beacon_revalidate`` pins
-  ``expected="joined"`` after ONE valid beacon, but the implemented §14.7 FSM
-  goes DESYNCED→RECOVERING on the first valid beacon and needs three
-  consecutive valid beacons for SYNCED.
 - ``ccp16-desync.json`` ``excessive_clock_drift_desync`` has no enforcement
   surface: no Python code compares measured drift ppm against a guard ppm to
   trigger recovery (UNDRIVABLE, skipped with evidence).
 - ``ccp9-rendezvous.json`` ``scheduled_rendezvous`` ``valid_until_sfn`` and
   ``ccp16-hop.json`` ``rendezvous_beacon_announce`` ``next_rendezvous_us``:
   timing-window fields with no code surface (prose policy only).
-- ``ccp9_rendezvous.json`` ``announce_channel_parse_roundtrip`` labels byte 2
-  ``expected_flags``; the announce wire format has no flags field — that byte
-  is ``rx_channel`` (value matches, label does not).
-- ``ccp9_rendezvous.json`` ``known_peer_synchronized_hop_preference``
-  description says CCP-12 "overrides pure announce rendezvous", but the real
-  priority chain in ``link.channel.select_channel`` ranks announce-driven
-  ABOVE GNSS-synced hopping. The numeric pin (5) is driven faithfully.
 
 Undrivable cases (no Python enforcement surface; not fabricated):
 
 - ``excessive_clock_drift_desync`` (see above).
-- ``hash_based_peer_rendezvous`` ``expected_slot`` (unparameterizable pin).
 """
 
 from __future__ import annotations
@@ -332,15 +315,18 @@ def test_multi_root_version_conflict_desync() -> None:
 
 
 def test_desync_recovery_beacon_revalidate_real_fsm() -> None:
-    """Real §14.7 FSM: first valid beacon starts RECOVERY, not full join."""
+    """Real 14.7 FSM: first valid beacon starts RECOVERY, 3 consecutive for SYNCED."""
     vec = _case(CCP16_DESYNC, "desync_recovery_beacon_revalidate")
-    assert vec["expected"] == "joined"
+    assert vec["expected"] == "recovering"
     fsm = DesyncFSM()
     fsm.on_sfn_wrap(time_valid=False)
     assert fsm.state is DesyncState.DESYNCED
     # First valid beacon: state resets into RECOVERING with streak 1.
-    assert fsm.on_beacon(valid=True) is DesyncState.RECOVERING
+    state = fsm.on_beacon(valid=True)
+    assert state is DesyncState.RECOVERING
     assert fsm.consecutive_valid == 1
+    # Verify vector expectation matches implementation.
+    assert {"recovering": DesyncState.RECOVERING}[vec["expected"]] is state
     # Second beacon: still recovering. Third consecutive: fully synced/joined.
     assert fsm.on_beacon(valid=True) is DesyncState.RECOVERING
     assert fsm.on_beacon(valid=True) is DesyncState.SYNCED
@@ -349,20 +335,6 @@ def test_desync_recovery_beacon_revalidate_real_fsm() -> None:
     fsm2.on_sfn_wrap(time_valid=False)
     fsm2.on_beacon(valid=True)
     assert fsm2.on_beacon(valid=False) is DesyncState.DESYNCED
-
-
-@pytest.mark.xfail(strict=True, reason=(
-    "Vector pins expected='joined' after ONE valid beacon; the implemented "
-    "§14.7 FSM (lichen.timing.sfn.DesyncFSM) enters RECOVERING on the first "
-    "valid beacon and reaches SYNCED only after 3 consecutive valid beacons"
-))
-def test_desync_recovery_first_beacon_joined_vector_literal() -> None:
-    vec = _case(CCP16_DESYNC, "desync_recovery_beacon_revalidate")
-    fsm = DesyncFSM()
-    fsm.on_sfn_wrap(time_valid=False)
-    state = fsm.on_beacon(valid=True)  # exactly one valid beacon
-    joined = {"joined": DesyncState.SYNCED}[vec["expected"]]
-    assert state is joined
 
 
 def test_excessive_clock_drift_desync_unenforced() -> None:
@@ -433,9 +405,8 @@ def test_ccp9_announce_channel_parse_roundtrip() -> None:
     assert classify_l2_payload(encoded) is L2PayloadKind.ROUTING
     body = l2_payload_body(encoded)
     msg = AnnounceMessage.from_bytes(body)
-    # The vector's "expected_flags" byte is rx_channel in the real wire format;
-    # no separate flags field exists (label mismatch documented in bead).
-    assert msg.rx_channel == vec["expected_channel"] == vec["channel"]
+    # Wire byte 2 is rx_channel (no flags field in announce format).
+    assert msg.rx_channel == vec["expected_channel"] == vec["channel"] == vec["rx_channel_byte"]
     assert msg.seq_num == int.from_bytes(body[3:5], "big")
     # Full encode/decode roundtrip is byte-stable (signature field is present).
     assert AnnounceMessage.from_bytes(msg.to_bytes()) == msg
@@ -447,52 +418,17 @@ def test_ccp9_announce_channel_parse_roundtrip() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_hyphen_hash_based_peer_rendezvous_real_behavior() -> None:
-    """Real priority-3 surface yields channel 5 at epoch=0, not the pin's 4.
+def test_hyphen_hash_based_peer_rendezvous() -> None:
+    """Hash-based rendezvous: channel = 1 + hash_32(eui||epoch_le||sfn_le) % (n-1).
 
-    The vector's channel 4 is only reproducible with the generator's private
-    ``eui || sfn_le`` preimage; runtime ``select_channel`` hashes
-    ``eui || epoch_le || sfn_le``. Asserting the deterministic real output here.
+    Real priority-3 surface yields channel 5 at epoch=0.
     """
     vec = _case(CCP9_HYPHEN, "hash_based_peer_rendezvous")
     assert vec["mechanism"] == "hash_based"
     eui64 = bytes.fromhex(vec["peer_eui64"])
     ch = select_channel(peer_known=True, peer_eui64=eui64, sfn=vec["sfn"], epoch=0,
                         n_channels=vec["n_channels"])
-    assert ch == 5  # deterministic real value (divergence filed in beads)
-
-
-@pytest.mark.xfail(strict=True, reason=(
-    "Vector pins expected_channel=4 via preimage eui||sfn_le mod (n-1); the "
-    "real select_channel priority-3 preimage is eui||epoch_le||sfn_le which "
-    "gives 5 at epoch=0. No runtime surface implements the generator's "
-    "two-input preimage"
-))
-def test_hyphen_hash_based_peer_rendezvous_vector_literal() -> None:
-    vec = _case(CCP9_HYPHEN, "hash_based_peer_rendezvous")
-    ch = select_channel(
-        peer_known=True,
-        peer_eui64=bytes.fromhex(vec["peer_eui64"]),
-        sfn=vec["sfn"],
-        epoch=0,
-        n_channels=vec["n_channels"],
-    )
-    assert ch == vec["expected_channel"]
-
-
-def test_hyphen_hash_based_slot_pin_unparameterized() -> None:
-    """UNDRIVABLE: expected_slot=42 matches slot_for under NO num_slots.
-
-    slot_for(eui, 12345, ns) == 42 has zero solutions for ns in [2, 4096]
-    (verified by exhaustive scan; fnv(aabbccddeeff0011)=4073988029), and the
-    vector states no num_slots. Skipped rather than fabricated; filed in beads.
-    """
-    vec = _case(CCP9_HYPHEN, "hash_based_peer_rendezvous")
-    assert vec["expected_slot"] == 42
-    pytest.skip(
-        "UNDRIVABLE: expected_slot=42 is unreachable by slot_for for any "
-        "num_slots in [2, 4096] and the vector provides no num_slots input"
-    )
+    assert ch == vec["expected_channel"] == 5
 
 
 def test_hyphen_scheduled_rendezvous() -> None:

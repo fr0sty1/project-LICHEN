@@ -42,6 +42,19 @@ def test_console_scripts_include_native_client_entry_points() -> None:
     assert scripts["lichen-dashboard"] == "lichen.dashboard.app:main"
 
 
+def test_sdist_excludes_repository_vector_symlink() -> None:
+    hatch = pyproject()["tool"]["hatch"]
+    assert isinstance(hatch, dict)
+    build = hatch["build"]
+    assert isinstance(build, dict)
+    targets = build["targets"]
+    assert isinstance(targets, dict)
+    sdist = targets["sdist"]
+    assert isinstance(sdist, dict)
+
+    assert "/test" in sdist["exclude"]
+
+
 def test_native_client_dependency_extras_are_declared() -> None:
     project = pyproject()["project"]
     assert isinstance(project, dict)
@@ -51,15 +64,19 @@ def test_native_client_dependency_extras_are_declared() -> None:
     assert "ble" in optional
     assert "coap" in optional
     assert "native-client" in optional
-    assert "bleak>=0.21" in optional["ble"]
 
+    ble = _requirements(optional["ble"])
     coap = _requirements(optional["coap"])
     native_client = _requirements(optional["native-client"])
+    _assert_specifier(ble["bleak"], "<0.22,>=0.21")
+    _assert_specifier(ble["bless"], "<0.3,>=0.2.6")
     _assert_specifier(coap["aiocoap"], "==0.4.17")
     _assert_specifier(native_client["aiocoap"], "==0.4.17")
     _assert_specifier(native_client["cbor2"], "<6.2,>=6.1.2")
     _assert_specifier(native_client["textual"], "<8.3,>=8.2.7")
     _assert_specifier(native_client["rich"], "<15.1,>=15.0.0")
+    assert "bleak" not in native_client
+    assert "bless" not in native_client
 
 
 def test_runtime_dependency_ranges_are_bounded_to_tested_majors() -> None:

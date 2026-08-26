@@ -332,6 +332,18 @@ class RadioMixin:
             raise ValueError(f"Node '{node_id}' does not exist")
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
+        # In BARRIER_SYNC mode, a node's TxEndEvent may not have fired yet even
+        # though the TX has been received by others. Check if the TX has already
+        # been delivered (recorded as a reception) and clear the stale entry.
+        # This preserves half-duplex for physically ongoing TXs while allowing
+        # bidirectional communication after logical completion.
+        tx_id = self._active_transmissions.get(node_id)
+        if tx_id is not None:
+            # Check if this TX has been received by anyone - if so, it's done
+            if self._metrics.has_any_reception_for_tx(tx_id):
+                self._active_transmissions.pop(node_id, None)
+                self._medium.end_tx(tx_id)
+                self._drop_delayed_rx_for_tx(tx_id)
         channel = node.get_hop_channel()
         self._cancel_rx_timeout_events(node_id)
         self._pending_poll_rx_map().pop(node_id, None)

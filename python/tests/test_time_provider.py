@@ -18,6 +18,7 @@ class TestMonotonicTimeProvider:
         """Monotonic provider has no absolute time reference."""
         provider = MonotonicTimeProvider()
         assert provider.unix_time_us() is None
+        assert provider.wall_clock_valid is False
 
     def test_has_gnss_fix_returns_false(self) -> None:
         """Monotonic provider is not a GNSS source."""
@@ -42,6 +43,7 @@ class TestMonotonicTimeProvider:
         """MonotonicTimeProvider satisfies TimeProvider protocol."""
         provider: TimeProvider = MonotonicTimeProvider()
         assert provider.unix_time_us() is None
+        assert provider.wall_clock_valid is False
         assert provider.has_gnss_fix() is False
 
 
@@ -52,12 +54,14 @@ class TestSimulatedTimeProvider:
         """Default provider has no time set."""
         provider = SimulatedTimeProvider()
         assert provider.unix_time_us() is None
+        assert provider.wall_clock_valid is False
         assert provider.has_gnss_fix() is False
 
     def test_initial_unix_time(self) -> None:
         """Provider returns configured Unix time."""
         provider = SimulatedTimeProvider(unix_time_us=1234567890_000000)
         assert provider.unix_time_us() == 1234567890_000000
+        assert provider.wall_clock_valid is True
 
     def test_initial_gnss_fix(self) -> None:
         """Provider returns configured GNSS fix state."""
@@ -71,9 +75,35 @@ class TestSimulatedTimeProvider:
 
         provider.set_unix_time_us(9876543210_000000)
         assert provider.unix_time_us() == 9876543210_000000
+        assert provider.wall_clock_valid is True
 
         provider.set_unix_time_us(None)
         assert provider.unix_time_us() is None
+        assert provider.wall_clock_valid is False
+
+    def test_explicit_invalid_state_retains_time_for_diagnostics(self) -> None:
+        """A candidate timestamp need not establish the wall clock."""
+        provider = SimulatedTimeProvider(
+            unix_time_us=9876543210_000000,
+            wall_clock_valid=False,
+        )
+        assert provider.unix_time_us() == 9876543210_000000
+        assert provider.wall_clock_valid is False
+
+        provider.set_wall_clock_valid(True)
+        assert provider.wall_clock_valid is True
+
+        provider.set_wall_clock_valid(False)
+        assert provider.wall_clock_valid is False
+
+    def test_valid_state_requires_time(self) -> None:
+        """Validity cannot be asserted before a wall-clock sample exists."""
+        with pytest.raises(ValueError, match="without Unix time"):
+            SimulatedTimeProvider(wall_clock_valid=True)
+
+        provider = SimulatedTimeProvider()
+        with pytest.raises(ValueError, match="without Unix time"):
+            provider.set_wall_clock_valid(True)
 
     def test_set_gnss_fix(self) -> None:
         """GNSS fix state can be updated."""
@@ -111,4 +141,5 @@ class TestSimulatedTimeProvider:
             has_gnss=True,
         )
         assert provider.unix_time_us() == 1000000
+        assert provider.wall_clock_valid is True
         assert provider.has_gnss_fix() is True

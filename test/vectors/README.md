@@ -45,7 +45,7 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 |------|--------|
 | `rule_versioning.json` | SCHC Rule Version Option serialization in DIO (spec 5.7) |
 | `schc_adaptation.json` | Unknown rule IDs, Rule 255 uncompressed fallback, port behavior |
-| `schc_compression.json` | Whole-packet compression rules 0–4 + malformed cases (RFC 8724) |
+| `schc_compression.json` | Whole-packet compression rules 0–7 (incl. OSCORE rules 5/6 per RFC 8824) + Rule-255 fallback and malformed cases (RFC 8724) |
 | `schc_fragment.json` | Generic fragmentation-codec exercises per RFC 8724 §8, including deliberately non-profile toy parameters, with a zlib CRC-32 oracle |
 | `schc_fragmentation.json` | Normative Rule Set Version 3 LICHEN fixed-profile ACK-on-Error bytes and state transitions, independently hand-derived |
 
@@ -54,6 +54,10 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | File | Covers |
 |------|--------|
 | `dad_hash_clarification.json` | DAD hash algorithm disambiguation (two readings of spec 4.5) |
+| `address_collision.json` | Authenticated native/global and link-scoped link-local collision tracking plus strict native AddrForKey binding, expiry, restart, and capacity scenarios |
+| `address_collision.schema.json` | Closed schema for `address_collision.json` operation scenarios |
+| `address_classification.json` | Routing precedence for direct, evidenced-local, identity-preserving global, and off-mesh IPv6 destinations |
+| `address_classification.schema.json` | Closed schema for `address_classification.json` operation scenarios |
 | `dao_origin_signature.json` | Shared DAO Origin Signature conformance (v2 schema) |
 | `gradient_entry.json` | Gradient table entry ranking/comparison order (spec 11) |
 | `ipv6-addresses.json` | Pubkey → IID → fe80::/10 and primary/native address derivation |
@@ -62,6 +66,8 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | `loadng.json` | LOADng 16-bit sequence-number wrap-aware freshness (RFC 1982) |
 | `loadng_discovery.json` | LOADng discovery state-machine transitions (spec 10.3–10.5, B2.6) |
 | `loadng_messages.json` | LOADng RREQ/RREP/RERR message encoding (spec 10.3/10.4/10.6) |
+| `local_evidence.json` | Exact 1200-second authenticated local-evidence lifetime, refresh, monotonic-time, overflow, and bounded-capacity scenarios |
+| `local_evidence.schema.json` | Closed schema for `local_evidence.json` operation scenarios |
 | `root_authorization.json` | DODAGID == AddrForKey(root_pubkey) binding (spec 8.2, 8.4) |
 | `root_signature.json` | Root-signature verification of RPL DIO (spec 8.2, 8.4) |
 | `rpl_messages.json` | RPL DIS/DIO/DAO/DAO-ACK message encodings (RFC 6550, hardcoded independent vectors) |
@@ -73,12 +79,14 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 
 | File | Covers |
 |------|--------|
+| `asn_sfn_derivation.json` | Unix UTC time to u64 ASN and wrapping u32 SFN projections, including leap-second, epoch-rollover, and integer boundaries |
 | `ccp-interference.json` | CCP-15 interference score (busy_pct + PER·100) and backoff jitter |
 | `ccp13.json` | CCP-13 DutyCycleTracker (prune, proration, usage_permille, can_transmit) |
-| `ccp15.json` | CCP-15 SF EMA load_factor via hash_32/FNV-1a (spec 02a) |
+| `ccp15.json` | CCP-15 CCA, interference score, frequency agility, adaptive SF, and TDMA slot assignment |
 | `ccp16-desync.json` | Desync transitions, u32 SFN wrap arithmetic, multi-root conflict, drift recovery |
 | `ccp16-hop.json` | CCP-12 synchronized-hop SelectChannel pseudocode match (spec 02a:120) |
 | `ccp16.json` | CCP-16 synchronized hopping/desync incl. now_ts and select_channel_timing |
+| `duty_cycle_calculation.json` | EU868 1% and US915 FCC duty limits, exact airtime, rolling-window boundaries, denial/recovery, overflow |
 | `ccp16_ema_loss_threshold.json` | EMA packet-loss threshold boundary (spec 02 §3.5) |
 | `ccp16_utilization.json` | Channel utilization and tx_allowed decisions (spec 02 §3.5) |
 | `ccp4_regional_channel_plans.json` | Regional channel-plan selection (spec 02a:167-182) |
@@ -90,6 +98,8 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | `ccp_ema_update_integer.json` | Integer EMA update for adaptive SF (spec 02 §3.x) |
 | `ccp_load_balancing.json` | Load balancing + TDMA slot assignment, guard-time/drift math oracles |
 | `ccp_select_channel_endianness.json` | select_channel EUI64 big-endian concat + modulo checks |
+| `channel_plan_selection.json` | Bounded one-, two-, and three-plus-channel plan selection with density and epoch boundaries |
+| `channel_plan_selection.schema.json` | Closed schema for `channel_plan_selection.json` |
 | `ccp_sfn_wrap_slot_hash.json` | slot_for() across SFN wraparound (spec 14.7) |
 | `ccp_slot_map_validation.json` | slot_map CBOR array validation (spec 02a:80) |
 | `ccp_tdma.json` | Independent TDMA slot assignment via FNV-1a32 |
@@ -120,7 +130,7 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | `coap_rd.json` | Resource Directory register/lookup/delete (RFC 9176, spec 10.6) |
 | `coap_token_validation.json` | Token TKL bounds and semantics (RFC 7252 §3) |
 | `coap_transport.json` | Transport bindings: UDP dispatch, LoRa CoAP params, duty cycle (spec 9–10) |
-| `compact_cot.json` | Compact CoT binary PLI encoding (spec 07 §10.1.1) |
+| `compact_cot.json` | Compact CoT binary PLI and chat destination encoding (spec 07 §10.1.1) |
 | `confessions.json` | /confessions anonymous board resource (LCI) |
 | `confessions_rate.json` | Confessions rate limits: 1/30s and 12/hr (spec 18.10.3) |
 | `deaddrop.json` | /deaddrop DTN store-and-forward, OSCORE-wrapped SenML (RFC 7252/8613/8428) |
@@ -133,8 +143,11 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | `raw_diag_ttl.json` | Raw-diagnostic TTL arming/auto-disable (LCI 17.5.4) |
 | `receipt_cbor.json` | Delivery-receipt CBOR fields id/status/ts (spec 18.1.2) |
 | `ipso_smart_objects.json` | IPSO object/instance/resource SenML names and CBOR records (appendix-senml F.2.1) |
+| `senml_full_fields.json` | Complete RFC 8428 SenML-CBOR pack/unpack coverage for all standard fields |
+| `senml_labels.json` | Complete RFC 8428 field-to-CBOR numeric-label mapping and canonical key bytes |
 | `senml_location.json` | SenML location profile (spec appendix-senml F.3) |
 | `slip_framing.json` | SLIP (RFC 1055) framing for LCI serial transport |
+| `ble_gatt_reassembly.json` | BLE GATT frame reassembly: KISS-over-BLE MTU segmentation and Meshtastic length-prefix chunked writes |
 | `sos_cbor.json` | SOS alert full-field CBOR encoding (spec 18.4.2) |
 | `sos_rate_limiting.json` | SOS limits: 10-min cooldown, 3/hr, burst 2 (spec 18.3) |
 | `sos_signature.json` | SOS signature verification; unsigned/invalid silently dropped (spec 18.3) |

@@ -28,6 +28,15 @@ For border router traffic, see Appendix B (RPL).
 | ROUTE_TIMEOUT | 300 sec | Route validity (no traffic) |
 | ROUTE_REFRESH | 60 sec | Refresh if used within |
 | SEQNUM_LIFETIME | 600 sec | Sequence number validity |
+| LOCAL_EVIDENCE_LIFETIME | 1200 sec | Authenticated evidence that a destination is local |
+
+Each authenticated Announce, RREP, RPL, or DATA observation refreshes local
+evidence for exactly `LOCAL_EVIDENCE_LIFETIME` seconds. Evidence is valid while
+`now < observed_at + LOCAL_EVIDENCE_LIFETIME` and is expired at equality. A
+node MUST use a monotonic clock for this lifetime and MUST NOT extend evidence
+after clock regression or timestamp overflow. Implementations MUST bound the
+number of peers retained and MUST NOT silently evict live evidence to admit a
+new peer.
 
 ## B2.3. Metric
 

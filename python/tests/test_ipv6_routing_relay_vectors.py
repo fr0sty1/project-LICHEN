@@ -270,14 +270,7 @@ def test_icmpv6_error_vector(name: str, vector: dict) -> None:
 # source_route_hop_limit.json
 # =============================================================================
 
-UNDRIVABLE_SRH: dict[str, str] = {
-    "srh_hop_limit_0_reject": (
-        "No Python surface implements the pre-SRH 'Hop Limit exhausted' discard: "
-        "advance_source_route() short-circuits Segments Left == 0 (final "
-        "destination) before its Hop Limit check, and no receive-path hop-limit "
-        "gate exists elsewhere in python/src."
-    ),
-}
+UNDRIVABLE_SRH: dict[str, str] = {}
 
 
 def _srh_cases():
@@ -310,7 +303,13 @@ def test_srh_hop_limit_vector(name: str, vector: dict) -> None:
     accepted_expected = vector["expected"]["accepted"]
 
     if not accepted_expected:
-        with pytest.raises(RoutingError, match="strictly less"):
+        expected_reason = vector["expected"]["reason"]
+        # Map vector reason to exception message pattern
+        if expected_reason == "hop_limit_exhausted":
+            pattern = "hop_limit_exhausted"
+        else:
+            pattern = "strictly less"
+        with pytest.raises(RoutingError, match=pattern):
             advance_source_route(packet)
         return
 
@@ -319,12 +318,14 @@ def test_srh_hop_limit_vector(name: str, vector: dict) -> None:
     if vector["segments_left"] == 0:
         assert next_hop is None, name
         assert advanced.segments_left == 0, name
+        assert new_packet.header.hop_limit == vector["hop_limit"], name
     else:
         expected_index = len(srh.addresses) - srh.segments_left
         expected_hop = srh.addresses[expected_index]
         assert next_hop == expected_hop, name
         assert new_packet.header.dst_addr == expected_hop, name
         assert advanced.segments_left == srh.segments_left - 1, name
+        assert new_packet.header.hop_limit == vector["hop_limit"] - 1, name
 
 
 def test_srh_hop_limit_vector_coverage() -> None:
@@ -336,14 +337,11 @@ def test_srh_hop_limit_vector_coverage() -> None:
     assert not driven & undrivable
 
 
-def test_srh_hop_limit_zero_documented_divergence() -> None:
-    """Pin current behavior for undrivable vector srh_hop_limit_0_reject.
+def test_srh_hop_limit_zero_reject() -> None:
+    """Verify vector srh_hop_limit_0_reject: Hop Limit 0 rejects before SRH.
 
-    The vector requires rejection (reason hop_limit_exhausted) when Hop Limit
-    is 0. Today advance_source_route() treats Segments Left == 0 as final
-    destination before any Hop Limit check, so the packet passes through.
-    This documents the gap tracked in beads; it MUST be inverted once a
-    pre-SRH hop-limit discard exists.
+    RFC 8200 Section 3: When Hop Limit reaches 0, the packet MUST be discarded.
+    This check happens before SRH processing.
     """
     vector = next(
         v
@@ -351,9 +349,8 @@ def test_srh_hop_limit_zero_documented_divergence() -> None:
         if v["name"] == "srh_hop_limit_0_reject"
     )
     packet = _srh_packet(vector["hop_limit"], bytes.fromhex(vector["ext_data"]))
-    new_packet, next_hop = advance_source_route(packet)
-    assert next_hop is None
-    assert new_packet.extension_headers[0].data == packet.extension_headers[0].data
+    with pytest.raises(RoutingError, match="hop_limit_exhausted"):
+        advance_source_route(packet)
 
 
 # =============================================================================
@@ -431,12 +428,6 @@ def test_forwarding_decision_vector(name: str, vector: dict) -> None:
 # =============================================================================
 
 UNDRIVABLE_ANNOUNCE: dict[str, str] = {
-    "no_forward_beyond_max_hops": (
-        "Divergent implementation: AnnounceProcessor.process() rejects "
-        "hop_count > MAX_ANNOUNCE_HOPS with HOP_LIMIT_EXCEEDED, while the "
-        "vector and the spec/05-routing.md 9.3 pseudocode expect the gradient "
-        "to be installed with relay suppressed (action accept, forward false)."
-    ),
     "first_announce_from_self": (
         "No surface implements the originator == receiver self-announce "
         "filter: neither AnnounceProcessor.process() nor Node._process_announce()"
@@ -706,27 +697,3 @@ def test_announce_relay_vector_coverage() -> None:
     undrivable = set(UNDRIVABLE_ANNOUNCE)
     assert driven | undrivable == all_names
     assert not driven & undrivable
-
-
-def test_announce_beyond_max_hops_documented_divergence() -> None:
-    """Pin current behavior for undrivable vector no_forward_beyond_max_hops.
-
-    The vector (and spec/05-routing.md 9.3 pseudocode) expects hop_count > MAX
-    to install the gradient but suppress relay. AnnounceProcessor.process()
-    currently rejects outright with HOP_LIMIT_EXCEEDED and leaves the gradient
-    table untouched. This documents the gap tracked in beads; it MUST be
-    inverted if the implementation adopts the vector's semantics.
-    """
-    vector = next(
-        v
-        for v in _load("announce_relay.json")["vectors"]["hop_limited_forward"]
-        if v["name"] == "no_forward_beyond_max_hops"
-    )
-    identity = _identity(SEED_A)
-    signed = _sign(identity, vector["announce"]["seq_num"], vector["announce"]["hop_count"])
-    processor = _processor()
-    result = processor.process(signed, FROM_NEIGHBOR, now_ms=1000)
-    assert result.accepted is False
-    assert result.should_relay is False
-    assert result.reject_reason is AnnounceRejectReason.HOP_LIMIT_EXCEEDED
-    assert processor.gradient_table.entries() == []

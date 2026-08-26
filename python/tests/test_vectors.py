@@ -75,6 +75,8 @@ from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, RplError, RplOption, _par
 from lichen.schc.codec import BitWriter, SchcError
 from lichen.schc.fragment import (
     MAX_PACKET_SIZE,
+    RETRANSMISSION_TIMEOUT_SECONDS,
+    SESSION_IDLE_TIMEOUT_SECONDS,
     TILE_SIZE,
     WINDOW_SIZE,
     Ack,
@@ -82,10 +84,12 @@ from lichen.schc.fragment import (
     FragmentError,
     FragmentSender,
     ack_request,
+    fragment_payload_capacity,
     fragmentation_message_is_response,
     fragmentation_rule_for_sender,
     receiver_abort,
     sender_abort,
+    tile_size_for_mtu,
 )
 
 if TYPE_CHECKING:
@@ -96,16 +100,18 @@ from lichen.schc.headers import (
     decompress_packet,
     validate_rule7_addresses,
 )
-from lichen.schc.reassembly import FragmentReceiver
+from lichen.schc.reassembly import AUTHENTICATED_HOLD_DOWN_SECONDS, FragmentReceiver
 from lichen.sim.tdma import TDMAScheduler
 
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
 sys.path.insert(0, str(VECTORS_DIR))
+from atomic_json import json_bytes  # noqa: E402
 from generate import (  # noqa: E402
-    _hop_hash,
+    _oracle_hash_32,
     announce_coords_vectors,
     ccp9_vectors,
+    ccp15_vectors,
     edhoc_vectors,
     frame_vectors,
     l2_payload_vectors,
@@ -116,6 +122,7 @@ from generate import (  # noqa: E402
     rpl_multi_instance_vectors,
 )
 from generate_rpl_route_state import build_document as build_route_state_document  # noqa: E402
+from generate_schc_tile_sizing import document as tile_sizing_document  # noqa: E402
 
 CONFIG_SECTION_EXPECTATIONS = [
     ("device", 1, [(1, 0), (7, 900)]),
@@ -146,9 +153,11 @@ def test_vectors_directory_exists() -> None:
 @pytest.mark.parametrize(
     "filename",
     [
+        "ccp15.json",
         "ccp9.json",
         "ccp9-rendezvous.json",
         "l2_payload.json",
+        "link_frame.json",
         "ipv6_malformed.json",
         # GCP family: per-vector name/type/description key presence is enforced
         # by the gateway_coordination branch (project-LICHEN-worker6-jo3q/hik5),
@@ -158,6 +167,7 @@ def test_vectors_directory_exists() -> None:
         "gcp6_slot_coordination.json",
         "rpl_multi_instance.json",
         "root_signature.json",
+        "schc_tile_sizing.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -183,6 +193,58 @@ def _fragmentation_cases():
     doc = _load("schc_fragmentation.json")
     assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _tile_sizing_cases():
+    doc = _load("schc_tile_sizing.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def test_schc_tile_sizing_vectors_are_fresh() -> None:
+    assert (VECTORS_DIR / "schc_tile_sizing.json").read_bytes() == json_bytes(
+        tile_sizing_document()
+    )
+
+
+@pytest.mark.parametrize("name,vector", _tile_sizing_cases())
+def test_schc_tile_sizing_production_conformance(name: str, vector: dict) -> None:
+    arguments = {
+        "rule_id_bits": vector["rule_id_bits"],
+        "dtag_bits": vector["dtag_bits"],
+        "window_bits": vector["window_bits"],
+        "fcn_bits": vector["fcn_bits"],
+    }
+    if vector["outcome"] == "error":
+        error_match = {
+            "invalid_mtu": "positive",
+            "arithmetic_overflow": "overflow",
+            "no_payload": "whole payload byte",
+        }[vector["expected_error"]]
+        with pytest.raises(FragmentError, match=error_match):
+            tile_size_for_mtu(
+                vector["mtu_bytes"],
+                **arguments,
+                rcs_bits=vector["rcs_bits"],
+            )
+        return
+
+    regular = fragment_payload_capacity(vector["mtu_bytes"], **arguments)
+    all1 = fragment_payload_capacity(
+        vector["mtu_bytes"],
+        **arguments,
+        rcs_bits=vector["rcs_bits"],
+    )
+    tile_size = tile_size_for_mtu(
+        vector["mtu_bytes"],
+        **arguments,
+        rcs_bits=vector["rcs_bits"],
+    )
+    assert regular == vector["regular_all0_capacity_bytes"], name
+    assert all1 == vector["all1_capacity_bytes"], name
+    assert tile_size == vector["tile_size_bytes"], name
+    if name == "lichen_profile_mtu_185":
+        assert tile_size == TILE_SIZE
 
 
 class _FragmentVectorRadio:
@@ -1189,6 +1251,12 @@ def test_schc_fragmentation_vector_integrity(name: str, vector: dict) -> None:
         assert vector["attempts_before"] == 4
         if vector["name"] == "sender_retry_exhaustion":
             assert vector["trigger_event"] == "timeout"
+            assert vector["retransmission_timeout_s"] == RETRANSMISSION_TIMEOUT_SECONDS
+            assert vector["timer_policy"] == "fixed"
+            assert vector["timer_start_s"] == 0
+            assert vector["timer_deadlines_s"] == [10, 20, 30, 40]
+            assert vector["inactivity_timeout_s"] == SESSION_IDLE_TIMEOUT_SECONDS
+            assert vector["inactivity_timeout_s"] == AUTHENTICATED_HOLD_DOWN_SECONDS
             assert _expand_vector_bytes(vector["pre_exhaustion_message"])[0] == vector["rule_id"]
         else:
             assert _expand_vector_bytes(vector["trigger"])[0] == vector["rule_id"]
@@ -1281,6 +1349,49 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
             result = receiver.receive_bytes(_expand_vector_bytes(vector["loss"]["ack_req"]))
             assert result.response == _expand_vector_bytes(vector["loss"]["ack_success"])
             assert result.reassembled == packet
+
+            # Exercise the same canonical two-window wires in a deliberately
+            # hostile arrival order: duplicate the opener, retain All-1 early,
+            # then fill the preceding window backwards. Completion must wait
+            # for the ACK request and the vector's valid RCS.
+            first_wire = _expand_vector_bytes(vector["fragments"][0]["wire"])
+            final_wire = _expand_vector_bytes(vector["fragments"][-1]["wire"])
+            receiver = FragmentReceiver(max_size=len(packet))
+            assert receiver.receive_bytes(first_wire).response is None
+            assert receiver.receive_bytes(first_wire).response is None
+            early_final = receiver.receive_bytes(final_wire)
+            assert early_final.reassembled is None
+            assert early_final.ack is not None
+            assert early_final.ack.window == 0
+            assert not early_final.ack.complete
+            for expected in reversed(vector["fragments"][1:-1]):
+                reordered = receiver.receive_bytes(_expand_vector_bytes(expected["wire"]))
+                assert reordered.response is None
+            result = receiver.receive_bytes(_expand_vector_bytes(vector["loss"]["ack_req"]))
+            assert result.response == _expand_vector_bytes(vector["loss"]["ack_success"])
+            assert result.reassembled == packet
+            assert result.mic_ok is True
+
+            # A same-ordinal payload conflict is terminal, and the identical
+            # reverse-order transfer remains bounded by the configured limit.
+            first = Fragment.from_bytes(first_wire)
+            conflict_payload = bytes([first.payload[0] ^ 0xFF]) + first.payload[1:]
+            receiver = FragmentReceiver(max_size=len(packet))
+            assert receiver.receive(first).response is None
+            conflict = Fragment(first.rule_id, first.window, first.fcn, conflict_payload)
+            conflict_result = receiver.receive(conflict)
+            assert conflict_result.aborted
+            assert conflict_result.reassembled is None
+
+            receiver = FragmentReceiver(max_size=len(packet) - 1)
+            assert receiver.receive_bytes(final_wire).reassembled is None
+            bounded_result = None
+            for expected in reversed(vector["fragments"][:-1]):
+                bounded_result = receiver.receive_bytes(_expand_vector_bytes(expected["wire"]))
+                if bounded_result.aborted:
+                    break
+            assert bounded_result is not None and bounded_result.aborted
+            assert receiver._tiles == {}
         return
 
     if category == "controls":
@@ -1372,13 +1483,22 @@ def test_schc_fragmentation_production_conformance(name: str, vector: dict) -> N
         return
 
     wire = _expand_vector_bytes(vector["wire"])
+    if name.startswith("unsupported_rule_"):
+        with pytest.raises(FragmentError, match="unsupported fragmentation rule"):
+            FragmentReceiver().receive_bytes(wire)
+        with pytest.raises(FragmentError):
+            Fragment.from_bytes(wire)
+        return
+    if name == "unassigned_bitmap_bit":
+        with pytest.raises(FragmentError, match="sender-facing control"):
+            FragmentReceiver().receive_bytes(wire)
+        with pytest.raises(FragmentError):
+            Ack.from_bytes(wire, assigned_fcns=vector["assigned_fcns"])
+        return
     result = FragmentReceiver().receive_bytes(wire)
     assert result.response == bytes.fromhex("78ffff")
     assert result.aborted
-    if name == "unassigned_bitmap_bit":
-        with pytest.raises(FragmentError):
-            Ack.from_bytes(wire, assigned_fcns=vector["assigned_fcns"])
-    elif name.startswith("ack_success") or name == "malformed_control":
+    if name.startswith("ack_success") or name == "malformed_control":
         with pytest.raises(FragmentError):
             Ack.from_bytes(wire)
     else:
@@ -1532,6 +1652,11 @@ def test_ccp9_vectors_match_generator() -> None:
     assert doc["vectors"] == ccp9_vectors()
 
 
+def test_ccp15_vectors_match_generator() -> None:
+    doc = _load("ccp15.json")
+    assert doc["vectors"] == ccp15_vectors()
+
+
 def test_rpl_multi_instance_vectors_match_generator() -> None:
     """Canonical GCP-5 vectors reproduce byte-identical from generate.py."""
     doc = _load("rpl_multi_instance.json")
@@ -1558,11 +1683,15 @@ def test_ccp9_rendezvous_vector(name: str, vector: dict) -> None:
     if mechanism == "hash_based":
         peer_eui = bytes.fromhex(vector["peer_eui64"])
         sfn = vector["sfn"]
+        epoch = vector.get("epoch", 0)  # default epoch=0 per vector description
         n_channels = vector["n_channels"]
-        h = _hop_hash(peer_eui, sfn)
+        # hash_32(eui || epoch_le || sfn_le) per spec 02a-coordinated-capacity.md
+        hash_input = peer_eui + epoch.to_bytes(4, "little") + sfn.to_bytes(4, "little")
+        h = _oracle_hash_32(hash_input)
         computed_channel = 1 + (h % (n_channels - 1))
         assert computed_channel == vector["expected_channel"]
-        assert vector["expected_slot"] == 42
+        if "expected_slot" in vector:
+            assert vector["expected_slot"] == 42
     elif mechanism == "scheduled":
         assert isinstance(vector["expected"], dict)
         assert vector["expected"]["mechanism"] == "scheduled"
@@ -3792,15 +3921,15 @@ def test_short_addr_incremental_retry_wraparound_vector() -> None:
 
 
 def test_short_addr_incremental_retry_exhausted_vector() -> None:
-    """Validate incremental retry returns None when all 0..0xFFEF addresses taken."""
+    """Validate retry returns None when all usable 0x0001..0xFFEF addresses are taken."""
     from lichen.link.short_addr import SHORT_ADDR_MAX_INCREMENTAL
 
     doc = _short_addr_dad_doc()
     vector = next(v for v in doc["vectors"] if v["name"] == "incremental_retry_exhausted")
 
     start = vector["start"]
-    # All addresses 0..SHORT_ADDR_MAX_INCREMENTAL are taken
-    existing = set(range(SHORT_ADDR_MAX_INCREMENTAL + 1))
+    # Every usable address is taken; reserved 0x0000 need not be present.
+    existing = set(range(1, SHORT_ADDR_MAX_INCREMENTAL + 1))
     assert len(existing) == vector["existing_size"], (
         f"test setup: expected {vector['existing_size']} addresses, got {len(existing)}"
     )
@@ -4295,9 +4424,13 @@ def test_short_addr_dad_vector_coverage() -> None:
         # Incremental retry
         "incremental_retry",
         "incremental_retry_wraparound",
+        "incremental_retry_repeated_collisions",
+        "incremental_retry_reserved_boundaries",
         "incremental_retry_exhausted",
         # Jitter
         "dad_jitter_three_probes",
+        "dad_jitter_inclusive_endpoints",
+        "dad_three_probe_cancellation",
         # Coordinator
         "coordinator_allocate",
         "transition_self_to_coordinator",

@@ -12,14 +12,15 @@ from collections import OrderedDict
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeGuard, cast
 
-import aiocoap  # type: ignore[import-untyped]  # no official stubs
+import aiocoap
 from aiocoap import Message
-from aiocoap.numbers.codes import EMPTY, POST  # type: ignore[import-untyped]
-from aiocoap.numbers.types import ACK, CON, RST  # type: ignore[import-untyped]
-from aiocoap.oscore import Direction  # type: ignore[import-untyped]
+from aiocoap.numbers.codes import EMPTY, POST
+from aiocoap.numbers.types import ACK, CON, RST
+from aiocoap.oscore import Direction
 
 from lichen.crypto.edhoc import EdhocInitiator, OscoreContext
 from lichen.crypto.oscore import MemorySecurityContext
+from lichen.link.tx_queue import Priority
 
 from ..transport import (
     DatagramChannel,
@@ -27,7 +28,6 @@ from ..transport import (
     EndpointPolicy,
     LichenRemote,
     LichenTransport,
-    Priority,
     ReceiveCallback,
 )
 from .memory_store import OscoreContextStore
@@ -77,9 +77,7 @@ class _EdhocChannel(DatagramChannel):
         priority: Priority = Priority.NORMAL,
         check_congestion: bool = True,
     ) -> None:
-        self._inner.send_datagram(
-            data, dest, priority=priority, check_congestion=check_congestion
-        )
+        self._inner.send_datagram(data, dest, priority=priority, check_congestion=check_congestion)
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:
         with self._receiver_lock:
@@ -377,9 +375,7 @@ class SecureDatagramChannel(DatagramChannel):
                 for pending_key, correlation in self._pending_outbound.items()
                 if pending_key[0] != key
             }
-            for con_key in [
-                con_key for con_key in self._protected_cons if con_key[0] == key
-            ]:
+            for con_key in [con_key for con_key in self._protected_cons if con_key[0] == key]:
                 self._protected_cons.pop(con_key, None)
         if context is not None:
             # SECURITY: Evict LRU peer context if limit reached
@@ -409,9 +405,7 @@ class SecureDatagramChannel(DatagramChannel):
             # If evict_key is not in _active_peer_contexts, log warning and continue
             # to avoid infinite loop from draining LRU without reducing active count.
             if evict_key not in self._active_peer_contexts:
-                logger.warning(
-                    "LRU desync: %s in LRU but not in active contexts", evict_key
-                )
+                logger.warning("LRU desync: %s in LRU but not in active contexts", evict_key)
                 continue
             evicted = self._active_peer_contexts.pop(evict_key, None)
             if evicted is not None:
@@ -468,16 +462,12 @@ class SecureDatagramChannel(DatagramChannel):
 
     def _abandon_peer_admissions(self, peer: str) -> None:
         context = self._active_peer_contexts.get(peer)
-        for message_id, (admission_peer, operation) in tuple(
-            self._message_admissions.items()
-        ):
+        for message_id, (admission_peer, operation) in tuple(self._message_admissions.items()):
             if admission_peer == peer:
                 self._message_admissions.pop(message_id, None)
                 self._finish_send_operation(peer, context, operation)
 
-    def _track_task(
-        self, coroutine: Any, on_done: Callable[[], None] | None = None
-    ) -> None:
+    def _track_task(self, coroutine: Any, on_done: Callable[[], None] | None = None) -> None:
         task = asyncio.get_running_loop().create_task(coroutine)
         self._tasks.add(task)
 
@@ -578,9 +568,7 @@ class SecureDatagramChannel(DatagramChannel):
         locally_originated = message.code.is_request()
         if locally_originated:
             if len(self._pending_outbound) >= self._MAX_PENDING_OUTBOUND:
-                raise RuntimeError(
-                    "outbound request limit reached; apply backpressure"
-                )
+                raise RuntimeError("outbound request limit reached; apply backpressure")
             # SECURITY: Prevent empty token collision between concurrent requests
             # Check both _pending_outbound and context.outbound_requests
             context = self._active_peer_contexts.get(key)
@@ -589,9 +577,7 @@ class SecureDatagramChannel(DatagramChannel):
                 or (context is not None and b"" in context.outbound_requests)
             ):
                 raise ValueError("request rejected")
-            correlation = _RequestCorrelation(
-                None, observe=message.opt.observe == 0
-            )
+            correlation = _RequestCorrelation(None, observe=message.opt.observe == 0)
             self._pending_outbound[(key, message.token)] = correlation
         elif message.code.is_response():
             context = self._active_peer_contexts.get(key)
@@ -622,9 +608,7 @@ class SecureDatagramChannel(DatagramChannel):
                 operation.finished = True
                 operation.correlation.pending_sends -= 1
             return
-        self._finish_send_operation(
-            key, self._active_peer_contexts.get(key), operation
-        )
+        self._finish_send_operation(key, self._active_peer_contexts.get(key), operation)
 
     def request_interest_ended(
         self,
@@ -681,14 +665,10 @@ class SecureDatagramChannel(DatagramChannel):
         correlation.cancellation_deadline = asyncio.get_running_loop().time() + delay
         correlation.cancellation_timer = self._schedule_cancellation_expiry(
             delay,
-            lambda: self._expire_cancelled_observation(
-                key, context.generation, token, correlation
-            ),
+            lambda: self._expire_cancelled_observation(key, context.generation, token, correlation),
         )
 
-    def response_completed(
-        self, peer: str, token: bytes, lifecycle_id: object | None
-    ) -> None:
+    def response_completed(self, peer: str, token: bytes, lifecycle_id: object | None) -> None:
         context = self._active_peer_contexts.get(self._endpoint_key(peer))
         if context is None:
             return
@@ -801,7 +781,7 @@ class SecureDatagramChannel(DatagramChannel):
             elif delta == 14:
                 if pos + 2 >= len(data):
                     return False
-                delta = int.from_bytes(data[pos + 1:pos + 3], "big") + 269
+                delta = int.from_bytes(data[pos + 1 : pos + 3], "big") + 269
                 skip = 2
             elif delta == 15:
                 return False
@@ -822,9 +802,7 @@ class SecureDatagramChannel(DatagramChannel):
             elif option_len == 14:
                 if pos + 2 + skip >= len(data):
                     return False
-                slice_len = int.from_bytes(
-                    data[pos + 1 + skip:pos + 3 + skip], "big"
-                ) + 269
+                slice_len = int.from_bytes(data[pos + 1 + skip : pos + 3 + skip], "big") + 269
                 skip_value = 2
             elif option_len == 15:
                 return False
@@ -883,10 +861,7 @@ class SecureDatagramChannel(DatagramChannel):
                     # A terminal (non-observe) response successfully dispatched
                     # to the local client retires the outbound correlation now;
                     # on failure it is kept so peer retransmissions still match.
-                    if (
-                        result.message.code.is_response()
-                        and result.message.opt.observe is None
-                    ):
+                    if result.message.code.is_response() and result.message.opt.observe is None:
                         context = self._active_peer_contexts.get(peer_key)
                         correlation = result.matched_correlation
                         if (
@@ -938,9 +913,7 @@ class SecureDatagramChannel(DatagramChannel):
         result = await self._unprotect_datagram(msg, source)
         return None if result is None else result.data
 
-    async def _unprotect_datagram(
-        self, msg: Message, source: str
-    ) -> _UnprotectedDatagram | None:
+    async def _unprotect_datagram(self, msg: Message, source: str) -> _UnprotectedDatagram | None:
         """Unprotect and stage correlation state for synchronous dispatch.
 
         Note: SecureDatagramChannel is designed for single-threaded async use
@@ -1001,9 +974,7 @@ class SecureDatagramChannel(DatagramChannel):
                     unprotected_msg.mtype = msg.mtype
                 if unprotected_msg.mid is None:
                     if msg.mid is None:
-                        logger.warning(
-                            "OSCORE-protected message has None mid from %s", source
-                        )
+                        logger.warning("OSCORE-protected message has None mid from %s", source)
                     unprotected_msg.mid = msg.mid
                 if unprotected_msg.remote is None:
                     unprotected_msg.remote = msg.remote
@@ -1062,7 +1033,12 @@ class SecureDatagramChannel(DatagramChannel):
         self._schedule_send(data, dest, key, operation, priority, check_congestion)
 
     def send_message(
-        self, message: Message, dest: str, *, priority: Priority = Priority.NORMAL
+        self,
+        message: Message,
+        dest: str,
+        *,
+        priority: Priority = Priority.NORMAL,
+        check_congestion: bool = True,
     ) -> None:
         """Schedule an aiocoap message using its admission lifecycle identity."""
         if self._closing:
@@ -1099,20 +1075,16 @@ class SecureDatagramChannel(DatagramChannel):
                     operation.locally_originated,
                 )
             except Exception:
-                self._finish_send_operation(
-                    key, self._active_peer_contexts.get(key), operation
-                )
+                self._finish_send_operation(key, self._active_peer_contexts.get(key), operation)
                 raise
         if (
             operation is not None
             and operation.locally_originated
             and not operation.correlation.interested
         ):
-            self._finish_send_operation(
-                key, self._active_peer_contexts.get(key), operation
-            )
+            self._finish_send_operation(key, self._active_peer_contexts.get(key), operation)
             return
-        self._schedule_send(data, dest, key, operation, priority)
+        self._schedule_send(data, dest, key, operation, priority, check_congestion)
 
     def _schedule_send(
         self,
@@ -1130,19 +1102,13 @@ class SecureDatagramChannel(DatagramChannel):
             ),
         )
 
-    def _prepare_send_operation(
-        self, data: bytes, dest: str, key: str
-    ) -> _SendOperation | None:
+    def _prepare_send_operation(self, data: bytes, dest: str, key: str) -> _SendOperation | None:
         try:
             message = Message.decode(data, LichenRemote(dest))
         except Exception:
             return None
         if message.code.is_request():
-            cached = (
-                self._protected_cons.get((key, message.mid))
-                if message.mtype is CON
-                else None
-            )
+            cached = self._protected_cons.get((key, message.mid)) if message.mtype is CON else None
             if (
                 cached is not None
                 and cached.locally_originated
@@ -1152,9 +1118,7 @@ class SecureDatagramChannel(DatagramChannel):
                 correlation = cached.correlation
             else:
                 if len(self._pending_outbound) >= self._MAX_PENDING_OUTBOUND:
-                    raise RuntimeError(
-                        "outbound request limit reached; apply backpressure"
-                    )
+                    raise RuntimeError("outbound request limit reached; apply backpressure")
                 # SECURITY: Prevent empty token collision between concurrent requests
                 # Check both _pending_outbound and context.outbound_requests
                 context = self._active_peer_contexts.get(key)
@@ -1165,9 +1129,7 @@ class SecureDatagramChannel(DatagramChannel):
                     raise ValueError(
                         "empty token collision: concurrent request to same peer with empty token"
                     )
-                correlation = _RequestCorrelation(
-                    None, observe=message.opt.observe == 0
-                )
+                correlation = _RequestCorrelation(None, observe=message.opt.observe == 0)
             if message.mtype is CON:
                 try:
                     self._stage_con(key, message, data, correlation, True)
@@ -1227,8 +1189,7 @@ class SecureDatagramChannel(DatagramChannel):
                     continue
                 # Skip entries with active correlation state
                 if candidate.correlation is not None and (
-                    candidate.correlation.pending_sends > 0
-                    or candidate.correlation.con_mids
+                    candidate.correlation.pending_sends > 0 or candidate.correlation.con_mids
                 ):
                     continue
                 self._protected_cons.pop(candidate_key)
@@ -1319,9 +1280,7 @@ class SecureDatagramChannel(DatagramChannel):
                     raise RuntimeError("context lost after establishment")
 
                 if operation is not None:
-                    correlations = self._correlations(
-                        peer_ctx, operation.locally_originated
-                    )
+                    correlations = self._correlations(peer_ctx, operation.locally_originated)
                     current = correlations.get(operation.token)
                     if operation.locally_originated:
                         pending = self._pending_outbound.get((key, operation.token))
@@ -1345,8 +1304,7 @@ class SecureDatagramChannel(DatagramChannel):
                         cached.locally_originated
                         and cached.correlation is not None
                         and cached.correlation.interested
-                        and self._pending_outbound.get((key, cached.token))
-                        is cached.correlation
+                        and self._pending_outbound.get((key, cached.token)) is cached.correlation
                     ):
                         peer_ctx.outbound_requests[cached.token] = cached.correlation
                         self._pending_outbound.pop((key, cached.token), None)
@@ -1355,9 +1313,7 @@ class SecureDatagramChannel(DatagramChannel):
                     if cached.correlation is not None:
                         cached.correlation.con_mids.discard(msg.mid)
                         if not cached.locally_originated:
-                            self._retire_inbound_if_done(
-                                peer_ctx, cached.token, cached.correlation
-                            )
+                            self._retire_inbound_if_done(peer_ctx, cached.token, cached.correlation)
                     self._protected_cons.pop(con_key, None)
 
                 if not peer_ctx.oscore.has_reserved_sender_sequence:

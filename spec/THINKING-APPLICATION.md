@@ -155,7 +155,7 @@ If both sides know the CoT schema, strip it to the bone:
 ```
 [0x01][subtype:1][lat:4][lon:4][alt:2][course:2][speed:2][team:1][role:1]
 ```
-= 18 bytes for full PLI
+= 17 bytes for full PLI
 
 **Subtype mapping:**
 | Byte | CoT type | What |

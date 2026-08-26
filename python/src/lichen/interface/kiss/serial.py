@@ -13,8 +13,9 @@ import contextlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import cast
 
-import serial  # type: ignore[import-untyped]  # no official stubs
+import serial
 
 from .framing import KissReader
 from .handler import DefaultKissConfig, KissHandler
@@ -46,7 +47,7 @@ class KissSerialConnection:
     _closed: bool = False
     _loop: asyncio.AbstractEventLoop | None = field(default=None, repr=False)
     _open_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
-    _recv_task: asyncio.Task | None = field(default=None, repr=False)
+    _recv_task: asyncio.Task[bool] | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         # Wire up handler's TX callback to our on_frame
@@ -61,7 +62,7 @@ class KissSerialConnection:
 
             self._loop = asyncio.get_running_loop()
 
-            def _open():
+            def _open() -> serial.Serial:
                 return serial.Serial(
                     self.port,
                     self.baudrate,
@@ -87,7 +88,7 @@ class KissSerialConnection:
         data = self.handler.rx_frame(payload, port)
         ser = self._serial
 
-        def _write():
+        def _write() -> None:
             if ser is None or not ser.is_open:
                 return
             ser.write(data)
@@ -110,13 +111,13 @@ class KissSerialConnection:
 
         ser = self._serial
 
-        def _read():
+        def _read() -> bytes | None:
             if ser is None or not ser.is_open:
                 return None
             waiting = ser.in_waiting
             if waiting > 0:
-                return ser.read(min(waiting, 4096))
-            return ser.read(1)
+                return cast(bytes, ser.read(min(waiting, 4096)))
+            return cast(bytes, ser.read(1))
 
         self._recv_task = asyncio.current_task()
         try:
@@ -174,7 +175,7 @@ class KissSerialConnection:
         ser = self._serial
         if ser is not None:
 
-            def _close():
+            def _close() -> None:
                 with contextlib.suppress(Exception):
                     ser.close()
 

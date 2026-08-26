@@ -28,6 +28,46 @@ Example: `urn:dev:mac:0011223344556677:`
 
 This allows globally unique sensor identification across meshes.
 
+### F.2.1. IPSO Smart Object Names
+
+Sensor records MAY use IPSO Smart Object and reusable resource identifiers from
+the OMA LwM2M Registry. The SenML `n` field carries the relative LwM2M path
+without a leading slash:
+
+```
+<object-id>/<object-instance-id>/<resource-id>
+```
+
+For example, temperature object instance 0 uses `3303/0/5700`, where resource
+5700 is Sensor Value. The corresponding CoAP resource is `/3303/0/5700`.
+Identifiers MUST be canonical unsigned decimal integers in the range 0 through
+65535: leading zeroes, signs, whitespace, empty components, and extra path
+components are invalid.
+
+A registered composite profile MAY omit the resource component and use
+`<object-id>/<object-instance-id>` when that profile unambiguously defines the
+resource. Receivers MUST NOT infer a missing resource outside such a profile.
+Standalone records SHOULD carry all three components. Implementations MUST
+preserve syntactically valid unknown object and resource IDs so that new OMA
+registry assignments do not require a protocol revision.
+
+LICHEN defines metadata for these sensor objects:
+
+| Object ID | Object | Primary resource | Default SenML unit |
+|-----------|--------|------------------|--------------------|
+| 3303 | Temperature | 5700 (Sensor Value) | Cel |
+| 3304 | Humidity | 5700 (Sensor Value) | %RH |
+| 3313 | Accelerometer | 5702 (X Value) | m/s2 |
+| 3315 | Barometer | 5700 (Sensor Value) | Pa |
+| 3323 | Pressure | 5700 (Sensor Value) | Pa |
+| 3334 | Gyrometer | 5702 (X Value) | rad/s |
+| 3336 | Location | 6051 (Numeric Latitude) | lat |
+
+Accelerometer and gyrometer Y/Z values use resources 5703/5704 with the same
+unit. Location longitude and uncertainty use resources 6052 (`lon`) and 6053
+(`m`); compass direction uses resource 5705 (`deg`). Explicit SenML units take
+precedence over these defaults.
+
 ## F.3. Location
 
 Resource: `/sensors/location`
