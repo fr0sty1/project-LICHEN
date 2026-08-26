@@ -451,6 +451,10 @@ _SENSOR_LINKS = [{"href": "/temperature", "rt": "sensor"}]
 _HUMIDITY_LINKS = [{"href": "/humidity", "rt": "sensor"}]
 
 
+def _abs(href: str) -> str:
+    return "coap://srv" + href if href.startswith("/") else href
+
+
 class TestRdLookup:
     async def test_lookup_by_rt_returns_matching_links(self) -> None:
         client, server = await _setup()
@@ -464,8 +468,8 @@ class TestRdLookup:
             assert resp.opt.content_format == 60
             entries = cbor2.loads(resp.payload)
             assert entries == [
-                {"href": "/temperature", "ep": "sensor-42", "rt": "sensor"},
-                {"href": "/humidity", "ep": "sensor-43", "rt": "sensor"},
+                {"href": _abs("/temperature"), "ep": "sensor-42", "rt": "sensor"},
+                {"href": _abs("/humidity"), "ep": "sensor-43", "rt": "sensor"},
             ]
         finally:
             await client.shutdown()
@@ -505,7 +509,7 @@ class TestRdLookup:
             ).response
             assert resp.code == aiocoap.CONTENT
             hrefs = {entry["href"] for entry in cbor2.loads(resp.payload)}
-            assert hrefs == {"/sensors", "/status"}
+            assert hrefs == {_abs("/sensors"), _abs("/status")}
         finally:
             await client.shutdown()
             await server.shutdown()
@@ -524,7 +528,7 @@ class TestRdLookup:
             entries = cbor2.loads(resp.payload)
             assert resp.code == aiocoap.CONTENT
             assert entries == [
-                {"href": "/sensors", "ep": "node-01", "rt": "senml.temp"},
+                {"href": _abs("/sensors"), "ep": "node-01", "rt": "senml.temp"},
             ]
         finally:
             await client.shutdown()
@@ -539,7 +543,7 @@ class TestRdLookup:
                 Message(code=GET, uri="coap://srv/rd-lookup/res?rt=sensor&ep=sensor-42")
             ).response
             assert cbor2.loads(resp.payload) == [
-                {"href": "/temperature", "ep": "sensor-42", "rt": "sensor"},
+                {"href": _abs("/temperature"), "ep": "sensor-42", "rt": "sensor"},
             ]
         finally:
             await client.shutdown()
@@ -558,6 +562,23 @@ class TestRdLookup:
             await client.shutdown()
             await server.shutdown()
 
+    async def test_lookup_filter_href_resolved_absolute(self) -> None:
+        client, server = await _setup()
+        try:
+            await _register(client, ep="sensor-42", links=_SENSOR_LINKS)
+            resp = await client.request(
+                Message(
+                    code=GET,
+                    uri="coap://srv/rd-lookup/res?href=coap://srv/temperature",
+                )
+            ).response
+            assert cbor2.loads(resp.payload) == [
+                {"href": _abs("/temperature"), "ep": "sensor-42", "rt": "sensor"},
+            ]
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
     async def test_lookup_filter_href_trailing_star(self) -> None:
         client, server = await _setup()
         try:
@@ -566,7 +587,7 @@ class TestRdLookup:
                 Message(code=GET, uri="coap://srv/rd-lookup/res?href=/stat*")
             ).response
             assert cbor2.loads(resp.payload) == [
-                {"href": "/status", "ep": "node-01", "rt": "status"},
+                {"href": _abs("/status"), "ep": "node-01", "rt": "status"},
             ]
         finally:
             await client.shutdown()
@@ -607,7 +628,7 @@ class TestRdLookup:
                 )
             ).response
             assert cbor2.loads(both.payload) == [
-                {"href": "/sensors", "ep": "node-01", "rt": "senml.temp"},
+                {"href": _abs("/sensors"), "ep": "node-01", "rt": "senml.temp"},
             ]
             assert cbor2.loads(only_star.payload) == []
         finally:
@@ -654,7 +675,8 @@ class TestRdLookup:
             assert resp.code == aiocoap.CONTENT
             assert resp.opt.content_format == ContentFormat.LINKFORMAT
             assert (
-                resp.payload.decode() == '</temperature>;rt="sensor";ep="sensor-42"'
+                resp.payload.decode()
+                == '<coap://srv/temperature>;rt="sensor";ep="sensor-42"'
             )
         finally:
             await client.shutdown()
@@ -686,7 +708,7 @@ class TestRdLookup:
             ).response
             assert created.code == aiocoap.CREATED
             assert cbor2.loads(resp.payload) == [
-                {"href": "/temperature", "ep": "sensor-42", "rt": "sensor"},
+                {"href": _abs("/temperature"), "ep": "sensor-42", "rt": "sensor"},
             ]
         finally:
             await client.shutdown()
@@ -706,7 +728,7 @@ class TestRdLookup:
             ).response
             assert created.code == aiocoap.CREATED
             assert cbor2.loads(resp.payload) == [
-                {"href": "/humidity", "ep": "sensor-43", "rt": "sensor"},
+                {"href": _abs("/humidity"), "ep": "sensor-43", "rt": "sensor"},
             ]
         finally:
             await client.shutdown()

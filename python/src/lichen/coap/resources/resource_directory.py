@@ -55,8 +55,33 @@ def _parse_lookup_query(request: Message) -> dict[str, list[str]]:
     return filters
 
 
+def _resolve_target(base: str | None, href: object) -> object:
+    """Join registration base (or lookup default base) with a path-absolute href."""
+    if not isinstance(href, str):
+        return href
+    if "://" in href:
+        return href
+    path = href if href.startswith("/") else "/" + href
+    if not base:
+        return path
+    return base.rstrip("/") + path
+
+
+def _request_base(request: Message) -> str | None:
+    host = request.opt.uri_host
+    if not host:
+        return None
+    if ":" in host and not host.startswith("["):
+        return f"coap://[{host}]"
+    return f"coap://{host}"
+
+
 def _link_matches(
-    entry: _RdEntry, link: dict[str, Any], filters: dict[str, list[str]]
+    entry: _RdEntry,
+    link: dict[str, Any],
+    filters: dict[str, list[str]],
+    *,
+    resolved_href: object = None,
 ) -> bool:
     for name, values in filters.items():
         if name == "ep":
@@ -68,8 +93,13 @@ def _link_matches(
         elif name == "d":
             return False
         elif name == "href":
-            haystack = link.get("href")
             tokenize = False
+            for value in values:
+                stored = _rfc6690_match(link.get("href"), value, tokenize=False)
+                resolved = _rfc6690_match(resolved_href, value, tokenize=False)
+                if not stored and not resolved:
+                    return False
+            continue
         else:
             haystack = link.get(name)
             tokenize = True
@@ -145,20 +175,30 @@ class ResourceDirectoryResource(resource.Resource):
             for r in rows
         ]
 
-    def lookup_resources(self, filters: dict[str, list[str]]) -> list[dict[str, Any]]:
+    def lookup_resources(
+        self,
+        filters: dict[str, list[str]],
+        *,
+        default_base: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Return matching link descriptors for RFC 9176 resource lookup.
 
         Every query criterion is AND-combined, including duplicate keys.
         ``rt`` (and other link attributes) match a space-separated token, or a
         prefix when the query ends with ``*``. ``href`` and ``ep`` match the
         whole string the same way. Unknown attributes fail the AND.
+
+        Returned ``href`` values are fully resolved (RFC 9176 §6.1) using the
+        registration base, or ``default_base`` from the lookup request.
         """
         hits: list[dict[str, Any]] = []
         for entry in self._entries.values():
+            base = entry.base if entry.base is not None else default_base
             for link in entry.links:
-                if not _link_matches(entry, link, filters):
+                resolved = _resolve_target(base, link.get("href"))
+                if not _link_matches(entry, link, filters, resolved_href=resolved):
                     continue
-                item: dict[str, Any] = {"href": link.get("href"), "ep": entry.ep}
+                item: dict[str, Any] = {"href": resolved, "ep": entry.ep}
                 if link.get("rt") is not None:
                     item["rt"] = link["rt"]
                 if entry.base is not None:
@@ -335,7 +375,10 @@ class _RdLookupResource(resource.Resource):
         rd = self._directory()
         if rd is None:
             return Message(code=NOT_FOUND)
-        hits = rd.lookup_resources(_parse_lookup_query(request))
+        hits = rd.lookup_resources(
+            _parse_lookup_query(request),
+            default_base=_request_base(request),
+        )
         accept = request.opt.accept
         if accept is not None and accept not in (CBOR, _LINK_FORMAT):
             return Message(code=NOT_ACCEPTABLE)

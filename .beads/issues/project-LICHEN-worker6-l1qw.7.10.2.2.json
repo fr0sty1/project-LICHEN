@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.2.2",
   "title": "Rust: CoAP client",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:12.207429Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:12.207429Z",
+  "updated_at": "2026-08-26T01:13:23.565722Z",
+  "started_at": "2026-08-26T01:11:20.770566Z",
+  "closed_at": "2026-08-26T01:13:23.565722Z",
+  "close_reason": "Already implemented: rust/lichen-coap/src/client.rs CoapClient with GET/POST/PUT, 5.03 backoff, tokio UDP. No code change.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.2.2",

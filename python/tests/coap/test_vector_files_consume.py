@@ -737,7 +737,14 @@ class TestResourceDirectoryVectors:
             response = await _rd_request(client, aiocoap.GET, vec["uri"])
             assert response.code == vec["expected_code"]
             assert response.opt.content_format == vec["expected_content_format"]
-            assert cbor2.loads(response.payload) == vec["expected_entries"]
+            expected = []
+            for entry in vec["expected_entries"]:
+                item = dict(entry)
+                href = item.get("href")
+                if isinstance(href, str) and href.startswith("/"):
+                    item["href"] = "coap://srv" + href
+                expected.append(item)
+            assert cbor2.loads(response.payload) == expected
         finally:
             await _rd_teardown(client, server)
 
