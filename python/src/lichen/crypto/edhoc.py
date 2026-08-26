@@ -233,6 +233,9 @@ def _select_responder_connection_id(preferred_c_r: bytes, c_i: bytes) -> bytes:
     if preferred_c_r == c_i:
         if preferred_c_r == b"\x00":
             return b"\x01"
+        # Handle empty byte string collision: return b"\x00" as non-colliding ID
+        if not preferred_c_r:
+            return b"\x00"
         # General fallback: increment byte value
         val = preferred_c_r[0]
         return bytes([(val + 1) % 256])
@@ -401,7 +404,8 @@ class EdhocInitiator:
                 raise ValueError("only EDHOC SIGN_SIGN is supported")
             c_i = _validate_connection_id(self.c_i, "C_I")
             ead = _validate_bytes(ead_1, "EAD_1")
-            msg1_content = [self.method * 4 + 1, SUITE_0, self._eph_pk, c_i]
+            # RFC 9528: METHOD is the authentication method directly (0-3)
+            msg1_content = [int(self.method), SUITE_0, self._eph_pk, c_i]
             if ead:
                 msg1_content.append(ead)
             msg1 = b"".join(cbor2.dumps(item) for item in msg1_content)
@@ -431,6 +435,7 @@ class EdhocInitiator:
         """
         self._require_state(_InitiatorState.WAIT_MESSAGE_2, "process_message_2")
         try:
+            _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
             items = _decode_cbor_sequence(msg2)
             if len(items) != 2:
                 raise ValueError(f"Malformed message_2: expected 2 CBOR items, got {len(items)}")
@@ -467,41 +472,46 @@ class EdhocInitiator:
                 raise ValueError("ID_CRED_R does not match the authenticated peer")
             cred_r = _encode_cose_key(peer_pubkey)
             # context_2 = << ID_CRED_R, TH_2, CRED_R, ?EAD_2 >> (RFC 9528 Section 4.1.2)
+            # id_cred_r_raw and cred_r are already CBOR-encoded; only th_2 needs wrapping
             context_2 = (
-                cbor2.dumps(id_cred_r_raw)
+                id_cred_r_raw
                 + cbor2.dumps(self._th_2)
-                + cbor2.dumps(cred_r)
+                + cred_r
             )
             mac_2 = _edhoc_kdf(self._prk_3e2m, LABEL_MAC_2, context_2, EDHOC_MAC_LEN)
+            # COSE Sig_structure (RFC 8152 Section 4.4): 4 elements
+            # M_2 = << "Signature1", << ID_CRED_R >>, << TH_2, CRED_R >>, MAC_2 >>
             m_2 = cbor2.dumps([
                 "Signature1",
                 id_cred_r_raw,
-                self._th_2,
-                cred_r,
+                cbor2.dumps(self._th_2) + cred_r,
                 mac_2,
             ])
             VerifyKey(peer_pubkey).verify(m_2, signature_2)
+            # cred_r is already CBOR-encoded from _encode_cose_key
             th_3_input = (
                 cbor2.dumps(self._th_2)
                 + cbor2.dumps(plaintext_2)
-                + cbor2.dumps(cred_r)
+                + cred_r
             )
             self._th_3 = _compute_th(th_3_input)
             self._prk_4e3m = self._prk_3e2m
             cred_i = _encode_cose_key(self.identity.pubkey)
             id_cred_i = _encode_id_cred(self.identity.pubkey)
             # context_3 = << ID_CRED_I, TH_3, CRED_I, ?EAD_3 >> (RFC 9528 Section 4.1.2)
+            # id_cred_i and cred_i are already CBOR-encoded; only th_3 needs wrapping
             context_3 = (
-                cbor2.dumps(id_cred_i)
+                id_cred_i
                 + cbor2.dumps(self._th_3)
-                + cbor2.dumps(cred_i)
+                + cred_i
             )
             mac_3 = _edhoc_kdf(self._prk_4e3m, LABEL_MAC_3, context_3, EDHOC_MAC_LEN)
+            # COSE Sig_structure (RFC 8152 Section 4.4): 4 elements
+            # M_3 = << "Signature1", << ID_CRED_I >>, << TH_3, CRED_I >>, MAC_3 >>
             m_3 = cbor2.dumps([
                 "Signature1",
                 id_cred_i,
-                self._th_3,
-                cred_i,
+                cbor2.dumps(self._th_3) + cred_i,
                 mac_3,
             ])
             signature_3 = SigningKey(self.identity.seed).sign(m_3).signature
@@ -510,7 +520,8 @@ class EdhocInitiator:
             iv_3 = _edhoc_kdf(self._prk_3e2m, LABEL_IV_3, self._th_3, CCM_NONCE_LEN)
             a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
             ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
-            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_i)
+            # cred_i is already CBOR-encoded from _encode_cose_key
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cred_i
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()
@@ -520,7 +531,8 @@ class EdhocInitiator:
             raise ValueError("message processing failed") from None
 
         self._state = _InitiatorState.COMPLETE
-        return ciphertext_3
+        # RFC 9528 Section 5.4: message_3 = CBOR Sequence: ( CIPHERTEXT_3 )
+        return cbor2.dumps(ciphertext_3)
 
     def export_oscore(self, oscore_salt_len: int = 8, oscore_key_len: int = 16) -> OscoreContext:
         """Export OSCORE security context (RFC 9528 Section 7.2.1).
@@ -647,19 +659,17 @@ class EdhocResponder:
                 raise ValueError(
                     f"Malformed message_1: expected 4 or 5 CBOR items, got {len(items)}"
                 )
-            method_corr = items[0]
-            # RFC 9528: METHOD_CORR must be an integer, reject bool/float
-            if not isinstance(method_corr, int) or isinstance(method_corr, bool):
-                raise ValueError("method_corr must be an integer")
-            received_method = method_corr // 4
-            corr = method_corr % 4
+            # RFC 9528: METHOD is the authentication method directly (0-3)
+            received_method = items[0]
+            if not isinstance(received_method, int) or isinstance(received_method, bool):
+                raise ValueError("METHOD must be an integer")
+            if received_method not in (0, 1, 2, 3):
+                raise ValueError(f"Invalid METHOD value: {received_method}")
             if received_method != self.method:
                 raise ValueError(
                     f"Method mismatch: initiator sent method={received_method}, "
                     f"responder expects method={self.method}"
                 )
-            if corr not in (0, 1, 2, 3):
-                raise ValueError(f"Invalid corr value: {corr}")
             # RFC 9528: SUITES_I must be an integer, reject bool/float
             if not isinstance(items[1], int) or isinstance(items[1], bool):
                 raise ValueError("cipher suite must be an integer")
@@ -683,17 +693,19 @@ class EdhocResponder:
             id_cred_r = _encode_id_cred(self.identity.pubkey)
             cred_r = _encode_cose_key(self.identity.pubkey)
             # context_2 = << ID_CRED_R, TH_2, CRED_R, ?EAD_2 >> (RFC 9528 Section 4.1.2)
+            # id_cred_r and cred_r are already CBOR-encoded; only th_2 needs wrapping
             context_2 = (
-                cbor2.dumps(id_cred_r)
+                id_cred_r
                 + cbor2.dumps(self._th_2)
-                + cbor2.dumps(cred_r)
+                + cred_r
             )
             mac_2 = _edhoc_kdf(self._prk_3e2m, LABEL_MAC_2, context_2, EDHOC_MAC_LEN)
+            # COSE Sig_structure (RFC 8152 Section 4.4): 4 elements
+            # M_2 = << "Signature1", << ID_CRED_R >>, << TH_2, CRED_R >>, MAC_2 >>
             m_2 = cbor2.dumps([
                 "Signature1",
                 id_cred_r,
-                self._th_2,
-                cred_r,
+                cbor2.dumps(self._th_2) + cred_r,
                 mac_2,
             ])
             signature_2 = SigningKey(self.identity.seed).sign(m_2).signature
@@ -702,10 +714,11 @@ class EdhocResponder:
                 self._prk_2e, LABEL_KEYSTREAM_2, self._th_2, len(plaintext_2)
             )
             ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
+            # cred_r is already CBOR-encoded from _encode_cose_key
             th_3_input = (
                 cbor2.dumps(self._th_2)
                 + cbor2.dumps(plaintext_2)
-                + cbor2.dumps(cred_r)
+                + cred_r
             )
             self._th_3 = _compute_th(th_3_input)
             g_y_ciphertext_2 = self._eph_pk + ciphertext_2
@@ -733,7 +746,11 @@ class EdhocResponder:
         self._require_state(_ResponderState.WAIT_MESSAGE_3, "process_message_3")
         try:
             _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
-            ciphertext_3 = _validate_bytes(msg3, "CIPHERTEXT_3")
+            # RFC 9528 Section 5.4: message_3 = CBOR Sequence: ( CIPHERTEXT_3 )
+            items = _decode_cbor_sequence(msg3)
+            if len(items) != 1:
+                raise ValueError(f"Malformed message_3: expected 1 CBOR item, got {len(items)}")
+            ciphertext_3 = _validate_bytes(items[0], "CIPHERTEXT_3")
             if len(ciphertext_3) <= CCM_TAG_LEN:
                 raise ValueError("CIPHERTEXT_3 is too short")
             k_3 = _edhoc_kdf(self._prk_3e2m, LABEL_K_3, self._th_3, CCM_KEY_LEN)
@@ -754,17 +771,19 @@ class EdhocResponder:
             self._prk_4e3m = self._prk_3e2m
             cred_i = _encode_cose_key(peer_pubkey)
             # context_3 = << ID_CRED_I, TH_3, CRED_I, ?EAD_3 >> (RFC 9528 Section 4.1.2)
+            # id_cred_i_raw and cred_i are already CBOR-encoded; only th_3 needs wrapping
             context_3 = (
-                cbor2.dumps(id_cred_i_raw)
+                id_cred_i_raw
                 + cbor2.dumps(self._th_3)
-                + cbor2.dumps(cred_i)
+                + cred_i
             )
             mac_3 = _edhoc_kdf(self._prk_4e3m, LABEL_MAC_3, context_3, EDHOC_MAC_LEN)
+            # COSE Sig_structure (RFC 8152 Section 4.4): 4 elements
+            # M_3 = << "Signature1", << ID_CRED_I >>, << TH_3, CRED_I >>, MAC_3 >>
             m_3 = cbor2.dumps([
                 "Signature1",
                 id_cred_i_raw,
-                self._th_3,
-                cred_i,
+                cbor2.dumps(self._th_3) + cred_i,
                 mac_3,
             ])
             try:
@@ -772,7 +791,8 @@ class EdhocResponder:
             except Exception:
                 # SECURITY: Do not chain exception - it may reveal internal state
                 raise ValueError("signature verification failed") from None
-            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cbor2.dumps(cred_i)
+            # cred_i is already CBOR-encoded from _encode_cose_key
+            th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cred_i
             self._th_4 = _compute_th(th_4_input)
         except Exception as exc:
             self._fail()

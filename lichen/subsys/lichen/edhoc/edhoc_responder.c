@@ -119,13 +119,37 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		return -ENOTSUP;
 	}
 
+	/*
+	 * RFC 9528 Section 3.3.2: SUITES_I is either an integer (single suite)
+	 * or an array where the first element is the selected suite.
+	 * LICHEN only supports Suite 0.
+	 */
 	int32_t suites_i;
-	if (!zcbor_int32_decode(zsd, &suites_i)) {
+	if (zcbor_int32_decode(zsd, &suites_i)) {
+		/* Single suite as integer */
+		if (suites_i != EDHOC_SUITE_0) {
+			LOG_WRN("Unsupported protocol parameters");
+			return -ENOTSUP;
+		}
+	} else if (zcbor_list_start_decode(zsd)) {
+		/* Array of suites - first element is the selected suite */
+		if (!zcbor_int32_decode(zsd, &suites_i)) {
+			return -EINVAL;
+		}
+		if (suites_i != EDHOC_SUITE_0) {
+			LOG_WRN("Unsupported protocol parameters");
+			return -ENOTSUP;
+		}
+		/* Skip remaining suite entries */
+		int32_t dummy;
+		while (zcbor_int32_decode(zsd, &dummy)) {
+			/* Consume additional suites */
+		}
+		if (!zcbor_list_end_decode(zsd)) {
+			return -EINVAL;
+		}
+	} else {
 		return -EINVAL;
-	}
-	if (suites_i != EDHOC_SUITE_0) {
-		LOG_WRN("Unsupported protocol parameters");
-		return -ENOTSUP;
 	}
 
 	struct zcbor_string g_x;

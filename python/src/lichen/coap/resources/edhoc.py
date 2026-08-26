@@ -169,7 +169,8 @@ class EdhocResource(resource.Resource):
             items = _decode_cbor_sequence(payload)
             if len(items) not in (4, 5):
                 return None
-            if type(items[0]) is not int or items[0] != Method.SIGN_SIGN * 4 + 1:
+            # RFC 9528: METHOD is the authentication method directly (0-3)
+            if type(items[0]) is not int or items[0] != int(Method.SIGN_SIGN):
                 return None
             if type(items[1]) is not int or items[1] != SUITE_0:
                 return None
