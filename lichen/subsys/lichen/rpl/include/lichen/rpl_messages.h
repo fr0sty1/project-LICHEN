@@ -63,7 +63,19 @@ extern "C" {
 #define LICHEN_RPL_OPT_TRANSIT_INFO  6
 #define LICHEN_RPL_OPT_PREFIX_INFO   8
 #define LICHEN_RPL_OPT_RPL_TARGET_DESCRIPTOR 9
-#define LICHEN_RPL_OPT_DIO_TIME      0  /**< DIO Time Option (type TBD) */
+#define LICHEN_RPL_OPT_DIO_TIME      0x12  /**< DIO Time Option (experimental) */
+#define LICHEN_RPL_OPT_SCHC_RULE_VERSION 0x13  /**< SCHC Rule Version Option (spec 5.7) */
+
+/* ── SCHC Rule Set Version ─────────────────────────────────────────────────── */
+
+/**
+ * Current SCHC Rule Set Version (spec section 5.7):
+ *   0 - Reserved (never operational)
+ *   1 - Legacy experimental (not interoperable)
+ *   2 - RFC 8724 fragmentation profile
+ *   3 - Canonical specialized Rule 7 MQTT-SN residue (current)
+ */
+#define LICHEN_SCHC_RULE_SET_VERSION 3
 
 /* ── ICMPv6 codes for RPL messages ────────────────────────────────────────── */
 
@@ -387,6 +399,66 @@ int lichen_rpl_dio_time_parse(struct lichen_rpl_dio_time *_Nonnull dt,
  */
 int lichen_rpl_dio_time_write(const struct lichen_rpl_dio_time *_Nonnull dt,
 			      uint8_t *_Nonnull buf, size_t len);
+
+/* ── SCHC Rule Version Option (type 0x13) ──────────────────────────────────── */
+
+/** SCHC Rule Version Option data length (excluding type/length bytes) */
+#define LICHEN_RPL_SCHC_RULE_VERSION_DATA_LEN 1
+
+/**
+ * @brief SCHC Rule Version Option for DIO messages (spec section 5.7).
+ *
+ * Advertises the sender's SCHC rule set version. Nodes should only join
+ * a DODAG if their rule set version matches the advertised version.
+ *
+ * Wire format: Type(1B) + Length(1B) + Version(1B) = 3 bytes total.
+ */
+struct lichen_rpl_schc_rule_version {
+	uint8_t version;  /**< Rule set version (0 reserved, 3 current) */
+};
+
+/**
+ * @brief Parse SCHC Rule Version Option from wire bytes.
+ *
+ * @param rv   Output structure
+ * @param data Wire bytes starting with Type field (3 bytes required)
+ * @param len  Length of data
+ * @return 0 on success, negative error code on failure
+ *
+ * @note Returns LICHEN_RPL_ERR_TOO_SHORT if len < 3
+ * @note Returns LICHEN_RPL_ERR_BAD_OPT if type != 0x13 or length != 1
+ */
+LICHEN_WARN_UNUSED_RESULT
+int lichen_rpl_schc_rule_version_parse(struct lichen_rpl_schc_rule_version *_Nonnull rv,
+				       const uint8_t *_Nonnull data, size_t len);
+
+/**
+ * @brief Serialize SCHC Rule Version Option as a complete TLV option.
+ *
+ * @param rv  SCHC Rule Version Option to serialize
+ * @param buf Output buffer (at least 3 bytes)
+ * @param len Buffer size
+ * @return Bytes written (3 = Type + Length + Version), or negative error code
+ */
+int lichen_rpl_schc_rule_version_write(const struct lichen_rpl_schc_rule_version *_Nonnull rv,
+				       uint8_t *_Nonnull buf, size_t len);
+
+/**
+ * @brief Check if two SCHC rule set versions are compatible.
+ *
+ * Per spec section 5.7, versions are compatible only if:
+ * 1. They are equal
+ * 2. Both are operationally supported (currently only version 3)
+ *
+ * @param local  Local rule set version
+ * @param remote Remote rule set version
+ * @return true if compatible, false otherwise
+ */
+static inline bool lichen_schc_versions_compatible(uint8_t local, uint8_t remote)
+{
+	/* Only version 3 is operationally supported */
+	return local == remote && local == LICHEN_SCHC_RULE_SET_VERSION;
+}
 
 /* ── TLV option iterator ───────────────────────────────────────────────────── */
 

@@ -232,7 +232,7 @@ int lichen_rpl_dao_ack_write(const struct lichen_rpl_dao_ack *ack,
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
 
-	uint8_t d_byte = (d_flag ? 0x40 : 0) | (ack->flags & 0x3F);
+	uint8_t d_byte = (d_flag ? 0x80 : 0) | (ack->flags & 0x7F);
 
 	buf[0] = ack->rpl_instance_id;
 	buf[1] = d_byte;
@@ -404,12 +404,11 @@ int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *ti,
 	if (len < LICHEN_RPL_TRANSIT_INFO_DATA_LEN) {
 		return LICHEN_RPL_ERR_TOO_SHORT;
 	}
-	if (data[0] != 0) {
+	/* data[0] holds flags with E bit (0x80 = parent present per RFC 6550 6.7.8);
+	 * LICHEN contract requires E=1 for this struct. */
+	if (data[0] != 0x80) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-
-	/* data[0] holds flags with E bit (0x80 = parent present per RFC 6550 6.7.8);
-	 * LICHEN contract requires it for this struct. Caller tests assert fields. */
 	ti->path_control = data[1];
 	ti->path_sequence = data[2];
 	ti->path_lifetime = data[3];
@@ -475,6 +474,45 @@ int lichen_rpl_dio_time_write(const struct lichen_rpl_dio_time *dt,
 	buf[2] = dt->stratum;
 	buf[3] = 0;  /* reserved */
 	sys_put_be32(dt->timestamp, &buf[4]);
+
+	return (int)needed;
+}
+
+/* ── SCHC Rule Version Option ──────────────────────────────────────────────── */
+
+int lichen_rpl_schc_rule_version_parse(struct lichen_rpl_schc_rule_version *_Nonnull rv,
+				       const uint8_t *_Nonnull data, size_t len)
+{
+	if (rv == NULL || data == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	/* Expect payload data only (after Type/Length header) */
+	if (len < LICHEN_RPL_SCHC_RULE_VERSION_DATA_LEN) {
+		return LICHEN_RPL_ERR_TOO_SHORT;
+	}
+	/* Reject trailing bytes per spec: parser returns no consumed length */
+	if (len > LICHEN_RPL_SCHC_RULE_VERSION_DATA_LEN) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
+
+	rv->version = data[0];
+	return LICHEN_RPL_OK;
+}
+
+int lichen_rpl_schc_rule_version_write(const struct lichen_rpl_schc_rule_version *rv,
+				       uint8_t *buf, size_t len)
+{
+	size_t needed = 2 + LICHEN_RPL_SCHC_RULE_VERSION_DATA_LEN;
+	if (rv == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (len < needed) {
+		return LICHEN_RPL_ERR_BUF_SMALL;
+	}
+
+	buf[0] = LICHEN_RPL_OPT_SCHC_RULE_VERSION;
+	buf[1] = LICHEN_RPL_SCHC_RULE_VERSION_DATA_LEN;
+	buf[2] = rv->version;
 
 	return (int)needed;
 }

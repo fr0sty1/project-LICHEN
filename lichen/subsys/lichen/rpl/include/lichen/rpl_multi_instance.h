@@ -24,6 +24,8 @@
 #include <stdint.h>
 
 #include <lichen/rpl_addr.h>
+#include <lichen/rpl_dodag.h>    /* for CONFIG_LICHEN_RPL_MAX_PARENTS */
+#include <lichen/rpl_messages.h> /* for struct lichen_rpl_transit_info */
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
@@ -58,7 +60,43 @@ extern "C" {
 /** Root rank per RFC 6550 */
 #define LICHEN_RPL_ROOT_RANK_VALUE 256
 
+/** Maximum age of DAO backbone timestamp before considered stale (seconds).
+ *  SECURITY: Reject old messages to prevent replay attacks (GCP-9). */
+#define LICHEN_RPL_DAO_TIMESTAMP_FRESHNESS_S 300
+
+/** Maximum number of route targets per DAO backbone message.
+ *  SECURITY: Prevents memory exhaustion from malicious messages. */
+#ifndef CONFIG_LICHEN_RPL_MAX_ROUTES_PER_MESSAGE
+#define CONFIG_LICHEN_RPL_MAX_ROUTES_PER_MESSAGE 256
+#endif
+
+/** Maximum number of peer origins with received routes.
+ *  SECURITY: Prevents memory exhaustion DoS. */
+#ifndef CONFIG_LICHEN_RPL_MAX_RECEIVED_ROUTE_PEERS
+#define CONFIG_LICHEN_RPL_MAX_RECEIVED_ROUTE_PEERS 64
+#endif
+
 /* ── Types ─────────────────────────────────────────────────────────────────── */
+
+/**
+ * @brief Result codes for DAO backbone message validation.
+ */
+enum lichen_rpl_dao_reject_reason {
+	/** Message accepted */
+	LICHEN_RPL_DAO_ACCEPTED = 0,
+	/** Timestamp too old or NaN (GCP-9 replay guard) */
+	LICHEN_RPL_DAO_STALE_TIMESTAMP,
+	/** Origin is our own IID (self-loop prevention) */
+	LICHEN_RPL_DAO_SELF_ORIGIN,
+	/** Origin does not match OSCORE-authenticated sender */
+	LICHEN_RPL_DAO_ORIGIN_AUTH_MISMATCH,
+	/** Too many route targets (memory exhaustion guard) */
+	LICHEN_RPL_DAO_TOO_MANY_ROUTES,
+	/** Peer limit reached (memory exhaustion guard) */
+	LICHEN_RPL_DAO_PEER_LIMIT_REACHED,
+	/** RPL instance ID mismatch */
+	LICHEN_RPL_DAO_INSTANCE_MISMATCH,
+};
 
 /**
  * @brief Gateway role in the federation per GCP-5/GCP-6.
@@ -108,22 +146,6 @@ struct lichen_rpl_dao_target {
 };
 
 /**
- * @brief Transit information for backbone DAO propagation.
- */
-struct lichen_rpl_transit_info {
-	/** Parent IPv6 address (next hop toward root) */
-	uint8_t parent[16];
-	/** Path sequence number */
-	uint8_t path_sequence;
-	/** Path lifetime in units (route validity) */
-	uint8_t path_lifetime;
-	/** Path control flags */
-	uint8_t path_control;
-	/** External flag (route is external to DODAG) */
-	bool external;
-};
-
-/**
  * @brief DAO backbone message for propagation between gateways.
  *
  * Per GCP-5, DAO messages propagate across backbone as needed for
@@ -136,10 +158,10 @@ struct lichen_rpl_dao_backbone_msg {
 	uint8_t rpl_instance_id;
 	/** DAO sequence number */
 	uint8_t dao_sequence;
-	/** Number of targets in this message */
-	uint8_t target_count;
-	/** Targets (max CONFIG_LICHEN_RPL_MAX_PARENTS) */
-	struct lichen_rpl_dao_target targets[CONFIG_LICHEN_RPL_MAX_PARENTS];
+	/** Number of targets in this message (uint16_t for validation of large counts) */
+	uint16_t target_count;
+	/** Targets (max CONFIG_LICHEN_RPL_MAX_ROUTES_PER_MESSAGE) */
+	struct lichen_rpl_dao_target targets[CONFIG_LICHEN_RPL_MAX_ROUTES_PER_MESSAGE];
 	/** Transit information */
 	struct lichen_rpl_transit_info transit;
 	/** Timestamp (monotonic, for staleness) */
@@ -335,6 +357,75 @@ static inline bool lichen_rpl_validate_instance_id(uint8_t instance_id)
 	(void)instance_id;
 	return true;
 }
+
+/**
+ * @brief DAO backbone bridge for peer message validation.
+ *
+ * Per GCP-5, DAO messages propagate across backbone as needed for
+ * route aggregation. This tracks received route origins for DoS protection.
+ */
+struct lichen_rpl_dao_backbone_bridge {
+	/** Local gateway IID (for self-origin detection) */
+	uint8_t local_iid[16];
+	/** Whether local_iid is set */
+	bool has_local_iid;
+	/** RPL instance ID (must match incoming messages) */
+	uint8_t rpl_instance_id;
+	/** Number of distinct peer origins with stored routes */
+	uint8_t stored_origin_count;
+	/** IIDs of peers with stored routes */
+	uint8_t stored_origins[CONFIG_LICHEN_RPL_MAX_RECEIVED_ROUTE_PEERS][16];
+};
+
+/**
+ * @brief Initialize a DAO backbone bridge.
+ *
+ * @param bridge Bridge to initialize
+ * @param rpl_instance_id RPL instance ID to validate against
+ * @return 0 on success, -EINVAL if bridge is NULL
+ */
+int lichen_rpl_bridge_init(
+	struct lichen_rpl_dao_backbone_bridge *_Nonnull bridge,
+	uint8_t rpl_instance_id);
+
+/**
+ * @brief Set the local gateway IID for self-origin detection.
+ *
+ * @param bridge Bridge
+ * @param local_iid Local gateway IID (16 bytes)
+ * @return 0 on success, -EINVAL if params invalid
+ */
+int lichen_rpl_bridge_set_local_iid(
+	struct lichen_rpl_dao_backbone_bridge *_Nonnull bridge,
+	const uint8_t *_Nonnull local_iid);
+
+/**
+ * @brief Validate a DAO backbone message received from a peer.
+ *
+ * Per GCP-5 and GCP-9, validates:
+ * - RPL instance ID matches federation
+ * - Origin is not ourselves (self-loop prevention)
+ * - Timestamp is fresh (not stale, not NaN)
+ * - Origin matches OSCORE-authenticated sender
+ * - Route count within limits
+ * - Peer origin limit not exceeded
+ *
+ * SECURITY: This is a critical security boundary. All checks MUST pass
+ * before routes from this message are installed.
+ *
+ * @param bridge Bridge context
+ * @param msg DAO backbone message to validate
+ * @param authenticated_sender OSCORE-authenticated sender IID (16 bytes)
+ * @param current_time Current monotonic time in seconds
+ * @param[out] reason Reason for rejection (if not accepted)
+ * @return 0 if accepted, -1 if rejected (check reason)
+ */
+int lichen_rpl_bridge_receive_from_peer(
+	struct lichen_rpl_dao_backbone_bridge *_Nonnull bridge,
+	const struct lichen_rpl_dao_backbone_msg *_Nonnull msg,
+	const uint8_t *_Nonnull authenticated_sender,
+	uint32_t current_time,
+	enum lichen_rpl_dao_reject_reason *_Nonnull reason);
 
 #ifdef __cplusplus
 }

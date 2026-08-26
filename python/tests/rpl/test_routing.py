@@ -77,11 +77,63 @@ def test_srh_ext_data_layout() -> None:
     assert data[:6] == bytes([3, 1, 0, 0, 0, 0])
     assert data[6:] == DEST.packed
     assert len(data) == 6 + 16
+    # The complete Routing header is 24 octets, so RFC 8200 Hdr Ext Len is 2
+    # (length in 8-octet units, excluding the first 8 octets).
+    assert srh.to_extension_header().to_bytes(NextHeader.UDP)[1] == 2
+
+
+@pytest.mark.parametrize("length", range(6))
+def test_srh_from_ext_data_rejects_truncated_fixed_fields(length: int) -> None:
+    with pytest.raises(RoutingError, match="too short"):
+        SourceRoutingHeader.from_ext_data(bytes(length))
 
 
 def test_srh_from_ext_data_rejects_wrong_type() -> None:
     with pytest.raises(RoutingError):
         SourceRoutingHeader.from_ext_data(bytes([4, 0, 0, 0, 0, 0]))
+
+
+@pytest.mark.parametrize("cmpr", [0x10, 0x01, 0xF0, 0x0F, 0xFF])
+def test_srh_from_ext_data_rejects_compressed_addresses(cmpr: int) -> None:
+    data = bytes([3, 1, cmpr, 0, 0, 0]) + DEST.packed
+    with pytest.raises(RoutingError, match="compressed source routing headers"):
+        SourceRoutingHeader.from_ext_data(data)
+
+
+@pytest.mark.parametrize("pad", [1, 7, 15])
+def test_srh_from_ext_data_rejects_nonzero_pad(pad: int) -> None:
+    data = bytes([3, 1, 0, pad << 4, 0, 0]) + DEST.packed
+    with pytest.raises(RoutingError, match="nonzero Pad"):
+        SourceRoutingHeader.from_ext_data(data)
+
+
+def test_srh_from_ext_data_ignores_reserved_bits() -> None:
+    # RFC 6554 requires receivers to ignore the Reserved low nibble and
+    # following two octets. Re-encoding emits their canonical zero values.
+    data = bytes([3, 1, 0, 0x0F, 0xA5, 0x5A]) + DEST.packed
+    restored = SourceRoutingHeader.from_ext_data(data)
+    assert restored == SourceRoutingHeader(segments_left=1, addresses=[DEST])
+    assert restored.to_ext_data()[:6] == bytes([3, 1, 0, 0, 0, 0])
+
+
+@pytest.mark.parametrize("address_octets", [1, 15, 17, 31])
+def test_srh_from_ext_data_rejects_misaligned_address_length(address_octets: int) -> None:
+    data = bytes([3, 0, 0, 0, 0, 0]) + bytes(address_octets)
+    with pytest.raises(RoutingError, match="not 16-byte aligned"):
+        SourceRoutingHeader.from_ext_data(data)
+
+
+def test_srh_zero_segments_and_empty_address_vector_round_trip() -> None:
+    srh = SourceRoutingHeader(segments_left=0)
+    assert srh.to_ext_data() == bytes([3, 0, 0, 0, 0, 0])
+    assert SourceRoutingHeader.from_ext_data(srh.to_ext_data()) == srh
+
+
+def test_srh_from_extension_header_rejects_wrong_extension_type() -> None:
+    ext = SourceRoutingHeader(segments_left=1, addresses=[DEST]).to_extension_header()
+    wrong_type = type(ext)(NextHeader.HOP_BY_HOP, ext.data)
+    with pytest.raises(RoutingError, match="not a Routing extension header"):
+        SourceRoutingHeader.from_extension_header(wrong_type)
 
 
 def test_srh_from_ext_data_rejects_segments_left_exceeds_addresses() -> None:
@@ -217,11 +269,11 @@ def test_advance_source_route_allows_zero_segments_left_with_any_hop_limit() -> 
     """segments_left=0 is always valid (packet at final destination)."""
     srh = SourceRoutingHeader(segments_left=0, addresses=[DEST])
     ext = srh.to_extension_header()
-    # Even with hop_limit=0, segments_left=0 is valid (already at destination)
+    # hop_limit=0 is always rejected defensively (should have been dropped earlier)
     packet = IPv6Packet(
         header=IPv6Header(ROOT, DEST, NextHeader.UDP, hop_limit=0),
         payload=b"x",
         extension_headers=[ext],
     )
-    _, nxt = advance_source_route(packet)
-    assert nxt is None  # Already at destination, no more hops
+    with pytest.raises(RoutingError, match="hop_limit_exhausted"):
+        advance_source_route(packet)

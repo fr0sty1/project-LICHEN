@@ -151,9 +151,19 @@ class SourceRoutingHeader:
         if data[0] != ROUTING_TYPE_SOURCE_ROUTE:
             raise RoutingError(f"not a source routing header: type {data[0]}")
         segments_left = data[1]
-        cmpr = data[2]
-        if cmpr != 0:
-            raise RoutingError("compressed source routing headers not supported")
+        cmpr_i = data[2] >> 4
+        cmpr_e = data[2] & 0x0F
+        if cmpr_i != 0 or cmpr_e != 0:
+            raise RoutingError(
+                "compressed source routing headers not supported "
+                f"(CmprI={cmpr_i}, CmprE={cmpr_e})"
+            )
+        pad = data[3] >> 4
+        if pad != 0:
+            # RFC 6554 requires Pad=0 whenever CmprI=CmprE=0.  The low
+            # nibble of this octet and the following two octets are Reserved;
+            # receivers must ignore those bits rather than reject them.
+            raise RoutingError("uncompressed source routing header has nonzero Pad")
         addr_bytes = data[_SRH_FIELDS_LENGTH:]
         if len(addr_bytes) % 16 != 0:
             raise RoutingError("source-route address list is not 16-byte aligned")
@@ -169,6 +179,8 @@ class SourceRoutingHeader:
 
     @classmethod
     def from_extension_header(cls, ext: ExtensionHeader) -> SourceRoutingHeader:
+        if ext.header_type != NextHeader.ROUTING:
+            raise RoutingError(f"not a Routing extension header: type {ext.header_type}")
         return cls.from_ext_data(ext.data)
 
 
@@ -240,18 +252,18 @@ class RoutingTable:
         self._routes.clear()
         self._prefix_route_count = 0
 
-    def routes(self) -> dict[IPv6Address, list[IPv6Address]]:
-        result: dict[IPv6Address, list[IPv6Address]] = {}
+    def routes(self) -> dict[RouteTarget, list[IPv6Address]]:
+        result: dict[RouteTarget, list[IPv6Address]] = {}
         for rt, entry in self._routes.items():
-            result[rt.prefix] = list(entry.path)
+            result[rt] = list(entry.path)
         return result
 
     def replace_routes(
-        self, routes: dict[IPv6Address, list[IPv6Address]]
+        self, routes: dict[RouteTarget, list[IPv6Address]]
     ) -> None:
         self.clear()
         for target, path in routes.items():
-            self._add_target_route(RouteTarget.host(target), path)
+            self._add_target_route(target, [to_ipv6(a) for a in path])
 
     def lookup(self, target: IPv6Address | str) -> list[IPv6Address] | None:
         addr = to_ipv6(target)
@@ -293,33 +305,48 @@ def insert_source_route(
 ) -> tuple[IPv6Packet, IPv6Address]:
     """At the root: prepend an SRH for ``path`` and return (packet, first hop).
 
-    ``path`` is ``[h1, ..., hk, destination]`` (per RFC 6554 §3: final dst in
-    IPv6 header, intermediates in SRH). Single-hop needs no SRH. Validates
-    path ends with destination if ``expected_destination`` provided (project-LICHEN-dzgv).
+    ``path`` is ``[h1, ..., hk, destination]``.  RFC 6554 requires a strict,
+    loop-free unicast path.  The final path entry must be the packet's current
+    destination and neither the packet source nor any duplicate may appear in
+    the path.  Single-hop delivery needs no SRH.
 
-    IMPORTANT: The final element of ``path`` must be the intended destination.
-    This function replaces the packet's destination address with the first hop;
-    if the path does not end with the actual final destination, that destination
-    is lost and the packet will stop at the last hop in the path.
-
-    When ``expected_destination`` is provided, the function validates that
-    ``path[-1]`` matches it and raises :class:`RoutingError` if not. Use this
-    when the intended destination is known to catch routing table bugs early.
-    The :class:`RoutingTable` class guarantees this property for paths it
-    returns via :meth:`~RoutingTable.build_source_route`.
+    ``expected_destination`` is retained for API compatibility and, when
+    supplied, is checked in addition to the packet destination.  The packet
+    destination check is unconditional so callers cannot accidentally lose the
+    original destination while replacing it with the first hop.
     """
     hops = [to_ipv6(a) for a in path]
     if not hops:
         raise RoutingError("path must not be empty")
     if len(hops) > MAX_ROUTE_HOPS:
         raise RoutingError("source route exceeds maximum hop count")
+    destination = packet.header.dst_addr
+    if hops[-1] != destination:
+        raise RoutingError(
+            "path does not end with packet destination: "
+            f"path ends with {hops[-1]}, packet destination is {destination}"
+        )
     if expected_destination is not None:
         expected = to_ipv6(expected_destination)
-        if hops[-1] != expected:
+        if destination != expected:
             raise RoutingError(
-                f"path does not end with expected destination: "
-                f"path ends with {hops[-1]}, expected {expected}"
+                "packet destination does not match expected destination: "
+                f"packet destination is {destination}, expected {expected}"
             )
+    if packet.header.src_addr.is_multicast:
+        raise RoutingError("source routing packet source must be unicast")
+    if any(hop.is_multicast for hop in hops):
+        raise RoutingError("source route must not contain multicast addresses")
+    if packet.header.src_addr in hops:
+        raise RoutingError("source route must not contain packet source")
+    if len(set(hops)) != len(hops):
+        raise RoutingError("source route must not contain duplicate addresses")
+    if any(ext.header_type == NextHeader.ROUTING for ext in packet.extension_headers):
+        raise RoutingError("packet already contains a Routing extension header")
+
+    remaining_count = len(hops) - 1
+    if remaining_count >= packet.header.hop_limit:
+        raise RoutingError("segments_left not strictly less than hop_limit")
     first_hop = hops[0]
     new_header = replace(packet.header, dst_addr=first_hop)
 
@@ -329,10 +356,21 @@ def insert_source_route(
 
     remaining = hops[1:]
     srh = SourceRoutingHeader(segments_left=len(remaining), addresses=remaining)
+    # Hop-by-Hop Options must remain immediately after the IPv6 header.  All
+    # other existing extension headers describe the final destination and
+    # therefore follow the newly inserted Routing header.
+    insertion_index = (
+        1
+        if packet.extension_headers
+        and packet.extension_headers[0].header_type == NextHeader.HOP_BY_HOP
+        else 0
+    )
+    extension_headers = list(packet.extension_headers)
+    extension_headers.insert(insertion_index, srh.to_extension_header())
     new_packet = IPv6Packet(
         header=new_header,
         payload=packet.payload,
-        extension_headers=[srh.to_extension_header(), *packet.extension_headers],
+        extension_headers=extension_headers,
     )
     return new_packet, first_hop
 
@@ -352,11 +390,19 @@ def advance_source_route(
     Returns ``(updated_packet, next_hop)``. ``next_hop`` is ``None`` when this
     node is the final destination (no SRH, or segments_left already 0).
 
-    Raises :class:`RoutingError` if Segments Left >= Hop Limit (RFC 6554 + spec §5.8.4).
+    Raises :class:`RoutingError` if Hop Limit is 0 when forwarding is required
+    (RFC 8200), or if Segments Left >= Hop Limit (RFC 6554 + spec §5.8.4).
     """
     idx = _find_routing_header(packet)
     if idx is None:
         return packet, None
+
+    # SECURITY: RFC 8200 Section 3: When Hop Limit reaches 0, the packet MUST
+    # be discarded. This check happens before SRH processing, per RFC 8200.
+    # A packet with hop_limit==0 should have been discarded at an earlier
+    # processing stage; if it reaches this function, reject it defensively.
+    if packet.header.hop_limit == 0:
+        raise RoutingError("hop_limit_exhausted")
 
     srh = SourceRoutingHeader.from_extension_header(packet.extension_headers[idx])
     if srh.segments_left == 0:
@@ -376,6 +422,6 @@ def advance_source_route(
 
     new_exts = list(packet.extension_headers)
     new_exts[idx] = new_srh.to_extension_header()
-    new_header = replace(packet.header, dst_addr=next_hop)
+    new_header = replace(packet.header, dst_addr=next_hop, hop_limit=packet.header.hop_limit - 1)
     new_packet = replace(packet, header=new_header, extension_headers=new_exts)
     return new_packet, next_hop

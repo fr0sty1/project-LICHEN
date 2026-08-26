@@ -15,6 +15,7 @@ from lichen.rpl.dao_types import (
     Candidate,
     DaoError,
 )
+from lichen.rpl.routing import RouteTarget
 
 
 def contains_cycle(parents: dict[IPv6Address, tuple[IPv6Address, ...]]) -> bool:
@@ -83,6 +84,7 @@ def select_path(
     visiting = visiting | {target}
     choices: list[tuple[int, tuple[int, ...], list[IPv6Address], Candidate]] = []
     active_parents = set(parents.get(target, ()))
+    hop_count_exceeded = False
     for candidate in candidates.get(target, ()):
         if candidate.parent not in active_parents:
             continue
@@ -100,9 +102,12 @@ def select_path(
             parent_path = parent_selected[0]
         path = [*parent_path, target]
         if len(path) > MAX_ROUTE_HOPS_ALIAS:
-            raise DaoError("route exceeds maximum hop count", reason="route_too_long")
+            hop_count_exceeded = True
+            continue
         choices.append((rank, tuple(int(hop) for hop in path), path, candidate))
     if not choices:
+        if hop_count_exceeded:
+            raise DaoError("route exceeds maximum hop count", reason="route_too_long")
         return None
     rank, _, path, candidate = min(choices)
     return path, candidate, rank
@@ -138,7 +143,7 @@ def build_routes(
     parents: dict[IPv6Address, tuple[IPv6Address, ...]],
     candidates: dict[IPv6Address, tuple[Candidate, ...]],
     pcs: int,
-) -> dict[IPv6Address, list[IPv6Address]]:
+) -> dict[RouteTarget, list[IPv6Address]]:
     """Build complete routes for all targets with active parents.
 
     Args:
@@ -148,11 +153,11 @@ def build_routes(
         pcs: Path Control Size.
 
     Returns:
-        Map of target to complete path.
+        Map of RouteTarget to complete path.
     """
-    routes: dict[IPv6Address, list[IPv6Address]] = {}
+    routes: dict[RouteTarget, list[IPv6Address]] = {}
     for target in sorted(parents):
         path = assemble_path(target, node_address, parents, candidates, pcs, set())
         if path:
-            routes[target] = path
+            routes[RouteTarget.host(target)] = path
     return routes

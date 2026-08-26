@@ -265,3 +265,128 @@ void lichen_rpl_resolve_slot_conflict(
 		memcpy(winner_iid, claimant_b, 16);
 	}
 }
+
+/* ── DAO Backbone Bridge ───────────────────────────────────────────────────── */
+
+int lichen_rpl_bridge_init(
+	struct lichen_rpl_dao_backbone_bridge *bridge,
+	uint8_t rpl_instance_id)
+{
+	if (bridge == NULL) {
+		return -EINVAL;
+	}
+
+	memset(bridge, 0, sizeof(*bridge));
+	bridge->rpl_instance_id = rpl_instance_id;
+	bridge->has_local_iid = false;
+	bridge->stored_origin_count = 0;
+
+	return 0;
+}
+
+int lichen_rpl_bridge_set_local_iid(
+	struct lichen_rpl_dao_backbone_bridge *bridge,
+	const uint8_t *local_iid)
+{
+	if (bridge == NULL || local_iid == NULL) {
+		return -EINVAL;
+	}
+
+	memcpy(bridge->local_iid, local_iid, 16);
+	bridge->has_local_iid = true;
+
+	return 0;
+}
+
+/**
+ * @brief Check if an origin is already stored in the bridge.
+ */
+static bool bridge_has_origin(
+	const struct lichen_rpl_dao_backbone_bridge *bridge,
+	const uint8_t *origin)
+{
+	for (int i = 0; i < bridge->stored_origin_count; i++) {
+		if (rpl_addr_eq(bridge->stored_origins[i], origin)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * @brief Add an origin to the stored origins list.
+ */
+static bool bridge_add_origin(
+	struct lichen_rpl_dao_backbone_bridge *bridge,
+	const uint8_t *origin)
+{
+	/* Already stored - allow update */
+	if (bridge_has_origin(bridge, origin)) {
+		return true;
+	}
+
+	/* Check limit */
+	if (bridge->stored_origin_count >= CONFIG_LICHEN_RPL_MAX_RECEIVED_ROUTE_PEERS) {
+		return false;
+	}
+
+	memcpy(bridge->stored_origins[bridge->stored_origin_count], origin, 16);
+	bridge->stored_origin_count++;
+	return true;
+}
+
+int lichen_rpl_bridge_receive_from_peer(
+	struct lichen_rpl_dao_backbone_bridge *bridge,
+	const struct lichen_rpl_dao_backbone_msg *msg,
+	const uint8_t *authenticated_sender,
+	uint32_t current_time,
+	enum lichen_rpl_dao_reject_reason *reason)
+{
+	if (bridge == NULL || msg == NULL || authenticated_sender == NULL ||
+	    reason == NULL) {
+		return -EINVAL;
+	}
+
+	/* SECURITY: Validate RPL instance ID matches our federation */
+	if (msg->rpl_instance_id != bridge->rpl_instance_id) {
+		*reason = LICHEN_RPL_DAO_INSTANCE_MISMATCH;
+		return -1;
+	}
+
+	/* SECURITY: Reject messages claiming to be from ourselves (self-loop) */
+	if (bridge->has_local_iid &&
+	    rpl_addr_eq(msg->origin_gateway, bridge->local_iid)) {
+		*reason = LICHEN_RPL_DAO_SELF_ORIGIN;
+		return -1;
+	}
+
+	/* SECURITY: Validate timestamp freshness (GCP-9 replay guard).
+	 * Age must be in [0, FRESHNESS_WINDOW]. Reject stale, future, or NaN.
+	 * Note: For uint32_t, we check wrap-around and staleness. */
+	int32_t age = (int32_t)(current_time - msg->timestamp);
+	if (age < 0 || age > LICHEN_RPL_DAO_TIMESTAMP_FRESHNESS_S) {
+		*reason = LICHEN_RPL_DAO_STALE_TIMESTAMP;
+		return -1;
+	}
+
+	/* SECURITY: Validate origin matches OSCORE-authenticated sender */
+	if (!rpl_addr_eq(msg->origin_gateway, authenticated_sender)) {
+		*reason = LICHEN_RPL_DAO_ORIGIN_AUTH_MISMATCH;
+		return -1;
+	}
+
+	/* SECURITY: Validate route count (memory exhaustion guard) */
+	if (msg->target_count > CONFIG_LICHEN_RPL_MAX_ROUTES_PER_MESSAGE) {
+		*reason = LICHEN_RPL_DAO_TOO_MANY_ROUTES;
+		return -1;
+	}
+
+	/* SECURITY: Check peer origin limit (DoS protection) */
+	if (!bridge_add_origin(bridge, msg->origin_gateway)) {
+		*reason = LICHEN_RPL_DAO_PEER_LIMIT_REACHED;
+		return -1;
+	}
+
+	*reason = LICHEN_RPL_DAO_ACCEPTED;
+	return 0;
+}
