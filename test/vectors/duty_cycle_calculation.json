@@ -1,0 +1,232 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Cross-implementation duty-cycle calculations: exact LoRa airtime, EU868 1% accumulation and rolling-window boundaries, US915 FCC dwell limits, denial/recovery, and u64 timestamp saturation.",
+  "vectors": [
+    {
+      "name": "sf9_exact_airtime_and_packet_budgets",
+      "description": "The integer Semtech oracle gives 369.664 ms for a 60-byte SF9/125 kHz/CR4/5 packet; floor division yields 97 packets at EU 1% and 973 in the spec's 10% example.",
+      "category": "exact_airtime",
+      "radio": {
+        "payload_len": 60,
+        "spreading_factor": 9,
+        "bandwidth_hz": 125000,
+        "coding_rate": 5,
+        "preamble_symbols": 8,
+        "crc_enabled": true,
+        "implicit_header": false
+      },
+      "expected": {
+        "airtime_us": 369664,
+        "eu_1_percent_packets_per_hour": 97,
+        "spec_10_percent_packets_per_hour": 973
+      }
+    },
+    {
+      "name": "eu868_exact_limit_denial",
+      "description": "EU868 accepts exactly 36 seconds in a one-hour window and denies one more millisecond.",
+      "category": "tracking",
+      "profile": {
+        "region": "EU868",
+        "duty_permille": 10,
+        "duty_cycle_percent": 1.0,
+        "window_ms": 3600000,
+        "max_dwell_time_ms": null
+      },
+      "transmissions": [
+        {
+          "start_ms": 0,
+          "duration_ms": 36000
+        }
+      ],
+      "query_ms": 0,
+      "proposed_duration_ms": 1,
+      "expected": {
+        "used_ms": 36000,
+        "remaining_ms": 0,
+        "usage_permille": 10,
+        "can_transmit": false
+      }
+    },
+    {
+      "name": "eu868_accumulates_multiple_transmissions",
+      "description": "Three transmissions accumulate using integer milliseconds without rounding their sum.",
+      "category": "tracking",
+      "profile": {
+        "region": "EU868",
+        "duty_permille": 10,
+        "duty_cycle_percent": 1.0,
+        "window_ms": 3600000,
+        "max_dwell_time_ms": null
+      },
+      "transmissions": [
+        {
+          "start_ms": 1000,
+          "duration_ms": 1234
+        },
+        {
+          "start_ms": 5000,
+          "duration_ms": 5678
+        },
+        {
+          "start_ms": 12000,
+          "duration_ms": 9012
+        }
+      ],
+      "query_ms": 12000,
+      "proposed_duration_ms": 20076,
+      "expected": {
+        "used_ms": 15924,
+        "remaining_ms": 20076,
+        "usage_permille": 4,
+        "can_transmit": true
+      }
+    },
+    {
+      "name": "rolling_boundary_still_denied",
+      "description": "At exactly one window after the start, a 36-second transmission still overlaps the half-open rolling window in full.",
+      "category": "tracking",
+      "profile": {
+        "region": "EU868",
+        "duty_permille": 10,
+        "duty_cycle_percent": 1.0,
+        "window_ms": 3600000,
+        "max_dwell_time_ms": null
+      },
+      "transmissions": [
+        {
+          "start_ms": 0,
+          "duration_ms": 36000
+        }
+      ],
+      "query_ms": 3600000,
+      "proposed_duration_ms": 1,
+      "expected": {
+        "used_ms": 36000,
+        "remaining_ms": 0,
+        "usage_permille": 10,
+        "can_transmit": false
+      }
+    },
+    {
+      "name": "rolling_boundary_partial_recovery",
+      "description": "One millisecond later, one millisecond has left the rolling window and a one-millisecond transmission is allowed.",
+      "category": "tracking",
+      "profile": {
+        "region": "EU868",
+        "duty_permille": 10,
+        "duty_cycle_percent": 1.0,
+        "window_ms": 3600000,
+        "max_dwell_time_ms": null
+      },
+      "transmissions": [
+        {
+          "start_ms": 0,
+          "duration_ms": 36000
+        }
+      ],
+      "query_ms": 3600001,
+      "proposed_duration_ms": 1,
+      "expected": {
+        "used_ms": 35999,
+        "remaining_ms": 1,
+        "usage_permille": 9,
+        "can_transmit": true
+      }
+    },
+    {
+      "name": "rolling_boundary_full_recovery",
+      "description": "Once the original transmission end reaches the window start, its complete budget is restored.",
+      "category": "tracking",
+      "profile": {
+        "region": "EU868",
+        "duty_permille": 10,
+        "duty_cycle_percent": 1.0,
+        "window_ms": 3600000,
+        "max_dwell_time_ms": null
+      },
+      "transmissions": [
+        {
+          "start_ms": 0,
+          "duration_ms": 36000
+        }
+      ],
+      "query_ms": 3636000,
+      "proposed_duration_ms": 36000,
+      "expected": {
+        "used_ms": 0,
+        "remaining_ms": 36000,
+        "usage_permille": 0,
+        "can_transmit": true
+      }
+    },
+    {
+      "name": "us915_fcc_dwell_exact_limit",
+      "description": "The current US915 FHSS profile has no rolling cap below 100%, but permits at most 400 ms on one hopping channel.",
+      "category": "tracking",
+      "profile": {
+        "region": "US915",
+        "duty_permille": 1000,
+        "duty_cycle_percent": 100.0,
+        "window_ms": 3600000,
+        "max_dwell_time_ms": 400
+      },
+      "transmissions": [],
+      "query_ms": 0,
+      "proposed_duration_ms": 400,
+      "expected": {
+        "used_ms": 0,
+        "remaining_ms": 3600000,
+        "usage_permille": 0,
+        "can_transmit": true
+      }
+    },
+    {
+      "name": "us915_fcc_dwell_over_limit",
+      "description": "A 401 ms US915 transmission is denied by the FCC dwell ceiling even with an empty rolling window.",
+      "category": "tracking",
+      "profile": {
+        "region": "US915",
+        "duty_permille": 1000,
+        "duty_cycle_percent": 100.0,
+        "window_ms": 3600000,
+        "max_dwell_time_ms": 400
+      },
+      "transmissions": [],
+      "query_ms": 0,
+      "proposed_duration_ms": 401,
+      "expected": {
+        "used_ms": 0,
+        "remaining_ms": 3600000,
+        "usage_permille": 0,
+        "can_transmit": false
+      }
+    },
+    {
+      "name": "u64_timestamp_saturates_without_budget_overflow",
+      "description": "Accounting near the u64 monotonic-time ceiling saturates interval ends and preserves the airtime total.",
+      "category": "tracking",
+      "profile": {
+        "region": "EU868",
+        "duty_permille": 10,
+        "duty_cycle_percent": 1.0,
+        "window_ms": 3600000,
+        "max_dwell_time_ms": null
+      },
+      "transmissions": [
+        {
+          "start_ms": 18446744073709551565,
+          "duration_ms": 100
+        }
+      ],
+      "query_ms": 18446744073709551615,
+      "proposed_duration_ms": 35900,
+      "expected": {
+        "used_ms": 100,
+        "remaining_ms": 35900,
+        "usage_permille": 0,
+        "can_transmit": true
+      }
+    }
+  ]
+}

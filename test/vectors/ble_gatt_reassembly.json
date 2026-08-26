@@ -1,0 +1,404 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "ble_gatt_reassembly",
+  "description": "BLE GATT frame reassembly conformance vectors for the two GATT transports: KISS-over-BLE (TNC apps) and Meshtastic-compatible GATT (4-byte length-prefix chunked writes). All byte sequences are hand-derived from framing rules (RFC-style KISS escaping, protobuf wire format) and are independent of any implementation output.",
+  "spec": "spec/kiss-framing.md section 5.5 (BLE KISS GATT), BLE-KISS-API (aprs.fi), Meshtastic BLE wire format as mirrored in python/src/lichen/interface/meshtastic/gatt.py and rust lichen-meshtastic/src/gatt.rs",
+  "constants": {
+    "kiss_fend": "c0",
+    "kiss_fesc": "db",
+    "kiss_tfend": "dc",
+    "kiss_tfesc": "dd",
+    "kiss_cmd_byte_rule": "(port << 4) | command",
+    "kiss_default_mtu": 20,
+    "kiss_max_frame_size": 2048,
+    "meshtastic_header_len_bytes": 4,
+    "meshtastic_header_layout": "len_lo, len_hi (little-endian uint16), reserved 0x00, reserved 0x00",
+    "meshtastic_max_message_size": 512
+  },
+  "scope_notes": [
+    "BLE ATT/GATT delivers writes reliably and in order within a single connection, so out-of-order fragment arrival is not a scenario defined by either profile; reconnection state-reset is covered instead (kiss_reconnect_clears_partial_reassembly, meshtastic_disconnect_discards_partial).",
+    "Interleaved fragments from multiple simultaneous GATT clients are likewise undefined for these single-client characteristics; sequential connections stand in for the multiple-connection requirement.",
+    "A KISS frame whose escaped length exceeds kiss_max_frame_size (2048) is not enforced per-frame by the current Python reader (only the stream-buffer memory guard is); see kiss_oversized_garbage_discarded for the enforced guard behavior."
+  ],
+  "vectors": [
+    {
+      "name": "kiss_happy_path_exact_mtu",
+      "family": "kiss_gatt",
+      "description": "Port 0 DATA frame 'LICHEN-BLE-KISS-01' whose wire form is exactly 20 bytes (DEFAULT_MTU); delivered in a single characteristic write.",
+      "stream": "c0004c494348454e2d424c452d4b4953532d3031c0",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "c0004c494348454e2d424c452d4b4953532d3031c0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "4c494348454e2d424c452d4b4953532d3031"}
+        ]
+      },
+      "oracle_note": "Wire form hand-built: FEND, CMD 0x00 (port 0, DATA), unescaped ASCII payload, FEND."
+    },
+    {
+      "name": "kiss_split_across_writes",
+      "family": "kiss_gatt",
+      "description": "37-byte frame 'frame-boundaries-across-mtu-writes' split into a 20-byte and a 17-byte write; reassembled into exactly one frame.",
+      "stream": "c0006672616d652d626f756e6461726965732d6163726f73732d6d74752d777269746573c0",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "c0006672616d652d626f756e6461726965732d61"},
+        {"op": "write", "data": "63726f73732d6d74752d777269746573c0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "6672616d652d626f756e6461726965732d6163726f73732d6d74752d777269746573"}
+        ]
+      },
+      "oracle_note": "Split point chosen at the 20-byte MTU boundary falling mid-payload; no escapes present (all printable ASCII)."
+    },
+    {
+      "name": "kiss_escaped_payload",
+      "family": "kiss_gatt",
+      "description": "Payload containing FEND, FESC, TFEND, TFESC bytes survives escaping across reassembly: c0->db dc, db->db dd, literals pass through.",
+      "stream": "c000dbdcdbdddcddc0",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "c000dbdcdbdddcddc0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "c0dbdcdd"}
+        ]
+      },
+      "oracle_note": "Escaped body db dc db dd dc dd decodes back to c0 db dc dd by the two transposition rules alone."
+    },
+    {
+      "name": "kiss_two_frames_single_write",
+      "family": "kiss_gatt",
+      "description": "Two complete frames concatenated inside one write yield two frames in order ('alpha', then 'beta!').",
+      "stream": "c000616c706861c0c0006265746121c0",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "c000616c706861c0c0006265746121c0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "616c706861"},
+          {"port": 0, "command": 0, "data": "6265746121"}
+        ]
+      },
+      "oracle_note": "Frame boundary is the closing FEND; the reader must resync at it rather than treat the pair as one frame."
+    },
+    {
+      "name": "kiss_garbage_prefix_resync",
+      "family": "kiss_gatt",
+      "description": "Leading non-FEND garbage before the first FEND is discarded during sync; exactly the valid trailing frame is delivered.",
+      "stream": "deadbeefc00073796e63c0",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "deadbeefc00073796e63c0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "73796e63"}
+        ]
+      },
+      "oracle_note": "Sync rule: bytes before the first FEND carry no framing semantics."
+    },
+    {
+      "name": "kiss_inter_frame_fend_padding",
+      "family": "kiss_gatt",
+      "description": "Consecutive FENDs around a frame (inter-frame padding) produce a single frame, not empty ones.",
+      "stream": "c0c0c0006d7367c0c0",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "c0c0c0006d7367c0c0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "6d7367"}
+        ]
+      },
+      "oracle_note": "FEND FEND content FEND FEND collapses to one delimited frame per KISS delimiter semantics."
+    },
+    {
+      "name": "kiss_partial_frame_completed_by_later_write",
+      "family": "kiss_gatt",
+      "description": "An unterminated frame prefix emits nothing; the completing write finishes exactly one frame with the full payload 'hello'.",
+      "stream": "c00068656c6c6fc0",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "c0006865"},
+        {"op": "write", "data": "6c6c6fc0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "68656c6c6f"}
+        ]
+      },
+      "oracle_note": "Partial-frame handling: no output until the closing FEND; payload is the concatenation across writes."
+    },
+    {
+      "name": "kiss_truncated_escape_frame_skipped",
+      "family": "kiss_gatt",
+      "description": "A frame ending in a lone FESC before its closing FEND is malformed (truncated escape sequence); it is dropped and the stream recovers so the following frame still parses.",
+      "stream": "c0004142dbc0c0004f4bc0",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "c0004142dbc0"},
+        {"op": "write", "data": "c0004f4bc0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "4f4b"}
+        ]
+      },
+      "oracle_note": "Escape rule requires a partner byte after db; db followed by the closing FEND cannot decode, so that frame is discarded without affecting the next."
+    },
+    {
+      "name": "kiss_oversized_garbage_discarded",
+      "family": "kiss_gatt",
+      "description": "A 5000-byte FEND-less garbage run exceeds the stream-buffer memory guard (2 x max_frame_size = 4096) and is discarded wholesale; a subsequent valid frame is delivered intact.",
+      "garbage": {"byte": "41", "count": 5000, "chunk_size": 20},
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write_repeat", "repeat": {"byte": "41", "count": 5000}, "chunk_size": 20},
+        {"op": "write", "data": "c00071c0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "71"}
+        ]
+      },
+      "oracle_note": "Memory-guard rule: a buffer with no FEND-delimited progress beyond twice max_frame_size must be dropped to bound memory; writes arrive MTU-sized (250 x 20 B)."
+    },
+    {
+      "name": "kiss_large_valid_frame_under_limit",
+      "family": "kiss_gatt",
+      "description": "A legitimate 1500-byte unescaped payload yields a 1503-byte frame, under the documented 2048-byte escaped-size limit; delivered as 76 MTU-sized writes and reassembled losslessly.",
+      "payload_repeat": {"byte": "58", "count": 1500},
+      "stream_note": "c000 + 58 repeated 1500 times + c0",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write_envelope", "payload_repeat": {"byte": "58", "count": 1500}, "chunk_size": 20}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data_repeat": {"byte": "58", "count": 1500}}
+        ]
+      },
+      "oracle_note": "Envelope hand-derived (FEND CMD payload FEND); chunking at the 20-byte MTU is mechanical; 1503 <= 2048 so the frame is admissible."
+    },
+    {
+      "name": "kiss_reconnect_clears_partial_reassembly",
+      "family": "kiss_gatt",
+      "description": "A partially received frame is abandoned on disconnect; after reconnect the stream starts clean and only the new connection's frame is delivered.",
+      "steps": [
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "c000cafe"},
+        {"op": "disconnect"},
+        {"op": "connect", "mtu": 20},
+        {"op": "write", "data": "c000beefc0"}
+      ],
+      "expected": {
+        "frames": [
+          {"port": 0, "command": 0, "data": "beef"}
+        ]
+      },
+      "oracle_note": "Sequential multiple-connection scenario: reassembly state is per-connection; the abandoned 'cafe' prefix must never surface."
+    },
+    {
+      "name": "meshtastic_complete_in_single_chunk",
+      "family": "meshtastic_gatt",
+      "description": "Header declaring 4 payload bytes followed by the full payload arrives in one write; ToRadio(want_config_id=69420) parses immediately.",
+      "steps": [
+        {"op": "connect", "mtu": 512},
+        {"op": "write", "data": "0400000018ac9e04"}
+      ],
+      "expected": {
+        "outcomes": [
+          {"packet": null, "want_config_id": 69420, "disconnect": false, "heartbeat": null, "xmodem_packet": null}
+        ]
+      },
+      "oracle_note": "Header 04 00 00 00 (uint16 LE length 4 + two reserved zero bytes); payload 18 ac 9e 04 is field 3 varint 69420 by protobuf wire rules (tag 0x18 = field 3 varint; 69420 = 0xac,0x9e,0x04 base-128 groups)."
+    },
+    {
+      "name": "meshtastic_byte_by_byte_reassembly",
+      "family": "meshtastic_gatt",
+      "description": "The same message delivered one byte per write: seven writes yield no message, the eighth completes it.",
+      "steps": [
+        {"op": "connect", "mtu": 512},
+        {"op": "write", "data": "04"},
+        {"op": "write", "data": "00"},
+        {"op": "write", "data": "00"},
+        {"op": "write", "data": "00"},
+        {"op": "write", "data": "18"},
+        {"op": "write", "data": "ac"},
+        {"op": "write", "data": "9e"},
+        {"op": "write", "data": "04"}
+      ],
+      "expected": {
+        "outcomes": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {"packet": null, "want_config_id": 69420, "disconnect": false, "heartbeat": null, "xmodem_packet": null}
+        ]
+      },
+      "oracle_note": "Reassembly must be indifferent to write granularity down to single bytes, including a header split mid-way."
+    },
+    {
+      "name": "meshtastic_header_split_across_chunks",
+      "family": "meshtastic_gatt",
+      "description": "The 4-byte length header itself split 2+2 across writes, then the payload; message completes only after the payload arrives.",
+      "steps": [
+        {"op": "connect", "mtu": 512},
+        {"op": "write", "data": "0400"},
+        {"op": "write", "data": "0000"},
+        {"op": "write", "data": "18ac9e04"}
+      ],
+      "expected": {
+        "outcomes": [
+          null,
+          null,
+          {"packet": null, "want_config_id": 69420, "disconnect": false, "heartbeat": null, "xmodem_packet": null}
+        ]
+      },
+      "oracle_note": "Length becomes readable only once all four header bytes are buffered; declared length 4 gates completion."
+    },
+    {
+      "name": "meshtastic_payload_split_mid_varint",
+      "family": "meshtastic_gatt",
+      "description": "Header plus the first two payload bytes in one write, remainder in the next; the varint spanning the write boundary reassembles to 69420.",
+      "steps": [
+        {"op": "connect", "mtu": 512},
+        {"op": "write", "data": "0400000018ac"},
+        {"op": "write", "data": "9e04"}
+      ],
+      "expected": {
+        "outcomes": [
+          null,
+          {"packet": null, "want_config_id": 69420, "disconnect": false, "heartbeat": null, "xmodem_packet": null}
+        ]
+      },
+      "oracle_note": "Base-128 groups 0xac (cont.) and 0x9e (cont.), 0x04 (final) reunite across the boundary."
+    },
+    {
+      "name": "meshtastic_truncated_stays_buffered_then_completes",
+      "family": "meshtastic_gatt",
+      "description": "Header declares 10 payload bytes but only 6 arrive: no message and nothing lost; the final 4 bytes complete exactly the declared length (xmodem_packet of eight 0x41 bytes).",
+      "steps": [
+        {"op": "connect", "mtu": 512},
+        {"op": "write", "data": "0a0000003208414141414141"},
+        {"op": "write", "data": "41414141"}
+      ],
+      "expected": {
+        "outcomes": [
+          null,
+          {"packet": null, "want_config_id": null, "disconnect": false, "heartbeat": null, "xmodem_packet": "4141414141414141"}
+        ]
+      },
+      "oracle_note": "Declared length 0x000a; payload 32 08 + eight 41 bytes is field 6 length-delim 8 bytes by protobuf wire rules; truncation must hold the fragment until complete."
+    },
+    {
+      "name": "meshtastic_back_to_back_boundary_inside_second_header",
+      "family": "meshtastic_gatt",
+      "description": "First message plus the first half of the second message's header in one write; the second write carries the rest. Both messages emerge in order.",
+      "steps": [
+        {"op": "connect", "mtu": 512},
+        {"op": "write", "data": "0400000018ac9e040300"},
+        {"op": "write", "data": "000018d209"}
+      ],
+      "expected": {
+        "outcomes": [
+          {"packet": null, "want_config_id": 69420, "disconnect": false, "heartbeat": null, "xmodem_packet": null},
+          {"packet": null, "want_config_id": 1234, "disconnect": false, "heartbeat": null, "xmodem_packet": null}
+        ]
+      },
+      "oracle_note": "Trailing bytes beyond declared length 4 belong to the next message and must be preserved; second header 03000000 declares 3 bytes (18 d2 09 = field 3 varint 1234)."
+    },
+    {
+      "name": "meshtastic_zero_length_message",
+      "family": "meshtastic_gatt",
+      "description": "A header declaring zero payload bytes completes immediately and yields a ToRadio with no payload variant set (an empty protobuf message is legal).",
+      "steps": [
+        {"op": "connect", "mtu": 512},
+        {"op": "write", "data": "00000000"}
+      ],
+      "expected": {
+        "outcomes": [
+          {"packet": null, "want_config_id": null, "disconnect": false, "heartbeat": null, "xmodem_packet": null}
+        ]
+      },
+      "oracle_note": "Declared length 0 satisfies completion with an empty payload; protobuf parsing of empty bytes leaves every optional variant unset."
+    },
+    {
+      "name": "meshtastic_disconnect_discards_partial",
+      "family": "meshtastic_gatt",
+      "description": "A fragment left mid-message is dropped on disconnect; after reconnect a fresh message parses cleanly.",
+      "steps": [
+        {"op": "connect", "mtu": 512},
+        {"op": "write", "data": "0400000018ac"},
+        {"op": "disconnect"},
+        {"op": "connect", "mtu": 512},
+        {"op": "write", "data": "0300000018d209"}
+      ],
+      "expected": {
+        "outcomes": [
+          null,
+          {"packet": null, "want_config_id": 1234, "disconnect": false, "heartbeat": null, "xmodem_packet": null}
+        ]
+      },
+      "oracle_note": "Reassembly state is reset on connection loss; the orphaned '18 ac' fragment must not leak into the new connection's stream."
+    },
+    {
+      "name": "meshtastic_outbound_oversized_rejected",
+      "family": "meshtastic_gatt",
+      "description": "Queueing an outbound FromRadio whose serialization is 603 bytes (> meshtastic_max_message_size 512) is rejected with an error, not silently truncated.",
+      "message": {
+        "type": "FromRadio",
+        "fields": {"node_info_repeat": {"byte": "41", "count": 600}},
+        "serialized_size": 603
+      },
+      "expected": {
+        "outcome": "rejected",
+        "error_contains": "too large"
+      },
+      "oracle_note": "Serialized size hand-computed: field 4 length-delim tag 0x22 (1) + varint 600 = d8 04 (2) + 600 payload bytes = 603 > 512 limit."
+    },
+    {
+      "name": "meshtastic_parse_ble_message_valid",
+      "family": "meshtastic_wire_helper",
+      "description": "parse_ble_message over header+payload returns the payload and total consumed length.",
+      "input": "04000000deadbeef",
+      "expected": {
+        "payload": "deadbeef",
+        "consumed": 8
+      },
+      "oracle_note": "Declared length 4 consumes 4 header + 4 payload."
+    },
+    {
+      "name": "meshtastic_parse_ble_message_truncated",
+      "family": "meshtastic_wire_helper",
+      "description": "Header declaring 16 bytes with only 2 present raises a truncation error.",
+      "input": "100000000102",
+      "expected": {
+        "error_contains": "truncated"
+      },
+      "oracle_note": "Declared 0x0010 vs 2 available bytes."
+    },
+    {
+      "name": "meshtastic_parse_ble_message_too_short",
+      "family": "meshtastic_wire_helper",
+      "description": "Fewer than 4 bytes cannot contain the header and raise a length error.",
+      "input": "0102",
+      "expected": {
+        "error_contains": "short"
+      },
+      "oracle_note": "Header is fixed at 4 bytes."
+    }
+  ]
+}

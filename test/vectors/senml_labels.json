@@ -1,0 +1,23 @@
+{
+  "$schema": "./senml_labels.schema.json",
+  "format_version": 2,
+  "description": "Complete RFC 8428 Table 1 SenML field-to-CBOR-integer-label mapping. CBOR key bytes are independently derived from RFC 8949 canonical integer encoding.",
+  "spec": "RFC 8428 Section 4.3 Table 1",
+  "vectors": [
+    {"field": "bn", "label": -2, "cbor_key_hex": "21"},
+    {"field": "bt", "label": -3, "cbor_key_hex": "22"},
+    {"field": "bu", "label": -4, "cbor_key_hex": "23"},
+    {"field": "bv", "label": -5, "cbor_key_hex": "24"},
+    {"field": "bs", "label": -6, "cbor_key_hex": "25"},
+    {"field": "bver", "label": -1, "cbor_key_hex": "20"},
+    {"field": "n", "label": 0, "cbor_key_hex": "00"},
+    {"field": "u", "label": 1, "cbor_key_hex": "01"},
+    {"field": "v", "label": 2, "cbor_key_hex": "02"},
+    {"field": "vs", "label": 3, "cbor_key_hex": "03"},
+    {"field": "vb", "label": 4, "cbor_key_hex": "04"},
+    {"field": "vd", "label": 8, "cbor_key_hex": "08"},
+    {"field": "s", "label": 5, "cbor_key_hex": "05"},
+    {"field": "t", "label": 6, "cbor_key_hex": "06"},
+    {"field": "ut", "label": 7, "cbor_key_hex": "07"}
+  ]
+}

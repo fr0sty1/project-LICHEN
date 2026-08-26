@@ -148,14 +148,14 @@
       "name": "canonical_cbor_key_order",
       "description": "CBOR canonical encoding sorts keys by length then lexicographically (RFC 8949 4.2.1).",
       "payload": {"type": "sos", "node": "0200:1234", "ts": 1716742800, "lat": 37.7, "lon": -122.4},
-      "key_order_canonical": ["lat", "lon", "ts", "node", "type"],
-      "note": "3-char keys before 4-char keys; within same length, lexicographic"
+      "key_order_canonical": ["ts", "lat", "lon", "node", "type"],
+      "note": "3-char 'ts' first; then 4-char keys lexicographic (RFC 8949 4.2.1 length-first)"
     },
     {
       "name": "canonical_cbor_medical",
       "description": "Medical emergency payload canonical encoding",
       "payload": {"type": "medical", "node": "0200:dead:beef", "ts": 1716742800, "msg": "Heart attack"},
-      "key_order_canonical": ["msg", "ts", "node", "type"]
+      "key_order_canonical": ["ts", "msg", "node", "type"]
     },
     {
       "name": "canonical_cbor_cancel",

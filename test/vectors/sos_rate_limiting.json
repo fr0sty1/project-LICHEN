@@ -74,7 +74,7 @@
     },
     {
       "name": "hourly_window_slides",
-      "description": "Old SOS outside 1-hour window no longer counts.",
+      "description": "Old SOS outside 1-hour window no longer counts; recent ones do.",
       "sender_iid": "0011223344556677",
       "history": [
         {"uptime_ms": 0},
@@ -84,8 +84,8 @@
       "current_uptime_ms": 3600001,
       "expected": {
         "accept": true,
-        "sos_in_window": 0,
-        "reason": "all_expired_from_window"
+        "sos_in_window": 2,
+        "reason": "window_retains_recent"
       }
     },
     {

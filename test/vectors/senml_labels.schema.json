@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RFC 8428 SenML numeric label vectors",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "format_version", "description", "spec", "vectors"],
+  "properties": {
+    "$schema": {"const": "./senml_labels.schema.json"},
+    "format_version": {"const": 2},
+    "description": {"type": "string", "minLength": 1},
+    "spec": {"const": "RFC 8428 Section 4.3 Table 1"},
+    "vectors": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "label", "cbor_key_hex"],
+        "properties": {
+          "field": {"enum": ["bn", "bt", "bu", "bv", "bs", "bver", "n", "u", "v", "vs", "vb", "vd", "s", "t", "ut"]},
+          "label": {"type": "integer", "minimum": -6, "maximum": 8},
+          "cbor_key_hex": {"type": "string", "pattern": "^[0-9a-f]{2}$"}
+        }
+      }
+    }
+  }
+}

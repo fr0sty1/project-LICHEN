@@ -1,0 +1,136 @@
+{
+  "format_version": 2,
+  "description": "IPSO Smart Object relative-name vectors for SenML. Object and resource IDs are from the OMA LwM2M registry; paths omit the CoAP URI leading slash. CBOR bytes are independently derived from RFC 8428 numeric labels 0=name, 1=unit, and 2=numeric value.",
+  "vectors": [
+    {
+      "id": "ipso-temperature-primary",
+      "object_id": 3303,
+      "object_name": "Temperature",
+      "instance_id": 0,
+      "resource_id": 5700,
+      "path": "3303/0/5700",
+      "unit": "Cel",
+      "value": 23.5,
+      "cbor_hex": "81a3006b333330332f302f35373030016343656c02fb4037800000000000"
+    },
+    {
+      "id": "ipso-humidity-instance-two",
+      "object_id": 3304,
+      "object_name": "Humidity",
+      "instance_id": 2,
+      "resource_id": 5700,
+      "path": "3304/2/5700",
+      "unit": "%RH",
+      "value": 65.0,
+      "cbor_hex": "81a3006b333330342f322f35373030016325524802fb4050400000000000"
+    },
+    {
+      "id": "ipso-accelerometer-z",
+      "object_id": 3313,
+      "object_name": "Accelerometer",
+      "instance_id": 1,
+      "resource_id": 5704,
+      "path": "3313/1/5704",
+      "unit": "m/s2",
+      "value": 9.81,
+      "cbor_hex": "81a3006b333331332f312f3537303401646d2f733202fb40239eb851eb851f"
+    },
+    {
+      "id": "ipso-barometer-primary",
+      "object_id": 3315,
+      "object_name": "Barometer",
+      "instance_id": 0,
+      "resource_id": 5700,
+      "path": "3315/0/5700",
+      "unit": "Pa",
+      "value": 101325.0,
+      "cbor_hex": "81a3006b333331352f302f353730300162506102fb40f8bcd000000000"
+    },
+    {
+      "id": "ipso-pressure-primary",
+      "object_id": 3323,
+      "object_name": "Pressure",
+      "instance_id": 4,
+      "resource_id": 5700,
+      "path": "3323/4/5700",
+      "unit": "Pa",
+      "value": 100000.0,
+      "cbor_hex": "81a3006b333332332f342f353730300162506102fb40f86a0000000000"
+    },
+    {
+      "id": "ipso-gyrometer-y",
+      "object_id": 3334,
+      "object_name": "Gyrometer",
+      "instance_id": 0,
+      "resource_id": 5703,
+      "path": "3334/0/5703",
+      "unit": "rad/s",
+      "value": -0.02,
+      "cbor_hex": "81a3006b333333342f302f3537303301657261642f7302fbbf947ae147ae147b"
+    },
+    {
+      "id": "ipso-location-longitude",
+      "object_id": 3336,
+      "object_name": "Location",
+      "instance_id": 0,
+      "resource_id": 6052,
+      "path": "3336/0/6052",
+      "unit": "lon",
+      "value": -122.419416,
+      "cbor_hex": "81a3006b333333362f302f3630353201636c6f6e02fbc05e9ad7b634dad3"
+    },
+    {
+      "id": "ipso-compact-object-instance",
+      "object_id": 3303,
+      "object_name": "Temperature",
+      "instance_id": 7,
+      "resource_id": null,
+      "path": "3303/7",
+      "unit": null,
+      "value": null,
+      "cbor_hex": null
+    }
+  ],
+  "invalid_paths": [
+    {
+      "path": "3303",
+      "error_kind": "invalid_shape",
+      "python_error": "IPSO path must have 2 or 3 components"
+    },
+    {
+      "path": "/3303/0/5700",
+      "error_kind": "invalid_shape",
+      "python_error": "IPSO path must have 2 or 3 components"
+    },
+    {
+      "path": "3303//5700",
+      "error_kind": "invalid_component",
+      "python_error": "instance_id must be an unsigned decimal integer"
+    },
+    {
+      "path": "03303/0/5700",
+      "error_kind": "non_canonical",
+      "python_error": "object_id must use canonical decimal encoding"
+    },
+    {
+      "path": "3303/00/5700",
+      "error_kind": "non_canonical",
+      "python_error": "instance_id must use canonical decimal encoding"
+    },
+    {
+      "path": "3303/0/+5700",
+      "error_kind": "invalid_component",
+      "python_error": "resource_id must be an unsigned decimal integer"
+    },
+    {
+      "path": "65536/0/5700",
+      "error_kind": "out_of_range",
+      "python_error": "object_id 65536 out of range \\[0, 65535\\]"
+    },
+    {
+      "path": "3303/0/5700/1",
+      "error_kind": "invalid_shape",
+      "python_error": "IPSO path must have 2 or 3 components"
+    }
+  ]
+}

@@ -11,6 +11,52 @@
       "k": 10
     },
     {
+      "name": "trickle_profile_math",
+      "description": "Exact LICHEN profile math: Imin=4000 ms, eight doublings to Imax=1,024,000 ms (1024 s), then clamp; integer transmit points cover both inclusive/exclusive boundaries of [I/2,I).",
+      "category": "trickle_state",
+      "Imin_ms": 4000,
+      "Imax_doublings": 8,
+      "Imax_exact_ms": 1024000,
+      "Imax_seconds": 1024,
+      "k": 10,
+      "interval_sequence_ms": [
+        4000,
+        8000,
+        16000,
+        32000,
+        64000,
+        128000,
+        256000,
+        512000,
+        1024000,
+        1024000
+      ],
+      "transmit_cases": [
+        {
+          "interval_ms": 4000,
+          "rand_offset_ms": 0,
+          "expected_transmit_offset_ms": 2000
+        },
+        {
+          "interval_ms": 4000,
+          "rand_offset_ms": 1999,
+          "expected_transmit_offset_ms": 3999
+        },
+        {
+          "interval_ms": 1024000,
+          "rand_offset_ms": 0,
+          "expected_transmit_offset_ms": 512000
+        },
+        {
+          "interval_ms": 1024000,
+          "rand_offset_ms": 511999,
+          "expected_transmit_offset_ms": 1023999
+        }
+      ],
+      "suppression_counter_boundary": 10,
+      "reset_interval_ms": 4000
+    },
+    {
       "name": "trickle_interval_start",
       "description": "Trickle first interval: start 0, transmit at half (Imin/2) with rng=0.0, interval_end=4000.",
       "category": "trickle_state",
@@ -27,6 +73,101 @@
       "should_transmit": true
     },
     {
+      "name": "trickle_consistency_detection",
+      "description": "Only an active interval and exact DODAG identity/version match increments c; mismatches do not reset, k suppresses at c=10, and the u32 counter saturates.",
+      "category": "trickle_state",
+      "Imin_ms": 4000,
+      "k": 10,
+      "scope_dodag_id_hex": "20010db8000000000000000000000001",
+      "scope_version": 7,
+      "cases": [
+        {
+          "name": "stopped_exact_scope",
+          "active": false,
+          "after_transmit": false,
+          "counter_before": 0,
+          "observed_dodag_id_hex": "20010db8000000000000000000000001",
+          "observed_version": 7,
+          "expected_accepted": false,
+          "expected_counter_after": 0,
+          "expected_should_transmit": false,
+          "expected_interval_unchanged": true
+        },
+        {
+          "name": "active_exact_scope",
+          "active": true,
+          "after_transmit": false,
+          "counter_before": 0,
+          "observed_dodag_id_hex": "20010db8000000000000000000000001",
+          "observed_version": 7,
+          "expected_accepted": true,
+          "expected_counter_after": 1,
+          "expected_should_transmit": true,
+          "expected_interval_unchanged": true
+        },
+        {
+          "name": "active_wrong_version",
+          "active": true,
+          "after_transmit": false,
+          "counter_before": 1,
+          "observed_dodag_id_hex": "20010db8000000000000000000000001",
+          "observed_version": 8,
+          "expected_accepted": false,
+          "expected_counter_after": 1,
+          "expected_should_transmit": true,
+          "expected_interval_unchanged": true
+        },
+        {
+          "name": "active_wrong_dodag",
+          "active": true,
+          "after_transmit": false,
+          "counter_before": 1,
+          "observed_dodag_id_hex": "20010db8000000000000000000000002",
+          "observed_version": 7,
+          "expected_accepted": false,
+          "expected_counter_after": 1,
+          "expected_should_transmit": true,
+          "expected_interval_unchanged": true
+        },
+        {
+          "name": "waiting_expire_exact_scope",
+          "active": true,
+          "after_transmit": true,
+          "counter_before": 2,
+          "observed_dodag_id_hex": "20010db8000000000000000000000001",
+          "observed_version": 7,
+          "expected_accepted": true,
+          "expected_counter_after": 3,
+          "expected_should_transmit": true,
+          "expected_interval_unchanged": true
+        },
+        {
+          "name": "suppression_boundary",
+          "active": true,
+          "after_transmit": false,
+          "counter_before": 9,
+          "observed_dodag_id_hex": "20010db8000000000000000000000001",
+          "observed_version": 7,
+          "expected_accepted": true,
+          "expected_counter_after": 10,
+          "expected_should_transmit": false,
+          "expected_interval_unchanged": true
+        },
+        {
+          "name": "saturating_counter",
+          "active": true,
+          "after_transmit": false,
+          "counter_before": 4294967295,
+          "observed_dodag_id_hex": "20010db8000000000000000000000001",
+          "observed_version": 7,
+          "expected_accepted": true,
+          "expected_counter_after": 4294967295,
+          "expected_should_transmit": false,
+          "expected_interval_unchanged": true
+        }
+      ]
+    },
+    {
       "name": "trickle_suppressed_at_k",
       "description": "After >=k heard consistent, should_transmit false (suppressed).",
       "category": "trickle_state",
@@ -38,6 +179,46 @@
       "description": "After expire, interval doubles to 8000 (capped at 1_024_000).",
       "category": "trickle_state",
       "interval_after_expire": 8000
+    },
+    {
+      "name": "trickle_inconsistency_resets",
+      "description": "Each inconsistency atomically restarts Imin, clears c, and samples a new transmit point from [Imin/2,Imin), including repeated inconsistencies and both pre/post-transmit states.",
+      "category": "trickle_state",
+      "Imin_ms": 4000,
+      "k": 10,
+      "initial_rand_offset_ms": 0,
+      "steps": [
+        {
+          "state_before": "waiting_transmit_at_imin",
+          "fire_before_reset": false,
+          "now_ms": 1000,
+          "rand_offset_ms": 500,
+          "expected_interval_ms": 4000,
+          "expected_counter": 0,
+          "expected_transmit_time_ms": 3500,
+          "expected_interval_end_ms": 5000
+        },
+        {
+          "state_before": "waiting_expire_at_imin",
+          "fire_before_reset": true,
+          "now_ms": 2000,
+          "rand_offset_ms": 1500,
+          "expected_interval_ms": 4000,
+          "expected_counter": 0,
+          "expected_transmit_time_ms": 5500,
+          "expected_interval_end_ms": 6000
+        },
+        {
+          "state_before": "repeated_inconsistency_at_imin",
+          "fire_before_reset": false,
+          "now_ms": 2500,
+          "rand_offset_ms": 250,
+          "expected_interval_ms": 4000,
+          "expected_counter": 0,
+          "expected_transmit_time_ms": 4750,
+          "expected_interval_end_ms": 6500
+        }
+      ]
     },
     {
       "name": "dao_retry_delays",
@@ -201,6 +382,74 @@
         "cad_busy",
         "cad_busy",
         "retry_exhausted"
+      ]
+    },
+    {
+      "name": "monotonic_uptime_sequences",
+      "description": "Monotonic uptime is non-decreasing within one power cycle; equal observations are valid, while regression and wrap are invalid.",
+      "category": "monotonic_time",
+      "scope": "single_power_cycle",
+      "unit": "implementation_defined_ticks",
+      "cases": [
+        {
+          "name": "boot_origin_zero",
+          "observations": [
+            0
+          ],
+          "expected_acceptance": [
+            true
+          ]
+        },
+        {
+          "name": "strictly_increasing",
+          "observations": [
+            0,
+            1,
+            1000000,
+            18446744073709551615
+          ],
+          "expected_acceptance": [
+            true,
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "name": "equal_observations_allowed",
+          "observations": [
+            42,
+            42,
+            43
+          ],
+          "expected_acceptance": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "name": "regression_rejected",
+          "observations": [
+            100,
+            99
+          ],
+          "expected_acceptance": [
+            true,
+            false
+          ]
+        },
+        {
+          "name": "wrap_to_zero_rejected",
+          "observations": [
+            18446744073709551615,
+            0
+          ],
+          "expected_acceptance": [
+            true,
+            false
+          ]
+        }
       ]
     },
     {

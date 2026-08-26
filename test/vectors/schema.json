@@ -26,6 +26,7 @@
             "anyOf": [
               {"$ref": "#/definitions/schc_vector"},
               {"$ref": "#/definitions/schc_fragmentation_vector"},
+              {"$ref": "#/definitions/schc_tile_sizing_vector"},
               {"$ref": "#/definitions/l2_payload_vector"},
               {"$ref": "#/definitions/frame_vector"},
               {"$ref": "#/definitions/announce_coords_vector"},
@@ -36,8 +37,10 @@
               {"$ref": "#/definitions/rpl_route_state_vector"},
               {"$ref": "#/definitions/dao_origin_signature_vector"},
               {"$ref": "#/definitions/ccp13_vector"},
+              {"$ref": "#/definitions/duty_cycle_calculation_vector"},
               {"$ref": "#/definitions/ccp15_vector"},
               {"$ref": "#/definitions/ccp_vector"},
+              {"$ref": "#/definitions/asn_sfn_vector"},
               {"$ref": "#/definitions/compact_cot_vector"},
               {"$ref": "#/definitions/schnorr48_vector"},
               {"$ref": "#/definitions/hash_32_vector"},
@@ -87,6 +90,7 @@
         "anyOf": [
           {"$ref": "#/definitions/schc_vector"},
           {"$ref": "#/definitions/schc_fragmentation_vector"},
+          {"$ref": "#/definitions/schc_tile_sizing_vector"},
           {"$ref": "#/definitions/l2_payload_vector"},
           {"$ref": "#/definitions/frame_vector"},
           {"$ref": "#/definitions/announce_coords_vector"},
@@ -97,8 +101,10 @@
           {"$ref": "#/definitions/rpl_route_state_vector"},
           {"$ref": "#/definitions/dao_origin_signature_vector"},
           {"$ref": "#/definitions/ccp13_vector"},
+          {"$ref": "#/definitions/duty_cycle_calculation_vector"},
           {"$ref": "#/definitions/ccp15_vector"},
           {"$ref": "#/definitions/ccp_vector"},
+          {"$ref": "#/definitions/asn_sfn_vector"},
           {"$ref": "#/definitions/compact_cot_vector"},
           {"$ref": "#/definitions/schnorr48_vector"},
           {"$ref": "#/definitions/hash_32_vector"},
@@ -434,7 +440,16 @@
             "rule_79": {"$ref": "#/definitions/fragmentation_controls"}
           }
         },
-        "attempts_before": {"type": "integer", "const": 2},
+        "attempts_before": {"type": "integer", "const": 4},
+        "retransmission_timeout_s": {"type": "integer", "const": 10},
+        "timer_policy": {"type": "string", "const": "fixed"},
+        "timer_start_s": {"type": "integer", "const": 0},
+        "timer_deadlines_s": {"type": "array", "const": [10, 20, 30, 40]},
+        "max_ack_requests": {"type": "integer", "const": 4},
+        "inactivity_timeout_s": {"type": "integer", "const": 60},
+        "bitmap_one_means": {"type": "string", "const": "received"},
+        "trigger_event": {"type": "string", "const": "timeout"},
+        "pre_exhaustion_message": {"$ref": "#/definitions/byte_value"},
         "trigger": {"$ref": "#/definitions/byte_value"},
         "expected_message": {"$ref": "#/definitions/byte_value"},
         "expect_status": {"type": "string", "enum": ["ok", "packet_too_large", "aborted"]},
@@ -445,9 +460,32 @@
       "allOf": [
         {"if": {"properties": {"category": {"enum": ["recovery", "window_transition"]}}}, "then": {"required": ["rule_id", "packet", "packet_length", "packet_sha256", "rcs", "fragments", "loss"], "not": {"anyOf": [{"required": ["controls"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["expect_status"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
         {"if": {"properties": {"category": {"const": "controls"}}}, "then": {"required": ["controls"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["expect_status"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
-        {"if": {"properties": {"category": {"const": "retry_exhaustion"}}}, "then": {"required": ["rule_id", "attempts_before", "trigger", "expected_message", "expect_status"], "not": {"anyOf": [{"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
+        {"if": {"properties": {"category": {"const": "retry_exhaustion"}}}, "then": {"required": ["rule_id", "attempts_before", "expected_message", "expect_status"], "not": {"anyOf": [{"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
         {"if": {"properties": {"category": {"const": "capacity"}}}, "then": {"required": ["packet", "packet_length", "packet_sha256", "fragment_count", "expect_status"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
         {"if": {"properties": {"category": {"const": "malformed"}}}, "then": {"required": ["wire", "expect_error"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["expect_status"]}]}}}
+      ]
+    },
+    "schc_tile_sizing_vector": {
+      "type": "object",
+      "required": ["name", "mtu_bytes", "rule_id_bits", "dtag_bits", "window_bits", "fcn_bits", "rcs_bits", "outcome"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "mtu_bytes": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+        "rule_id_bits": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+        "dtag_bits": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+        "window_bits": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+        "fcn_bits": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+        "rcs_bits": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+        "outcome": {"type": "string", "enum": ["ok", "error"]},
+        "regular_all0_capacity_bytes": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
+        "all1_capacity_bytes": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
+        "tile_size_bytes": {"type": "integer", "minimum": 1, "maximum": 18446744073709551615},
+        "expected_error": {"type": "string", "enum": ["invalid_mtu", "arithmetic_overflow", "no_payload"]}
+      },
+      "allOf": [
+        {"if": {"properties": {"outcome": {"const": "ok"}}}, "then": {"required": ["regular_all0_capacity_bytes", "all1_capacity_bytes", "tile_size_bytes"], "not": {"required": ["expected_error"]}}},
+        {"if": {"properties": {"outcome": {"const": "error"}}}, "then": {"required": ["expected_error"], "not": {"anyOf": [{"required": ["regular_all0_capacity_bytes"]}, {"required": ["all1_capacity_bytes"]}, {"required": ["tile_size_bytes"]}]}}}
       ]
     },
     "announce_coords_vector": {
@@ -494,7 +532,8 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["epoch", "seqnum", "dst_addr", "payload", "mic",
-                       "addr_mode", "mic_length", "signature_present", "encrypted"],
+                       "addr_mode", "mic_length", "signature_present", "encrypted",
+                       "signer_eui64"],
           "properties": {
             "epoch": {"type": "integer", "minimum": 0, "maximum": 255},
             "seqnum": {"type": "integer", "minimum": 0, "maximum": 65535},
@@ -504,17 +543,77 @@
             "addr_mode": {"type": "integer", "minimum": 0, "maximum": 3},
             "mic_length": {"type": "integer", "minimum": 0, "maximum": 1},
             "signature_present": {"type": "boolean"},
-            "encrypted": {"type": "boolean"}
+            "encrypted": {"type": "boolean"},
+            "signer_eui64": {"$ref": "#/definitions/hex"}
           }
         },
         "encoded": {"$ref": "#/definitions/hex",
           "description": "On-air frame bytes (length-prefixed)."},
+        "crypto": {"$ref": "#/definitions/frame_crypto"},
         "expect": {
           "type": "object",
           "required": ["error"],
           "additionalProperties": false,
           "properties": {"error": {"type": "string"}}
         }
+      }
+    },
+    "frame_crypto": {
+      "type": "object",
+      "required": ["seed", "private_key", "public_key", "preimage", "wire_prefix",
+                   "signature", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "seed": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "private_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "public_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "preimage": {"$ref": "#/definitions/hex"},
+        "wire_prefix": {"$ref": "#/definitions/hex"},
+        "signature": {"type": "string", "pattern": "^[0-9a-f]{96}$"},
+        "verification": {"$ref": "#/definitions/frame_verification_inputs"},
+        "tamper_cases": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "items": {"$ref": "#/definitions/frame_signed_tamper_case"}
+        },
+        "provenance": {"type": "string", "minLength": 1}
+      }
+    },
+    "frame_verification_inputs": {
+      "type": "object",
+      "required": ["length", "llsec", "epoch", "seqnum", "dst_len", "dst_addr",
+                   "signer_eui64", "payload", "signature"],
+      "additionalProperties": false,
+      "properties": {
+        "length": {"type": "integer", "minimum": 0, "maximum": 255},
+        "llsec": {"type": "integer", "minimum": 0, "maximum": 255},
+        "epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "seqnum": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "dst_len": {"type": "integer", "minimum": 0, "maximum": 255},
+        "dst_addr": {"$ref": "#/definitions/hex"},
+        "signer_eui64": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "payload": {"$ref": "#/definitions/hex"},
+        "signature": {"type": "string", "pattern": "^[0-9a-f]{96}$"}
+      }
+    },
+    "frame_signed_tamper_case": {
+      "type": "object",
+      "required": ["name", "component", "production_path", "verification", "preimage",
+                   "wire", "expected_valid"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^tamper_[a-z0-9_]+$"},
+        "component": {
+          "type": "string",
+          "enum": ["length", "llsec", "epoch", "seqnum", "dst_len", "dst_addr",
+                   "signer_eui64", "payload", "signature"]
+        },
+        "production_path": {"type": "string", "enum": ["frame", "preimage"]},
+        "verification": {"$ref": "#/definitions/frame_verification_inputs"},
+        "preimage": {"$ref": "#/definitions/hex"},
+        "wire": {"$ref": "#/definitions/hex"},
+        "expected_valid": {"const": false}
       }
     },
     "meshtastic_app_compat_vector": {
@@ -1033,16 +1132,264 @@
       }
     },
     "ccp15_vector": {
+      "oneOf": [
+        {"$ref": "#/definitions/ccp15_cca_vector"},
+        {"$ref": "#/definitions/ccp15_interference_vector"},
+        {"$ref": "#/definitions/ccp15_frequency_vector"},
+        {"$ref": "#/definitions/ccp15_sf_vector"},
+        {"$ref": "#/definitions/ccp15_tdma_vector"}
+      ]
+    },
+    "ccp15_vector_base": {
       "type": "object",
-      "required": ["name", "sf", "ema", "load_factor", "hash_32"],
+      "required": ["name", "description", "category", "input", "expected"],
       "additionalProperties": false,
       "properties": {
-        "name": {"type": "string"},
-        "sf": {"type": "integer", "enum": [7, 10, 12]},
-        "ema": {"type": "number"},
-        "load_factor": {"type": "number"},
-        "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"}
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string", "minLength": 1},
+        "category": {
+          "enum": ["cca", "interference", "frequency_agility", "sf_adaptation", "tdma"]
+        },
+        "input": {"type": "object"},
+        "expected": {"type": "object"}
       }
+    },
+    "ccp15_cca_vector": {
+      "allOf": [
+        {"$ref": "#/definitions/ccp15_vector_base"},
+        {
+          "properties": {
+            "category": {"const": "cca"},
+            "input": {
+              "type": "object",
+              "required": ["channel_busy", "backoff_exp", "retries"],
+              "additionalProperties": false,
+              "properties": {
+                "channel_busy": {"type": "boolean"},
+                "backoff_exp": {"type": "integer", "minimum": 0, "maximum": 5},
+                "retries": {"type": "integer", "minimum": 0, "maximum": 4}
+              }
+            },
+            "expected": {
+              "type": "object",
+              "required": ["result", "backoff_exp", "retries", "tx_allowed"],
+              "additionalProperties": false,
+              "properties": {
+                "result": {"enum": ["tx_success", "cad_busy", "retry_exhausted"]},
+                "backoff_exp": {"type": "integer", "minimum": 0, "maximum": 5},
+                "retries": {"type": "integer", "minimum": 0, "maximum": 4},
+                "tx_allowed": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ccp15_interference_vector": {
+      "allOf": [
+        {"$ref": "#/definitions/ccp15_vector_base"},
+        {
+          "properties": {
+            "category": {"const": "interference"},
+            "input": {
+              "type": "object",
+              "required": ["busy_percent", "packet_error_permille"],
+              "additionalProperties": false,
+              "properties": {
+                "busy_percent": {"type": "integer", "minimum": 0, "maximum": 100},
+                "packet_error_permille": {"type": "integer", "minimum": 0, "maximum": 1000}
+              }
+            },
+            "expected": {
+              "type": "object",
+              "required": ["score_tenths"],
+              "additionalProperties": false,
+              "properties": {
+                "score_tenths": {"type": "integer", "minimum": 0, "maximum": 2000}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ccp15_frequency_vector": {
+      "allOf": [
+        {"$ref": "#/definitions/ccp15_vector_base"},
+        {
+          "properties": {
+            "category": {"const": "frequency_agility"},
+            "input": {
+              "type": "object",
+              "required": ["eui64_hex", "epoch", "density", "n_channels"],
+              "additionalProperties": false,
+              "properties": {
+                "eui64_hex": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+                "epoch": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+                "density": {"type": "integer", "minimum": 0, "maximum": 255},
+                "n_channels": {"type": "integer", "minimum": 1, "maximum": 255}
+              }
+            },
+            "expected": {
+              "type": "object",
+              "required": ["hash_32", "channel"],
+              "additionalProperties": false,
+              "properties": {
+                "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+                "channel": {"type": "integer", "minimum": 0, "maximum": 255}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ccp15_sf_vector": {
+      "allOf": [
+        {"$ref": "#/definitions/ccp15_vector_base"},
+        {
+          "properties": {
+            "category": {"const": "sf_adaptation"},
+            "input": {
+              "type": "object",
+              "required": ["assigned_sf", "density", "ema_snr", "ema_loss_permille", "utilization", "load_factor_permille"],
+              "additionalProperties": false,
+              "properties": {
+                "assigned_sf": {"type": "integer", "minimum": 7, "maximum": 12},
+                "density": {"type": "integer", "minimum": 0, "maximum": 255},
+                "ema_snr": {"type": "integer", "minimum": -128, "maximum": 127},
+                "ema_loss_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+                "utilization": {"type": "integer", "minimum": 0, "maximum": 255},
+                "load_factor_permille": {"type": "integer", "minimum": 0, "maximum": 1000}
+              }
+            },
+            "expected": {
+              "type": "object",
+              "required": ["sf", "tx_allowed"],
+              "additionalProperties": false,
+              "properties": {
+                "sf": {"type": "integer", "minimum": 7, "maximum": 12},
+                "tx_allowed": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ccp15_tdma_vector": {
+      "allOf": [
+        {"$ref": "#/definitions/ccp15_vector_base"},
+        {
+          "properties": {
+            "category": {"const": "tdma"},
+            "input": {
+              "type": "object",
+              "required": ["eui64_hex", "sfn", "num_slots"],
+              "additionalProperties": false,
+              "properties": {
+                "eui64_hex": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+                "sfn": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+                "num_slots": {"type": "integer", "minimum": 1, "maximum": 255}
+              }
+            },
+            "expected": {
+              "type": "object",
+              "required": ["hash_32", "slot"],
+              "additionalProperties": false,
+              "properties": {
+                "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+                "slot": {"type": "integer", "minimum": 0, "maximum": 254}
+              }
+            }
+          }
+        }
+      ]
+    },
+    "duty_cycle_calculation_vector": {
+      "type": "object",
+      "required": ["name", "description", "category", "expected"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string", "minLength": 1},
+        "category": {"enum": ["exact_airtime", "tracking"]},
+        "radio": {
+          "type": "object",
+          "required": ["payload_len", "spreading_factor", "bandwidth_hz", "coding_rate", "preamble_symbols", "crc_enabled", "implicit_header"],
+          "additionalProperties": false,
+          "properties": {
+            "payload_len": {"type": "integer", "minimum": 0, "maximum": 255},
+            "spreading_factor": {"type": "integer", "minimum": 6, "maximum": 12},
+            "bandwidth_hz": {"type": "integer", "minimum": 1},
+            "coding_rate": {"type": "integer", "minimum": 5, "maximum": 8},
+            "preamble_symbols": {"type": "integer", "minimum": 6, "maximum": 65535},
+            "crc_enabled": {"type": "boolean"},
+            "implicit_header": {"type": "boolean"}
+          }
+        },
+        "profile": {
+          "type": "object",
+          "required": ["region", "duty_permille", "duty_cycle_percent", "window_ms", "max_dwell_time_ms"],
+          "additionalProperties": false,
+          "properties": {
+            "region": {"enum": ["EU868", "US915"]},
+            "duty_permille": {"type": "integer", "minimum": 1, "maximum": 1000},
+            "duty_cycle_percent": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
+            "window_ms": {"const": 3600000},
+            "max_dwell_time_ms": {
+              "oneOf": [
+                {"type": "null"},
+                {"type": "integer", "minimum": 1}
+              ]
+            }
+          }
+        },
+        "transmissions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["start_ms", "duration_ms"],
+            "additionalProperties": false,
+            "properties": {
+              "start_ms": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+              "duration_ms": {"type": "integer", "minimum": 1, "maximum": 4294967295}
+            }
+          }
+        },
+        "query_ms": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+        "proposed_duration_ms": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "airtime_us": {"type": "integer", "minimum": 1},
+            "eu_1_percent_packets_per_hour": {"type": "integer", "minimum": 0},
+            "spec_10_percent_packets_per_hour": {"type": "integer", "minimum": 0},
+            "used_ms": {"type": "integer", "minimum": 0},
+            "remaining_ms": {"type": "integer", "minimum": 0},
+            "usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+            "can_transmit": {"type": "boolean"}
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"category": {"const": "exact_airtime"}}},
+          "then": {
+            "required": ["radio"],
+            "properties": {
+              "expected": {"required": ["airtime_us", "eu_1_percent_packets_per_hour", "spec_10_percent_packets_per_hour"]}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"category": {"const": "tracking"}}},
+          "then": {
+            "required": ["profile", "transmissions", "query_ms", "proposed_duration_ms"],
+            "properties": {
+              "expected": {"required": ["used_ms", "remaining_ms", "usage_permille", "can_transmit"]}
+            }
+          }
+        }
+      ]
     },
     "ccp13_vector": {
       "type": "object",
@@ -1093,6 +1440,42 @@
         "decoded_fields": {
           "type": "object",
           "additionalProperties": true
+        }
+      }
+    },
+
+    "asn_sfn_vector": {
+      "type": "object",
+      "required": ["name", "description", "boundary", "timescale", "input", "expected"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string", "minLength": 1},
+        "boundary": {
+          "type": "string",
+          "enum": ["epoch", "interval", "leap_second", "epoch_rollover", "u64", "invalid_config"]
+        },
+        "timescale": {"const": "unix_utc"},
+        "input": {
+          "type": "object",
+          "required": ["unix_time_us", "epoch_base_us", "interval_duration_us"],
+          "additionalProperties": false,
+          "properties": {
+            "unix_time_us": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+            "epoch_base_us": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+            "interval_duration_us": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+            "utc_label": {"type": "string", "format": "date-time"}
+          }
+        },
+        "expected": {
+          "type": "object",
+          "required": ["asn_u64", "sfn_u32", "clamped"],
+          "additionalProperties": false,
+          "properties": {
+            "asn_u64": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+            "sfn_u32": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+            "clamped": {"type": "boolean"}
+          }
         }
       }
     },

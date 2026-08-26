@@ -205,6 +205,190 @@
         "preimage": "4c494348454e2d4c494e4b2d76310044a101000202abcd7fd5cfc679ab634268656c6c6f21",
         "wire_prefix": "44a1010002abcd7fd5cfc679ab634268656c6c6f21",
         "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+        "verification": {
+          "length": 68,
+          "llsec": 161,
+          "epoch": 1,
+          "seqnum": 2,
+          "dst_len": 2,
+          "dst_addr": "abcd",
+          "signer_eui64": "7fd5cfc679ab6342",
+          "payload": "68656c6c6f21",
+          "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+        },
+        "tamper_cases": [
+          {
+            "name": "tamper_length",
+            "component": "length",
+            "production_path": "frame",
+            "verification": {
+              "length": 69,
+              "llsec": 161,
+              "epoch": 1,
+              "seqnum": 2,
+              "dst_len": 2,
+              "dst_addr": "abcd",
+              "signer_eui64": "7fd5cfc679ab6342",
+              "payload": "68656c6c6f21",
+              "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+            },
+            "preimage": "4c494348454e2d4c494e4b2d76310045a101000202abcd7fd5cfc679ab634268656c6c6f21",
+            "wire": "45a1010002abcd7fd5cfc679ab634268656c6c6f21c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+            "expected_valid": false
+          },
+          {
+            "name": "tamper_llsec",
+            "component": "llsec",
+            "production_path": "frame",
+            "verification": {
+              "length": 68,
+              "llsec": 165,
+              "epoch": 1,
+              "seqnum": 2,
+              "dst_len": 2,
+              "dst_addr": "abcd",
+              "signer_eui64": "7fd5cfc679ab6342",
+              "payload": "68656c6c6f21",
+              "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+            },
+            "preimage": "4c494348454e2d4c494e4b2d76310044a501000202abcd7fd5cfc679ab634268656c6c6f21",
+            "wire": "44a5010002abcd7fd5cfc679ab634268656c6c6f21c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+            "expected_valid": false
+          },
+          {
+            "name": "tamper_epoch",
+            "component": "epoch",
+            "production_path": "frame",
+            "verification": {
+              "length": 68,
+              "llsec": 161,
+              "epoch": 0,
+              "seqnum": 2,
+              "dst_len": 2,
+              "dst_addr": "abcd",
+              "signer_eui64": "7fd5cfc679ab6342",
+              "payload": "68656c6c6f21",
+              "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+            },
+            "preimage": "4c494348454e2d4c494e4b2d76310044a100000202abcd7fd5cfc679ab634268656c6c6f21",
+            "wire": "44a1000002abcd7fd5cfc679ab634268656c6c6f21c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+            "expected_valid": false
+          },
+          {
+            "name": "tamper_seqnum",
+            "component": "seqnum",
+            "production_path": "frame",
+            "verification": {
+              "length": 68,
+              "llsec": 161,
+              "epoch": 1,
+              "seqnum": 3,
+              "dst_len": 2,
+              "dst_addr": "abcd",
+              "signer_eui64": "7fd5cfc679ab6342",
+              "payload": "68656c6c6f21",
+              "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+            },
+            "preimage": "4c494348454e2d4c494e4b2d76310044a101000302abcd7fd5cfc679ab634268656c6c6f21",
+            "wire": "44a1010003abcd7fd5cfc679ab634268656c6c6f21c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+            "expected_valid": false
+          },
+          {
+            "name": "tamper_dst_len",
+            "component": "dst_len",
+            "production_path": "preimage",
+            "verification": {
+              "length": 68,
+              "llsec": 161,
+              "epoch": 1,
+              "seqnum": 2,
+              "dst_len": 3,
+              "dst_addr": "abcd",
+              "signer_eui64": "7fd5cfc679ab6342",
+              "payload": "68656c6c6f21",
+              "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+            },
+            "preimage": "4c494348454e2d4c494e4b2d76310044a101000203abcd7fd5cfc679ab634268656c6c6f21",
+            "wire": "44a1010002abcd7fd5cfc679ab634268656c6c6f21c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+            "expected_valid": false
+          },
+          {
+            "name": "tamper_dst_addr",
+            "component": "dst_addr",
+            "production_path": "frame",
+            "verification": {
+              "length": 68,
+              "llsec": 161,
+              "epoch": 1,
+              "seqnum": 2,
+              "dst_len": 2,
+              "dst_addr": "aacd",
+              "signer_eui64": "7fd5cfc679ab6342",
+              "payload": "68656c6c6f21",
+              "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+            },
+            "preimage": "4c494348454e2d4c494e4b2d76310044a101000202aacd7fd5cfc679ab634268656c6c6f21",
+            "wire": "44a1010002aacd7fd5cfc679ab634268656c6c6f21c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+            "expected_valid": false
+          },
+          {
+            "name": "tamper_signer_eui64",
+            "component": "signer_eui64",
+            "production_path": "frame",
+            "verification": {
+              "length": 68,
+              "llsec": 161,
+              "epoch": 1,
+              "seqnum": 2,
+              "dst_len": 2,
+              "dst_addr": "abcd",
+              "signer_eui64": "7fd5cfc679ab6343",
+              "payload": "68656c6c6f21",
+              "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+            },
+            "preimage": "4c494348454e2d4c494e4b2d76310044a101000202abcd7fd5cfc679ab634368656c6c6f21",
+            "wire": "44a1010002abcd7fd5cfc679ab634368656c6c6f21c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+            "expected_valid": false
+          },
+          {
+            "name": "tamper_payload",
+            "component": "payload",
+            "production_path": "frame",
+            "verification": {
+              "length": 68,
+              "llsec": 161,
+              "epoch": 1,
+              "seqnum": 2,
+              "dst_len": 2,
+              "dst_addr": "abcd",
+              "signer_eui64": "7fd5cfc679ab6342",
+              "payload": "68656c6c6f3f",
+              "signature": "c15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+            },
+            "preimage": "4c494348454e2d4c494e4b2d76310044a101000202abcd7fd5cfc679ab634268656c6c6f3f",
+            "wire": "44a1010002abcd7fd5cfc679ab634268656c6c6f3fc15f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+            "expected_valid": false
+          },
+          {
+            "name": "tamper_signature",
+            "component": "signature",
+            "production_path": "frame",
+            "verification": {
+              "length": 68,
+              "llsec": 161,
+              "epoch": 1,
+              "seqnum": 2,
+              "dst_len": 2,
+              "dst_addr": "abcd",
+              "signer_eui64": "7fd5cfc679ab6342",
+              "payload": "68656c6c6f21",
+              "signature": "c05f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906"
+            },
+            "preimage": "4c494348454e2d4c494e4b2d76310044a101000202abcd7fd5cfc679ab634268656c6c6f21",
+            "wire": "44a1010002abcd7fd5cfc679ab634268656c6c6f21c05f23c6e53eebc34ae79d38284a8da8ff0469d6bdcc176e55bfd2585fc450f8a191804e7d0f184cfc5038f309f2b906",
+            "expected_valid": false
+          }
+        ],
         "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=2."
       }
     },
@@ -223,7 +407,7 @@
         "encrypted": true,
         "signer_eui64": "aabbccddaabbccdd"
       },
-      "encoded": "3dE0030004aabbccddaabbccdd78000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "encoded": "3de0030004aabbccddaabbccdd78000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "expect": {
         "error": "signed_encrypted_unsupported"
       }

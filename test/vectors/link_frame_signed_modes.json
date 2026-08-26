@@ -1,0 +1,229 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Signed link-layer frames for addressing modes 2 (extended EUI-64) and 3 (elided), plus exact maximum-payload boundaries for all four address modes; completes signed coverage alongside link_frame.json (spec section 4, draft-lichen-link-01).",
+  "vectors": [
+    {
+      "name": "extended_addr_signed",
+      "description": "Signed frame with 64-bit extended peer EUI-64 destination and MIC compatibility selector 1",
+      "fields": {
+        "epoch": 7,
+        "seqnum": 515,
+        "dst_addr": "0011223344556677",
+        "payload": "657874",
+        "mic": "bdff43b6532ecbe228f4df787d1b660cf3f1dba88a600a4c3901da1c24011ff6ea7d40f3aeae137d96ecaed26ebbc70c",
+        "addr_mode": 2,
+        "mic_length": 1,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342"
+      },
+      "encoded": "47a607020300112233445566777fd5cfc679ab6342657874bdff43b6532ecbe228f4df787d1b660cf3f1dba88a600a4c3901da1c24011ff6ea7d40f3aeae137d96ecaed26ebbc70c",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d76310047a60702030800112233445566777fd5cfc679ab6342657874",
+        "wire_prefix": "47a607020300112233445566777fd5cfc679ab6342657874",
+        "signature": "bdff43b6532ecbe228f4df787d1b660cf3f1dba88a600a4c3901da1c24011ff6ea7d40f3aeae137d96ecaed26ebbc70c",
+        "verification": {
+          "length": 71,
+          "llsec": 166,
+          "epoch": 7,
+          "seqnum": 515,
+          "dst_len": 8,
+          "dst_addr": "0011223344556677",
+          "signer_eui64": "7fd5cfc679ab6342",
+          "payload": "657874",
+          "signature": "bdff43b6532ecbe228f4df787d1b660cf3f1dba88a600a4c3901da1c24011ff6ea7d40f3aeae137d96ecaed26ebbc70c"
+        },
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=8. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "elided_addr_signed",
+      "description": "Signed frame with elided destination (context-derived, no address octets)",
+      "fields": {
+        "epoch": 9,
+        "seqnum": 255,
+        "dst_addr": "",
+        "payload": "656c64",
+        "mic": "afe131f7cf2dea9060cf68111d8e8c9ff6b5f5757e51d61d8f4377727e1e87d79503b0cba4825e54c01e8357e46c2908",
+        "addr_mode": 3,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342"
+      },
+      "encoded": "3fa30900ff7fd5cfc679ab6342656c64afe131f7cf2dea9060cf68111d8e8c9ff6b5f5757e51d61d8f4377727e1e87d79503b0cba4825e54c01e8357e46c2908",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d7631003fa30900ff007fd5cfc679ab6342656c64",
+        "wire_prefix": "3fa30900ff7fd5cfc679ab6342656c64",
+        "signature": "afe131f7cf2dea9060cf68111d8e8c9ff6b5f5757e51d61d8f4377727e1e87d79503b0cba4825e54c01e8357e46c2908",
+        "verification": {
+          "length": 63,
+          "llsec": 163,
+          "epoch": 9,
+          "seqnum": 255,
+          "dst_len": 0,
+          "dst_addr": "",
+          "signer_eui64": "7fd5cfc679ab6342",
+          "payload": "656c64",
+          "signature": "afe131f7cf2dea9060cf68111d8e8c9ff6b5f5757e51d61d8f4377727e1e87d79503b0cba4825e54c01e8357e46c2908"
+        },
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "broadcast_signed_max_payload",
+      "description": "Signed broadcast at the maximum 194-byte payload boundary",
+      "fields": {
+        "epoch": 255,
+        "seqnum": 65535,
+        "dst_addr": "",
+        "payload": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "mic": "4ddc35b8a08f2c64728cd2053105041ee76d82e689b627f4466c81607410e89b7d20df6303235683be7b896a3a6d0f02",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342"
+      },
+      "encoded": "fea0ffffff7fd5cfc679ab6342a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a04ddc35b8a08f2c64728cd2053105041ee76d82e689b627f4466c81607410e89b7d20df6303235683be7b896a3a6d0f02",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d763100fea0ffffff007fd5cfc679ab6342a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "wire_prefix": "fea0ffffff7fd5cfc679ab6342a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "signature": "4ddc35b8a08f2c64728cd2053105041ee76d82e689b627f4466c81607410e89b7d20df6303235683be7b896a3a6d0f02",
+        "verification": {
+          "length": 254,
+          "llsec": 160,
+          "epoch": 255,
+          "seqnum": 65535,
+          "dst_len": 0,
+          "dst_addr": "",
+          "signer_eui64": "7fd5cfc679ab6342",
+          "payload": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+          "signature": "4ddc35b8a08f2c64728cd2053105041ee76d82e689b627f4466c81607410e89b7d20df6303235683be7b896a3a6d0f02"
+        },
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "short_signed_max_payload",
+      "description": "Signed short-address frame at the maximum 192-byte payload boundary",
+      "fields": {
+        "epoch": 254,
+        "seqnum": 65534,
+        "dst_addr": "abcd",
+        "payload": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "mic": "f6a16880e0494c6f4bfa46eaf851efcd438697117c3dfc8c3e38acaf8409430a5cbc780b9adbd8e7d0dd2947e9eca10e",
+        "addr_mode": 1,
+        "mic_length": 1,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342"
+      },
+      "encoded": "fea5fefffeabcd7fd5cfc679ab6342a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1f6a16880e0494c6f4bfa46eaf851efcd438697117c3dfc8c3e38acaf8409430a5cbc780b9adbd8e7d0dd2947e9eca10e",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d763100fea5fefffe02abcd7fd5cfc679ab6342a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "wire_prefix": "fea5fefffeabcd7fd5cfc679ab6342a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "signature": "f6a16880e0494c6f4bfa46eaf851efcd438697117c3dfc8c3e38acaf8409430a5cbc780b9adbd8e7d0dd2947e9eca10e",
+        "verification": {
+          "length": 254,
+          "llsec": 165,
+          "epoch": 254,
+          "seqnum": 65534,
+          "dst_len": 2,
+          "dst_addr": "abcd",
+          "signer_eui64": "7fd5cfc679ab6342",
+          "payload": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "signature": "f6a16880e0494c6f4bfa46eaf851efcd438697117c3dfc8c3e38acaf8409430a5cbc780b9adbd8e7d0dd2947e9eca10e"
+        },
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=2. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "extended_signed_max_payload",
+      "description": "Signed extended-address frame at the maximum 186-byte payload boundary",
+      "fields": {
+        "epoch": 253,
+        "seqnum": 65533,
+        "dst_addr": "0011223344556677",
+        "payload": "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+        "mic": "203bfb26f35e5823e3ef57cb36f6ba2a3e544f794de1766fa6cbbd15e54ca3f7645ed1df1528f39cc87edfcca2ef1d0a",
+        "addr_mode": 2,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342"
+      },
+      "encoded": "fea2fdfffd00112233445566777fd5cfc679ab6342a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2203bfb26f35e5823e3ef57cb36f6ba2a3e544f794de1766fa6cbbd15e54ca3f7645ed1df1528f39cc87edfcca2ef1d0a",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d763100fea2fdfffd0800112233445566777fd5cfc679ab6342a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+        "wire_prefix": "fea2fdfffd00112233445566777fd5cfc679ab6342a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+        "signature": "203bfb26f35e5823e3ef57cb36f6ba2a3e544f794de1766fa6cbbd15e54ca3f7645ed1df1528f39cc87edfcca2ef1d0a",
+        "verification": {
+          "length": 254,
+          "llsec": 162,
+          "epoch": 253,
+          "seqnum": 65533,
+          "dst_len": 8,
+          "dst_addr": "0011223344556677",
+          "signer_eui64": "7fd5cfc679ab6342",
+          "payload": "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+          "signature": "203bfb26f35e5823e3ef57cb36f6ba2a3e544f794de1766fa6cbbd15e54ca3f7645ed1df1528f39cc87edfcca2ef1d0a"
+        },
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=8. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "elided_signed_max_payload",
+      "description": "Signed elided-address frame at the maximum 194-byte payload boundary",
+      "fields": {
+        "epoch": 252,
+        "seqnum": 65532,
+        "dst_addr": "",
+        "payload": "a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+        "mic": "5f71858b6fe98a6117d838bcc7eb7e8fca86a04fcbbc181826579192effda6b9a7ab6f7e9ed06be08d3ebe333bd4bb04",
+        "addr_mode": 3,
+        "mic_length": 1,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342"
+      },
+      "encoded": "fea7fcfffc7fd5cfc679ab6342a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a35f71858b6fe98a6117d838bcc7eb7e8fca86a04fcbbc181826579192effda6b9a7ab6f7e9ed06be08d3ebe333bd4bb04",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d763100fea7fcfffc007fd5cfc679ab6342a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+        "wire_prefix": "fea7fcfffc7fd5cfc679ab6342a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+        "signature": "5f71858b6fe98a6117d838bcc7eb7e8fca86a04fcbbc181826579192effda6b9a7ab6f7e9ed06be08d3ebe333bd4bb04",
+        "verification": {
+          "length": 254,
+          "llsec": 167,
+          "epoch": 252,
+          "seqnum": 65532,
+          "dst_len": 0,
+          "dst_addr": "",
+          "signer_eui64": "7fd5cfc679ab6342",
+          "payload": "a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+          "signature": "5f71858b6fe98a6117d838bcc7eb7e8fca86a04fcbbc181826579192effda6b9a7ab6f7e9ed06be08d3ebe333bd4bb04"
+        },
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    }
+  ]
+}

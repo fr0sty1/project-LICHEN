@@ -380,27 +380,31 @@
     },
     {
       "name": "get_plan_unknown_fallback",
-      "description": "Unknown plan_id returns EU868 as fallback.",
+      "description": "Unknown plan_id raises UnknownPlanError (fail-closed); CH0 fallback required.",
       "type": "get_plan",
       "input": {
         "plan_id": 255
       },
       "output": {
-        "plan_name": "EU868",
-        "plan_id": 1
-      }
+        "error": true,
+        "error_type": "UnknownPlanError",
+        "ch0_fallback_required": true
+      },
+      "notes": "CCP-4: Unknown plan identifiers MUST fail closed (not substitute another region). Use ch0_fallback_required() to detect and operate conservatively on CH0."
     },
     {
       "name": "get_plan_by_name_unknown_fallback",
-      "description": "Unknown plan name returns EU868 as fallback.",
+      "description": "Unknown plan name raises UnknownPlanError (fail-closed); CH0 fallback required.",
       "type": "get_plan_by_name",
       "input": {
         "plan_name": "UNKNOWN"
       },
       "output": {
-        "plan_name": "EU868",
-        "plan_id": 1
-      }
+        "error": true,
+        "error_type": "UnknownPlanError",
+        "ch0_fallback_required": true
+      },
+      "notes": "CCP-4: Unknown plan names MUST fail closed (not substitute another region). Use ch0_fallback_required() to detect and operate conservatively on CH0."
     },
     {
       "name": "channel_frequency_eu868_ch0",

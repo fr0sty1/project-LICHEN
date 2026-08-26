@@ -81,8 +81,8 @@
       "current_uptime_ms": 3601000,
       "expected": {
         "accept": true,
-        "posts_in_window": 0,
-        "reason": "all_posts_expired_from_window"
+        "posts_in_window": 2,
+        "reason": "recent_posts_retained"
       }
     },
     {

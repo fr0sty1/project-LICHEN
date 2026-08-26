@@ -1,6 +1,6 @@
 {
   "format_version": 2,
-  "description": "Short address assignment vectors (spec 02-physical-link.md 4.5, 04-network.md 12.3). Includes crc32_ieee derivation with LICHEN key 0x4c494348454e truncated to 0x4348454e, seed-mixing DAD retry, incremental +1 mod 0xffef fallback, jitter, coordinator DAO-ACK, transition, and collision detection. Independent oracle from Python reference implementation; Rust/Zephyr must match exactly.",
+  "description": "Short address assignment vectors (spec 02-physical-link.md 4.5, 04-network.md 12.3). Includes crc32_ieee derivation with LICHEN key 0x4c494348454e truncated to 0x4348454e, seed-mixing DAD retry, incremental +1 mod 0xffef fallback, jitter, RFC 4862 Neighbor Solicitation/Advertisement exchange, coordinator DAO-ACK, transition, and collision detection. Rust, Python, and Zephyr must match exactly.",
   "vectors": [
     {
       "name": "derive_0011223344556677",
@@ -232,12 +232,63 @@
       "note": "0x0000 is reserved (null/unspecified), so wraparound skips to 0x0001"
     },
     {
+      "name": "incremental_retry_repeated_collisions",
+      "description": "each DAD conflict advances the retry cursor by one without repeating a prior candidate",
+      "start": 4096,
+      "start_hex": "0x1000",
+      "collisions": [
+        4097,
+        4098,
+        4099
+      ],
+      "results": [
+        4097,
+        4098,
+        4099,
+        4100
+      ],
+      "result_hex": [
+        "0x1001",
+        "0x1002",
+        "0x1003",
+        "0x1004"
+      ],
+      "mod": "0xfff0"
+    },
+    {
+      "name": "incremental_retry_reserved_boundaries",
+      "description": "reserved cursors cover the full usable pool; zero and the upper reserved values cannot hide a free address",
+      "cases": [
+        {
+          "kind": "null",
+          "start": 0,
+          "existing": [],
+          "result": 1
+        },
+        {
+          "kind": "unspecified",
+          "start": 65534,
+          "only_free": 14,
+          "result": 14
+        },
+        {
+          "kind": "broadcast",
+          "start": 65535,
+          "only_free": 15,
+          "result": 15
+        }
+      ],
+      "usable_min": 1,
+      "usable_max": 65519,
+      "mod": "0xfff0"
+    },
+    {
       "name": "incremental_retry_exhausted",
-      "description": "all 65520 addresses (0..0xFFEF) taken => None",
+      "description": "all 65519 usable addresses (0x0001..0xFFEF) taken => None",
       "start": 1000,
       "start_hex": "0x3e8",
-      "existing_size": 65520,
-      "existing_description": "all addresses 0..0xFFEF (0..65519)",
+      "existing_size": 65519,
+      "existing_description": "all usable addresses 0x0001..0xFFEF (1..65519)",
       "result": null,
       "fallback": "extended_64bit"
     },
@@ -252,6 +303,43 @@
         5
       ],
       "range": "0..500"
+    },
+    {
+      "name": "dad_jitter_inclusive_endpoints",
+      "description": "Injected randrange source demonstrates that the unbiased 501-value sampling domain includes both 0ms and 500ms endpoints",
+      "count": 3,
+      "source_values": [
+        0,
+        500,
+        250
+      ],
+      "randrange_stop": 501,
+      "jitters_ms": [
+        0,
+        500,
+        250
+      ],
+      "inclusive_min_ms": 0,
+      "inclusive_max_ms": 500
+    },
+    {
+      "name": "dad_three_probe_cancellation",
+      "description": "Caller cancellation after the first probe suppresses the remaining two probes and cannot report DAD success",
+      "eui64": "0011223344556677",
+      "short_addr": 4660,
+      "jitters_ms": [
+        0,
+        500,
+        250
+      ],
+      "cancel_after_probes": 1,
+      "emitted_jitters_ms": [
+        0
+      ],
+      "remaining_suppressed": 2,
+      "cancelled": true,
+      "completed": true,
+      "succeeded": false
     },
     {
       "name": "coordinator_allocate",
@@ -307,6 +395,30 @@
       "second_observe_collision": true,
       "is_collision": true,
       "pubkeys_count": 2
+    },
+    {
+      "name": "dad_neighbor_exchange_short_1234",
+      "description": "RFC 4862 DAD probe and conflict response for RFC 4944 short-address target 0x1234",
+      "short_addr": 4660,
+      "eui64": "0011223344556677",
+      "jitters_ms": [
+        0,
+        250,
+        500
+      ],
+      "target": "fe80::ff:fe00:1234",
+      "probe_source": "::",
+      "probe_destination": "ff02::1:ff00:1234",
+      "probe_hop_limit": 255,
+      "probe_icmp_hex": "870058bf00000000fe80000000000000000000fffe001234",
+      "probe_ipv6_hex": "6000000000183aff00000000000000000000000000000000ff0200000000000000000001ff001234870058bf00000000fe80000000000000000000fffe001234",
+      "conflict_source": "fe80::ff:fe00:1234",
+      "conflict_destination": "ff02::1",
+      "conflict_hop_limit": 255,
+      "conflict_solicited": false,
+      "conflict_override": true,
+      "conflict_icmp_hex": "8800393f20000000fe80000000000000000000fffe001234",
+      "conflict_ipv6_hex": "6000000000183afffe80000000000000000000fffe001234ff0200000000000000000000000000018800393f20000000fe80000000000000000000fffe001234"
     }
   ]
 }

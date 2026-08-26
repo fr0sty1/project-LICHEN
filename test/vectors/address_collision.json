@@ -1,0 +1,115 @@
+{
+  "$schema": "./address_collision.schema.json",
+  "format_version": 2,
+  "name": "Authenticated IPv6 address collision detection",
+  "description": "Canonical native and link-local address-to-key collision, expiry, restart, capacity, and monotonic-time scenarios.",
+  "claim_lifetime_seconds": 1200,
+  "scenarios": [
+    {
+      "name": "same_native_address_same_key_is_idempotent",
+      "max_addresses": 2,
+      "max_keys_per_address": 2,
+      "operations": [
+        {"op": "observe", "address": "0200::1", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "link_signature", "now_s": 0, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "observe", "address": "200:0:0:0:0:0:0:1", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "oscore", "now_s": 100, "expected_status": "idempotent", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1300, "expected_size": 1}
+      ]
+    },
+    {
+      "name": "same_native_address_different_key_collides",
+      "max_addresses": 2,
+      "max_keys_per_address": 3,
+      "operations": [
+        {"op": "observe", "address": "0200::2", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "tofu", "now_s": 0, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "observe", "address": "0200::2", "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111", "source": "link_signature", "now_s": 1, "expected_status": "collision", "expected_collision": true, "expected_key_count": 2, "expected_expires_at_s": 1201, "expected_size": 1},
+        {"op": "observe", "address": "0200::2", "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111", "source": "oscore", "now_s": 2, "expected_status": "idempotent", "expected_collision": true, "expected_key_count": 2, "expected_expires_at_s": 1202, "expected_size": 1}
+      ]
+    },
+    {
+      "name": "authenticated_only_and_expiry",
+      "max_addresses": 2,
+      "max_keys_per_address": 2,
+      "operations": [
+        {"op": "observe", "address": "0200::3", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "unverified", "now_s": 0, "expected_error": "invalid_source", "expected_size": 0},
+        {"op": "observe", "address": "0200::3", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "link_signature", "now_s": 0, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "observe", "address": "0200::3", "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111", "source": "oscore", "now_s": 1, "expected_status": "collision", "expected_collision": true, "expected_key_count": 2, "expected_expires_at_s": 1201, "expected_size": 1},
+        {"op": "query", "address": "0200::3", "now_s": 1199, "expected_collision": true, "expected_key_count": 2, "expected_size": 1},
+        {"op": "query", "address": "0200::3", "now_s": 1200, "expected_collision": false, "expected_key_count": 1, "expected_size": 1},
+        {"op": "query", "address": "0200::3", "now_s": 1201, "expected_collision": false, "expected_key_count": 0, "expected_size": 0}
+      ]
+    },
+    {
+      "name": "restart_preserves_then_expires_collision",
+      "max_addresses": 2,
+      "max_keys_per_address": 2,
+      "operations": [
+        {"op": "observe", "address": "0200::4", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "tofu", "now_s": 0, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "observe", "address": "0200::4", "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111", "source": "tofu", "now_s": 1, "expected_status": "collision", "expected_collision": true, "expected_key_count": 2, "expected_expires_at_s": 1201, "expected_size": 1},
+        {"op": "restart", "now_s": 500, "expected_size": 1},
+        {"op": "query", "address": "0200::4", "now_s": 500, "expected_collision": true, "expected_key_count": 2, "expected_size": 1},
+        {"op": "restart", "now_s": 1201, "expected_size": 0},
+        {"op": "query", "address": "0200::4", "now_s": 1201, "expected_collision": false, "expected_key_count": 0, "expected_size": 0}
+      ]
+    },
+    {
+      "name": "bounded_capacity_never_silently_evicts_live_claims",
+      "max_addresses": 1,
+      "max_keys_per_address": 2,
+      "operations": [
+        {"op": "observe", "address": "0200::5", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "link_signature", "now_s": 0, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "observe", "address": "0200::6", "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111", "source": "link_signature", "now_s": 1, "expected_error": "address_capacity", "expected_size": 1},
+        {"op": "observe", "address": "0200::5", "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111", "source": "link_signature", "now_s": 1, "expected_status": "collision", "expected_collision": true, "expected_key_count": 2, "expected_expires_at_s": 1201, "expected_size": 1},
+        {"op": "observe", "address": "0200::5", "public_key_hex": "2222222222222222222222222222222222222222222222222222222222222222", "source": "link_signature", "now_s": 2, "expected_error": "key_capacity", "expected_size": 1},
+        {"op": "query", "address": "0200::5", "now_s": 2, "expected_collision": true, "expected_key_count": 2, "expected_size": 1},
+        {"op": "observe", "address": "0200::6", "public_key_hex": "2222222222222222222222222222222222222222222222222222222222222222", "source": "oscore", "now_s": 1201, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 2401, "expected_size": 1}
+      ]
+    },
+    {
+      "name": "link_local_collision_namespace_is_per_link",
+      "max_addresses": 3,
+      "max_keys_per_address": 2,
+      "operations": [
+        {"op": "observe", "address": "fe80::1", "link_scope": "mesh0", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "link_signature", "now_s": 0, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "observe", "address": "fe80::1%mesh1", "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111", "source": "link_signature", "now_s": 0, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1200, "expected_size": 2},
+        {"op": "observe", "address": "fe80::1%mesh0", "public_key_hex": "2222222222222222222222222222222222222222222222222222222222222222", "source": "oscore", "now_s": 1, "expected_status": "collision", "expected_collision": true, "expected_key_count": 2, "expected_expires_at_s": 1201, "expected_size": 2},
+        {"op": "query", "address": "fe80::1", "link_scope": "mesh1", "now_s": 1, "expected_collision": false, "expected_key_count": 1, "expected_size": 2},
+        {"op": "observe", "address": "fe80::2", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "tofu", "now_s": 1, "expected_error": "missing_scope", "expected_size": 2},
+        {"op": "observe", "address": "0200::7", "link_scope": "mesh0", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "tofu", "now_s": 1, "expected_error": "native_scope", "expected_size": 2}
+      ]
+    },
+    {
+      "name": "monotonic_regression_and_overflow_are_atomic",
+      "max_addresses": 1,
+      "max_keys_per_address": 2,
+      "operations": [
+        {"op": "observe", "address": "0200::8", "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000", "source": "link_signature", "now_s": 100, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1300, "expected_size": 1},
+        {"op": "query", "address": "0200::8", "now_s": 99, "expected_error": "time_regression", "expected_size": 1},
+        {"op": "observe", "address": "0200::8", "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111", "source": "oscore", "now_s": 18446744073709550416, "expected_error": "timestamp_overflow", "expected_size": 1},
+        {"op": "query", "address": "0200::8", "now_s": 100, "expected_collision": false, "expected_key_count": 1, "expected_size": 1}
+      ]
+    },
+    {
+      "name": "bound_native_same_key_is_idempotent_and_expires",
+      "max_addresses": 1,
+      "max_keys_per_address": 2,
+      "operations": [
+        {"op": "observe_bound_native", "address": "020e:02a5:0225:b4ba:0c02:a502:25b4:baaa", "public_key_hex": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a", "source": "link_signature", "now_s": 0, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "observe_bound_native", "address": "20e:2a5:225:b4ba:c02:a502:25b4:baaa", "public_key_hex": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a", "source": "oscore", "now_s": 10, "expected_status": "idempotent", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1210, "expected_size": 1},
+        {"op": "query", "address": "020e:02a5:0225:b4ba:0c02:a502:25b4:baaa", "now_s": 1209, "expected_collision": false, "expected_key_count": 1, "expected_size": 1},
+        {"op": "query", "address": "020e:02a5:0225:b4ba:0c02:a502:25b4:baaa", "now_s": 1210, "expected_collision": false, "expected_key_count": 0, "expected_size": 0}
+      ]
+    },
+    {
+      "name": "bound_native_rejects_mismatch_and_invalid_identity_inputs_atomically",
+      "max_addresses": 1,
+      "max_keys_per_address": 2,
+      "operations": [
+        {"op": "observe_bound_native", "address": "020e:02a5:0225:b4ba:0c02:a502:25b4:baaa", "public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c", "source": "link_signature", "now_s": 0, "expected_error": "binding_mismatch", "expected_size": 0},
+        {"op": "observe_bound_native", "address": "fe80::1", "public_key_hex": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a", "source": "link_signature", "now_s": 0, "expected_error": "invalid_native_address", "expected_size": 0},
+        {"op": "observe_bound_native", "address": "030e:02a5:0225:b4ba:0c02:a502:25b4:baaa", "public_key_hex": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a", "source": "link_signature", "now_s": 0, "expected_error": "invalid_native_address", "expected_size": 0},
+        {"op": "observe_bound_native", "address": "020e:02a5:0225:b4ba:0c02:a502:25b4:baaa", "public_key_hex": "00000000000000000000000000000000000000000000000000000000000000", "source": "link_signature", "now_s": 0, "expected_error": "invalid_key_length", "expected_size": 0},
+        {"op": "observe_bound_native", "address": "0200:d5ba:e23a:afa6:00d5:bae2:3aaf:a698", "public_key_hex": "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a", "source": "link_signature", "now_s": 0, "expected_error": "invalid_key_point", "expected_size": 0},
+        {"op": "observe_bound_native", "address": "0237:8472:8ae7:309e:3584:728a:e730:9eab", "public_key_hex": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c", "source": "tofu", "now_s": 0, "expected_status": "new", "expected_collision": false, "expected_key_count": 1, "expected_expires_at_s": 1200, "expected_size": 1}
+      ]
+    }
+  ]
+}

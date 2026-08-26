@@ -4,12 +4,11 @@
   "vectors": [
     {
       "name": "hash_based_peer_rendezvous",
-      "description": "Hash-based rendezvous per 2a.3.2. channel = 1 + hash_32(sfn, peer_eui) % (n_ch-1). Independent expected from external FNV calc.",
+      "description": "Hash-based rendezvous per 2a.3.2. channel = 1 + hash_32(eui || epoch_le || sfn_le) % (n_ch-1). Real priority-3 preimage at epoch=0.",
       "sfn": 12345,
       "peer_eui64": "aabbccddeeff0011",
       "n_channels": 8,
-      "expected_channel": 4,
-      "expected_slot": 42,
+      "expected_channel": 5,
       "mechanism": "hash_based"
     },
     {

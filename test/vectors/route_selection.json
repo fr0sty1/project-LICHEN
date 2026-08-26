@@ -1,0 +1,89 @@
+{
+  "description": "Canonical local-first route selection for link-local, native 0200::/8, and off-mesh IPv6 destinations",
+  "next_hops": {
+    "gradient": "fe80::10",
+    "rpl_parent": "fe80::20"
+  },
+  "cases": [
+    {
+      "name": "link_local_direct_precedes_all_tables",
+      "destination": "fe80::abcd",
+      "local_route": true,
+      "local_discovery": false,
+      "rpl_parent": true,
+      "expected_class": "link_local",
+      "expected_decision": "forward",
+      "expected_next_hop": "fe80::abcd"
+    },
+    {
+      "name": "link_local_upper_prefix_boundary_is_direct",
+      "destination": "febf::1",
+      "local_route": false,
+      "local_discovery": false,
+      "rpl_parent": true,
+      "expected_class": "link_local",
+      "expected_decision": "forward",
+      "expected_next_hop": "febf::1"
+    },
+    {
+      "name": "native_local_gradient_precedes_yggdrasil",
+      "destination": "0200::1234",
+      "local_route": true,
+      "local_discovery": false,
+      "rpl_parent": true,
+      "expected_class": "mesh_local",
+      "expected_decision": "forward",
+      "expected_next_hop": "fe80::10"
+    },
+    {
+      "name": "native_starts_local_discovery_before_yggdrasil",
+      "destination": "02ff::1234",
+      "local_route": false,
+      "local_discovery": true,
+      "rpl_parent": true,
+      "expected_class": "mesh_local",
+      "expected_decision": "queue",
+      "expected_next_hop": null
+    },
+    {
+      "name": "native_falls_back_to_yggdrasil_parent",
+      "destination": "0200::beef",
+      "local_route": false,
+      "local_discovery": false,
+      "rpl_parent": true,
+      "expected_class": "mesh_local",
+      "expected_decision": "forward",
+      "expected_next_hop": "fe80::20"
+    },
+    {
+      "name": "native_without_local_or_yggdrasil_path_drops",
+      "destination": "0200::beef",
+      "local_route": false,
+      "local_discovery": false,
+      "rpl_parent": false,
+      "expected_class": "mesh_local",
+      "expected_decision": "drop",
+      "expected_next_hop": null
+    },
+    {
+      "name": "first_byte_03_is_not_native",
+      "destination": "0300::1",
+      "local_route": true,
+      "local_discovery": true,
+      "rpl_parent": true,
+      "expected_class": "external",
+      "expected_decision": "forward",
+      "expected_next_hop": "fe80::20"
+    },
+    {
+      "name": "fec0_is_not_link_local",
+      "destination": "fec0::1",
+      "local_route": true,
+      "local_discovery": true,
+      "rpl_parent": false,
+      "expected_class": "external",
+      "expected_decision": "drop",
+      "expected_next_hop": null
+    }
+  ]
+}

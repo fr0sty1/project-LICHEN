@@ -1,0 +1,48 @@
+{
+  "format_version": 2,
+  "description": "Canonical LICHEN coordinator-managed short-address assignment over RPL DAO and DAO-ACK. The project-private RPL option carries a version, message kind, operation, EUI-64, and address; ACKs additionally carry a status mirrored in the DAO-ACK base object.",
+  "option_type": 252,
+  "option_version": 1,
+  "wire": {
+    "eui64": "0011223344556677",
+    "requested_short": 4660,
+    "dao_sequence": 7,
+    "allocate_request_hex": "00800007fc0d01000000112233445566771234",
+    "allocate_ack_hex": "00000700fc0e0101000000112233445566771234",
+    "release_sequence": 8,
+    "release_request_hex": "00800008fc0d0100010011223344556677ffff",
+    "release_ack_hex": "00000800fc0e010101000011223344556677ffff"
+  },
+  "allocation": {
+    "preferred": 4660,
+    "collision_owner_eui64": "8899aabbccddeeff",
+    "collision_fallback": 1390,
+    "duplicate_request_is_idempotent": true,
+    "usable_pool_first": 1,
+    "usable_pool_last": 65533,
+    "usable_pool_size": 65533,
+    "exhausted_status": 1
+  },
+  "lifecycle": {
+    "release_operation": 1,
+    "release_status": 0,
+    "duplicate_release_is_idempotent": true,
+    "assignment_survives_restart": true,
+    "release_survives_restart": true
+  },
+  "maintenance": {
+    "capacity": 1,
+    "lease_seconds": 60,
+    "allocated_at": 100,
+    "initial_sequence": 21,
+    "initial_expiry": 160,
+    "duplicate_at": 120,
+    "duplicate_expiry": 160,
+    "renewed_at": 130,
+    "renewed_sequence": 22,
+    "renewed_expiry": 190,
+    "expires_at": 190,
+    "reused_short": 4660
+  },
+  "state_snapshot_hex": "5341413100011234001122334455667707f0502e"
+}

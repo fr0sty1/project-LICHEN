@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LICHEN bounded channel-plan selection vectors",
+  "type": "object",
+  "required": ["$schema", "format_version", "name", "description", "formula", "cases", "invalid_counts"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "./channel_plan_selection.schema.json"},
+    "format_version": {"const": 1},
+    "name": {"const": "channel_plan_selection"},
+    "description": {"type": "string", "minLength": 1},
+    "formula": {"const": "density > 8 or n_channels == 1 ? 0 : n_channels == 2 ? 1 : 1 + fnv1a32(eui64 || epoch_u32_le) % n_channels"},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "eui64_hex", "epoch", "density", "n_channels", "hash_32", "expected_channel"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+          "eui64_hex": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+          "epoch": {"type": "integer", "minimum": 0},
+          "density": {"type": "integer", "minimum": 0},
+          "n_channels": {"type": "integer", "minimum": 1},
+          "hash_32": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+          "expected_channel": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "invalid_counts": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"type": "integer", "maximum": 0},
+      "contains": {"const": 0}
+    }
+  }
+}

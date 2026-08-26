@@ -798,6 +798,91 @@ def frame_vectors() -> list[dict]:
     sig_short = sign(identity, preimage_short)
     encoded_short_signed = wire_short + sig_short
 
+    canonical_verification = {
+        "length": wire_short[0],
+        "llsec": wire_short[1],
+        "epoch": 1,
+        "seqnum": 2,
+        "dst_len": 2,
+        "dst_addr": "abcd",
+        "signer_eui64": signer_eui64.hex(),
+        "payload": b"hello!".hex(),
+        "signature": sig_short.hex(),
+    }
+
+    def signed_tamper_case(
+        component: str,
+        *,
+        length: int = wire_short[0],
+        llsec: int = wire_short[1],
+        epoch: int = 1,
+        seqnum: int = 2,
+        dst_len: int = 2,
+        dst_addr: bytes = bytes.fromhex("abcd"),
+        tampered_signer_eui64: bytes = signer_eui64,
+        payload: bytes = b"hello!",
+        signature: bytes = sig_short,
+        production_path: str = "frame",
+    ) -> dict:
+        """Build one fixed negative oracle without using production framing code."""
+        verification = {
+            "length": length,
+            "llsec": llsec,
+            "epoch": epoch,
+            "seqnum": seqnum,
+            "dst_len": dst_len,
+            "dst_addr": dst_addr.hex(),
+            "signer_eui64": tampered_signer_eui64.hex(),
+            "payload": payload.hex(),
+            "signature": signature.hex(),
+        }
+        wire_prefix = (
+            bytes([length, llsec, epoch])
+            + seqnum.to_bytes(2, "big")
+            + dst_addr
+            + tampered_signer_eui64
+            + payload
+        )
+        preimage = (
+            b"LICHEN-LINK-v1\x00"
+            + bytes([length, llsec, epoch])
+            + seqnum.to_bytes(2, "big")
+            + bytes([dst_len])
+            + dst_addr
+            + tampered_signer_eui64
+            + payload
+        )
+        return {
+            "name": f"tamper_{component}",
+            "component": component,
+            "production_path": production_path,
+            "verification": verification,
+            "preimage": preimage.hex(),
+            "wire": (wire_prefix + signature).hex(),
+            "expected_valid": False,
+        }
+
+    signed_tamper_cases = [
+        signed_tamper_case("length", length=wire_short[0] ^ 1),
+        signed_tamper_case("llsec", llsec=wire_short[1] ^ (1 << 2)),
+        signed_tamper_case("epoch", epoch=0),
+        signed_tamper_case("seqnum", seqnum=3),
+        # DST_LEN is the only signed octet that is not transmitted. Verify its
+        # fixed preimage directly because the frame verifier derives it from
+        # the destination slice rather than accepting it as an argument.
+        signed_tamper_case("dst_len", dst_len=3, production_path="preimage"),
+        signed_tamper_case("dst_addr", dst_addr=bytes.fromhex("aacd")),
+        signed_tamper_case(
+            "signer_eui64",
+            tampered_signer_eui64=bytes.fromhex("7fd5cfc679ab6343"),
+        ),
+        signed_tamper_case("payload", payload=b"hello?"),
+        signed_tamper_case(
+            "signature",
+            signature=bytes([sig_short[0] ^ 1]) + sig_short[1:],
+        ),
+    ]
+
     out.append(
         {
             "name": "short_addr_signed",
@@ -822,6 +907,8 @@ def frame_vectors() -> list[dict]:
                 "preimage": preimage_short.hex(),
                 "wire_prefix": wire_short.hex(),
                 "signature": sig_short.hex(),
+                "verification": canonical_verification,
+                "tamper_cases": signed_tamper_cases,
                 "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=2.",
             },
         }
@@ -850,7 +937,7 @@ def frame_vectors() -> list[dict]:
             },
             "encoded": (
                 "3d"
-                + "E0"
+                + "e0"
                 + "03"
                 + "0004"
                 + signer_eui64_encrypted.hex()
@@ -2446,61 +2533,191 @@ def ccp9_vectors() -> list[dict]:
     ]
 
 
-def cc_density_high(sf: int = 10, density: int = 15, utilization: int = 100) -> int:
-    return min(12, sf + 2) if density > 10 or utilization > 150 else sf
+def _ccp15_fnv1a32(data: bytes) -> int:
+    """Independent transcription of the CCP-15 FNV-1a32 primitive."""
+    value = 0x811C9DC5
+    for octet in data:
+        value = ((value ^ octet) * 0x01000193) & 0xFFFFFFFF
+    return value
 
 
-def cc_density_low(sf: int, density: int, snr_ema: float) -> int:
-    if density < 5 and snr_ema > 8:
-        return max(7, sf - 1)
-    return sf
+def _ccp15_select_channel(
+    eui64: bytes, epoch: int, density: int, n_channels: int
+) -> tuple[int, int]:
+    data = eui64 + (epoch & 0xFFFFFFFF).to_bytes(4, "little")
+    digest = _ccp15_fnv1a32(data)
+    channel = 0 if density > 8 else 1 + digest % max(n_channels, 3)
+    return digest, channel
+
+
+def _ccp15_adaptive_sf(
+    assigned_sf: int,
+    density: int,
+    ema_snr: int,
+    ema_loss_permille: int,
+    utilization: int,
+    load_factor_permille: int,
+) -> tuple[int, bool]:
+    """Independent transcription of AdaptiveSFSelect and its threshold table."""
+    sf = assigned_sf
+    if density > 10 or utilization > 150:
+        sf = min(12, sf + 2)
+    if ema_snr > 8 and density < 5:
+        sf = max(7, sf - 1)
+    if ema_loss_permille > 250 or utilization > 200:
+        sf = min(12, sf + 1)
+        if utilization > 200:
+            return 12, False
+    if ema_snr < -5:
+        sf = 12
+    elif ema_snr < 0:
+        sf = max(11, sf)
+    if density > 8:
+        sf = max(11, sf)
+    if load_factor_permille > 800:
+        sf = max(11, sf)
+    return sf, True
+
+
+def _ccp15_slot(eui64: bytes, sfn: int, num_slots: int) -> tuple[int, int]:
+    digest = _ccp15_fnv1a32(eui64)
+    wrapped_sum = (digest + (sfn & 0xFFFFFFFF)) & 0xFFFFFFFF
+    return digest, wrapped_sum % num_slots
 
 
 def ccp15_vectors() -> list[dict]:
-    v = []
-    for seed in range(3):
-        h = (seed * 0x9E3779B9) & 0xFFFFFFFF
-        load_factor = h / 4294967295.0
-        ema = 0.1 * load_factor + 0.9 * 0.4
-        sf = 7 if load_factor < 0.2 else 10 if load_factor < 0.6 else 12
-        v.append(
+    """CCP-15 CCA, interference, frequency, SF, and TDMA conformance cases.
+
+    Expected values are derived here directly from normative formulas. This
+    generator deliberately imports none of the Python production helpers used
+    by the vector consumers.
+    """
+    vectors: list[dict] = [
+        {
+            "name": "cca_clear_resets_contention",
+            "description": "A clear CAD permits TX and resets retry/backoff state.",
+            "category": "cca",
+            "input": {"channel_busy": False, "backoff_exp": 3, "retries": 2},
+            "expected": {
+                "result": "tx_success",
+                "backoff_exp": 0,
+                "retries": 0,
+                "tx_allowed": True,
+            },
+        },
+        {
+            "name": "cca_busy_advances_contention",
+            "description": "A busy CAD blocks TX, increments retries, and raises the backoff exponent.",
+            "category": "cca",
+            "input": {"channel_busy": True, "backoff_exp": 1, "retries": 0},
+            "expected": {
+                "result": "cad_busy",
+                "backoff_exp": 2,
+                "retries": 1,
+                "tx_allowed": False,
+            },
+        },
+        {
+            "name": "cca_retry_limit_exhausted",
+            "description": "The fourth busy CAD exceeds the three-retry limit and fails closed.",
+            "category": "cca",
+            "input": {"channel_busy": True, "backoff_exp": 5, "retries": 3},
+            "expected": {
+                "result": "retry_exhausted",
+                "backoff_exp": 5,
+                "retries": 4,
+                "tx_allowed": False,
+            },
+        },
+    ]
+
+    for name, busy_percent, per_permille in (
+        ("interference_idle", 0, 0),
+        ("interference_moderate", 30, 50),
+        ("interference_saturated", 95, 500),
+    ):
+        vectors.append(
             {
-                "name": f"seed{seed}",
-                "sf": sf,
-                "ema": round(ema, 6),
-                "load_factor": round(load_factor, 6),
-                "hash_32": f"{h:08x}",
+                "name": name,
+                "description": "Interference score in tenths of a percentage point: busy_percent*10 + packet_error_permille.",
+                "category": "interference",
+                "input": {
+                    "busy_percent": busy_percent,
+                    "packet_error_permille": per_permille,
+                },
+                "expected": {"score_tenths": busy_percent * 10 + per_permille},
             }
         )
-    v.append(
-        {
-            "name": "density_estimate_high",
-            "description": "adaptive_sf_select with density > 10 forces SF bump to MIN(12, SF+2) per spec/02a-coordinated-capacity.md:2a.7. SF10+2→12 with density=15, utilization=100.",
-            "assigned_sf": 10,
-            "density": 15,
-            "utilization": 100,
-            "load_factor": 0.3,
-            "neighbor_snr_ema": 5,
-            "neighbor_loss": 0.05,
-            "expected_sf": cc_density_high(sf=10, density=15, utilization=100),
-            "tx_allowed": True,
-        }
-    )
-    v.append(
-        {
-            "name": "sf_selection_low_density_capacity",
-            "description": "adaptive_sf_select with density < 5 and SNR_EMA > 8 decreases SF to MAX(7, SF-1) per spec/02a-coordinated-capacity.md:2a.7. SF10-1→9 with density=3, SNR_EMA=10.",
-            "assigned_sf": 10,
-            "density": 3,
-            "utilization": 50,
-            "load_factor": 0.2,
-            "neighbor_snr_ema": 10,
-            "neighbor_loss": 0.02,
-            "expected_sf": cc_density_low(sf=10, density=3, snr_ema=10),
-            "tx_allowed": True,
-        }
-    )
-    return v
+
+    for name, eui64_hex, epoch, density, n_channels in (
+        ("frequency_agility_normal", "0011223344556677", 42, 3, 8),
+        ("frequency_agility_high_density_ch0", "0011223344556677", 42, 9, 8),
+        ("frequency_agility_minimum_modulus", "ffffffffffffffff", 255, 0, 1),
+    ):
+        eui64 = bytes.fromhex(eui64_hex)
+        digest, channel = _ccp15_select_channel(eui64, epoch, density, n_channels)
+        vectors.append(
+            {
+                "name": name,
+                "description": "SelectChannel hashes EUI-64 || epoch-u32-le, uses at least three channels, and falls back to CH0 above density eight.",
+                "category": "frequency_agility",
+                "input": {
+                    "eui64_hex": eui64_hex,
+                    "epoch": epoch,
+                    "density": density,
+                    "n_channels": n_channels,
+                },
+                "expected": {"hash_32": f"{digest:08x}", "channel": channel},
+            }
+        )
+
+    for name, assigned_sf, density, ema_snr, loss, utilization, load in (
+        ("sf_high_density", 10, 15, 5, 50, 100, 300),
+        ("sf_low_density_good_snr", 10, 3, 10, 20, 50, 200),
+        ("sf_loss_above_threshold", 9, 6, 5, 251, 50, 200),
+        ("sf_utilization_blocks_tx", 7, 4, 5, 0, 201, 0),
+    ):
+        sf, tx_allowed = _ccp15_adaptive_sf(
+            assigned_sf, density, ema_snr, loss, utilization, load
+        )
+        vectors.append(
+            {
+                "name": name,
+                "description": "AdaptiveSFSelect boundary case derived from the normative CCP-15 pseudocode and threshold table.",
+                "category": "sf_adaptation",
+                "input": {
+                    "assigned_sf": assigned_sf,
+                    "density": density,
+                    "ema_snr": ema_snr,
+                    "ema_loss_permille": loss,
+                    "utilization": utilization,
+                    "load_factor_permille": load,
+                },
+                "expected": {"sf": sf, "tx_allowed": tx_allowed},
+            }
+        )
+
+    for name, eui64_hex, sfn, num_slots in (
+        ("tdma_slot_baseline", "1122334455667788", 5, 8),
+        ("tdma_slot_wrapping_sum", "0102030405060708", 0xFFFFFFFF, 3),
+        ("tdma_slot_zero_eui", "0000000000000000", 0, 16),
+    ):
+        eui64 = bytes.fromhex(eui64_hex)
+        digest, slot = _ccp15_slot(eui64, sfn, num_slots)
+        vectors.append(
+            {
+                "name": name,
+                "description": "TDMA slot is (FNV1a32(EUI-64) + u32(SFN)) mod 2^32, then mod num_slots.",
+                "category": "tdma",
+                "input": {
+                    "eui64_hex": eui64_hex,
+                    "sfn": sfn,
+                    "num_slots": num_slots,
+                },
+                "expected": {"hash_32": f"{digest:08x}", "slot": slot},
+            }
+        )
+    return vectors
 
 
 def ccp13_vectors() -> list[dict]:
@@ -2577,6 +2794,175 @@ def ccp13_vectors() -> list[dict]:
             "remaining_ms": 360000,
         },
     ]
+
+
+def _oracle_duty_cycle_used_ms(
+    transmissions: list[tuple[int, int]], now_ms: int, window_ms: int
+) -> int:
+    """Return rolling-window airtime using only half-open interval arithmetic."""
+    window_start = max(0, now_ms - window_ms)
+    used_ms = 0
+    for start_ms, duration_ms in transmissions:
+        end_ms = min((1 << 64) - 1, start_ms + duration_ms)
+        if start_ms >= window_start:
+            used_ms += duration_ms
+        elif end_ms > window_start:
+            used_ms += end_ms - window_start
+    return used_ms
+
+
+def _oracle_lora_airtime_us(
+    payload_len: int,
+    spreading_factor: int,
+    bandwidth_hz: int,
+    coding_rate: int,
+    preamble_symbols: int,
+) -> int:
+    """Evaluate the Semtech airtime formula independently with integers."""
+    payload_numerator = 8 * payload_len - 4 * spreading_factor + 28 + 16
+    payload_denominator = 4 * spreading_factor
+    coded_blocks = (
+        0
+        if payload_numerator <= 0
+        else (payload_numerator + payload_denominator - 1) // payload_denominator
+    )
+    payload_symbols = 8 + coded_blocks * coding_rate
+    quarter_symbols = 4 * preamble_symbols + 17 + 4 * payload_symbols
+    return (quarter_symbols * (1 << spreading_factor) * 1_000_000) // (4 * bandwidth_hz)
+
+
+def duty_cycle_calculation_vectors() -> list[dict]:
+    """Regional duty-cycle vectors derived without importing either implementation."""
+    window_ms = 3_600_000
+    eu_budget_ms = window_ms * 10 // 1000
+    exact_airtime_us = _oracle_lora_airtime_us(60, 9, 125_000, 5, 8)
+    assert exact_airtime_us == 369_664
+
+    def tracking_vector(
+        name: str,
+        description: str,
+        *,
+        region: str,
+        transmissions: list[tuple[int, int]],
+        query_ms: int,
+        proposed_duration_ms: int,
+    ) -> dict:
+        duty_permille = 10 if region == "EU868" else 1000
+        max_dwell_ms = None if region == "EU868" else 400
+        budget_ms = window_ms * duty_permille // 1000
+        used_ms = _oracle_duty_cycle_used_ms(transmissions, query_ms, window_ms)
+        within_dwell = max_dwell_ms is None or proposed_duration_ms <= max_dwell_ms
+        return {
+            "name": name,
+            "description": description,
+            "category": "tracking",
+            "profile": {
+                "region": region,
+                "duty_permille": duty_permille,
+                "duty_cycle_percent": duty_permille / 10,
+                "window_ms": window_ms,
+                "max_dwell_time_ms": max_dwell_ms,
+            },
+            "transmissions": [
+                {"start_ms": start_ms, "duration_ms": duration_ms}
+                for start_ms, duration_ms in transmissions
+            ],
+            "query_ms": query_ms,
+            "proposed_duration_ms": proposed_duration_ms,
+            "expected": {
+                "used_ms": used_ms,
+                "remaining_ms": max(0, budget_ms - used_ms),
+                "usage_permille": used_ms * 1000 // window_ms,
+                "can_transmit": within_dwell and used_ms + proposed_duration_ms <= budget_ms,
+            },
+        }
+
+    vectors = [
+        {
+            "name": "sf9_exact_airtime_and_packet_budgets",
+            "description": "The integer Semtech oracle gives 369.664 ms for a 60-byte SF9/125 kHz/CR4/5 packet; floor division yields 97 packets at EU 1% and 973 in the spec's 10% example.",
+            "category": "exact_airtime",
+            "radio": {
+                "payload_len": 60,
+                "spreading_factor": 9,
+                "bandwidth_hz": 125000,
+                "coding_rate": 5,
+                "preamble_symbols": 8,
+                "crc_enabled": True,
+                "implicit_header": False,
+            },
+            "expected": {
+                "airtime_us": exact_airtime_us,
+                "eu_1_percent_packets_per_hour": 36_000_000 // exact_airtime_us,
+                "spec_10_percent_packets_per_hour": 360_000_000 // exact_airtime_us,
+            },
+        },
+        tracking_vector(
+            "eu868_exact_limit_denial",
+            "EU868 accepts exactly 36 seconds in a one-hour window and denies one more millisecond.",
+            region="EU868",
+            transmissions=[(0, eu_budget_ms)],
+            query_ms=0,
+            proposed_duration_ms=1,
+        ),
+        tracking_vector(
+            "eu868_accumulates_multiple_transmissions",
+            "Three transmissions accumulate using integer milliseconds without rounding their sum.",
+            region="EU868",
+            transmissions=[(1000, 1234), (5000, 5678), (12000, 9012)],
+            query_ms=12000,
+            proposed_duration_ms=20076,
+        ),
+        tracking_vector(
+            "rolling_boundary_still_denied",
+            "At exactly one window after the start, a 36-second transmission still overlaps the half-open rolling window in full.",
+            region="EU868",
+            transmissions=[(0, eu_budget_ms)],
+            query_ms=window_ms,
+            proposed_duration_ms=1,
+        ),
+        tracking_vector(
+            "rolling_boundary_partial_recovery",
+            "One millisecond later, one millisecond has left the rolling window and a one-millisecond transmission is allowed.",
+            region="EU868",
+            transmissions=[(0, eu_budget_ms)],
+            query_ms=window_ms + 1,
+            proposed_duration_ms=1,
+        ),
+        tracking_vector(
+            "rolling_boundary_full_recovery",
+            "Once the original transmission end reaches the window start, its complete budget is restored.",
+            region="EU868",
+            transmissions=[(0, eu_budget_ms)],
+            query_ms=window_ms + eu_budget_ms,
+            proposed_duration_ms=eu_budget_ms,
+        ),
+        tracking_vector(
+            "us915_fcc_dwell_exact_limit",
+            "The current US915 FHSS profile has no rolling cap below 100%, but permits at most 400 ms on one hopping channel.",
+            region="US915",
+            transmissions=[],
+            query_ms=0,
+            proposed_duration_ms=400,
+        ),
+        tracking_vector(
+            "us915_fcc_dwell_over_limit",
+            "A 401 ms US915 transmission is denied by the FCC dwell ceiling even with an empty rolling window.",
+            region="US915",
+            transmissions=[],
+            query_ms=0,
+            proposed_duration_ms=401,
+        ),
+        tracking_vector(
+            "u64_timestamp_saturates_without_budget_overflow",
+            "Accounting near the u64 monotonic-time ceiling saturates interval ends and preserves the airtime total.",
+            region="EU868",
+            transmissions=[((1 << 64) - 51, 100)],
+            query_ms=(1 << 64) - 1,
+            proposed_duration_ms=35900,
+        ),
+    ]
+    return vectors
 
 
 def rpl_multi_instance_vectors() -> list[dict]:
@@ -4078,13 +4464,18 @@ VECTOR_FILES: tuple[_VectorFile, ...] = (
     ),
     _VectorFile(
         "ccp15.json",
-        "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test). Includes density_estimate_high (Density>8 triggers CH0 fallback) and sf_selection_low_density_capacity (adaptive SF with low density, good SNR) vectors.",
+        "CCP-15 independently derived conformance vectors for CCA state transitions, interference scoring, frequency agility, adaptive SF selection, and TDMA slot assignment.",
         builder="ccp15_vectors",
     ),
     _VectorFile(
         "ccp13.json",
         "CCP-13 DutyCycleTracker vectors with independent math oracles for prune, proration, remaining_ms, usage_permille, can_transmit, next_available. Matches Rust, C, Python sim exactly. No code-under-test dependency.",
         builder="ccp13_vectors",
+    ),
+    _VectorFile(
+        "duty_cycle_calculation.json",
+        "Cross-implementation duty-cycle calculations: exact LoRa airtime, EU868 1% accumulation and rolling-window boundaries, US915 FCC dwell limits, denial/recovery, and u64 timestamp saturation.",
+        builder="duty_cycle_calculation_vectors",
     ),
     _VectorFile(
         "rpl_messages.json",

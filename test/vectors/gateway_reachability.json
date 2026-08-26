@@ -1,0 +1,21 @@
+{
+  "description": "A border router advertises identity-preserving global/Yggdrasil reachability with the standard RPL Grounded bit and no Prefix Information option",
+  "rpl_instance_id": 1,
+  "dodag_id": "0200::1",
+  "version": 7,
+  "rank": 256,
+  "cases": [
+    {
+      "name": "upstream_unavailable_is_not_grounded",
+      "ygg_reachable": false,
+      "expected_grounded": false,
+      "expected_g_mop_prf": 8
+    },
+    {
+      "name": "upstream_available_is_grounded",
+      "ygg_reachable": true,
+      "expected_grounded": true,
+      "expected_g_mop_prf": 136
+    }
+  ]
+}

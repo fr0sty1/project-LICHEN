@@ -1,0 +1,162 @@
+{
+  "name": "oscore_cross_exchange",
+  "format_version": 1,
+  "description": "Cross-implementation OSCORE ciphertext parity fixture. Each exchange's inputs derive deterministically from test/vectors/oscore.json (roundtrip vectors plus synthesized responses over the same contexts); python_protected and rust_protected record each implementation's independent output.",
+  "source_vectors": "test/vectors/oscore.json",
+  "generator": "test/vectors/generate_oscore_cross.py",
+  "regenerate": "cd python && .venv/bin/python ../test/vectors/generate_oscore_cross.py",
+  "requests": [
+    {
+      "name": "roundtrip_simple_request",
+      "vector": "roundtrip_simple_request",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "00",
+      "recipient_id": "01",
+      "id_context": null,
+      "sender_seq": 0,
+      "plaintext": {
+        "code": 1,
+        "options": "",
+        "payload": "68656c6c6f"
+      },
+      "python_protected": {
+        "oscore_option": "090000",
+        "ciphertext": "f90ea201beb6962690e28a69fa27ad"
+      },
+      "rust_protected": {
+        "oscore_option": "090000",
+        "ciphertext": "f90ea201beb6962690e28a69fa27ad"
+      }
+    },
+    {
+      "name": "roundtrip_request_with_payload",
+      "vector": "roundtrip_request_with_payload",
+      "master_secret": "deadbeefcafebabedeadbeefcafebabe",
+      "master_salt": "0011223344556677",
+      "sender_id": "aa",
+      "recipient_id": "bb",
+      "id_context": null,
+      "sender_seq": 42,
+      "plaintext": {
+        "code": 2,
+        "options": "",
+        "payload": "7b226d657373616765223a2274657374227d"
+      },
+      "python_protected": {
+        "oscore_option": "092aaa",
+        "ciphertext": "f9adeb44451048d53aed056c45408ec3a91cf389dff92692e8c8e2ec"
+      },
+      "rust_protected": {
+        "oscore_option": "092aaa",
+        "ciphertext": "f9adeb44451048d53aed056c45408ec3a91cf389dff92692e8c8e2ec"
+      }
+    }
+  ],
+  "responses": [
+    {
+      "name": "roundtrip_simple_request#response_nopiv",
+      "vector": "roundtrip_simple_request",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "00",
+      "recipient_id": "01",
+      "id_context": null,
+      "request_kid": "00",
+      "request_piv": "00",
+      "include_piv": false,
+      "responder_sender_seq": 0,
+      "plaintext": {
+        "code": 69,
+        "options": "",
+        "payload": "4c494348454e2063726f737320726573706f6e7365"
+      },
+      "python_protected": {
+        "oscore_option": "",
+        "ciphertext": "939ea89e47f10700905b7f5ca2f6c48745d09e454eb5972b66d0b621980e4e"
+      },
+      "rust_protected": {
+        "oscore_option": "",
+        "ciphertext": "939ea89e47f10700905b7f5ca2f6c48745d09e454eb5972b66d0b621980e4e"
+      }
+    },
+    {
+      "name": "roundtrip_simple_request#response_piv",
+      "vector": "roundtrip_simple_request",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "00",
+      "recipient_id": "01",
+      "id_context": null,
+      "request_kid": "00",
+      "request_piv": "00",
+      "include_piv": true,
+      "responder_sender_seq": 0,
+      "plaintext": {
+        "code": 69,
+        "options": "",
+        "payload": "4c494348454e2063726f737320726573706f6e7365"
+      },
+      "python_protected": {
+        "oscore_option": "0100",
+        "ciphertext": "4d4c174abca09c1d23beb61448a607f82200f6b3e0c42eecd007041fa96af8"
+      },
+      "rust_protected": {
+        "oscore_option": "0100",
+        "ciphertext": "4d4c174abca09c1d23beb61448a607f82200f6b3e0c42eecd007041fa96af8"
+      }
+    },
+    {
+      "name": "roundtrip_request_with_payload#response_nopiv",
+      "vector": "roundtrip_request_with_payload",
+      "master_secret": "deadbeefcafebabedeadbeefcafebabe",
+      "master_salt": "0011223344556677",
+      "sender_id": "aa",
+      "recipient_id": "bb",
+      "id_context": null,
+      "request_kid": "aa",
+      "request_piv": "2a",
+      "include_piv": false,
+      "responder_sender_seq": 0,
+      "plaintext": {
+        "code": 69,
+        "options": "",
+        "payload": "4c494348454e2063726f737320726573706f6e7365"
+      },
+      "python_protected": {
+        "oscore_option": "",
+        "ciphertext": "823da056303ba4df85cf369f2ab9d854b9591a2fdf9b777ea8a80e2847cc3a"
+      },
+      "rust_protected": {
+        "oscore_option": "",
+        "ciphertext": "823da056303ba4df85cf369f2ab9d854b9591a2fdf9b777ea8a80e2847cc3a"
+      }
+    },
+    {
+      "name": "roundtrip_request_with_payload#response_piv",
+      "vector": "roundtrip_request_with_payload",
+      "master_secret": "deadbeefcafebabedeadbeefcafebabe",
+      "master_salt": "0011223344556677",
+      "sender_id": "aa",
+      "recipient_id": "bb",
+      "id_context": null,
+      "request_kid": "aa",
+      "request_piv": "2a",
+      "include_piv": true,
+      "responder_sender_seq": 0,
+      "plaintext": {
+        "code": 69,
+        "options": "",
+        "payload": "4c494348454e2063726f737320726573706f6e7365"
+      },
+      "python_protected": {
+        "oscore_option": "0100",
+        "ciphertext": "6123fe01c25e1144837d290b00479d39200f4f7ef3469934eab8a0d7b27b28"
+      },
+      "rust_protected": {
+        "oscore_option": "0100",
+        "ciphertext": "6123fe01c25e1144837d290b00479d39200f4f7ef3469934eab8a0d7b27b28"
+      }
+    }
+  ]
+}

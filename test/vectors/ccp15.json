@@ -1,52 +1,246 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "ccp15 vectors for SF EMA load_factor hash_32(FNV-1a32 basis 0x811c9dc5 per spec/02a-coordinated-capacity.md:123) congestion control with independent external arithmetic oracle (math based, no code under test). Includes density_estimate_high (Density>8 triggers CH0 fallback) and sf_selection_low_density_capacity (adaptive SF with low density, good SNR) vectors.",
+  "description": "CCP-15 independently derived conformance vectors for CCA state transitions, interference scoring, frequency agility, adaptive SF selection, and TDMA slot assignment.",
   "vectors": [
     {
-      "name": "seed0",
-      "sf": 7,
-      "ema": 0.36,
-      "load_factor": 0.0,
-      "hash_32": "00000000"
+      "name": "cca_clear_resets_contention",
+      "description": "A clear CAD permits TX and resets retry/backoff state.",
+      "category": "cca",
+      "input": {
+        "channel_busy": false,
+        "backoff_exp": 3,
+        "retries": 2
+      },
+      "expected": {
+        "result": "tx_success",
+        "backoff_exp": 0,
+        "retries": 0,
+        "tx_allowed": true
+      }
     },
     {
-      "name": "seed1",
-      "sf": 12,
-      "ema": 0.421803,
-      "load_factor": 0.618034,
-      "hash_32": "9e3779b9"
+      "name": "cca_busy_advances_contention",
+      "description": "A busy CAD blocks TX, increments retries, and raises the backoff exponent.",
+      "category": "cca",
+      "input": {
+        "channel_busy": true,
+        "backoff_exp": 1,
+        "retries": 0
+      },
+      "expected": {
+        "result": "cad_busy",
+        "backoff_exp": 2,
+        "retries": 1,
+        "tx_allowed": false
+      }
     },
     {
-      "name": "seed2",
-      "sf": 10,
-      "ema": 0.383607,
-      "load_factor": 0.236068,
-      "hash_32": "3c6ef372"
+      "name": "cca_retry_limit_exhausted",
+      "description": "The fourth busy CAD exceeds the three-retry limit and fails closed.",
+      "category": "cca",
+      "input": {
+        "channel_busy": true,
+        "backoff_exp": 5,
+        "retries": 3
+      },
+      "expected": {
+        "result": "retry_exhausted",
+        "backoff_exp": 5,
+        "retries": 4,
+        "tx_allowed": false
+      }
     },
     {
-      "name": "density_estimate_high",
-      "description": "adaptive_sf_select with density > 10 forces SF bump to MIN(12, SF+2) per spec/02a-coordinated-capacity.md:2a.7. SF10+2\u219212 with density=15, utilization=100.",
-      "assigned_sf": 10,
-      "density": 15,
-      "utilization": 100,
-      "load_factor": 0.3,
-      "neighbor_snr_ema": 5,
-      "neighbor_loss": 0.05,
-      "expected_sf": 12,
-      "tx_allowed": true
+      "name": "interference_idle",
+      "description": "Interference score in tenths of a percentage point: busy_percent*10 + packet_error_permille.",
+      "category": "interference",
+      "input": {
+        "busy_percent": 0,
+        "packet_error_permille": 0
+      },
+      "expected": {
+        "score_tenths": 0
+      }
     },
     {
-      "name": "sf_selection_low_density_capacity",
-      "description": "adaptive_sf_select with density < 5 and SNR_EMA > 8 decreases SF to MAX(7, SF-1) per spec/02a-coordinated-capacity.md:2a.7. SF10-1\u21929 with density=3, SNR_EMA=10.",
-      "assigned_sf": 10,
-      "density": 3,
-      "utilization": 50,
-      "load_factor": 0.2,
-      "neighbor_snr_ema": 10,
-      "neighbor_loss": 0.02,
-      "expected_sf": 9,
-      "tx_allowed": true
+      "name": "interference_moderate",
+      "description": "Interference score in tenths of a percentage point: busy_percent*10 + packet_error_permille.",
+      "category": "interference",
+      "input": {
+        "busy_percent": 30,
+        "packet_error_permille": 50
+      },
+      "expected": {
+        "score_tenths": 350
+      }
+    },
+    {
+      "name": "interference_saturated",
+      "description": "Interference score in tenths of a percentage point: busy_percent*10 + packet_error_permille.",
+      "category": "interference",
+      "input": {
+        "busy_percent": 95,
+        "packet_error_permille": 500
+      },
+      "expected": {
+        "score_tenths": 1450
+      }
+    },
+    {
+      "name": "frequency_agility_normal",
+      "description": "SelectChannel hashes EUI-64 || epoch-u32-le, uses at least three channels, and falls back to CH0 above density eight.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 42,
+        "density": 3,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "a0d2fe07",
+        "channel": 8
+      }
+    },
+    {
+      "name": "frequency_agility_high_density_ch0",
+      "description": "SelectChannel hashes EUI-64 || epoch-u32-le, uses at least three channels, and falls back to CH0 above density eight.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 42,
+        "density": 9,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "a0d2fe07",
+        "channel": 0
+      }
+    },
+    {
+      "name": "frequency_agility_minimum_modulus",
+      "description": "SelectChannel hashes EUI-64 || epoch-u32-le, uses at least three channels, and falls back to CH0 above density eight.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "ffffffffffffffff",
+        "epoch": 255,
+        "density": 0,
+        "n_channels": 1
+      },
+      "expected": {
+        "hash_32": "800492c2",
+        "channel": 2
+      }
+    },
+    {
+      "name": "sf_high_density",
+      "description": "AdaptiveSFSelect boundary case derived from the normative CCP-15 pseudocode and threshold table.",
+      "category": "sf_adaptation",
+      "input": {
+        "assigned_sf": 10,
+        "density": 15,
+        "ema_snr": 5,
+        "ema_loss_permille": 50,
+        "utilization": 100,
+        "load_factor_permille": 300
+      },
+      "expected": {
+        "sf": 12,
+        "tx_allowed": true
+      }
+    },
+    {
+      "name": "sf_low_density_good_snr",
+      "description": "AdaptiveSFSelect boundary case derived from the normative CCP-15 pseudocode and threshold table.",
+      "category": "sf_adaptation",
+      "input": {
+        "assigned_sf": 10,
+        "density": 3,
+        "ema_snr": 10,
+        "ema_loss_permille": 20,
+        "utilization": 50,
+        "load_factor_permille": 200
+      },
+      "expected": {
+        "sf": 9,
+        "tx_allowed": true
+      }
+    },
+    {
+      "name": "sf_loss_above_threshold",
+      "description": "AdaptiveSFSelect boundary case derived from the normative CCP-15 pseudocode and threshold table.",
+      "category": "sf_adaptation",
+      "input": {
+        "assigned_sf": 9,
+        "density": 6,
+        "ema_snr": 5,
+        "ema_loss_permille": 251,
+        "utilization": 50,
+        "load_factor_permille": 200
+      },
+      "expected": {
+        "sf": 10,
+        "tx_allowed": true
+      }
+    },
+    {
+      "name": "sf_utilization_blocks_tx",
+      "description": "AdaptiveSFSelect boundary case derived from the normative CCP-15 pseudocode and threshold table.",
+      "category": "sf_adaptation",
+      "input": {
+        "assigned_sf": 7,
+        "density": 4,
+        "ema_snr": 5,
+        "ema_loss_permille": 0,
+        "utilization": 201,
+        "load_factor_permille": 0
+      },
+      "expected": {
+        "sf": 12,
+        "tx_allowed": false
+      }
+    },
+    {
+      "name": "tdma_slot_baseline",
+      "description": "TDMA slot is (FNV1a32(EUI-64) + u32(SFN)) mod 2^32, then mod num_slots.",
+      "category": "tdma",
+      "input": {
+        "eui64_hex": "1122334455667788",
+        "sfn": 5,
+        "num_slots": 8
+      },
+      "expected": {
+        "hash_32": "912fa46d",
+        "slot": 2
+      }
+    },
+    {
+      "name": "tdma_slot_wrapping_sum",
+      "description": "TDMA slot is (FNV1a32(EUI-64) + u32(SFN)) mod 2^32, then mod num_slots.",
+      "category": "tdma",
+      "input": {
+        "eui64_hex": "0102030405060708",
+        "sfn": 4294967295,
+        "num_slots": 3
+      },
+      "expected": {
+        "hash_32": "2804678d",
+        "slot": 2
+      }
+    },
+    {
+      "name": "tdma_slot_zero_eui",
+      "description": "TDMA slot is (FNV1a32(EUI-64) + u32(SFN)) mod 2^32, then mod num_slots.",
+      "category": "tdma",
+      "input": {
+        "eui64_hex": "0000000000000000",
+        "sfn": 0,
+        "num_slots": 16
+      },
+      "expected": {
+        "hash_32": "9be17165",
+        "slot": 5
+      }
     }
   ]
 }

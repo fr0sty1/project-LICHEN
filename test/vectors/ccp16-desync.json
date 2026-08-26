@@ -25,9 +25,9 @@
   },
   {
     "name": "desync_recovery_beacon_revalidate",
-    "description": "After desync, first valid beacon resets state; test vector for recovery transition.",
+    "description": "After desync, first valid beacon starts RECOVERING state; 3 consecutive valid beacons needed for SYNCED per 14.7 FSM.",
     "type": "recovery",
     "sfn": 100,
-    "expected": "joined"
+    "expected": "recovering"
   }
 ]

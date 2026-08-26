@@ -1,0 +1,148 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Byte-exact SCHC fragmentation tile sizing across MTU and Rule ID/DTag/window/FCN/RCS field-width boundaries.",
+  "oracle": {
+    "basis": "RFC 8724 Section 8 and draft-lichen-schc-lora-00 Section 5.1",
+    "derivation": "capacity=floor((8*MTU-(RuleID+DTag+W+FCN+RCS))/8); a fixed tile is min(regular/All-0 capacity, All-1 capacity)",
+    "implementation": "Standalone checked Python integer arithmetic; no LICHEN imports",
+    "generator_command": "python3 test/vectors/generate_schc_tile_sizing.py"
+  },
+  "vectors": [
+    {
+      "name": "lichen_profile_mtu_185",
+      "mtu_bytes": 185,
+      "rule_id_bits": 8,
+      "dtag_bits": 0,
+      "window_bits": 1,
+      "fcn_bits": 6,
+      "rcs_bits": 32,
+      "outcome": "ok",
+      "regular_all0_capacity_bytes": 183,
+      "all1_capacity_bytes": 179,
+      "tile_size_bytes": 179
+    },
+    {
+      "name": "minimum_profile_mtu",
+      "mtu_bytes": 7,
+      "rule_id_bits": 8,
+      "dtag_bits": 0,
+      "window_bits": 1,
+      "fcn_bits": 6,
+      "rcs_bits": 32,
+      "outcome": "ok",
+      "regular_all0_capacity_bytes": 5,
+      "all1_capacity_bytes": 1,
+      "tile_size_bytes": 1
+    },
+    {
+      "name": "profile_mtu_underflow",
+      "mtu_bytes": 6,
+      "rule_id_bits": 8,
+      "dtag_bits": 0,
+      "window_bits": 1,
+      "fcn_bits": 6,
+      "rcs_bits": 32,
+      "outcome": "error",
+      "expected_error": "no_payload"
+    },
+    {
+      "name": "zero_mtu",
+      "mtu_bytes": 0,
+      "rule_id_bits": 8,
+      "dtag_bits": 0,
+      "window_bits": 1,
+      "fcn_bits": 6,
+      "rcs_bits": 32,
+      "outcome": "error",
+      "expected_error": "invalid_mtu"
+    },
+    {
+      "name": "maximum_lora_payload",
+      "mtu_bytes": 255,
+      "rule_id_bits": 8,
+      "dtag_bits": 0,
+      "window_bits": 1,
+      "fcn_bits": 6,
+      "rcs_bits": 32,
+      "outcome": "ok",
+      "regular_all0_capacity_bytes": 253,
+      "all1_capacity_bytes": 249,
+      "tile_size_bytes": 249
+    },
+    {
+      "name": "alternate_field_widths",
+      "mtu_bytes": 50,
+      "rule_id_bits": 3,
+      "dtag_bits": 2,
+      "window_bits": 2,
+      "fcn_bits": 3,
+      "rcs_bits": 32,
+      "outcome": "ok",
+      "regular_all0_capacity_bytes": 48,
+      "all1_capacity_bytes": 44,
+      "tile_size_bytes": 44
+    },
+    {
+      "name": "wide_fields_and_rcs",
+      "mtu_bytes": 100,
+      "rule_id_bits": 16,
+      "dtag_bits": 4,
+      "window_bits": 3,
+      "fcn_bits": 5,
+      "rcs_bits": 64,
+      "outcome": "ok",
+      "regular_all0_capacity_bytes": 96,
+      "all1_capacity_bytes": 88,
+      "tile_size_bytes": 88
+    },
+    {
+      "name": "no_rcs_profile",
+      "mtu_bytes": 20,
+      "rule_id_bits": 8,
+      "dtag_bits": 1,
+      "window_bits": 2,
+      "fcn_bits": 3,
+      "rcs_bits": 0,
+      "outcome": "ok",
+      "regular_all0_capacity_bytes": 18,
+      "all1_capacity_bytes": 18,
+      "tile_size_bytes": 18
+    },
+    {
+      "name": "maximum_safe_u64_mtu",
+      "mtu_bytes": 2305843009213693951,
+      "rule_id_bits": 8,
+      "dtag_bits": 0,
+      "window_bits": 1,
+      "fcn_bits": 6,
+      "rcs_bits": 32,
+      "outcome": "ok",
+      "regular_all0_capacity_bytes": 2305843009213693949,
+      "all1_capacity_bytes": 2305843009213693945,
+      "tile_size_bytes": 2305843009213693945
+    },
+    {
+      "name": "mtu_multiplication_overflow",
+      "mtu_bytes": 18446744073709551615,
+      "rule_id_bits": 8,
+      "dtag_bits": 0,
+      "window_bits": 1,
+      "fcn_bits": 6,
+      "rcs_bits": 32,
+      "outcome": "error",
+      "expected_error": "arithmetic_overflow"
+    },
+    {
+      "name": "field_sum_overflow",
+      "mtu_bytes": 185,
+      "rule_id_bits": 18446744073709551615,
+      "dtag_bits": 1,
+      "window_bits": 0,
+      "fcn_bits": 0,
+      "rcs_bits": 0,
+      "outcome": "error",
+      "expected_error": "arithmetic_overflow"
+    }
+  ]
+}

@@ -364,12 +364,17 @@ def packets_timing_vectors() -> list[dict[str, object]]:
                 self.counter,
             ) = imin_ms, 0, 0, 0, 0
 
-        def start(self, now: int) -> None:
+        def _begin_interval(self, now: int) -> None:
+            half = (self.interval + 1) // 2
+            span = self.interval - half
             self.interval_start = now
-            self.transmit_time = (
-                now + self.interval // 2 + int(self.rng() * (self.interval // 2))
-            )
+            self.transmit_time = now + half + int(self.rng() * span)
             self.interval_end = now + self.interval
+            self.counter = 0
+
+        def start(self, now: int) -> None:
+            self.interval = self.imin_ms
+            self._begin_interval(now)
 
         def heard_consistent(self) -> None:
             self.counter += 1
@@ -379,7 +384,11 @@ def packets_timing_vectors() -> list[dict[str, object]]:
 
         def expire(self, now: int) -> None:
             self.interval = min(self.interval * 2, self.imin_ms << self.imax_doublings)
-            self.interval_start = now
+            self._begin_interval(now)
+
+        def reset(self, now: int) -> None:
+            self.interval = self.imin_ms
+            self._begin_interval(now)
 
     class Stratum:
         NO_SYNC, NTS, GNSS_GPSD = 0, 3, 4
@@ -643,6 +652,49 @@ def packets_timing_vectors() -> list[dict[str, object]]:
             "k": TRICKLE_K,
         }
     )
+    profile_intervals = [TRICKLE_IMIN_MS << doubling for doubling in range(9)]
+    profile_intervals.append(TRICKLE_IMAX_EXACT_MS)
+    vectors.append(
+        {
+            "name": "trickle_profile_math",
+            "description": (
+                "Exact LICHEN profile math: Imin=4000 ms, eight doublings to "
+                "Imax=1,024,000 ms (1024 s), then clamp; integer transmit "
+                "points cover both inclusive/exclusive boundaries of [I/2,I)."
+            ),
+            "category": "trickle_state",
+            "Imin_ms": TRICKLE_IMIN_MS,
+            "Imax_doublings": 8,
+            "Imax_exact_ms": TRICKLE_IMAX_EXACT_MS,
+            "Imax_seconds": TRICKLE_IMAX_EXACT_MS // 1000,
+            "k": TRICKLE_K,
+            "interval_sequence_ms": profile_intervals,
+            "transmit_cases": [
+                {
+                    "interval_ms": TRICKLE_IMIN_MS,
+                    "rand_offset_ms": 0,
+                    "expected_transmit_offset_ms": TRICKLE_IMIN_MS // 2,
+                },
+                {
+                    "interval_ms": TRICKLE_IMIN_MS,
+                    "rand_offset_ms": TRICKLE_IMIN_MS // 2 - 1,
+                    "expected_transmit_offset_ms": TRICKLE_IMIN_MS - 1,
+                },
+                {
+                    "interval_ms": TRICKLE_IMAX_EXACT_MS,
+                    "rand_offset_ms": 0,
+                    "expected_transmit_offset_ms": TRICKLE_IMAX_EXACT_MS // 2,
+                },
+                {
+                    "interval_ms": TRICKLE_IMAX_EXACT_MS,
+                    "rand_offset_ms": TRICKLE_IMAX_EXACT_MS // 2 - 1,
+                    "expected_transmit_offset_ms": TRICKLE_IMAX_EXACT_MS - 1,
+                },
+            ],
+            "suppression_counter_boundary": TRICKLE_K,
+            "reset_interval_ms": TRICKLE_IMIN_MS,
+        }
+    )
 
     # Trickle state machine deterministic walk (rng=0.0 -> transmit at half)
     t = TrickleTimer(
@@ -674,6 +726,57 @@ def packets_timing_vectors() -> list[dict[str, object]]:
             "should_transmit": t.should_transmit(),
         }
     )
+    consistency_scope = bytes.fromhex("20010db8000000000000000000000001")
+    foreign_scope = bytes.fromhex("20010db8000000000000000000000002")
+    consistency_cases: list[dict[str, object]] = []
+    for (
+        name,
+        active,
+        after_transmit,
+        counter_before,
+        observed_id,
+        observed_version,
+    ) in (
+        ("stopped_exact_scope", False, False, 0, consistency_scope, 7),
+        ("active_exact_scope", True, False, 0, consistency_scope, 7),
+        ("active_wrong_version", True, False, 1, consistency_scope, 8),
+        ("active_wrong_dodag", True, False, 1, foreign_scope, 7),
+        ("waiting_expire_exact_scope", True, True, 2, consistency_scope, 7),
+        ("suppression_boundary", True, False, TRICKLE_K - 1, consistency_scope, 7),
+        ("saturating_counter", True, False, 0xFFFFFFFF, consistency_scope, 7),
+    ):
+        accepted = active and observed_id == consistency_scope and observed_version == 7
+        counter_after = min(counter_before + int(accepted), 0xFFFFFFFF)
+        consistency_cases.append(
+            {
+                "name": name,
+                "active": active,
+                "after_transmit": after_transmit,
+                "counter_before": counter_before,
+                "observed_dodag_id_hex": observed_id.hex(),
+                "observed_version": observed_version,
+                "expected_accepted": accepted,
+                "expected_counter_after": counter_after,
+                "expected_should_transmit": active and counter_after < TRICKLE_K,
+                "expected_interval_unchanged": True,
+            }
+        )
+    vectors.append(
+        {
+            "name": "trickle_consistency_detection",
+            "description": (
+                "Only an active interval and exact DODAG identity/version match "
+                "increments c; mismatches do not reset, k suppresses at c=10, and "
+                "the u32 counter saturates."
+            ),
+            "category": "trickle_state",
+            "Imin_ms": TRICKLE_IMIN_MS,
+            "k": TRICKLE_K,
+            "scope_dodag_id_hex": consistency_scope.hex(),
+            "scope_version": 7,
+            "cases": consistency_cases,
+        }
+    )
     # saturate counter to k
     for _ in range(20):
         t.heard_consistent()
@@ -697,6 +800,55 @@ def packets_timing_vectors() -> list[dict[str, object]]:
             "description": "After expire, interval doubles to 8000 (capped at 1_024_000).",
             "category": "trickle_state",
             "interval_after_expire": t2.interval,
+        }
+    )
+
+    # Accepted inconsistencies restart even at Imin and therefore consume a
+    # fresh sample. The offset values below are also represented directly so
+    # integer-only embedded implementations can consume the same oracle.
+    reset_samples = iter((0.0, 0.25, 0.75, 0.125))
+    reset_timer = TrickleTimer(
+        imin_ms=TRICKLE_IMIN_MS,
+        imax_doublings=8,
+        k=TRICKLE_K,
+        rng=lambda: next(reset_samples),
+    )
+    reset_timer.start(0)
+    reset_timer.heard_consistent()
+    reset_timer.heard_consistent()
+    reset_steps: list[dict[str, object]] = []
+    for label, fire_before_reset, now, offset_ms in (
+        ("waiting_transmit_at_imin", False, 1_000, 500),
+        ("waiting_expire_at_imin", True, 2_000, 1_500),
+        ("repeated_inconsistency_at_imin", False, 2_500, 250),
+    ):
+        reset_timer.reset(now)
+        reset_steps.append(
+            {
+                "state_before": label,
+                "fire_before_reset": fire_before_reset,
+                "now_ms": now,
+                "rand_offset_ms": offset_ms,
+                "expected_interval_ms": reset_timer.interval,
+                "expected_counter": reset_timer.counter,
+                "expected_transmit_time_ms": reset_timer.transmit_time,
+                "expected_interval_end_ms": reset_timer.interval_end,
+            }
+        )
+        reset_timer.heard_consistent()
+    vectors.append(
+        {
+            "name": "trickle_inconsistency_resets",
+            "description": (
+                "Each inconsistency atomically restarts Imin, clears c, and samples "
+                "a new transmit point from [Imin/2,Imin), including repeated "
+                "inconsistencies and both pre/post-transmit states."
+            ),
+            "category": "trickle_state",
+            "Imin_ms": TRICKLE_IMIN_MS,
+            "k": TRICKLE_K,
+            "initial_rand_offset_ms": 0,
+            "steps": reset_steps,
         }
     )
 
@@ -854,6 +1006,45 @@ def packets_timing_vectors() -> list[dict[str, object]]:
     )
 
     # 14.6 Time sync
+    vectors.append(
+        {
+            "name": "monotonic_uptime_sequences",
+            "description": (
+                "Monotonic uptime is non-decreasing within one power cycle; "
+                "equal observations are valid, while regression and wrap are invalid."
+            ),
+            "category": "monotonic_time",
+            "scope": "single_power_cycle",
+            "unit": "implementation_defined_ticks",
+            "cases": [
+                {
+                    "name": "boot_origin_zero",
+                    "observations": [0],
+                    "expected_acceptance": [True],
+                },
+                {
+                    "name": "strictly_increasing",
+                    "observations": [0, 1, 1_000_000, 0xFFFFFFFFFFFFFFFF],
+                    "expected_acceptance": [True, True, True, True],
+                },
+                {
+                    "name": "equal_observations_allowed",
+                    "observations": [42, 42, 43],
+                    "expected_acceptance": [True, True, True],
+                },
+                {
+                    "name": "regression_rejected",
+                    "observations": [100, 99],
+                    "expected_acceptance": [True, False],
+                },
+                {
+                    "name": "wrap_to_zero_rejected",
+                    "observations": [0xFFFFFFFFFFFFFFFF, 0],
+                    "expected_acceptance": [True, False],
+                },
+            ],
+        }
+    )
     vectors.append(
         {
             "name": "time_sync_epoch_floor",

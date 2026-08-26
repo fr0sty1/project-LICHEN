@@ -1,0 +1,202 @@
+{
+  "format_version": 2,
+  "name": "asn_sfn_derivation",
+  "description": "Duration-parametric time-counter derivation from Unix UTC microseconds. With a slot duration, the unbounded quotient is an Absolute Slot Number (ASN, u64); with a superframe duration, its low 32 bits are the TDMA SFN. Recording both projections does not assert that slot and superframe durations are equal. Unix time has no distinct encoding for 23:59:60; the leap-second cases therefore pin the consecutive representable instants on either side of the 2016-12-31 leap second. Expected values come from this standalone integer-arithmetic oracle, not LICHEN code.",
+  "spec": "spec/09-packets-timing.md#147-tdma-superframe-number-sfn",
+  "vectors": [
+    {
+      "name": "at_epoch",
+      "description": "The configured epoch is ASN/SFN zero.",
+      "boundary": "epoch",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 1704067200000000,
+        "epoch_base_us": 1704067200000000,
+        "interval_duration_us": 2000000
+      },
+      "expected": {
+        "asn_u64": 0,
+        "sfn_u32": 0,
+        "clamped": false
+      }
+    },
+    {
+      "name": "before_epoch_clamps",
+      "description": "A wall-clock sample before the epoch cannot produce a negative ASN.",
+      "boundary": "epoch",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 1704067199999999,
+        "epoch_base_us": 1704067200000000,
+        "interval_duration_us": 2000000
+      },
+      "expected": {
+        "asn_u64": 0,
+        "sfn_u32": 0,
+        "clamped": true
+      }
+    },
+    {
+      "name": "last_microsecond_before_interval",
+      "description": "Integer division keeps the final microsecond of an interval in ASN zero.",
+      "boundary": "interval",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 1704067201999999,
+        "epoch_base_us": 1704067200000000,
+        "interval_duration_us": 2000000
+      },
+      "expected": {
+        "asn_u64": 0,
+        "sfn_u32": 0,
+        "clamped": false
+      }
+    },
+    {
+      "name": "first_microsecond_of_next_interval",
+      "description": "The exact interval boundary advances ASN and SFN to one.",
+      "boundary": "interval",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 1704067202000000,
+        "epoch_base_us": 1704067200000000,
+        "interval_duration_us": 2000000
+      },
+      "expected": {
+        "asn_u64": 1,
+        "sfn_u32": 1,
+        "clamped": false
+      }
+    },
+    {
+      "name": "leap_2016_last_representable_second_before",
+      "description": "Unix UTC 2016-12-31T23:59:59Z is the last representable second before the leap boundary.",
+      "boundary": "leap_second",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 1483228799000000,
+        "epoch_base_us": 1483228798000000,
+        "interval_duration_us": 1000000,
+        "utc_label": "2016-12-31T23:59:59Z"
+      },
+      "expected": {
+        "asn_u64": 1,
+        "sfn_u32": 1,
+        "clamped": false
+      }
+    },
+    {
+      "name": "leap_2016_first_representable_second_after",
+      "description": "Unix UTC advances directly to 2017-01-01T00:00:00Z because 23:59:60 has no distinct Unix timestamp.",
+      "boundary": "leap_second",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 1483228800000000,
+        "epoch_base_us": 1483228798000000,
+        "interval_duration_us": 1000000,
+        "utc_label": "2017-01-01T00:00:00Z"
+      },
+      "expected": {
+        "asn_u64": 2,
+        "sfn_u32": 2,
+        "clamped": false
+      }
+    },
+    {
+      "name": "sfn_u32_max",
+      "description": "The final absolute interval before SFN epoch rollover maps to 0xffffffff.",
+      "boundary": "epoch_rollover",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 10294001790000000,
+        "epoch_base_us": 1704067200000000,
+        "interval_duration_us": 2000000
+      },
+      "expected": {
+        "asn_u64": 4294967295,
+        "sfn_u32": 4294967295,
+        "clamped": false
+      }
+    },
+    {
+      "name": "sfn_u32_rollover",
+      "description": "Absolute interval 2^32 is the SFN epoch rollover to wire value zero.",
+      "boundary": "epoch_rollover",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 10294001792000000,
+        "epoch_base_us": 1704067200000000,
+        "interval_duration_us": 2000000
+      },
+      "expected": {
+        "asn_u64": 4294967296,
+        "sfn_u32": 0,
+        "clamped": false
+      }
+    },
+    {
+      "name": "sfn_u32_after_rollover",
+      "description": "The interval after SFN epoch rollover maps to one while the u64 count remains monotonic.",
+      "boundary": "epoch_rollover",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 10294001794000000,
+        "epoch_base_us": 1704067200000000,
+        "interval_duration_us": 2000000
+      },
+      "expected": {
+        "asn_u64": 4294967297,
+        "sfn_u32": 1,
+        "clamped": false
+      }
+    },
+    {
+      "name": "asn_u64_max",
+      "description": "Unit-duration derivation reaches the maximum unsigned 64-bit ASN exactly.",
+      "boundary": "u64",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 18446744073709551615,
+        "epoch_base_us": 0,
+        "interval_duration_us": 1
+      },
+      "expected": {
+        "asn_u64": 18446744073709551615,
+        "sfn_u32": 4294967295,
+        "clamped": false
+      }
+    },
+    {
+      "name": "timestamps_near_u64_max",
+      "description": "Subtraction before division remains defined when both timestamps are near u64 max.",
+      "boundary": "u64",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 18446744073709551615,
+        "epoch_base_us": 18446744073709541615,
+        "interval_duration_us": 1000
+      },
+      "expected": {
+        "asn_u64": 10,
+        "sfn_u32": 10,
+        "clamped": false
+      }
+    },
+    {
+      "name": "zero_duration_clamps",
+      "description": "A zero interval duration is invalid and deterministically clamps to zero instead of dividing.",
+      "boundary": "invalid_config",
+      "timescale": "unix_utc",
+      "input": {
+        "unix_time_us": 1704067200000001,
+        "epoch_base_us": 1704067200000000,
+        "interval_duration_us": 0
+      },
+      "expected": {
+        "asn_u64": 0,
+        "sfn_u32": 0,
+        "clamped": true
+      }
+    }
+  ]
+}

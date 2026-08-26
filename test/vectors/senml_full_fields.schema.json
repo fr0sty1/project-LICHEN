@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Complete RFC 8428 SenML-CBOR pack vector",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "format_version", "description", "spec", "records", "cbor_hex"],
+  "properties": {
+    "$schema": {"const": "./senml_full_fields.schema.json"},
+    "format_version": {"const": 2},
+    "description": {"type": "string", "minLength": 1},
+    "spec": {"const": "RFC 8428 Sections 4 and 6"},
+    "records": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {"type": "object"}
+    },
+    "cbor_hex": {"type": "string", "pattern": "^(?:[0-9a-f]{2})+$"}
+  }
+}

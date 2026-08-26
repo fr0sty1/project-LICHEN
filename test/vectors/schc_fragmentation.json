@@ -127,6 +127,9 @@
       "rule_id": 120,
       "attempts_before": 4,
       "retransmission_timeout_s": 10,
+      "timer_policy": "fixed",
+      "timer_start_s": 0,
+      "timer_deadlines_s": [10, 20, 30, 40],
       "max_ack_requests": 4,
       "inactivity_timeout_s": 60,
       "bitmap_one_means": "received",
@@ -182,6 +185,11 @@
     {"name": "all1_without_final_tile", "category": "malformed", "provenance": "The profile requires a non-empty final tile in All-1.", "wire": "787e00000000", "expect_error": "empty_final_tile"},
     {"name": "ack_success_extra_octet", "category": "malformed", "provenance": "C=1 carries no bitmap and only end padding.", "wire": "784000", "expect_error": "ack_success_trailing_bits"},
     {"name": "malformed_control", "category": "malformed", "provenance": "Neither a complete Receiver-Abort nor a valid padded C=1 ACK.", "wire": "78ff", "expect_error": "malformed_control"},
+    {"name": "sender_abort_trailing_octet", "category": "malformed", "provenance": "Sender-Abort is exactly two octets; trailing octets cannot be reinterpreted as padding.", "wire": "78fe00", "expect_error": "sender_abort_trailing_octet"},
+    {"name": "receiver_abort_non_ff_padding", "category": "malformed", "provenance": "Receiver-Abort requires every remaining bit through the L2 word boundary to be one.", "wire": "78ff00", "expect_error": "receiver_abort_non_ff_padding"},
+    {"name": "receiver_abort_trailing_octet", "category": "malformed", "provenance": "Receiver-Abort is exactly three octets; trailing octets are forbidden.", "wire": "78ffff00", "expect_error": "receiver_abort_trailing_octet"},
+    {"name": "unsupported_rule_sender_abort", "category": "malformed", "provenance": "The fixed profile reserves every fragmentation Rule ID except 0x78 and 0x79.", "wire": "77fe", "expect_error": "unsupported_rule"},
+    {"name": "unsupported_rule_receiver_abort", "category": "malformed", "provenance": "The fixed profile rejects Receiver-Abort under an unprovisioned Rule ID.", "wire": "77ffff", "expect_error": "unsupported_rule"},
     {"name": "final_window_all0", "category": "malformed", "provenance": "The final tile is carried only in All-1.", "wire": {"parts": ["7880", {"repeat_byte": "00", "count": 179}]}, "expect_error": "final_window_all0_tile"},
     {"name": "unassigned_bitmap_bit", "category": "malformed", "provenance": "Unassigned short-final-window bitmap positions must be zero.", "wire": "783800000000000000", "assigned_fcns": [62, 61, 63], "expect_error": "unassigned_bitmap_bit_set"}
   ]

@@ -1,0 +1,88 @@
+{
+  "$schema": "./address_classification.schema.json",
+  "format_version": 2,
+  "name": "Routing address classification table",
+  "description": "Deterministic classification precedence with authenticated local evidence, expiry, bounded capacity, and monotonic-time safety.",
+  "spec": "spec/05-routing.md#72-routing-decision",
+  "classifications": {
+    "direct_neighbor": "fe80::/10 independent of evidence",
+    "local_mesh": "0200::/8 with live authenticated evidence",
+    "identity_preserving_global": "0200::/8 without live evidence",
+    "off_mesh": "all other addresses"
+  },
+  "scenarios": [
+    {
+      "name": "classification_precedence_and_expiry",
+      "max_peers": 2,
+      "operations": [
+        {"op": "classify", "address": "fe80::1", "now_s": 0, "expected_classification": "direct_neighbor", "expected_size": 0},
+        {"op": "classify", "address": "0200::1", "now_s": 0, "expected_classification": "identity_preserving_global", "expected_size": 0},
+        {"op": "update", "address": "0200::1", "source": "announce", "now_s": 0, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "classify", "address": "0200::1", "now_s": 0, "expected_classification": "local_mesh", "expected_size": 1},
+        {"op": "classify", "address": "0200::1", "now_s": 1199, "expected_classification": "local_mesh", "expected_size": 1},
+        {"op": "classify", "address": "0200::1", "now_s": 1200, "expected_classification": "identity_preserving_global", "expected_size": 0},
+        {"op": "classify", "address": "fe80::1", "now_s": 1200, "expected_classification": "direct_neighbor", "expected_size": 0}
+      ]
+    },
+    {
+      "name": "canonical_primary_text_forms_share_evidence",
+      "max_peers": 1,
+      "operations": [
+        {"op": "update", "address": "200:0:0:0:0:0:0:abcd", "source": "rrep", "now_s": 10, "expected_expires_at_s": 1210, "expected_size": 1},
+        {"op": "classify", "address": "0200::abcd", "now_s": 10, "expected_classification": "local_mesh", "expected_size": 1}
+      ]
+    },
+    {
+      "name": "authenticated_update_required",
+      "max_peers": 1,
+      "operations": [
+        {"op": "update", "address": "0200::2", "source": "unverified", "now_s": 0, "expected_error": "invalid_source", "expected_size": 0},
+        {"op": "classify", "address": "0200::2", "now_s": 0, "expected_classification": "identity_preserving_global", "expected_size": 0},
+        {"op": "update", "address": "0200::2", "source": "rpl", "now_s": 0, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "classify", "address": "0200::2", "now_s": 0, "expected_classification": "local_mesh", "expected_size": 1}
+      ]
+    },
+    {
+      "name": "non_primary_classes_and_update_rejection",
+      "max_peers": 1,
+      "operations": [
+        {"op": "update", "address": "fe80::2", "source": "announce", "now_s": 0, "expected_error": "non_primary", "expected_size": 0},
+        {"op": "classify", "address": "fe80::2", "now_s": 0, "expected_classification": "direct_neighbor", "expected_size": 0},
+        {"op": "classify", "address": "2001:db8::1", "now_s": 0, "expected_classification": "off_mesh", "expected_size": 0},
+        {"op": "classify", "address": "fd00::1", "now_s": 0, "expected_classification": "off_mesh", "expected_size": 0},
+        {"op": "classify", "address": "ff02::1", "now_s": 0, "expected_classification": "off_mesh", "expected_size": 0}
+      ]
+    },
+    {
+      "name": "capacity_preserves_live_precedence_then_reuses_expired_slot",
+      "max_peers": 1,
+      "operations": [
+        {"op": "update", "address": "0200::a", "source": "announce", "now_s": 0, "expected_expires_at_s": 1200, "expected_size": 1},
+        {"op": "update", "address": "0200::b", "source": "rrep", "now_s": 1, "expected_error": "capacity", "expected_size": 1},
+        {"op": "classify", "address": "0200::a", "now_s": 1, "expected_classification": "local_mesh", "expected_size": 1},
+        {"op": "classify", "address": "0200::b", "now_s": 1, "expected_classification": "identity_preserving_global", "expected_size": 1},
+        {"op": "update", "address": "0200::b", "source": "data", "now_s": 1200, "expected_expires_at_s": 2400, "expected_size": 1},
+        {"op": "classify", "address": "0200::a", "now_s": 1200, "expected_classification": "identity_preserving_global", "expected_size": 1},
+        {"op": "classify", "address": "0200::b", "now_s": 1200, "expected_classification": "local_mesh", "expected_size": 1}
+      ]
+    },
+    {
+      "name": "time_failures_are_atomic",
+      "max_peers": 1,
+      "operations": [
+        {"op": "update", "address": "0200::c", "source": "rpl", "now_s": 100, "expected_expires_at_s": 1300, "expected_size": 1},
+        {"op": "classify", "address": "0200::c", "now_s": 99, "expected_error": "time_regression", "expected_size": 1},
+        {"op": "classify", "address": "0200::c", "now_s": 100, "expected_classification": "local_mesh", "expected_size": 1}
+      ]
+    },
+    {
+      "name": "overflow_and_invalid_address_do_not_advance_clock",
+      "max_peers": 1,
+      "operations": [
+        {"op": "update", "address": "0200::d", "source": "announce", "now_s": 18446744073709550416, "expected_error": "timestamp_overflow", "expected_size": 0},
+        {"op": "classify", "address": "not-an-ip", "now_s": 50, "expected_error": "invalid_address", "expected_size": 0},
+        {"op": "classify", "address": "0200::d", "now_s": 0, "expected_classification": "identity_preserving_global", "expected_size": 0}
+      ]
+    }
+  ]
+}

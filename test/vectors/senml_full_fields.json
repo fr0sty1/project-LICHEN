@@ -1,0 +1,14 @@
+{
+  "$schema": "./senml_full_fields.schema.json",
+  "format_version": 2,
+  "description": "Complete RFC 8428 SenML-CBOR pack covering every standard field and all four mutually exclusive value types. Wire bytes are produced by the independent Python cbor2 implementation.",
+  "spec": "RFC 8428 Sections 4 and 6",
+  "records": [
+    {"bn": "urn:dev:mac:0011223344556677:", "bt": 1700000000, "bu": "Cel", "bv": 1.5, "bs": 2.5, "bver": 10},
+    {"n": "temp", "u": "Cel", "v": 21.5, "s": 100.25, "t": -2, "ut": 30},
+    {"n": "status", "vs": "ok"},
+    {"n": "active", "vb": true},
+    {"n": "raw", "vd_hex": "00ff10"}
+  ],
+  "cbor_hex": "85a621781d75726e3a6465763a6d61633a303031313232333334343535363637373a221a6553f100236343656c24fb3ff800000000000025fb4004000000000000200aa6006474656d70016343656c02fb403580000000000005fb4059100000000000062107181ea2006673746174757303626f6ba2006661637469766504f5a20063726177084300ff10"
+}

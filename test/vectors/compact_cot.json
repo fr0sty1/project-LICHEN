@@ -1,6 +1,6 @@
 {
   "format_version": 2,
-  "description": "Compact CoT binary encoding test vectors per spec/07-transport-app.md Section 10.1.1. PLI encoding: subtype(1) + lat(4) + lon(4) + alt(2) + course(2) + speed(2) + team(1) + role(1) = 17 bytes. Chat encoding: subtype(1) + dest_type(1) + dest_id(0/1/8) + len(1) + text(N). All multi-byte integers are big-endian (network byte order). Note: spec states 18 bytes for PLI but field breakdown yields 17.",
+  "description": "Compact CoT binary encoding test vectors per spec/07-transport-app.md Section 10.1.1. PLI encoding: subtype(1) + lat(4) + lon(4) + alt(2) + course(2) + speed(2) + team(1) + role(1) = 17 bytes. Chat encoding: subtype(1) + dest_type(1) + dest_id(0/1/16) + len(1) + text(N). All multi-byte integers are big-endian (network byte order).",
   "vectors": [
     {
       "name": "pli_friendly_ground_origin",
@@ -139,6 +139,78 @@
       }
     },
     {
+      "name": "pli_invalid_truncated",
+      "description": "PLI missing its role byte is malformed rather than prefix-decodable.",
+      "binary_hex": "02000000000000000000000000000001",
+      "decoded_fields": {
+        "expect_error": "requires 17 bytes"
+      }
+    },
+    {
+      "name": "pli_invalid_trailing_byte",
+      "description": "A canonical PLI is exactly 17 bytes; trailing data is rejected.",
+      "binary_hex": "020000000000000000000000000000010100",
+      "decoded_fields": {
+        "expect_error": "requires 17 bytes"
+      }
+    },
+    {
+      "name": "pli_invalid_latitude",
+      "description": "Latitude 90,000,001 microdegrees exceeds the geographic bound.",
+      "binary_hex": "02055d4a81000000000000000000000101",
+      "decoded_fields": {
+        "expect_error": "Latitude"
+      }
+    },
+    {
+      "name": "pli_invalid_latitude_below_minimum",
+      "description": "Latitude -90,000,001 microdegrees is below the geographic bound.",
+      "binary_hex": "02faa2b57f000000000000000000000101",
+      "decoded_fields": {
+        "expect_error": "Latitude"
+      }
+    },
+    {
+      "name": "pli_invalid_longitude",
+      "description": "Longitude 180,000,001 microdegrees exceeds the geographic bound.",
+      "binary_hex": "02000000000aba95010000000000000101",
+      "decoded_fields": {
+        "expect_error": "Longitude"
+      }
+    },
+    {
+      "name": "pli_invalid_longitude_below_minimum",
+      "description": "Longitude -180,000,001 microdegrees is below the geographic bound.",
+      "binary_hex": "0200000000f5456aff0000000000000101",
+      "decoded_fields": {
+        "expect_error": "Longitude"
+      }
+    },
+    {
+      "name": "pli_invalid_course",
+      "description": "Course 36,000 centidegrees is outside the canonical [0, 35,999] range.",
+      "binary_hex": "02000000000000000000008ca000000101",
+      "decoded_fields": {
+        "expect_error": "Course"
+      }
+    },
+    {
+      "name": "pli_invalid_unknown_subtype",
+      "description": "Subtype 0x06 is not assigned to any Compact CoT payload type.",
+      "binary_hex": "0600000000000000000000000000000000",
+      "decoded_fields": {
+        "expect_error": "Unknown subtype"
+      }
+    },
+    {
+      "name": "pli_invalid_non_pli_subtype",
+      "description": "Known chat subtype 0x01 cannot be decoded as a PLI payload.",
+      "binary_hex": "0100000000000000000000000000000000",
+      "decoded_fields": {
+        "expect_error": "Expected PLI subtype"
+      }
+    },
+    {
       "name": "chat_broadcast_hello",
       "description": "Broadcast chat message: 'Hello'",
       "binary_hex": "01000548656c6c6f",
@@ -183,14 +255,14 @@
     },
     {
       "name": "chat_direct_ack",
-      "description": "Direct chat to IID 0x0011223344556677: 'Ack'",
-      "binary_hex": "010200112233445566770341636b",
+      "description": "Direct chat to native IPv6 address 0200::11:2233:4455:6677: 'Ack'",
+      "binary_hex": "0102020000000000000000112233445566770341636b",
       "decoded_fields": {
         "subtype": 1,
         "subtype_name": "chat",
         "dest_type": 2,
         "dest_type_name": "direct",
-        "dest_iid_hex": "0011223344556677",
+        "dest_address_hex": "02000000000000000011223344556677",
         "message_length": 3,
         "message_utf8": "Ack"
       }
@@ -224,6 +296,102 @@
       }
     },
     {
+      "name": "chat_broadcast_utf8",
+      "description": "Broadcast chat containing 9 bytes of valid multi-byte UTF-8 text.",
+      "binary_hex": "010009c3a9e4b8adf09f9982",
+      "decoded_fields": {
+        "subtype": 1,
+        "subtype_name": "chat",
+        "dest_type": 0,
+        "dest_type_name": "broadcast",
+        "message_length": 9,
+        "message_utf8": "é中🙂"
+      }
+    },
+    {
+      "name": "chat_broadcast_max_message",
+      "description": "Broadcast chat with the maximum 255-byte UTF-8 message.",
+      "binary_hex": "0100ff616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161",
+      "decoded_fields": {
+        "subtype": 1,
+        "subtype_name": "chat",
+        "dest_type": 0,
+        "dest_type_name": "broadcast",
+        "message_length": 255,
+        "message_utf8": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "name": "chat_direct_high_native_address",
+      "description": "Direct empty chat to the high endpoint of the 0x02 native IPv6 prefix.",
+      "binary_hex": "010202ffffffffffffffffffffffffffffff00",
+      "decoded_fields": {
+        "subtype": 1,
+        "subtype_name": "chat",
+        "dest_type": 2,
+        "dest_type_name": "direct",
+        "dest_address_hex": "02ffffffffffffffffffffffffffffff",
+        "message_length": 0,
+        "message_utf8": ""
+      }
+    },
+    {
+      "name": "chat_invalid_dest_type",
+      "description": "Chat destination discriminator 0x03 is unassigned and must be rejected.",
+      "binary_hex": "010300",
+      "decoded_fields": {
+        "expect_error": "(?i)destination type"
+      }
+    },
+    {
+      "name": "chat_invalid_team_zero",
+      "description": "Team destination 0x00 is outside the defined 0x01-0x0A enumeration.",
+      "binary_hex": "01010000",
+      "decoded_fields": {
+        "expect_error": "(?i)team destination"
+      }
+    },
+    {
+      "name": "chat_invalid_team_above_range",
+      "description": "Team destination 0x0B is outside the defined 0x01-0x0A enumeration.",
+      "binary_hex": "01010b00",
+      "decoded_fields": {
+        "expect_error": "(?i)team destination"
+      }
+    },
+    {
+      "name": "chat_invalid_direct_truncated",
+      "description": "Direct destination contains only 15 of the required 16 IPv6 address bytes.",
+      "binary_hex": "0102020000000000000000112233445566",
+      "decoded_fields": {
+        "expect_error": "(?i)(truncated|too short)"
+      }
+    },
+    {
+      "name": "chat_invalid_message_truncated",
+      "description": "Broadcast chat declares two message bytes but carries only one.",
+      "binary_hex": "01000241",
+      "decoded_fields": {
+        "expect_error": "(?i)(truncated|too short)"
+      }
+    },
+    {
+      "name": "chat_invalid_trailing_byte",
+      "description": "Broadcast chat carries one byte beyond its zero-length message.",
+      "binary_hex": "01000000",
+      "decoded_fields": {
+        "expect_error": "(?i)trailing"
+      }
+    },
+    {
+      "name": "chat_invalid_utf8",
+      "description": "Broadcast chat contains a lone 0xFF byte, which is not valid UTF-8.",
+      "binary_hex": "010001ff",
+      "decoded_fields": {
+        "expect_error": "(?i)UTF-8"
+      }
+    },
+    {
       "name": "marker_point",
       "description": "Point marker (subtype 0x10). Encoding beyond subtype byte is TBD per spec.",
       "binary_hex": "10",
@@ -239,6 +407,131 @@
       "decoded_fields": {
         "subtype": 32,
         "subtype_name": "alert"
+      }
+    },
+    {
+      "name": "xml_pli_namespaced",
+      "description": "Prefixed CoT XML namespace, PLI fields, and exact XML/binary round trip.",
+      "binary_hex": "020311f0c8fffe0cc8006e119400960305",
+      "decoded_fields": {
+        "xml_input": "<cot:event xmlns:cot=\"urn:cot\" type=\"a-f-G-U-C\" uid=\"XML-PLI\"><cot:point lat=\"51.5074\" lon=\"-0.1278\" hae=\"11\"/><cot:detail><cot:__group name=\"Green\" role=\"Medic\"/><cot:track course=\"45\" speed=\"1.5\"/></cot:detail></cot:event>",
+        "xml_uid": "XML_PLI_NAMESPACED",
+        "xml_callsign": "Vector & <Call>",
+        "xml_now": "2025-07-06T12:00:00Z",
+        "canonical_core_xml": "<event type=\"a-f-G-U-C\" uid=\"XML_PLI_NAMESPACED\"><point lat=\"51.507400\" lon=\"-0.127800\" hae=\"11.0\" /><detail><__group name=\"Green\" role=\"Medic\" /><track course=\"45.00\" speed=\"1.50\" /></detail></event>",
+        "canonical_gateway_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><event version=\"2.0\" type=\"a-f-G-U-C\" uid=\"XML_PLI_NAMESPACED\" how=\"m-g\" time=\"2025-07-06T12:00:00.000Z\" start=\"2025-07-06T12:00:00.000Z\" stale=\"2025-07-06T12:02:00.000Z\"><point lat=\"51.507400\" lon=\"-0.127800\" hae=\"11.0\" ce=\"9999999\" le=\"9999999\" /><detail><contact callsign=\"XML_PLI_NAMESPACED\" /><__group name=\"Green\" role=\"Medic\" /><track course=\"45.00\" speed=\"1.50\" /><precisionlocation altsrc=\"DTED0\" geopointsrc=\"GPS\" /></detail></event>"
+      }
+    },
+    {
+      "name": "xml_chat_escaped_utf8",
+      "description": "Broadcast chat preserves XML escaping and multi-byte UTF-8 byte-exactly.",
+      "binary_hex": "01000dc3a9e4b8adf09f9982203c2622",
+      "decoded_fields": {
+        "xml_input": "<event type=\"b-t-f\" uid=\"XML-CHAT\"><detail><remarks>é中🙂 &lt;&amp;&quot;</remarks></detail></event>",
+        "xml_uid": "XML_CHAT_ESCAPED_UTF8",
+        "xml_callsign": "Vector & <Call>",
+        "xml_now": "2025-07-06T12:00:00Z",
+        "canonical_core_xml": "<event type=\"b-t-f\" uid=\"XML_CHAT_ESCAPED_UTF8\"><point lat=\"0.0\" lon=\"0.0\" hae=\"0.0\" /><detail><remarks>é中🙂 &lt;&amp;\"</remarks></detail></event>",
+        "canonical_gateway_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><event version=\"2.0\" type=\"b-t-f\" uid=\"GeoChat.XML_CHAT_ESCAPED_UTF8.55d54d9c-a445-308e-8334-7d0b07618ca0\" how=\"h-g-i-g-o\" time=\"2025-07-06T12:00:00.000Z\" start=\"2025-07-06T12:00:00.000Z\" stale=\"2025-07-06T12:02:00.000Z\"><detail><__chat senderCallsign=\"Vector &amp; &lt;Call&gt;\" messageId=\"55d54d9c-a445-308e-8334-7d0b07618ca0\" chatroom=\"All Chat Rooms\" id=\"All Chat Rooms\"><chatgrp uid0=\"XML_CHAT_ESCAPED_UTF8\" uid1=\"All Chat Rooms\" /></__chat><link uid=\"XML_CHAT_ESCAPED_UTF8\" type=\"a-f-G-U-C\" relation=\"p-p\" /><remarks source=\"BAO.F.ATAK.XML_CHAT_ESCAPED_UTF8\" to=\"All Chat Rooms\" time=\"2025-07-06T12:00:00.000Z\">é中🙂 &lt;&amp;\"</remarks><__serverdestination destinations=\"All Chat Rooms\" /></detail></event>"
+      }
+    },
+    {
+      "name": "xml_chat_direct_namespaced",
+      "description": "Default-namespace direct chat preserves the 16-byte destination and escaped text.",
+      "binary_hex": "0102020000000000000011223344556677880841636b202620676f",
+      "decoded_fields": {
+        "xml_input": "<event xmlns=\"urn:cot\" type=\"b-t-f\" uid=\"XML-DIRECT\"><detail><__chat chatroom=\"02000000000000001122334455667788\"/><remarks>Ack &amp; go</remarks></detail></event>",
+        "xml_uid": "XML_CHAT_DIRECT_NAMESPACED",
+        "xml_callsign": "Vector & <Call>",
+        "xml_now": "2025-07-06T12:00:00Z",
+        "canonical_core_xml": "<event type=\"b-t-f\" uid=\"XML_CHAT_DIRECT_NAMESPACED\"><point lat=\"0.0\" lon=\"0.0\" hae=\"0.0\" /><detail><__chat chatroom=\"02000000000000001122334455667788\" /><remarks>Ack &amp; go</remarks></detail></event>",
+        "canonical_gateway_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><event version=\"2.0\" type=\"b-t-f\" uid=\"GeoChat.XML_CHAT_DIRECT_NAMESPACED.53478e7b-8f6a-d3a2-41ed-d145ba8d5c7e\" how=\"h-g-i-g-o\" time=\"2025-07-06T12:00:00.000Z\" start=\"2025-07-06T12:00:00.000Z\" stale=\"2025-07-06T12:02:00.000Z\"><detail><__chat senderCallsign=\"Vector &amp; &lt;Call&gt;\" messageId=\"53478e7b-8f6a-d3a2-41ed-d145ba8d5c7e\" chatroom=\"02000000000000001122334455667788\" id=\"02000000000000001122334455667788\"><chatgrp uid0=\"XML_CHAT_DIRECT_NAMESPACED\" uid1=\"02000000000000001122334455667788\" /></__chat><link uid=\"XML_CHAT_DIRECT_NAMESPACED\" type=\"a-f-G-U-C\" relation=\"p-p\" /><remarks source=\"BAO.F.ATAK.XML_CHAT_DIRECT_NAMESPACED\" to=\"02000000000000001122334455667788\" time=\"2025-07-06T12:00:00.000Z\">Ack &amp; go</remarks><__serverdestination destinations=\"02000000000000001122334455667788\" /></detail></event>"
+      }
+    },
+    {
+      "name": "xml_pli_max_bounds",
+      "description": "All PLI numeric maxima remain byte-exact through both XML gateways.",
+      "binary_hex": "02055d4a800aba95007fff8c9fffff0a08",
+      "decoded_fields": {
+        "xml_input": "<event type=\"a-f-G-U-C\" uid=\"XML-MAX\"><point lat=\"90\" lon=\"180\" hae=\"3276.7\"/><detail><__group name=\"Yellow\" role=\"K9\"/><track course=\"359.99\" speed=\"655.35\"/></detail></event>",
+        "xml_uid": "XML_PLI_MAX_BOUNDS",
+        "xml_callsign": "Vector & <Call>",
+        "xml_now": "2025-07-06T12:00:00Z",
+        "expect_warning": "Implausible speed",
+        "canonical_core_xml": "<event type=\"a-f-G-U-C\" uid=\"XML_PLI_MAX_BOUNDS\"><point lat=\"90.000000\" lon=\"180.000000\" hae=\"3276.7\" /><detail><__group name=\"Yellow\" role=\"K9\" /><track course=\"359.99\" speed=\"655.35\" /></detail></event>",
+        "canonical_gateway_xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><event version=\"2.0\" type=\"a-f-G-U-C\" uid=\"XML_PLI_MAX_BOUNDS\" how=\"m-g\" time=\"2025-07-06T12:00:00.000Z\" start=\"2025-07-06T12:00:00.000Z\" stale=\"2025-07-06T12:02:00.000Z\"><point lat=\"90.000000\" lon=\"180.000000\" hae=\"3276.7\" ce=\"9999999\" le=\"9999999\" /><detail><contact callsign=\"XML_PLI_MAX_BOUNDS\" /><__group name=\"Yellow\" role=\"K9\" /><track course=\"359.99\" speed=\"655.35\" /><precisionlocation altsrc=\"DTED0\" geopointsrc=\"GPS\" /></detail></event>"
+      }
+    },
+    {
+      "name": "xml_invalid_malformed",
+      "description": "Truncated XML is rejected before Compact CoT state is created.",
+      "binary_hex": "",
+      "decoded_fields": {
+        "xml_input": "<event type=\"b-t-f\"><detail><remarks>broken",
+        "xml_expect_error": "(?i)(unclosed|no element found|parse)"
+      }
+    },
+    {
+      "name": "xml_invalid_trailing_document",
+      "description": "A second root after a complete event is rejected as trailing XML.",
+      "binary_hex": "",
+      "decoded_fields": {
+        "xml_input": "<event type=\"b-t-f\"><detail><remarks>ok</remarks></detail></event><event/>",
+        "xml_expect_error": "(?i)(junk after|document element|multiple elements|parse)"
+      }
+    },
+    {
+      "name": "xml_invalid_utf8_bytes",
+      "description": "XML byte input containing a lone 0xFF is rejected by strict UTF-8 decoding.",
+      "binary_hex": "",
+      "decoded_fields": {
+        "xml_input_utf8_hex": "3c6576656e7420747970653d22622d742d66223e3c64657461696c3e3c72656d61726b733eff3c2f72656d61726b733e3c2f64657461696c3e3c2f6576656e743e",
+        "xml_expect_error": "(?i)utf-8"
+      }
+    },
+    {
+      "name": "xml_invalid_latitude_bound",
+      "description": "Latitude just above +90 degrees is rejected rather than truncated.",
+      "binary_hex": "",
+      "decoded_fields": {
+        "xml_input": "<event type=\"a-f-G-U-C\"><point lat=\"90.000001\" lon=\"0\" hae=\"0\"/></event>",
+        "xml_expect_error": "(?i)latitude"
+      }
+    },
+    {
+      "name": "xml_invalid_altitude_bound",
+      "description": "Altitude above the signed-decimeter maximum is rejected rather than clamped.",
+      "binary_hex": "",
+      "decoded_fields": {
+        "xml_input": "<event type=\"a-f-G-U-C\"><point lat=\"0\" lon=\"0\" hae=\"3276.8\"/></event>",
+        "xml_expect_error": "(?i)altitude"
+      }
+    },
+    {
+      "name": "xml_invalid_course_bound",
+      "description": "Course 360 degrees is outside the exact uint16 centidegree profile.",
+      "binary_hex": "",
+      "decoded_fields": {
+        "xml_input": "<event type=\"a-f-G-U-C\"><point lat=\"0\" lon=\"0\" hae=\"0\"/><detail><track course=\"360\" speed=\"0\"/></detail></event>",
+        "xml_expect_error": "(?i)course"
+      }
+    },
+    {
+      "name": "xml_invalid_speed_bound",
+      "description": "Speed above 655.35 m/s is rejected rather than clamped.",
+      "binary_hex": "",
+      "decoded_fields": {
+        "xml_input": "<event type=\"a-f-G-U-C\"><point lat=\"0\" lon=\"0\" hae=\"0\"/><detail><track course=\"0\" speed=\"655.36\"/></detail></event>",
+        "xml_expect_error": "(?i)speed"
+      }
+    },
+    {
+      "name": "xml_invalid_chat_over_255_bytes",
+      "description": "A UTF-8 chat message over 255 bytes cannot fit the one-byte length field.",
+      "binary_hex": "",
+      "decoded_fields": {
+        "xml_input": "<event type=\"b-t-f\"><detail><remarks>ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé</remarks></detail></event>",
+        "xml_expect_error": "(?i)255"
       }
     }
   ]
