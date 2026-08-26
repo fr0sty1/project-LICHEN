@@ -3,6 +3,19 @@
 **Date:** 2026-08-25 (evening)
 **Status:** Ready for new work
 
+## UPDATE (late evening, same day)
+
+Range Testing epic (l1qw.10.20) complete except Zephyr/review-blocked children:
+- `10.20.4` vectors: test/vectors/rangetest.json (24 vectors, hand-derived RFC 8428
+  oracle) + pytest consumer; fixed render_get non-dict-body strictness gap.
+- `10.20.2` Rust: lichen-client/src/rangetest.rs codecs + rangetest_vectors.rs,
+  byte-exact vs vectors; Rust emits f64-width floats to match cbor2 reference;
+  normalized total_rtt_ms to always-float (was int when zero hops).
+- Orphan audit under `f4z7`: gcp_iid_comparison + lr_fhss_capability wired
+  (pytest consumers); 9 triage child beads filed for orphans needing features
+  first. a0gf (CCP-15) shipped interference_score oracle; backoff_jitter_ms
+  column flagged HUMAN (no derivable oracle — see a0gf comment).
+
 ## CURRENT PROJECT PHASE
 
 **Spec, vectors, Python, Rust only.** We are NOT doing C/Zephyr or real hardware yet.
