@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.20.2",
   "title": "Rust: Range Testing implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:50.966156Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.517696Z",
+  "updated_at": "2026-08-26T00:03:48.840085Z",
+  "started_at": "2026-08-25T23:53:56.243391Z",
+  "closed_at": "2026-08-26T00:03:48.840085Z",
+  "close_reason": "Rust range-testing wire codecs shipped in lichen-client: rangetest module (RadioMetrics/RangeTestReading/TracerouteResult/RangeTestRequest types; ciborium decode of SenML packs with RFC 8428 numeric labels; request-body encode with spec-18.7 bounds enforced client-side). Integration test rangetest_vectors.rs cross-validates against test/vectors/rangetest.json: byte-exact response/request round-trips plus client-side rejection parity for all 4xx vectors. Two conformance fixes surfaced and applied: (1) Rust encoder now emits 64-bit floats via a minimal deterministic writer, matching the cbor2 reference bytes instead of ciborium's half-precision minimization; (2) reference total_rtt_ms flipped CBOR int-vs-float depending on hop count - normalized to float on both Python and vector side so the wire type is stable. Gates: lichen-client full suite green (75 lib + 6 new), clippy clean on new files, rustfmt applied.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.20.2",

@@ -295,7 +295,9 @@ class TracerouteResource(resource.Resource):
         hops_data = [{"addr": hop.addr, "rssi": hop.rssi, "rtt_ms": hop.rtt_ms} for hop in hops]
 
         total_hops = len(hops)
-        total_rtt_ms = hops[-1].rtt_ms if hops else 0
+        # Float-typed even when empty so the CBOR value type never flips
+        # with hop count (cross-implementation conformance).
+        total_rtt_ms = hops[-1].rtt_ms if hops else 0.0
 
         response = {
             "hops": hops_data,

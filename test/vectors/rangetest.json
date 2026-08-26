@@ -1021,11 +1021,11 @@
    "expected": {
     "code": "2.05",
     "content_format": 60,
-    "payload_hex": "a364686f7073806a746f74616c5f686f7073006c746f74616c5f7274745f6d7300",
+    "payload_hex": "a364686f7073806a746f74616c5f686f7073006c746f74616c5f7274745f6d73fb0000000000000000",
     "records": {
      "hops": [],
      "total_hops": 0,
-     "total_rtt_ms": 0
+     "total_rtt_ms": 0.0
     }
    }
   }

@@ -19,6 +19,7 @@ pub mod msg;
 pub mod paths;
 pub mod pos;
 pub mod presence;
+pub mod rangetest;
 pub mod status;
 pub mod waypoint;
 
