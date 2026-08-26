@@ -48,14 +48,22 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod data_timing;
+pub mod dio_time;
+pub mod epoch_floor;
 pub mod evidence;
 pub mod frame;
 pub mod keys;
+pub mod monotonic;
+pub mod precedence;
 pub mod replay;
 pub mod seqnum;
 pub mod sos;
 pub mod sos_origin;
+pub mod tdma_clock;
+pub mod time_fallback;
 pub mod time_source;
+pub mod wall_clock;
 
 pub use evidence::{
     AuthenticatedLinkFrame, DurablePeerKeyGeneration, PeerKeyGeneration, ReceiptClock,
@@ -63,7 +71,7 @@ pub use evidence::{
 };
 #[cfg(feature = "schnorr")]
 pub use keys::{PrivateKey, PublicKey, Seed};
-pub use seqnum::LinkSeqNum;
+pub use seqnum::{logical_counter, LinkSeqNum};
 
 #[cfg(feature = "schnorr")]
 pub mod schnorr;
@@ -74,6 +82,19 @@ pub mod identity;
 pub use identity::{human_address_from_pubkey, iid_from_pubkey};
 pub use lichen_core::addr::ygg_addr_from_pubkey;
 
+pub use data_timing::{
+    elapsed, Heartbeat, TelemetryInterval, TelemetryIntervalError, HEARTBEAT_MS, TELEMETRY_MAX_MS,
+    TELEMETRY_MIN_MS,
+};
+pub use dio_time::{
+    DioTimeError, DioTimeOption, DioTimeStratum, DIO_TIME_OPTION_LEN, DIO_TIME_OPTION_TOTAL,
+    DIO_TIME_OPTION_TYPE,
+};
+pub use epoch_floor::{
+    evaluate_epoch_floor, EpochFloorError, EpochFloorResult, ProvisionEpochStatus,
+};
+pub use monotonic::{MonotonicError, MonotonicUptime};
+pub use precedence::{PrecedenceError, SourcePrecedencePolicy};
 pub use sos::{
     SosAlert, SosAlertType, SosCborError, SosRateLimitConfig, SosRateLimitConfigError,
     SosRateLimitResult, SosRateLimitState,
@@ -83,7 +104,13 @@ pub use sos_origin::{compute_sos_transcript, sign_sos_origin, verify_sos_origin}
 pub use sos_origin::{
     SosOriginSignature, SosOriginSignatureError, SOS_ORIGIN_DOMAIN, SOS_ORIGIN_SIGNATURE_LENGTH,
 };
+pub use tdma_clock::{
+    beacon_delta_ms, correction_ms, drift_bound, drift_ppm, guard_sufficient, holdover_expired,
+    in_guard, tx_allowed,
+};
+pub use time_fallback::{consumer_timestamp, ConsumerTimestamp};
 pub use time_source::TimeSourceClass;
+pub use wall_clock::{WallClockError, WallClockValidity};
 
 #[cfg(all(feature = "schnorr", feature = "std"))]
 pub mod link_layer;

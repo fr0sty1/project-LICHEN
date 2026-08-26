@@ -1,0 +1,110 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "CCP-7 drift bound B(h)=B(0)+rho*h, guard budget G >= Bi+Bj+Ji+Jj+P+M, and holdover expiry when |drift_ppm| > 5000 (spec 02a-tdma). Numeric cases are independent integer arithmetic, not code-under-test output.",
+  "vectors": [
+    {
+      "name": "drift_bound_linear",
+      "category": "drift_bound",
+      "b0": 10,
+      "rho": 2,
+      "h": 5,
+      "expected_bound": 20,
+      "comment": "10 + 2*5 = 20"
+    },
+    {
+      "name": "drift_bound_zero_rate",
+      "category": "drift_bound",
+      "b0": 100,
+      "rho": 0,
+      "h": 999,
+      "expected_bound": 100,
+      "comment": "rho=0 keeps the initial bound"
+    },
+    {
+      "name": "drift_bound_at_origin",
+      "category": "drift_bound",
+      "b0": 7,
+      "rho": 3,
+      "h": 0,
+      "expected_bound": 7,
+      "comment": "h=0 returns B(0)"
+    },
+    {
+      "name": "guard_budget_ok",
+      "category": "guard_budget",
+      "guard": 50,
+      "b_i": 10,
+      "b_j": 10,
+      "j_i": 5,
+      "j_j": 5,
+      "p": 5,
+      "m": 5,
+      "need": 40,
+      "expected_sufficient": true,
+      "comment": "10+10+5+5+5+5 = 40 <= 50"
+    },
+    {
+      "name": "guard_budget_equal",
+      "category": "guard_budget",
+      "guard": 50,
+      "b_i": 10,
+      "b_j": 10,
+      "j_i": 10,
+      "j_j": 10,
+      "p": 5,
+      "m": 5,
+      "need": 50,
+      "expected_sufficient": true,
+      "comment": "equality meets G >= need"
+    },
+    {
+      "name": "guard_budget_too_small",
+      "category": "guard_budget",
+      "guard": 50,
+      "b_i": 20,
+      "b_j": 20,
+      "j_i": 5,
+      "j_j": 5,
+      "p": 5,
+      "m": 5,
+      "need": 60,
+      "expected_sufficient": false,
+      "comment": "20+20+5+5+5+5 = 60 > 50"
+    },
+    {
+      "name": "holdover_at_threshold",
+      "category": "holdover",
+      "measured_drift_ppm": 5000,
+      "guard_ppm": 5000,
+      "expected_expired": false,
+      "comment": "spec 02a-tdma: desync when drift exceeds 5000 ppm, not at equality"
+    },
+    {
+      "name": "holdover_expires_above_threshold",
+      "category": "holdover",
+      "measured_drift_ppm": 5001,
+      "guard_ppm": 5000,
+      "expected_expired": true,
+      "comment": "5001 > 5000"
+    },
+    {
+      "name": "holdover_expires_on_negative_drift",
+      "category": "holdover",
+      "measured_drift_ppm": -12000,
+      "guard_ppm": 5000,
+      "expected_expired": true,
+      "comment": "absolute drift 12000 > 5000"
+    },
+    {
+      "name": "ppm_from_beacon_delta",
+      "category": "drift_ppm",
+      "delta_ms": 56,
+      "beacon_interval_ms": 5600000,
+      "expected_ppm": 10,
+      "future_delta_ms": 5600000,
+      "expected_correction_ms": 56,
+      "comment": "(56 * 1000000) / 5600000 = 10; 10 * 5600000 / 1000000 = 56"
+    }
+  ]
+}

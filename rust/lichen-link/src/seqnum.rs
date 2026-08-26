@@ -62,6 +62,12 @@ impl LinkSeqNum {
         old
     }
 
+    /// 24-bit logical replay counter: `(epoch << 16) | seqnum` (spec 4.4).
+    #[inline]
+    pub const fn with_epoch(self, epoch: u8) -> u32 {
+        logical_counter(epoch, self.0)
+    }
+
     /// Compute signed distance from `other` to `self`.
     ///
     /// Positive means `self` is newer than `other`.
@@ -112,6 +118,14 @@ impl From<LinkSeqNum> for u16 {
     }
 }
 
+/// 24-bit unsigned serial `(epoch << 16) | seqnum`.
+///
+/// Epoch 255 / seqnum 65535 is `0xFFFFFF`, the last valid tuple before
+/// link-key rotation. Epoch MUST NOT wrap 255 -> 0.
+pub const fn logical_counter(epoch: u8, seqnum: u16) -> u32 {
+    ((epoch as u32) << 16) | (seqnum as u32)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,6 +167,16 @@ mod tests {
         let bytes = seq.to_be_bytes();
         assert_eq!(bytes, [0x12, 0x34]);
         assert_eq!(LinkSeqNum::from_be_bytes(bytes), seq);
+    }
+
+    #[test]
+    fn twenty_four_bit_serial() {
+        assert_eq!(logical_counter(5, 65535), 393_215);
+        assert_eq!(logical_counter(6, 0), 393_216);
+        assert_eq!(logical_counter(255, 65535), 0x00FF_FFFF);
+        assert_eq!(LinkSeqNum::new(65535).with_epoch(5), 393_215);
+        assert!(logical_counter(5, 65535) < logical_counter(6, 0));
+        assert!(logical_counter(9, 65535) < logical_counter(10, 100));
     }
 
     #[test]

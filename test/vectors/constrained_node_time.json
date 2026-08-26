@@ -1,0 +1,44 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Constrained-node time when wall_clock_valid is false (spec 09 14.6, appendix F.12). Invalid clocks omit SenML bt and stamp relative t / monotonic ticks. Independent literals, not code-under-test output.",
+  "vectors": [
+    {
+      "name": "invalid_omits_unix_base_time",
+      "wall_clock_valid": false,
+      "source": null,
+      "unix": 1716742800,
+      "uptime_ticks": 42,
+      "relative_s": 5,
+      "expected_kind": "monotonic",
+      "expected_ticks": 42,
+      "expected_bt": null,
+      "expected_t": 5
+    },
+    {
+      "name": "valid_gnss_sets_bt",
+      "wall_clock_valid": true,
+      "source": "GNSS",
+      "unix": 1716742800,
+      "uptime_ticks": 99,
+      "relative_s": 60,
+      "expected_kind": "unix",
+      "expected_unix": 1716742800,
+      "expected_source": "GNSS",
+      "expected_bt": 1716742800,
+      "expected_t": 60
+    },
+    {
+      "name": "invalidate_returns_to_monotonic",
+      "wall_clock_valid": false,
+      "source": null,
+      "unix": 1716742800,
+      "uptime_ticks": 7,
+      "relative_s": 0,
+      "expected_kind": "monotonic",
+      "expected_ticks": 7,
+      "expected_bt": null,
+      "expected_t": 0
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Malformed DIO Time Option (type 0x15) cases. Independent literals; parsers MUST return the named error and MUST NOT panic.",
+  "vectors": [
+    {
+      "name": "empty",
+      "hex": "",
+      "expected": "truncated"
+    },
+    {
+      "name": "truncated_7",
+      "hex": "15060000000000",
+      "expected": "truncated"
+    },
+    {
+      "name": "extra_byte",
+      "hex": "150603006553f10000",
+      "expected": "truncated"
+    },
+    {
+      "name": "pad1_as_time_option",
+      "hex": "0006000000000000",
+      "expected": "bad-type-or-length"
+    },
+    {
+      "name": "wrong_type",
+      "hex": "140603006553f100",
+      "expected": "bad-type-or-length"
+    },
+    {
+      "name": "wrong_length_byte",
+      "hex": "150503006553f100",
+      "expected": "bad-type-or-length"
+    },
+    {
+      "name": "reserved_nonzero",
+      "hex": "150603016553f100",
+      "expected": "reserved-nonzero"
+    },
+    {
+      "name": "stratum_out_of_range",
+      "hex": "150605006553f100",
+      "expected": "invalid-stratum"
+    },
+    {
+      "name": "no_sync_nonzero_timestamp",
+      "hex": "1506000000000001",
+      "expected": "no-sync-timestamp"
+    }
+  ]
+}
