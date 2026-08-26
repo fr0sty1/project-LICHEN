@@ -52,6 +52,7 @@ pub mod data_timing;
 pub mod dio_time;
 pub mod epoch_floor;
 pub mod evidence;
+pub mod failover;
 pub mod frame;
 pub mod keys;
 pub mod monotonic;
@@ -93,6 +94,7 @@ pub use dio_time::{
 pub use epoch_floor::{
     evaluate_epoch_floor, EpochFloorError, EpochFloorResult, ProvisionEpochStatus,
 };
+pub use failover::select_wall_clock_source;
 pub use monotonic::{MonotonicError, MonotonicUptime};
 pub use precedence::{PrecedenceError, SourcePrecedencePolicy};
 pub use sos::{

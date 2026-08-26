@@ -15,8 +15,8 @@ fn constrained_node_time_vectors() {
         let name = case["name"].as_str().unwrap();
         let mut clock = WallClockValidity::new();
         if case["wall_clock_valid"].as_bool().unwrap() {
-            let source = TimeSourceClass::from_str(case["source"].as_str().unwrap())
-                .expect("source class");
+            let source =
+                TimeSourceClass::from_str(case["source"].as_str().unwrap()).expect("source class");
             clock = clock.establish(source).expect("establish");
         }
         let unix = case["unix"].as_u64().unwrap() as u32;
