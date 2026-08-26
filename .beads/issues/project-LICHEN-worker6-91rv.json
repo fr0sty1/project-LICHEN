@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-91rv",
   "title": "Implement LCI raw-diag TTL arming and consume raw_diag_ttl.json",
   "description": "test/vectors/raw_diag_ttl.json (LCI 17.5.4) unconsumed: no TTL arming/auto-disable logic exists for a raw diagnostic resource in python/src/lichen. Implement resource behavior + pytest consumer.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T00:12:44.890414Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T00:12:44.890414Z",
+  "updated_at": "2026-08-26T01:44:06.633832Z",
+  "closed_at": "2026-08-26T01:44:06.633832Z",
+  "close_reason": "Raw-diag TTL oracle shipped: lichen/coap/raw_diag.py (RawDiagTTL state machine) - 300s default/max TTL with clamping, ttl_s required on enable (4.00 otherwise), negative rejected, zero/explicit-disable immediate, monotonic countdown with auto-disable at zero, rearm resets. Injectable clock for determinism. All 11 vectors consumed by tests/coap/test_raw_diag_ttl_vectors.py. Resource-handler wiring into the LCI site deferred to the resources lane owner (dirty files).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-91rv",

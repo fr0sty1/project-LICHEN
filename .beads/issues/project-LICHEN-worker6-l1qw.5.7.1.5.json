@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.1.5",
   "title": "Key token derivation from pubkey",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:56.524771Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T01:41:11.83766Z",
+  "updated_at": "2026-08-26T01:42:42.057354Z",
   "started_at": "2026-08-26T01:41:11.83766Z",
-  "lease_expires_at": "2026-08-26T01:46:11.83766Z",
-  "heartbeat_at": "2026-08-26T01:41:11.83766Z",
+  "closed_at": "2026-08-26T01:42:42.057354Z",
+  "close_reason": "Already implemented: iid_from_pubkey_bytes SHA-512(pubkey)[0:8] with U/L cleared is the Announce originator IID/key token; yggdrasil_addr_vectors.rs covers it.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.1.5",

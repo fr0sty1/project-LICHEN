@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.9",
   "title": "Cross-validate: Derived OSCORE context parity",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:53.771937Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T01:40:30.50353Z",
+  "updated_at": "2026-08-26T01:44:01.293311Z",
   "started_at": "2026-08-26T01:40:30.50353Z",
-  "lease_expires_at": "2026-08-26T01:45:30.50353Z",
-  "heartbeat_at": "2026-08-26T01:40:30.50353Z",
+  "closed_at": "2026-08-26T01:44:01.293311Z",
+  "close_reason": "Fixed by wave-fix: Added TestOscoreContextParity class with two tests validating EDHOC-derived OSCORE context parity between initiator and responder roles",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.9",
