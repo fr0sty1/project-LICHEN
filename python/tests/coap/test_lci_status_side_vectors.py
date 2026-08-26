@@ -327,7 +327,7 @@ async def _observe_location_session(
     server = await create_lichen_context(net.channel("srv"), "srv", site=site)
     client = await create_lichen_context(net.channel("cli"), "cli")
     try:
-        request = client.request(Message(code=GET, observe=0, uri="coap://srv/location"))
+        request = client.request(Message(code=GET, observe=0, uri="coap://srv/sensors/location"))
         initial = await request.response
         notifications: list[bytes] = []
         observer = request.observation.__aiter__()

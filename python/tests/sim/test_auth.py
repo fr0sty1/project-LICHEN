@@ -2,8 +2,12 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for REST API authentication."""
 
+from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from httpx import ASGITransport, AsyncClient
+from starlette.applications import Starlette
 
 from lichen.sim.api import SimulatorAPI
 from lichen.sim.auth import (
@@ -15,6 +19,7 @@ from lichen.sim.auth import (
     generate_token,
     validate_token_strength,
 )
+from lichen.sim.simulation import Simulation
 
 
 class TestGenerateToken:
@@ -102,12 +107,12 @@ class TestBearerAuthMiddleware:
         return SimulatorAPI(api_token=token)
 
     @pytest.fixture
-    def app_with_auth(self, api_with_auth: SimulatorAPI):
+    def app_with_auth(self, api_with_auth: SimulatorAPI) -> Starlette:
         """Create a Starlette app with authentication."""
         return api_with_auth.create_app()
 
     @pytest.fixture
-    async def client_with_auth(self, app_with_auth) -> AsyncClient:
+    async def client_with_auth(self, app_with_auth: Starlette) -> AsyncGenerator[AsyncClient, None]:
         """Create an async test client for authenticated app."""
         transport = ASGITransport(app=app_with_auth)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -197,12 +202,12 @@ class TestNoAuth:
         return SimulatorAPI()
 
     @pytest.fixture
-    def app_no_auth(self, api_no_auth: SimulatorAPI):
+    def app_no_auth(self, api_no_auth: SimulatorAPI) -> Starlette:
         """Create a Starlette app without authentication."""
         return api_no_auth.create_app()
 
     @pytest.fixture
-    async def client_no_auth(self, app_no_auth) -> AsyncClient:
+    async def client_no_auth(self, app_no_auth: Starlette) -> AsyncGenerator[AsyncClient, None]:
         """Create an async test client for unauthenticated app."""
         transport = ASGITransport(app=app_no_auth)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -236,12 +241,12 @@ class TestConstantTimeComparison:
         return SimulatorAPI(api_token=token)
 
     @pytest.fixture
-    def app_with_auth(self, api_with_auth: SimulatorAPI):
+    def app_with_auth(self, api_with_auth: SimulatorAPI) -> Starlette:
         """Create a Starlette app with authentication."""
         return api_with_auth.create_app()
 
     @pytest.fixture
-    async def client_with_auth(self, app_with_auth) -> AsyncClient:
+    async def client_with_auth(self, app_with_auth: Starlette) -> AsyncGenerator[AsyncClient, None]:
         """Create an async test client for authenticated app."""
         transport = ASGITransport(app=app_with_auth)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -307,3 +312,65 @@ class TestWebSocketTokenExtraction:
         """Extracts empty string if token is empty after dot."""
         token = extract_websocket_token([f"{WEBSOCKET_AUTH_SUBPROTOCOL}."])
         assert token == ""
+
+
+class TestWebSocketAuthentication:
+    """Tests that configured API credentials also protect WebSockets."""
+
+    @staticmethod
+    def _websocket(subprotocols: list[str]) -> AsyncMock:
+        websocket = AsyncMock()
+        websocket.path_params = {"sim_id": "sim1"}
+        websocket.scope = {"subprotocols": subprotocols}
+        return websocket
+
+    @pytest.mark.asyncio
+    async def test_missing_token_is_rejected_before_simulation_lookup(self) -> None:
+        """An authenticated API rejects missing WebSocket credentials."""
+        api = SimulatorAPI(api_token=generate_token())
+        websocket = self._websocket([])
+
+        with patch("lichen.sim.api.handle_websocket", new_callable=AsyncMock) as handler:
+            await api.websocket_endpoint(websocket)
+
+        websocket.close.assert_awaited_once_with(code=4401, reason="Unauthorized")
+        handler.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_wrong_token_is_rejected(self) -> None:
+        """An authenticated API rejects an incorrect WebSocket token."""
+        api = SimulatorAPI(api_token=generate_token())
+        websocket = self._websocket([f"{WEBSOCKET_AUTH_SUBPROTOCOL}.wrong-token"])
+
+        with patch("lichen.sim.api.handle_websocket", new_callable=AsyncMock) as handler:
+            await api.websocket_endpoint(websocket)
+
+        websocket.close.assert_awaited_once_with(code=4401, reason="Unauthorized")
+        handler.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_valid_token_reaches_websocket_handler(self) -> None:
+        """A matching WebSocket bearer token authorizes the connection."""
+        token = generate_token()
+        api = SimulatorAPI(api_token=token)
+        api._simulations["sim1"] = Simulation(sim_id="sim1")
+        websocket = self._websocket([f"{WEBSOCKET_AUTH_SUBPROTOCOL}.{token}"])
+
+        with patch("lichen.sim.api.handle_websocket", new_callable=AsyncMock) as handler:
+            await api.websocket_endpoint(websocket)
+
+        websocket.close.assert_not_awaited()
+        handler.assert_awaited_once_with(websocket, api._ws_manager, "sim1")
+
+    @pytest.mark.asyncio
+    async def test_unconfigured_api_preserves_unauthenticated_websocket(self) -> None:
+        """Loopback-compatible no-auth API behavior remains available."""
+        api = SimulatorAPI()
+        api._simulations["sim1"] = Simulation(sim_id="sim1")
+        websocket = self._websocket([])
+
+        with patch("lichen.sim.api.handle_websocket", new_callable=AsyncMock) as handler:
+            await api.websocket_endpoint(websocket)
+
+        websocket.close.assert_not_awaited()
+        handler.assert_awaited_once_with(websocket, api._ws_manager, "sim1")

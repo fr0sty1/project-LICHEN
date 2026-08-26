@@ -300,6 +300,32 @@ class TestSelectChannel:
         # Should use hash-based since no time available
         assert 1 <= ch <= 7
 
+    def test_unestablished_wall_clock_falls_through(self) -> None:
+        """A retained but invalid timestamp must not drive synchronized hopping."""
+        time_provider = SimulatedTimeProvider(
+            unix_time_us=GNSS_EPOCH_BASE_US + 5 * SUPERFRAME_DURATION_US,
+            has_gnss=True,
+            wall_clock_valid=False,
+        )
+        gnss_config = GnssHopConfig(enabled=True, seed=0)
+
+        ch = select_channel(
+            peer_eui64=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            peer_known=True,
+            sfn=42,
+            n_channels=8,
+            time_provider=time_provider,
+            gnss_config=gnss_config,
+        )
+
+        expected = select_channel(
+            peer_eui64=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            peer_known=True,
+            sfn=42,
+            n_channels=8,
+        )
+        assert ch == expected
+
     def test_gnss_synced_uses_config_params(self) -> None:
         """GNSS-synced should use config's seed and timing params."""
         custom_duration = 1_000_000  # 1 second

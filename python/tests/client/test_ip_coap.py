@@ -130,6 +130,20 @@ async def test_request_sends_cbor_payload_and_content_format() -> None:
     assert context.requests[0].opt.content_format == CBOR_CONTENT_FORMAT
 
 
+async def test_request_accepts_absolute_peer_uri() -> None:
+    context = FakeContext()
+    context.responses.append(Message(code=aiocoap.CREATED))
+    transport = AiocoapResourceTransport(
+        config=IpCoapConfig(base_uri="coap://[fe80::1]"),
+        context=context,
+    )
+
+    result = await transport.request("POST", "coap://[0200::2]/waypoints")
+
+    assert result.code == "2.01"
+    assert context.requests[0].get_request_uri() == "coap://[200::2]/waypoints"
+
+
 async def test_request_preserves_unsupported_resource_code() -> None:
     context = FakeContext()
     context.responses.append(Message(code=aiocoap.NOT_FOUND, payload=b"missing"))
@@ -1043,5 +1057,4 @@ async def test_observe_allowed_when_backoff_disabled() -> None:
     results = [r.payload async for r in subscription.results()]
     assert results == [{"messages": []}]
     await subscription.close()
-
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for observable SenML CoAP resources (/sensors, /location)."""
+"""Tests for observable SenML CoAP resources (/sensors, /sensors/location)."""
 
 from __future__ import annotations
 
@@ -143,16 +143,18 @@ class TestSenMLSensorsObserve:
 
 
 # ---------------------------------------------------------------------------
-# /location — GET
+# /sensors/location — GET
 # ---------------------------------------------------------------------------
 
 
 class TestSenMLLocationGet:
     async def test_empty_location_returns_empty_pack(self) -> None:
-        """Before update(), /location returns valid empty SenML (not raw empty bytes)."""
+        """Before update(), the resource returns valid empty SenML."""
         client, server, _sensors, _location = await _setup_with_sensors()
         try:
-            resp = await client.request(Message(code=GET, uri="coap://srv/location")).response
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/sensors/location")
+            ).response
             assert resp.code == aiocoap.CONTENT
             assert resp.opt.content_format == 112  # application/senml+cbor
             records = unpack(resp.payload)
@@ -165,7 +167,9 @@ class TestSenMLLocationGet:
         client, server, _sensors, location = await _setup_with_sensors()
         try:
             location.update(48.2049, 16.3710)
-            resp = await client.request(Message(code=GET, uri="coap://srv/location")).response
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/sensors/location")
+            ).response
             assert resp.code == aiocoap.CONTENT
             assert resp.opt.content_format == 112
             records = unpack(resp.payload)
@@ -181,10 +185,35 @@ class TestSenMLLocationGet:
         client, server, _sensors, location = await _setup_with_sensors()
         try:
             location.update(-33.8688, -70.6693, alt=567.0)
-            resp = await client.request(Message(code=GET, uri="coap://srv/location")).response
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/sensors/location")
+            ).response
             records = unpack(resp.payload)
             by_name = {r.n: r for r in records}
             assert by_name["alt"].v == pytest.approx(567.0)
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_location_get_with_optional_motion_and_accuracy(self) -> None:
+        client, server, _sensors, location = await _setup_with_sensors()
+        try:
+            location.update(
+                37.7749,
+                -122.4194,
+                speed=1.2,
+                heading=45.0,
+                hacc=5.0,
+                vacc=10.0,
+            )
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/sensors/location")
+            ).response
+            by_name = {record.n: record for record in unpack(resp.payload)}
+            assert by_name["speed"].v == pytest.approx(1.2)
+            assert by_name["heading"].v == pytest.approx(45.0)
+            assert by_name["hacc"].v == pytest.approx(5.0)
+            assert by_name["vacc"].v == pytest.approx(10.0)
         finally:
             await client.shutdown()
             await server.shutdown()
@@ -196,15 +225,44 @@ class TestSenMLLocationGet:
         server = await create_lichen_context(net.channel("srv"), "srv", site=site)
         client = await create_lichen_context(net.channel("cli"), "cli")
         try:
-            resp = await client.request(Message(code=GET, uri="coap://srv/location")).response
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/sensors/location")
+            ).response
             assert resp.code == aiocoap.NOT_FOUND
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_legacy_location_alias_returns_same_payload(self) -> None:
+        client, server, _sensors, location = await _setup_with_sensors()
+        try:
+            location.update(48.2049, 16.3710, alt=158.0)
+            canonical = await client.request(
+                Message(code=GET, uri="coap://srv/sensors/location")
+            ).response
+            legacy = await client.request(Message(code=GET, uri="coap://srv/location")).response
+            assert legacy.code == aiocoap.CONTENT
+            assert legacy.opt.content_format == 112
+            assert legacy.payload == canonical.payload
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_location_discovery_metadata(self) -> None:
+        client, server, _sensors, _location = await _setup_with_sensors()
+        try:
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/.well-known/core")
+            ).response
+            link_format = resp.payload.decode("utf-8")
+            assert '</sensors/location>;rt="senml";if="sensor";ct="112";obs;geo="*"' in link_format
         finally:
             await client.shutdown()
             await server.shutdown()
 
 
 # ---------------------------------------------------------------------------
-# /location — Observe
+# /sensors/location — Observe
 # ---------------------------------------------------------------------------
 
 
@@ -214,7 +272,7 @@ class TestSenMLLocationObserve:
         try:
             location.update(0.0, 0.0)
 
-            req = client.request(Message(code=GET, observe=0, uri="coap://srv/location"))
+            req = client.request(Message(code=GET, observe=0, uri="coap://srv/sensors/location"))
             first_resp = await req.response
             assert first_resp.code == aiocoap.CONTENT
 
@@ -271,13 +329,15 @@ class TestPositionBeaconPut:
         """PUT with full position (lat, lon, alt, speed, heading) succeeds."""
         client, server, beacon = await _setup_with_position_beacon()
         try:
-            payload = pack(location(
-                lat=37.7749,
-                lon=-122.4194,
-                alt=10.5,
-                speed=1.2,
-                heading=45.0,
-            ))
+            payload = pack(
+                location(
+                    lat=37.7749,
+                    lon=-122.4194,
+                    alt=10.5,
+                    speed=1.2,
+                    heading=45.0,
+                )
+            )
             msg = Message(code=PUT, uri="coap://srv/pos", payload=payload)
             msg.opt.content_format = 112
             resp = await client.request(msg).response

@@ -942,8 +942,9 @@ class TestConsolidatedDaoValidation:
         assert result is None
 
         # Route should be installed
+        from lichen.rpl.routing import RouteTarget
         routes = manager.routing_table.routes()
-        assert NODE_ADDR in routes
+        assert RouteTarget.host(NODE_ADDR) in routes
 
     def test_validate_and_process_dao_rejects_target_source_mismatch(self) -> None:
         """Per spec 8.7, /128 Target MUST equal source address."""

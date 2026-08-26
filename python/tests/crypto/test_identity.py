@@ -20,8 +20,15 @@ from hashlib import sha512
 import pytest
 from nacl.bindings import crypto_scalarmult, crypto_scalarmult_base
 
-from lichen.crypto.identity import Identity, PeerIdentity, _pubkey_to_iid, iid_to_human_address
-from lichen.crypto.schnorr48 import clamp
+from lichen.crypto.identity import (
+    Identity,
+    PeerIdentity,
+    _pubkey_to_iid,
+    iid_to_human_address,
+    yggdrasil_address,
+)
+from lichen.crypto.schnorr48 import clamp, derive_keypair, sign, verify
+from lichen.ipv6.addr import link_local_from_pubkey
 
 
 class TestIdentityConstruction:
@@ -49,6 +56,47 @@ class TestIdentityConstruction:
         assert ident1.iid != ident2.iid
         assert ident1.ygg_addr != ident2.ygg_addr
 
+    def test_generate_uses_one_exact_os_rng_seed(self, monkeypatch: pytest.MonkeyPatch):
+        """Generation requests exactly one 32-byte OS seed and derives from it."""
+        seed = bytes(range(32))
+        requested_sizes: list[int] = []
+
+        def fixed_urandom(size: int) -> bytes:
+            requested_sizes.append(size)
+            return seed
+
+        monkeypatch.setattr("lichen.crypto.identity.os.urandom", fixed_urandom)
+        ident = Identity.generate()
+
+        assert requested_sizes == [32]
+        assert ident.seed == seed
+        assert ident.pubkey.hex() == (
+            "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8"
+        )
+        assert ident == Identity.from_seed(seed)
+
+    def test_generate_propagates_os_rng_failure(self, monkeypatch: pytest.MonkeyPatch):
+        """An unavailable OS CSPRNG fails closed with the original exception."""
+        failure = OSError("OS entropy unavailable")
+
+        def failed_urandom(size: int) -> bytes:
+            assert size == 32
+            raise failure
+
+        monkeypatch.setattr("lichen.crypto.identity.os.urandom", failed_urandom)
+        with pytest.raises(OSError) as caught:
+            Identity.generate()
+        assert caught.value is failure
+
+    @pytest.mark.parametrize("length", [0, 1, 31, 33, 255])
+    def test_generate_rejects_invalid_rng_seed_length(
+        self, monkeypatch: pytest.MonkeyPatch, length: int
+    ):
+        """A broken RNG adapter cannot smuggle a non-32-byte seed downstream."""
+        monkeypatch.setattr("lichen.crypto.identity.os.urandom", lambda requested: bytes(length))
+        with pytest.raises(ValueError, match=rf"seed must be 32 bytes, got {length}"):
+            Identity.generate()
+
     def test_from_seed_is_deterministic(self):
         """Same seed always produces same keys."""
         # Why test determinism: Key recovery requires reproducibility
@@ -72,6 +120,86 @@ class TestIdentityConstruction:
         ident2 = Identity.from_seed(seed2)
 
         assert ident1.pubkey != ident2.pubkey
+
+    def test_identity_key_is_the_schnorr_signing_key(self):
+        """The identity seed has one canonical keypair for signing and addressing."""
+        seed = bytes(range(32))
+        message = b"LICHEN identity signing-key binding v1"
+        ident = Identity.from_seed(seed)
+        expected_private, expected_public = derive_keypair(seed)
+
+        assert ident.seed == seed
+        assert ident.privkey == expected_private
+        assert ident.pubkey == expected_public
+        assert ident.iid == _pubkey_to_iid(ident.pubkey)
+        assert ident.ygg_addr == yggdrasil_address(ident.pubkey).packed
+
+        signature = sign(ident.privkey, ident.pubkey, message)
+        assert signature == sign(ident.privkey, ident.pubkey, message)
+        assert signature.hex() == (
+            "e79cdb76ffbfb5d711fed7dddc5fc159"
+            "f79885f1391c86780349a90193081746"
+            "a035cb23218db114d28236f44a002e07"
+        )
+        assert verify(ident.pubkey, message, signature)
+
+        other = Identity.from_seed(bytes(reversed(range(32))))
+        assert not verify(other.pubkey, message, signature)
+
+        mismatched_signature = sign(other.privkey, ident.pubkey, message)
+        assert mismatched_signature != signature
+        assert not verify(ident.pubkey, message, mismatched_signature)
+        assert not verify(other.pubkey, message, mismatched_signature)
+
+    def test_public_key_export_is_owned_and_drives_both_addresses(self):
+        """Exported key bytes outlive the identity and remain the address input."""
+        ident = Identity.from_seed(bytes(range(32)))
+        exported_public = bytes(ident.pubkey)
+        del ident
+
+        assert exported_public.hex() == (
+            "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8"
+        )
+        assert _pubkey_to_iid(exported_public).hex() == "ed4242ead4ac6948"
+        assert yggdrasil_address(exported_public).packed.hex() == (
+            "02ed4242ead4ac69ed4242ead4ac6948"
+        )
+
+        for malformed in (exported_public[:-1], exported_public + b"\x00"):
+            with pytest.raises(ValueError, match="pubkey must be 32 bytes"):
+                _pubkey_to_iid(malformed)
+            with pytest.raises(ValueError, match="pubkey must be 32 bytes"):
+                yggdrasil_address(malformed)
+
+    def test_cold_starts_reconstruct_the_exact_same_identity_and_addresses(self):
+        """A persisted seed is the only input to a cold-start identity snapshot."""
+
+        def cold_start(seed: bytes) -> tuple[bytes, bytes, bytes, bytes, bytes]:
+            ident = Identity.from_seed(seed)
+            return (
+                ident.privkey,
+                ident.pubkey,
+                ident.iid,
+                link_local_from_pubkey(ident.pubkey).packed,
+                ident.ygg_addr,
+            )
+
+        seed = bytes(range(32))
+        first = cold_start(seed)
+        # Exercise unrelated derivations between starts: no process-global key
+        # or address cache may influence reconstruction from the persisted seed.
+        different = cold_start(bytes(reversed(range(32))))
+        second = cold_start(seed)
+
+        assert first == second
+        assert first == (
+            bytes.fromhex("3894eea49c580aef816935762be049559d6d1440dede12e6a125f1841fff8e6f"),
+            bytes.fromhex("03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8"),
+            bytes.fromhex("ed4242ead4ac6948"),
+            bytes.fromhex("fe80000000000000ed4242ead4ac6948"),
+            bytes.fromhex("02ed4242ead4ac69ed4242ead4ac6948"),
+        )
+        assert all(left != right for left, right in zip(first, different, strict=True))
 
     def test_from_seed_rejects_wrong_length(self):
         """from_seed rejects seeds that aren't exactly 32 bytes."""

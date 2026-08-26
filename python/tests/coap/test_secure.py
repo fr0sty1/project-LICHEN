@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import pytest
 
@@ -126,6 +127,39 @@ class TestTofuPeerResolver:
 
 class TestSecureDatagramChannel:
     """Tests for SecureDatagramChannel with pre-provisioned contexts."""
+
+    def test_send_message_forwards_congestion_policy(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Polymorphic message sends preserve the caller's admission policy."""
+        from aiocoap import GET, Message
+        from aiocoap.numbers import types
+        from aiocoap.oscore import Direction
+
+        secure = create_secure_channel(InMemoryNetwork().channel("alice"), Identity.generate())
+        observed: list[bool] = []
+
+        def no_operation(_data: bytes, _dest: str, _key: str) -> None:
+            return None
+
+        def record_schedule(
+            _data: bytes,
+            _dest: str,
+            _key: str,
+            _operation: object,
+            _priority: object,
+            check_congestion: bool,
+        ) -> None:
+            observed.append(check_congestion)
+
+        monkeypatch.setattr(secure, "_prepare_send_operation", no_operation)
+        monkeypatch.setattr(secure, "_schedule_send", record_schedule)
+
+        request = Message(code=GET)
+        request.mtype = types.NON
+        request.mid = 1
+        request.direction = Direction.OUTGOING
+        secure.send_message(request, "bob", check_congestion=False)
+
+        assert observed == [False]
 
     def _create_edhoc_contexts(
         self, alice_id: Identity, bob_id: Identity
@@ -503,10 +537,7 @@ class TestSecureChannelConcurrency:
 
         # Start multiple concurrent calls to _establish_context directly
         # (bypassing _send_protected's lock to actually test coalescing)
-        tasks = [
-            asyncio.create_task(alice_secure._establish_context("bob", key))
-            for _ in range(5)
-        ]
+        tasks = [asyncio.create_task(alice_secure._establish_context("bob", key)) for _ in range(5)]
 
         # Let tasks start
         await asyncio.sleep(0.01)
@@ -568,10 +599,8 @@ class TestSecureChannelConcurrency:
             # The future should already be registered
             assert key in alice_secure._pending_edhoc
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
 
         await check_immediate_registration()
         # Clean up
@@ -586,22 +615,38 @@ class TestHasOscoreOption:
         # CoAP header: Ver=1, T=NON, TKL=1, Code=GET, MID=0x0001
         # Token: 0xAB
         # Option: delta=9 (OSCORE), len=1, value=0x00
-        datagram = bytes([
-            0x51, 0x01, 0x00, 0x01,  # Header (TKL=1)
-            0xAB,                     # Token
-            0x91, 0x00,               # Option: delta=9, len=1, value=0x00
-        ])
+        datagram = bytes(
+            [
+                0x51,
+                0x01,
+                0x00,
+                0x01,  # Header (TKL=1)
+                0xAB,  # Token
+                0x91,
+                0x00,  # Option: delta=9, len=1, value=0x00
+            ]
+        )
         assert SecureDatagramChannel._has_oscore_option(datagram) is True
 
     def test_no_oscore_option(self) -> None:
         """Return False when OSCORE option not present."""
         # Option delta=3 (Uri-Host), then payload marker
-        datagram = bytes([
-            0x50, 0x01, 0x00, 0x01,  # Header (TKL=0)
-            0x31, 0x41,              # Option: delta=3, len=1, value='A'
-            0xFF,                    # Payload marker
-            0x48, 0x45, 0x4C, 0x4C, 0x4F,  # Payload: HELLO
-        ])
+        datagram = bytes(
+            [
+                0x50,
+                0x01,
+                0x00,
+                0x01,  # Header (TKL=0)
+                0x31,
+                0x41,  # Option: delta=3, len=1, value='A'
+                0xFF,  # Payload marker
+                0x48,
+                0x45,
+                0x4C,
+                0x4C,
+                0x4F,  # Payload: HELLO
+            ]
+        )
         assert SecureDatagramChannel._has_oscore_option(datagram) is False
 
     def test_truncated_header(self) -> None:
@@ -613,70 +658,115 @@ class TestHasOscoreOption:
         """Return False when extended option length (13) lacks data byte."""
         # CoAP header + token, then option with delta=1, extended len=13
         # but truncated before the extended length byte
-        datagram = bytes([
-            0x50, 0x01, 0x00, 0x01,  # Header (TKL=0)
-            0x1D,                    # Option: delta=1, len=13 (extended)
-            # Missing: extended length byte and option value
-        ])
+        datagram = bytes(
+            [
+                0x50,
+                0x01,
+                0x00,
+                0x01,  # Header (TKL=0)
+                0x1D,  # Option: delta=1, len=13 (extended)
+                # Missing: extended length byte and option value
+            ]
+        )
         assert SecureDatagramChannel._has_oscore_option(datagram) is False
 
     def test_truncated_extended_option_len_14(self) -> None:
         """Return False when extended option length (14) lacks 2-byte length."""
         # Option with delta=1, extended len=14 but truncated
-        datagram = bytes([
-            0x50, 0x01, 0x00, 0x01,  # Header (TKL=0)
-            0x1E,                    # Option: delta=1, len=14 (extended)
-            0x00,                    # Only 1 byte of 2-byte extended length
-        ])
+        datagram = bytes(
+            [
+                0x50,
+                0x01,
+                0x00,
+                0x01,  # Header (TKL=0)
+                0x1E,  # Option: delta=1, len=14 (extended)
+                0x00,  # Only 1 byte of 2-byte extended length
+            ]
+        )
         assert SecureDatagramChannel._has_oscore_option(datagram) is False
 
     def test_valid_extended_option_len_13(self) -> None:
         """Handle valid extended option length (13) correctly."""
         # Option: delta=1, extended len=13 (actual len = 13 + 0 = 13 bytes)
         # Then OSCORE option (delta=8 to reach cumulative 9)
-        datagram = bytes([
-            0x50, 0x01, 0x00, 0x01,  # Header (TKL=0)
-            0x1D, 0x00,              # Option: delta=1, len=13+0=13
-        ] + [0x00] * 13 + [         # 13 bytes of option value
-            0x81, 0x00,              # Option: delta=8, len=1 (cumulative=9=OSCORE)
-        ])
+        datagram = bytes(
+            [
+                0x50,
+                0x01,
+                0x00,
+                0x01,  # Header (TKL=0)
+                0x1D,
+                0x00,  # Option: delta=1, len=13+0=13
+            ]
+            + [0x00] * 13
+            + [  # 13 bytes of option value
+                0x81,
+                0x00,  # Option: delta=8, len=1 (cumulative=9=OSCORE)
+            ]
+        )
         assert SecureDatagramChannel._has_oscore_option(datagram) is True
 
     def test_valid_extended_option_len_14(self) -> None:
         """Handle valid extended option length (14) correctly."""
         # Option: delta=1, extended len=14 (actual len = 269 + 0 = 269 bytes)
         # Then OSCORE option
-        datagram = bytes([
-            0x50, 0x01, 0x00, 0x01,  # Header (TKL=0)
-            0x1E, 0x00, 0x00,        # Option: delta=1, len=269+0=269
-        ] + [0x00] * 269 + [        # 269 bytes of option value
-            0x81, 0x00,              # Option: delta=8, len=1 (cumulative=9=OSCORE)
-        ])
+        datagram = bytes(
+            [
+                0x50,
+                0x01,
+                0x00,
+                0x01,  # Header (TKL=0)
+                0x1E,
+                0x00,
+                0x00,  # Option: delta=1, len=269+0=269
+            ]
+            + [0x00] * 269
+            + [  # 269 bytes of option value
+                0x81,
+                0x00,  # Option: delta=8, len=1 (cumulative=9=OSCORE)
+            ]
+        )
         assert SecureDatagramChannel._has_oscore_option(datagram) is True
 
     def test_truncated_with_extended_delta_and_extended_len(self) -> None:
         """Return False when both delta and len are extended but len truncated."""
         # Option: delta=13 (extended), len=13 (extended)
         # delta byte present, but len byte missing
-        datagram = bytes([
-            0x50, 0x01, 0x00, 0x01,  # Header (TKL=0)
-            0xDD, 0x00,              # Option: delta=13+0=13, len=13 (extended)
-            # Missing: extended length byte (should be at pos+2)
-        ])
+        datagram = bytes(
+            [
+                0x50,
+                0x01,
+                0x00,
+                0x01,  # Header (TKL=0)
+                0xDD,
+                0x00,  # Option: delta=13+0=13, len=13 (extended)
+                # Missing: extended length byte (should be at pos+2)
+            ]
+        )
         assert SecureDatagramChannel._has_oscore_option(datagram) is False
 
     def test_option_len_15_reserved(self) -> None:
         """Return False for reserved option length value 15."""
-        datagram = bytes([
-            0x50, 0x01, 0x00, 0x01,  # Header (TKL=0)
-            0x1F,                    # Option: delta=1, len=15 (reserved)
-        ])
+        datagram = bytes(
+            [
+                0x50,
+                0x01,
+                0x00,
+                0x01,  # Header (TKL=0)
+                0x1F,  # Option: delta=1, len=15 (reserved)
+            ]
+        )
         assert SecureDatagramChannel._has_oscore_option(datagram) is False
 
     def test_option_delta_15_reserved(self) -> None:
         """Return False for reserved option delta value 15."""
-        datagram = bytes([
-            0x50, 0x01, 0x00, 0x01,  # Header (TKL=0)
-            0xF1,                    # Option: delta=15 (reserved), len=1
-        ])
+        datagram = bytes(
+            [
+                0x50,
+                0x01,
+                0x00,
+                0x01,  # Header (TKL=0)
+                0xF1,  # Option: delta=15 (reserved), len=1
+            ]
+        )
         assert SecureDatagramChannel._has_oscore_option(datagram) is False

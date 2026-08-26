@@ -220,7 +220,13 @@ class TestSosRelayExpiry:
     """Tests for SOS seen entry expiry."""
 
     def test_entries_expire_after_timeout(self) -> None:
-        """Seen entries should expire after SEEN_EXPIRY_S."""
+        """Seen entries expire after SEEN_EXPIRY_S but sequence gate persists.
+
+        Memory management: the exact (node, seq) pair is pruned from the seen
+        set to bound memory.  Security: the per-originator highest-seen
+        sequence is NOT forgotten, so replaying seq=1 after expiry is still
+        blocked; only a strictly higher seq (e.g. 2) can proceed.
+        """
         current_time = [_T0]
         relay = SosRelay(time_func=lambda: current_time[0])
         # First relay
@@ -228,10 +234,14 @@ class TestSosRelayExpiry:
         assert relay.is_seen(node=_VALID_NODE, seq=1) is True
         # Advance time past expiry
         current_time[0] = _T0 + SEEN_EXPIRY_S + 1
-        # Entry should now be expired
+        # Entry should now be expired from dedup set
         assert relay.is_seen(node=_VALID_NODE, seq=1) is False
-        # Can relay again
-        result = relay.check_relay(node=_VALID_NODE, seq=1, ttl=5)
+        # Replaying same seq=1 is still blocked by sequence gate
+        stale = relay.check_relay(node=_VALID_NODE, seq=1, ttl=5)
+        assert stale.should_relay is False
+        assert "stale origin sequence" in stale.reason
+        # A strictly higher seq (2) can proceed
+        result = relay.check_relay(node=_VALID_NODE, seq=2, ttl=5)
         assert result.should_relay is True
 
     def test_entries_not_expired_before_timeout(self) -> None:

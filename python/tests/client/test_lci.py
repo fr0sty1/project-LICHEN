@@ -301,6 +301,77 @@ async def test_send_message_uses_discovered_payload_shape() -> None:
     assert cbor2.loads(payload) == {"to": "fd00::2", "body": "hello", "ack": True}
 
 
+async def test_share_waypoint_posts_cbor_directly_to_unicast_peer() -> None:
+    peer_uri = "coap://[200::2222]/waypoints"
+    transport = FakeResourceTransport(
+        {
+            ("POST", peer_uri): CoapResult(
+                code="2.01",
+                location_path=("waypoints", "wpt-003"),
+            )
+        }
+    )
+    client = LciClient(transport)
+    waypoint = {
+        "name": "Rally Point Alpha",
+        "lat": 37.774929,
+        "lon": -122.419416,
+        "notes": "Meet here at 1400",
+        "creator": "0200::1111",
+    }
+
+    result = await client.share_waypoint("0200::2222", waypoint)
+
+    assert result.state is DeliveryState.ACCEPTED
+    assert result.coap_code == "2.01"
+    assert result.location_path == ("waypoints", "wpt-003")
+    method, path, payload, content_format, observe = transport.requests[-1]
+    assert (method, path, content_format, observe) == ("POST", peer_uri, 60, False)
+    assert cbor2.loads(payload) == waypoint
+
+
+@pytest.mark.parametrize(
+    ("peer", "waypoint", "detail"),
+    [
+        ("ff02::1", {"name": "All", "lat": 0.0, "lon": 0.0}, "unicast"),
+        ("not-an-address", {"name": "Peer", "lat": 0.0, "lon": 0.0}, "IPv6"),
+        ("0200::2", {"name": "", "lat": 0.0, "lon": 0.0}, "name"),
+        ("0200::2", {"name": "North", "lat": 91.0, "lon": 0.0}, "lat"),
+        ("0200::2", {"name": "East", "lat": 0.0, "lon": float("inf")}, "lon"),
+    ],
+)
+async def test_share_waypoint_rejects_invalid_peer_or_payload_without_request(
+    peer: str,
+    waypoint: dict[str, Any],
+    detail: str,
+) -> None:
+    transport = FakeResourceTransport({})
+    client = LciClient(transport)
+
+    result = await client.share_waypoint(peer, waypoint)
+
+    assert result.state is DeliveryState.VALIDATION_ERROR
+    assert detail in (result.detail or "")
+    assert transport.requests == []
+
+
+async def test_share_waypoint_preserves_peer_rejection_details() -> None:
+    peer_uri = "coap://[200::2222]/waypoints"
+    transport = FakeResourceTransport(
+        {("POST", peer_uri): CoapResult(code="4.00", payload={"error": "expired"})}
+    )
+    client = LciClient(transport)
+
+    result = await client.share_waypoint(
+        "0200::2222",
+        {"name": "Expired", "lat": 1.0, "lon": 2.0},
+    )
+
+    assert result.state is DeliveryState.REJECTED
+    assert result.coap_code == "4.00"
+    assert result.detail == "expired"
+
+
 async def test_lci_client_defaults_interoperate_with_simulator_messages_resource() -> None:
     network = InMemoryNetwork()
     messages = MessagesResource()

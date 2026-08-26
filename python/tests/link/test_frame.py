@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import SupportsIndex, overload
 
 import pytest
 
-from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
+from lichen.crypto.schnorr48 import verify
+from lichen.link.frame import LINK_SIGNATURE_DOMAIN, AddrMode, FrameError, LichenFrame, MicLength
+from lichen.link.link_layer import LinkLayer
 
 
 class TestSerialize:
@@ -126,6 +129,99 @@ def test_spec_signed_shape_fixture_is_explicitly_parser_only() -> None:
     assert len(frame.mic) == 48
     assert vector["expected"]["authentication_expected"] is False
     assert frame.mic == b"\x55" * 48
+
+
+class TestSignedFields:
+    """Consume the shared oracle proving every link transcript field is bound."""
+
+    @staticmethod
+    def _canonical_signed_vector() -> dict:
+        document = json.loads(CANONICAL_VECTORS.read_text())
+        return next(
+            vector for vector in document["vectors"] if vector["name"] == "short_addr_signed"
+        )
+
+    def test_canonical_signed_oracle_excludes_signature(self, link_layer: LinkLayer) -> None:
+        vector = self._canonical_signed_vector()
+        crypto = vector["crypto"]
+        verification = crypto["verification"]
+        wire = bytes.fromhex(vector["encoded"])
+        signature = bytes.fromhex(verification["signature"])
+        wire_prefix = wire[:-len(signature)]
+        transcript = link_layer._build_signable_data(
+            verification["epoch"],
+            verification["seqnum"],
+            bytes.fromhex(verification["dst_addr"]),
+            bytes.fromhex(verification["payload"]),
+            verification["length"],
+            verification["llsec"],
+            bytes.fromhex(verification["signer_eui64"]),
+        )
+
+        # DST_LEN is the sole non-wire octet. The MIC is deliberately absent.
+        expected = (
+            LINK_SIGNATURE_DOMAIN
+            + wire_prefix[:5]
+            + bytes([verification["dst_len"]])
+            + wire_prefix[5:]
+        )
+        assert transcript == expected == bytes.fromhex(crypto["preimage"])
+        assert len(transcript) == len(LINK_SIGNATURE_DOMAIN) + len(wire_prefix) + 1
+        assert verify(bytes.fromhex(crypto["public_key"]), transcript, signature)
+
+    def test_fixed_tamper_oracles_fail_production_verification(
+        self, link_layer: LinkLayer
+    ) -> None:
+        vector = self._canonical_signed_vector()
+        crypto = vector["crypto"]
+        cases = crypto["tamper_cases"]
+        assert {case["component"] for case in cases} == {
+            "length",
+            "llsec",
+            "epoch",
+            "seqnum",
+            "dst_len",
+            "dst_addr",
+            "signer_eui64",
+            "payload",
+            "signature",
+        }
+
+        public_key = bytes.fromhex(crypto["public_key"])
+        for case in cases:
+            inputs = case["verification"]
+            dst_addr = bytes.fromhex(inputs["dst_addr"])
+            signer_eui64 = bytes.fromhex(inputs["signer_eui64"])
+            payload = bytes.fromhex(inputs["payload"])
+            signature = bytes.fromhex(inputs["signature"])
+            wire = (
+                bytes([inputs["length"], inputs["llsec"], inputs["epoch"]])
+                + inputs["seqnum"].to_bytes(2, "big")
+                + dst_addr
+                + signer_eui64
+                + payload
+                + signature
+            )
+            assert wire == bytes.fromhex(case["wire"]), case["name"]
+            assert case["expected_valid"] is False
+
+            fixed_preimage = bytes.fromhex(case["preimage"])
+            if case["production_path"] == "frame":
+                transcript = link_layer._build_signable_data(
+                    inputs["epoch"],
+                    inputs["seqnum"],
+                    dst_addr,
+                    payload,
+                    inputs["length"],
+                    inputs["llsec"],
+                    signer_eui64,
+                )
+                assert transcript == fixed_preimage, case["name"]
+            else:
+                assert case["component"] == "dst_len"
+                assert fixed_preimage[len(LINK_SIGNATURE_DOMAIN) + 5] == inputs["dst_len"]
+
+            assert not verify(public_key, fixed_preimage, signature), case["name"]
 
 
 class TestValidation:
@@ -273,7 +369,13 @@ class TestParseErrors:
 
     def test_bytes_subclass_is_rejected_before_body_slice(self) -> None:
         class ExplodingSlice(bytes):
-            def __getitem__(self, key: object) -> object:
+            @overload
+            def __getitem__(self, key: SupportsIndex, /) -> int: ...
+
+            @overload
+            def __getitem__(self, key: slice, /) -> bytes: ...
+
+            def __getitem__(self, key: SupportsIndex | slice, /) -> int | bytes:
                 if isinstance(key, slice):
                     raise AssertionError("body was sliced before length check")
                 return super().__getitem__(key)
@@ -338,6 +440,7 @@ class TestParseErrors:
 # ─── Cross-validation tests from spec/test-vectors/frame.json ─────────────────
 
 SPEC_VECTORS = Path(__file__).resolve().parents[3] / "spec" / "test-vectors" / "frame.json"
+CANONICAL_VECTORS = Path(__file__).resolve().parents[3] / "test" / "vectors" / "link_frame.json"
 
 
 def _load_spec_vectors() -> list[tuple[str, dict]]:
@@ -427,3 +530,38 @@ class TestSpecVectors:
         frame = LichenFrame.from_bytes(data)
         serialized = frame.to_bytes()
         assert serialized == data, f"{name}: roundtrip failed"
+
+
+def _load_canonical_vectors() -> list[tuple[str, dict]]:
+    """Load the canonical cross-implementation link-frame vectors."""
+    document = json.loads(CANONICAL_VECTORS.read_text())
+    return [(vector["name"], vector) for vector in document["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _load_canonical_vectors())
+def test_canonical_link_frame_vector(name: str, vector: dict) -> None:
+    """Encode and parse every canonical frame vector, including failures."""
+    fields = vector["fields"]
+    frame = LichenFrame(
+        epoch=fields["epoch"],
+        seqnum=fields["seqnum"],
+        dst_addr=bytes.fromhex(fields["dst_addr"]),
+        payload=bytes.fromhex(fields["payload"]),
+        mic=bytes.fromhex(fields["mic"]),
+        addr_mode=AddrMode(fields["addr_mode"]),
+        mic_length=MicLength(fields["mic_length"]),
+        signature_present=fields["signature_present"],
+        encrypted=fields["encrypted"],
+        signer_eui64=bytes.fromhex(fields["signer_eui64"]),
+    )
+    encoded = bytes.fromhex(vector["encoded"])
+
+    if vector.get("expect", {}).get("error"):
+        with pytest.raises(FrameError):
+            frame.to_bytes()
+        with pytest.raises(FrameError):
+            LichenFrame.from_bytes(encoded)
+        return
+
+    assert frame.to_bytes() == encoded, f"{name}: serialization differs from canonical vector"
+    assert LichenFrame.from_bytes(encoded) == frame, f"{name}: parsed fields differ"

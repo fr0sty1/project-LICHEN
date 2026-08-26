@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import pytest
 
+from lichen.constants import LORA_CAD_SYMBOLS
 from lichen.timing.csma import (
     CSMA_BACKOFF_MAX,
     CSMA_BACKOFF_UNIT_MS,
@@ -22,6 +23,7 @@ class TestCsmaConstants:
 
     def test_cad_timeout_symbols(self) -> None:
         assert CSMA_CAD_TIMEOUT_SYMBOLS == 3
+        assert LORA_CAD_SYMBOLS == CSMA_CAD_TIMEOUT_SYMBOLS
 
     def test_backoff_unit_ms(self) -> None:
         assert CSMA_BACKOFF_UNIT_MS == 10
@@ -62,6 +64,11 @@ class TestCwForExponent:
         with pytest.raises(ValueError, match="exp out of range"):
             cw_for_exponent(CSMA_BACKOFF_MAX + 1)
 
+    @pytest.mark.parametrize("exp", [False, 1.0, "1"])
+    def test_non_integer_exp_raises(self, exp: object) -> None:
+        with pytest.raises(TypeError, match="exact integer"):
+            cw_for_exponent(exp)  # type: ignore[arg-type]
+
 
 class TestCsmaStateInit:
     """Test CsmaState initialization."""
@@ -78,6 +85,23 @@ class TestCsmaStateInit:
         state = CsmaState(backoff_exp=2, retries=1)
         assert state.backoff_exp == 2
         assert state.retries == 1
+
+    @pytest.mark.parametrize("backoff_exp", [-1, CSMA_BACKOFF_MAX + 1])
+    def test_invalid_backoff_exp_raises(self, backoff_exp: int) -> None:
+        with pytest.raises(ValueError, match="backoff_exp must be in"):
+            CsmaState(backoff_exp=backoff_exp)
+
+    @pytest.mark.parametrize("retries", [-1, CSMA_RETRY_LIMIT + 2])
+    def test_invalid_retries_raises(self, retries: int) -> None:
+        with pytest.raises(ValueError, match="retries must be in"):
+            CsmaState(retries=retries)
+
+    @pytest.mark.parametrize(
+        ("field", "value"), [("backoff_exp", False), ("retries", 1.0)]
+    )
+    def test_non_integer_state_raises(self, field: str, value: object) -> None:
+        with pytest.raises(TypeError, match="exact integer"):
+            CsmaState(**{field: value})  # type: ignore[arg-type]
 
 
 class TestCsmaNextBackoffSlots:
@@ -192,13 +216,48 @@ class TestCsmaOnCadBusy:
         assert result == CsmaResult.RETRY_EXHAUSTED
         assert state.retries == CSMA_RETRY_LIMIT + 1
 
+    def test_retry_exhaustion_is_terminal(self) -> None:
+        state = CsmaState()
+        for _ in range(CSMA_RETRY_LIMIT + 1):
+            state.on_cad_busy()
+
+        prior_state = (state.backoff_exp, state.retries)
+        assert state.on_cad_busy() == CsmaResult.RETRY_EXHAUSTED
+        assert (state.backoff_exp, state.retries) == prior_state
+
+
+class TestCsmaCadTransitions:
+    """Test clear and busy CAD indications through the unified transition API."""
+
+    def test_busy_transition_advances_backoff(self) -> None:
+        state = CsmaState()
+        assert state.on_cad_result(channel_busy=True) == CsmaResult.CAD_BUSY
+        assert (state.backoff_exp, state.retries) == (1, 1)
+
+    def test_clear_transition_resets_and_grants_tx(self) -> None:
+        state = CsmaState(backoff_exp=3, retries=2)
+        assert state.on_cad_result(channel_busy=False) == CsmaResult.TX_SUCCESS
+        assert (state.backoff_exp, state.retries) == (0, 0)
+
+    def test_on_cad_clear_resets_and_grants_tx(self) -> None:
+        state = CsmaState(backoff_exp=2, retries=1)
+        assert state.on_cad_clear() == CsmaResult.TX_SUCCESS
+        assert (state.backoff_exp, state.retries) == (0, 0)
+
+    @pytest.mark.parametrize("channel_busy", [0, 1, None, "busy"])
+    def test_non_boolean_cad_result_raises(self, channel_busy: object) -> None:
+        state = CsmaState()
+        with pytest.raises(TypeError, match="channel_busy must be a bool"):
+            state.on_cad_result(channel_busy)  # type: ignore[arg-type]
+
 
 class TestCsmaOnSuccess:
     """Test successful TX resets state."""
 
     def test_resets_backoff_exp(self) -> None:
         state = CsmaState(backoff_exp=3, retries=2)
-        state.on_success()
+        result = state.on_success()
+        assert result == CsmaResult.TX_SUCCESS
         assert state.backoff_exp == 0
 
     def test_resets_retries(self) -> None:

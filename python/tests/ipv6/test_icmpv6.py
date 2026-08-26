@@ -15,18 +15,25 @@ from ipaddress import IPv6Address
 import pytest
 
 from lichen.ipv6.icmpv6 import (
+    ALL_NODES_MULTICAST,
+    ND_HOP_LIMIT,
     DestUnreachableCode,
     EchoReply,
     EchoRequest,
     Icmpv6Error,
     Icmpv6Message,
     Icmpv6Type,
+    NeighborAdvertisement,
+    NeighborSolicitation,
     TimeExceededCode,
     handle_icmpv6,
     icmpv6_checksum,
+    make_dad_probe,
     make_dest_unreachable,
     make_packet_too_big,
     make_time_exceeded,
+    parse_dad_conflict,
+    solicited_node_multicast,
 )
 from lichen.ipv6.packet import IPv6Header, IPv6Packet, NextHeader
 
@@ -71,6 +78,106 @@ def test_echo_reply_round_trip() -> None:
 def test_echo_type_codes() -> None:
     assert EchoRequest(0, 0).to_message().type == 128
     assert EchoReply(0, 0).to_message().type == 129
+
+
+def test_neighbor_messages_round_trip() -> None:
+    target = IPv6Address("fe80::ff:fe00:1234")
+    solicitation = NeighborSolicitation(target)
+    parsed_solicitation = NeighborSolicitation.from_message(solicitation.to_message())
+    assert parsed_solicitation == solicitation
+    assert solicitation.to_message().body[:4] == bytes(4)
+
+    advertisement = NeighborAdvertisement(
+        target,
+        router=True,
+        solicited=False,
+        override=True,
+    )
+    parsed_advertisement = NeighborAdvertisement.from_message(advertisement.to_message())
+    assert parsed_advertisement == advertisement
+    assert advertisement.to_message().body[:4] == b"\xa0\x00\x00\x00"
+
+
+def test_neighbor_messages_reject_malformed_options_and_codes() -> None:
+    target = IPv6Address("fe80::1")
+    with pytest.raises(Icmpv6Error, match="non-zero"):
+        NeighborSolicitation(target, b"\x01\x00")
+    with pytest.raises(Icmpv6Error, match="truncated"):
+        NeighborAdvertisement(target, options=b"\x02\x01\x00")
+    with pytest.raises(Icmpv6Error, match="code must be 0"):
+        NeighborSolicitation.from_message(
+            Icmpv6Message(Icmpv6Type.NEIGHBOR_SOLICITATION, 1, bytes(20))
+        )
+
+
+def test_make_dad_probe_uses_rfc4862_addresses_and_hop_limit() -> None:
+    target = IPv6Address("fe80::ff:fe00:1234")
+    packet = make_dad_probe(target)
+    assert packet.header.src_addr == IPv6Address("::")
+    assert packet.header.dst_addr == IPv6Address("ff02::1:ff00:1234")
+    assert packet.header.dst_addr == solicited_node_multicast(target)
+    assert packet.header.hop_limit == ND_HOP_LIMIT
+    assert Icmpv6Message.verify_checksum(
+        packet.header.src_addr, packet.header.dst_addr, packet.payload
+    )
+    solicitation = NeighborSolicitation.from_message(Icmpv6Message.from_bytes(packet.payload))
+    assert solicitation.target == target
+    assert not solicitation.has_source_link_layer_option
+
+
+def test_handle_dad_probe_returns_unsolicited_all_nodes_conflict() -> None:
+    target = IPv6Address("fe80::ff:fe00:1234")
+    response = handle_icmpv6(make_dad_probe(target), local_addr=target)
+    assert response is not None
+    assert response.header.src_addr == target
+    assert response.header.dst_addr == ALL_NODES_MULTICAST
+    assert response.header.hop_limit == ND_HOP_LIMIT
+    advertisement = parse_dad_conflict(response, target)
+    assert advertisement is not None
+    assert advertisement.target == target
+    assert not advertisement.solicited
+    assert advertisement.override
+
+
+def test_handle_dad_probe_rejects_source_link_layer_option() -> None:
+    target = IPv6Address("fe80::ff:fe00:1234")
+    destination = solicited_node_multicast(target)
+    # Type 1, length 1 (8 octets total), followed by a synthetic 6-byte EUI.
+    solicitation = NeighborSolicitation(target, b"\x01\x01\x00\x11\x22\x33\x44\x55")
+    packet = IPv6Packet(
+        header=IPv6Header(
+            IPv6Address("::"),
+            destination,
+            NextHeader.ICMPV6,
+            hop_limit=ND_HOP_LIMIT,
+        ),
+        payload=solicitation.to_message().to_bytes(IPv6Address("::"), destination),
+    )
+    assert handle_icmpv6(packet, local_addr=target) is None
+
+
+@pytest.mark.parametrize(
+    ("destination", "hop_limit"),
+    [
+        (IPv6Address("ff02::1"), ND_HOP_LIMIT),
+        (IPv6Address("ff02::1:ff00:1234"), 64),
+    ],
+)
+def test_handle_dad_probe_rejects_wrong_destination_or_hop_limit(
+    destination: IPv6Address, hop_limit: int
+) -> None:
+    target = IPv6Address("fe80::ff:fe00:1234")
+    solicitation = NeighborSolicitation(target)
+    packet = IPv6Packet(
+        header=IPv6Header(
+            IPv6Address("::"),
+            destination,
+            NextHeader.ICMPV6,
+            hop_limit=hop_limit,
+        ),
+        payload=solicitation.to_message().to_bytes(IPv6Address("::"), destination),
+    )
+    assert handle_icmpv6(packet, local_addr=target) is None
 
 
 def test_from_message_rejects_wrong_type() -> None:
@@ -149,7 +256,7 @@ def test_handle_echo_reply_returns_none() -> None:
 
 def test_handle_rejects_non_icmpv6() -> None:
     packet = IPv6Packet(
-        header=IPv6Header("fe80::1", "fe80::2", NextHeader.UDP),
+        header=IPv6Header(IPv6Address("fe80::1"), IPv6Address("fe80::2"), NextHeader.UDP),
         payload=b"\x00\x00\x00\x00",
     )
     with pytest.raises(Icmpv6Error):

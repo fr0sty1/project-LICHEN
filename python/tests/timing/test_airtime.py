@@ -7,6 +7,7 @@ from __future__ import annotations
 import pytest
 
 from lichen.timing.airtime import (
+    LORA_BANDWIDTHS_HZ,
     LORA_BW_DEFAULT_HZ,
     LORA_CR_DEFAULT,
     LORA_PREAMBLE_DEFAULT,
@@ -35,8 +36,7 @@ class TestAirtimeConstants:
         assert LORA_PREAMBLE_DEFAULT == 8
 
     def test_spec_sf9_example(self) -> None:
-        # Spec says SF9/125kHz airtime for 60-byte packet ~200ms
-        assert SPEC_SF9_125KHZ_60B_AIRTIME_MS == 200.0
+        assert SPEC_SF9_125KHZ_60B_AIRTIME_MS == 369.664
 
 
 class TestAirtimeFallback:
@@ -48,32 +48,29 @@ class TestAirtimeFallback:
         assert result > 0
 
     def test_negative_payload_raises(self) -> None:
-        with pytest.raises(ValueError, match="non-negative"):
+        with pytest.raises(ValueError, match="0..255"):
             _airtime_us_fallback(-1)
 
-    def test_invalid_sf_low_raises(self) -> None:
-        with pytest.raises(ValueError, match="sf must be 7..12"):
+    def test_sf6_requires_implicit_header(self) -> None:
+        with pytest.raises(ValueError, match="requires implicit_header"):
             _airtime_us_fallback(10, sf=6)
 
+        assert _airtime_us_fallback(10, sf=6, implicit_header=True) > 0
+
     def test_invalid_sf_high_raises(self) -> None:
-        with pytest.raises(ValueError, match="sf must be 7..12"):
+        with pytest.raises(ValueError, match="sf must be 6..12"):
             _airtime_us_fallback(10, sf=13)
 
     def test_sf_range_valid(self) -> None:
-        # All SF values 7-12 should work
+        # All explicit-header SF values should work.
         for sf in range(7, 13):
             result = _airtime_us_fallback(60, sf=sf)
             assert result > 0
 
     def test_sf9_60b_positive(self) -> None:
         # SF9/125kHz, 60-byte produces valid airtime
-        # Note: Spec says ~200ms but Semtech formula with LICHEN defaults
-        # (CR4/5, CRC=1, IH=0, DE=0) gives ~370ms. The discrepancy may be
-        # due to different assumptions in spec examples vs actual formula.
         result_us = _airtime_us_fallback(60, sf=9)
-        result_ms = result_us / 1000
-        # Just verify positive and reasonable (under 1 second)
-        assert 100 < result_ms < 1000
+        assert result_us == 369_664
 
     def test_higher_sf_longer_airtime(self) -> None:
         # Higher SF = longer airtime (more symbols)
@@ -142,10 +139,9 @@ class TestAirtimeEdgeCases:
         result = _airtime_us_fallback(255)
         assert result > 0
 
-    def test_large_payload_1000(self) -> None:
-        # Large payload (hypothetical fragmented)
-        result = _airtime_us_fallback(1000)
-        assert result > 0
+    def test_payload_above_radio_maximum_rejected(self) -> None:
+        with pytest.raises(ValueError, match="0..255"):
+            _airtime_us_fallback(256)
 
     def test_preamble_variation(self) -> None:
         # Longer preamble = longer airtime
@@ -169,29 +165,52 @@ class TestAirtimeEdgeCases:
 
 
 class TestAirtimeSfBwCombinations:
-    """Test various SF/BW combinations per spec."""
+    """Test the complete SX127x SF/BW/CR parameter space."""
 
     @pytest.mark.parametrize(
-        "sf,bw_hz",
-        [
-            (7, 125_000),
-            (7, 250_000),
-            (7, 500_000),
-            (8, 125_000),
-            (8, 250_000),
-            (9, 125_000),
-            (10, 125_000),
-            (11, 125_000),
-            (12, 125_000),
-        ],
+        "sf",
+        range(7, 13),
     )
-    def test_valid_sf_bw_combination(self, sf: int, bw_hz: int) -> None:
-        result = _airtime_us_fallback(60, sf=sf, bw_hz=bw_hz)
-        assert result > 0
+    @pytest.mark.parametrize("bw_hz", LORA_BANDWIDTHS_HZ)
+    @pytest.mark.parametrize("cr", range(5, 9))
+    def test_valid_sf_bw_cr_combination(self, sf: int, bw_hz: int, cr: int) -> None:
+        assert _airtime_us_fallback(60, sf=sf, bw_hz=bw_hz, cr=cr) > 0
+
+    @pytest.mark.parametrize("bw_hz", LORA_BANDWIDTHS_HZ)
+    @pytest.mark.parametrize("cr", range(5, 9))
+    def test_sf6_bw_cr_combination(self, bw_hz: int, cr: int) -> None:
+        assert _airtime_us_fallback(60, sf=6, bw_hz=bw_hz, cr=cr, implicit_header=True) > 0
+
+    def test_low_data_rate_optimization_is_automatic(self) -> None:
+        automatic = _airtime_us_fallback(60, sf=11, bw_hz=125_000)
+        enabled = _airtime_us_fallback(60, sf=11, bw_hz=125_000, low_data_rate_optimization=True)
+        disabled = _airtime_us_fallback(60, sf=11, bw_hz=125_000, low_data_rate_optimization=False)
+        assert automatic == enabled == 1_478_656
+        assert automatic > disabled
+
+    @pytest.mark.parametrize("cr", [4, 9])
+    def test_invalid_coding_rate_rejected(self, cr: int) -> None:
+        with pytest.raises(ValueError, match="cr must be 5..8"):
+            _airtime_us_fallback(60, cr=cr)
+
+    def test_invalid_bandwidth_rejected(self) -> None:
+        with pytest.raises(ValueError, match="bw_hz must be one of"):
+            _airtime_us_fallback(60, bw_hz=0)
+
+    @pytest.mark.parametrize("preamble", [5, 65_536])
+    def test_invalid_preamble_rejected(self, preamble: int) -> None:
+        with pytest.raises(ValueError, match="preamble_symbols must be 6..65535"):
+            _airtime_us_fallback(60, preamble_symbols=preamble)
+
+    def test_header_and_crc_flags_match_datasheet_terms(self) -> None:
+        explicit_crc = _airtime_us_fallback(0, sf=7)
+        implicit_crc = _airtime_us_fallback(0, sf=7, implicit_header=True)
+        explicit_no_crc = _airtime_us_fallback(0, sf=7, crc_enabled=False)
+        assert explicit_crc > implicit_crc
+        assert explicit_crc > explicit_no_crc
 
     def test_sf10_125k_60b_typical(self) -> None:
         # SF10/125kHz is the LICHEN default
         result_us = _airtime_us_fallback(60, sf=10)
         result_ms = result_us / 1000
-        # Semtech formula with LICHEN defaults gives ~700ms
-        assert 600 < result_ms < 800
+        assert result_ms == 698.368

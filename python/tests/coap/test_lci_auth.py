@@ -25,6 +25,7 @@ from aiocoap import (
     CONTENT,
     CREATED,
     GET,
+    METHOD_NOT_ALLOWED,
     NOT_FOUND,
     POST,
     PUT,
@@ -283,7 +284,8 @@ class TestObservableAuth:
                 Message(code=POST, uri="coap://srv/location",
                         payload=cbor2.dumps({"lat": 47.6, "lon": -122.3}))
             ).response
-            assert resp.code == NOT_FOUND
+            # Resource exists but does not support POST - METHOD_NOT_ALLOWED is correct
+            assert resp.code == METHOD_NOT_ALLOWED
         finally:
             await client.shutdown()
             await server.shutdown()

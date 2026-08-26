@@ -293,15 +293,16 @@ def test_process_dio_without_node_address_backward_compatible() -> None:
 
 
 # RFC 6550 Section 7.2 / rust/lichen-rpl lollipop_cmp table (independent oracle).
-# None means incomparable (same-region |diff| > SEQUENCE_WINDOW=16).
+# Serial-arithmetic lollipop: same-region uses mod-128 directional diff.
+# None means incomparable (same-region diff > SEQUENCE_WINDOW=16 in both directions).
 _RFC_LOLLIPOP_CASES: list[tuple[int, int, int | None]] = [
     (16, 0, 1),
     (17, 0, None),
     (0, 16, -1),
     (0, 17, None),
-    (0, 127, None),
-    (127, 0, None),
-    (120, 5, None),
+    (0, 127, 1),    # (0-127)&0x7F = 1, in 1..=16: 0 is newer
+    (127, 0, -1),   # (127-0)&0x7F = 127; (0-127)&0x7F = 1: 0 is newer
+    (120, 5, -1),   # (120-5)&0x7F = 115; (5-120)&0x7F = 13: 5 is newer
     (255, 239, 1),
     (255, 238, None),
     (5, 250, 1),
@@ -318,10 +319,12 @@ def test_lollipop_cmp_matches_rfc_6550_7_2_table() -> None:
         assert lollipop_cmp(a, b) == expected, f"{a} vs {b}"
 
 
-def test_version_is_newer_matches_rfc_and_rust_special_wrap() -> None:
+def test_version_is_newer_matches_rfc_and_rust_serial_arithmetic() -> None:
+    # Serial arithmetic: 0 is 1 step newer than 127 (mod-128 wrap).
     assert version_is_newer(0, 127) is True
     assert version_is_newer(127, 0) is False
-    assert version_is_newer(5, 120) is False
+    # 5 is 13 steps newer than 120 ((5-120)&0x7F = 13, in 1..=16).
+    assert version_is_newer(5, 120) is True
     assert version_is_newer(120, 5) is False
     assert version_is_newer(255, 239) is True
     assert version_is_newer(5, 240) is False

@@ -15,9 +15,8 @@ from lichen.crypto.schnorr48 import (
     verify,
 )
 
-VECTORS_PATH = (
-    Path(__file__).parent.parent.parent.parent / "spec" / "test-vectors" / "schnorr48.json"
-)
+# Canonical machine-readable vectors per draft-lichen-schnorr-00 Appendix A.
+VECTORS_PATH = Path(__file__).parent.parent.parent.parent / "test" / "vectors" / "schnorr48.json"
 
 
 @pytest.fixture
@@ -31,7 +30,13 @@ def test_vectors_exist():
 
 
 def test_valid_signatures(vectors):
-    """Valid vectors must verify and produce identical signatures."""
+    """Valid vectors must verify and produce identical signatures.
+
+    The canonical signatures are the interchange format with the Rust
+    implementation (rust/lichen-link/tests/schnorr48_vectors.rs): signing
+    must reproduce the exact canonical bytes, so any signature Python makes
+    is exactly what Rust signs and verifies.
+    """
     for v in vectors:
         if not v["valid"]:
             continue
@@ -43,14 +48,22 @@ def test_valid_signatures(vectors):
         # Must verify
         assert verify(pubkey, msg, sig), f"Failed to verify: {v['description']}"
 
-        # If seed provided, re-signing must produce identical signature
+        # If seed provided, re-signing must produce identical signature.
+        # Per corpus note: repeated sign() calls MUST be deterministic.
         if "seed" in v:
             seed = bytes.fromhex(v["seed"])
             priv, pub = derive_keypair(seed)
+            assert priv == bytes.fromhex(v["private_key"]), (
+                f"Private key derivation mismatch: {v['description']}"
+            )
             assert pub == pubkey, f"Key derivation mismatch: {v['description']}"
 
             new_sig = sign(priv, pub, msg)
+            repeat_sig = sign(priv, pub, msg)
             assert new_sig == sig, f"Signature mismatch: {v['description']}"
+            assert repeat_sig == sig, (
+                f"Non-deterministic signature: {v['description']}"
+            )
 
 
 def test_invalid_signatures(vectors):
@@ -149,13 +162,8 @@ def test_reject_low_order_pubkeys():
         )
 
 
-def test_is_low_order_point_constant_time():
-    """Verify _is_low_order_point identifies all low-order points.
-
-    SECURITY: The implementation uses hmac.compare_digest for each comparison
-    and iterates all points regardless of match to maintain constant time
-    per spec section 5.3.
-    """
+def test_is_low_order_point():
+    """Verify _is_low_order_point identifies all low-order points."""
     # All low-order points should be identified
     for low_order_point in LOW_ORDER_POINTS:
         assert _is_low_order_point(low_order_point), (

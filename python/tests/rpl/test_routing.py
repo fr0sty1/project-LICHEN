@@ -4,11 +4,12 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from ipaddress import IPv6Address
 
 import pytest
 
-from lichen.ipv6.packet import IPv6Header, IPv6Packet, NextHeader
+from lichen.ipv6.packet import ExtensionHeader, IPv6Header, IPv6Packet, NextHeader
 from lichen.rpl.dodag import DodagState
 from lichen.rpl.routing import (
     RoutingError,
@@ -168,7 +169,7 @@ def test_next_hop_upward_is_preferred_parent() -> None:
 
 
 def test_insert_source_route_single_hop_no_srh() -> None:
-    packet = IPv6Packet(header=IPv6Header(ROOT, ROOT, NextHeader.UDP), payload=b"hi")
+    packet = IPv6Packet(header=IPv6Header(ROOT, DEST, NextHeader.UDP), payload=b"hi")
     routed, first_hop = insert_source_route(packet, [DEST])
     assert first_hop == DEST
     assert routed.header.dst_addr == DEST
@@ -176,21 +177,22 @@ def test_insert_source_route_single_hop_no_srh() -> None:
 
 
 def test_insert_source_route_accepts_eight_hops_and_rejects_nine() -> None:
-    packet = IPv6Packet(header=IPv6Header(ROOT, ROOT, NextHeader.UDP), payload=b"hi")
-    hops: list[IPv6Address | str] = [IPv6Address(f"fd00::{index}") for index in range(1, 10)]
+    hops: list[IPv6Address | str] = [IPv6Address(f"fd00::{index}") for index in range(10, 19)]
+    packet = IPv6Packet(header=IPv6Header(ROOT, hops[7], NextHeader.UDP), payload=b"hi")
     routed, first_hop = insert_source_route(packet, hops[:8])
     assert first_hop == hops[0]
     assert (
         SourceRoutingHeader.from_extension_header(routed.extension_headers[0]).addresses
         == hops[1:8]
     )
+    packet = replace(packet, header=replace(packet.header, dst_addr=hops[-1]))
     with pytest.raises(RoutingError, match="maximum hop count"):
         insert_source_route(packet, hops)
 
 
 def test_source_route_end_to_end_traversal() -> None:
     # Root sends to DEST via A then B. Path = [A, B, DEST].
-    packet = IPv6Packet(header=IPv6Header(ROOT, ROOT, NextHeader.UDP), payload=b"payload")
+    packet = IPv6Packet(header=IPv6Header(ROOT, DEST, NextHeader.UDP), payload=b"payload")
     routed, first_hop = insert_source_route(packet, [A, B, DEST])
     assert first_hop == A
     assert routed.header.dst_addr == A
@@ -226,9 +228,63 @@ def test_insert_source_route_validates_expected_destination() -> None:
     assert first_hop == A
     assert routed.header.dst_addr == A
 
-    # Path does NOT end with expected_destination - should raise
-    with pytest.raises(RoutingError, match="does not end with expected destination"):
+    # The packet's destination is always authoritative, even when the optional
+    # compatibility argument is omitted.
+    with pytest.raises(RoutingError, match="does not end with packet destination"):
         insert_source_route(packet, [A, B], expected_destination=DEST)
+
+    with pytest.raises(RoutingError, match="does not match expected destination"):
+        insert_source_route(packet, [A, B, DEST], expected_destination=B)
+
+
+@pytest.mark.parametrize(
+    ("path", "match"),
+    [
+        ([A, A, DEST], "duplicate"),
+        ([ROOT, DEST], "packet source"),
+        ([IPv6Address("ff02::1"), DEST], "multicast"),
+    ],
+)
+def test_insert_source_route_rejects_non_strict_paths(
+    path: list[IPv6Address], match: str
+) -> None:
+    packet = IPv6Packet(header=IPv6Header(ROOT, DEST, NextHeader.UDP), payload=b"x")
+    with pytest.raises(RoutingError, match=match):
+        insert_source_route(packet, path)
+
+
+def test_insert_source_route_rejects_unusable_hop_limit() -> None:
+    packet = IPv6Packet(
+        header=IPv6Header(ROOT, DEST, NextHeader.UDP, hop_limit=2), payload=b"x"
+    )
+    with pytest.raises(RoutingError, match="strictly less than hop_limit"):
+        insert_source_route(packet, [A, B, DEST])
+
+
+def test_insert_source_route_rejects_existing_routing_header() -> None:
+    packet = IPv6Packet(
+        header=IPv6Header(ROOT, DEST, NextHeader.UDP),
+        payload=b"x",
+        extension_headers=[SourceRoutingHeader(0).to_extension_header()],
+    )
+    with pytest.raises(RoutingError, match="already contains"):
+        insert_source_route(packet, [A, B, DEST])
+
+
+def test_insert_source_route_preserves_hop_by_hop_first() -> None:
+    hop_by_hop = ExtensionHeader(NextHeader.HOP_BY_HOP, bytes(6))
+    packet = IPv6Packet(
+        header=IPv6Header(ROOT, DEST, NextHeader.UDP),
+        payload=b"x",
+        extension_headers=[hop_by_hop],
+    )
+    routed, first_hop = insert_source_route(packet, [A, B, DEST])
+    assert first_hop == A
+    assert [ext.header_type for ext in routed.extension_headers] == [
+        NextHeader.HOP_BY_HOP,
+        NextHeader.ROUTING,
+    ]
+    assert IPv6Packet.from_bytes(routed.to_bytes(), strict=True) == routed
 
 
 def test_advance_source_route_rejects_segments_left_gte_hop_limit() -> None:

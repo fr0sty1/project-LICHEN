@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import random
+
 import pytest
 
 from lichen.timing.dao import (
@@ -14,6 +16,7 @@ from lichen.timing.dao import (
     DAO_SEQUENCE_MAX,
     DAO_SEQUENCE_START_MIN,
     DAO_SOFT_STATE_LIFETIME_S,
+    dao_initial_delay,
     dao_retry_delay,
     dao_retry_exhausted,
     is_valid_dao_sequence,
@@ -43,6 +46,41 @@ class TestDaoConstants:
 
     def test_sequence_start_min(self) -> None:
         assert DAO_SEQUENCE_START_MIN == 1
+
+
+class TestDaoInitialDelay:
+    """Test the randomized initial DAO delay."""
+
+    def test_samples_inclusive_protocol_range(self) -> None:
+        rng = random.Random(0)
+        delays = [dao_initial_delay(rng) for _ in range(10_000)]
+
+        assert min(delays) == DAO_INITIAL_DELAY_MIN_MS
+        assert max(delays) == DAO_INITIAL_DELAY_MAX_MS
+        assert all(
+            DAO_INITIAL_DELAY_MIN_MS <= delay <= DAO_INITIAL_DELAY_MAX_MS for delay in delays
+        )
+
+    def test_seeded_rng_is_reproducible(self) -> None:
+        first = random.Random(42)
+        second = random.Random(42)
+
+        assert [dao_initial_delay(first) for _ in range(20)] == [
+            dao_initial_delay(second) for _ in range(20)
+        ]
+
+    @pytest.mark.parametrize("delay_ms", [DAO_INITIAL_DELAY_MIN_MS, DAO_INITIAL_DELAY_MAX_MS])
+    def test_default_rng_uses_inclusive_bounds(
+        self, monkeypatch: pytest.MonkeyPatch, delay_ms: int
+    ) -> None:
+        def fake_randint(lower: int, upper: int) -> int:
+            assert lower == DAO_INITIAL_DELAY_MIN_MS
+            assert upper == DAO_INITIAL_DELAY_MAX_MS
+            return delay_ms
+
+        monkeypatch.setattr("lichen.timing.dao.random.randint", fake_randint)
+
+        assert dao_initial_delay() == delay_ms
 
 
 class TestDaoRetryDelay:

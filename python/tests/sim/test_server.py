@@ -16,8 +16,40 @@ from lichen.sim.protocol import (
     encode_register,
     get_message_type,
 )
-from lichen.sim.server import SimulatorServer
+from lichen.sim.server import (
+    SimulatorServer,
+    _is_loopback_bind_host,
+    _validate_bind_security,
+)
 from lichen.sim.simulation import TimeMode
+
+
+class TestBindSecurity:
+    """Test CLI bind-target safety classification and acknowledgement."""
+
+    @pytest.mark.parametrize(
+        "host",
+        ["127.0.0.1", "127.0.0.42", "::1", "localhost", "LOCALHOST."],
+    )
+    def test_loopback_targets_are_local(self, host: str) -> None:
+        """Explicit IPv4, IPv6, and localhost loopback targets are safe."""
+        assert _is_loopback_bind_host(host) is True
+        assert _validate_bind_security(host, allow_remote=False) is True
+
+    @pytest.mark.parametrize(
+        "host",
+        ["0.0.0.0", "::", "192.0.2.10", "example.test"],
+    )
+    def test_non_loopback_requires_remote_acknowledgement(self, host: str) -> None:
+        """Wildcard, external, and arbitrary hostname binds fail closed."""
+        assert _is_loopback_bind_host(host) is False
+        with pytest.raises(ValueError, match="--allow-remote"):
+            _validate_bind_security(host, allow_remote=False)
+
+    @pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.0.2.10"])
+    def test_allow_remote_explicitly_enables_non_loopback(self, host: str) -> None:
+        """The existing explicit remote-bind opt-in remains supported."""
+        assert _validate_bind_security(host, allow_remote=True) is False
 
 
 class TestSimulatorServerLifecycle:

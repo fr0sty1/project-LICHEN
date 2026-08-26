@@ -7,6 +7,7 @@ from __future__ import annotations
 import pytest
 
 from lichen.timing.trickle import (
+    TRICKLE_IMAX_DOUBLINGS,
     TRICKLE_IMAX_EXACT_MS,
     TRICKLE_IMAX_MS,
     TRICKLE_IMIN_MS,
@@ -23,13 +24,21 @@ class TestTrickleConstants:
     def test_imin_ms(self) -> None:
         assert TRICKLE_IMIN_MS == 4000
 
-    def test_imax_ms_approx(self) -> None:
-        # ~17 minutes
-        assert TRICKLE_IMAX_MS == 17 * 60 * 1000
+    def test_imax_ms_is_exact_profile_clamp(self) -> None:
+        assert TRICKLE_IMAX_MS == 1_024_000
+        assert TRICKLE_IMAX_MS // 1000 == 1024
+        assert TRICKLE_IMAX_DOUBLINGS == 8
 
     def test_imax_exact_ms(self) -> None:
         # Imin * 2^8 = 4000 * 256 = 1024000
         assert TRICKLE_IMAX_EXACT_MS == 1_024_000
+
+    def test_profile_constructor_uses_only_exact_constants(self) -> None:
+        timer = TrickleTimer.lichen_profile(rng=lambda: 0.0)
+        assert timer.imin == TRICKLE_IMIN_MS
+        assert timer.imax_doublings == TRICKLE_IMAX_DOUBLINGS
+        assert timer.max_interval == TRICKLE_IMAX_MS
+        assert timer.k == TRICKLE_K
 
     def test_k(self) -> None:
         assert TRICKLE_K == 10
@@ -235,13 +244,20 @@ class TestTrickleTimerReset:
         timer.reset(7000)
         assert timer.interval == 1000
 
-    def test_reset_at_imin_no_op(self) -> None:
-        timer = TrickleTimer(imin_ms=1000, imax_doublings=4, k=3)
+    def test_reset_at_imin_restarts(self) -> None:
+        samples = iter((0.0, 0.5))
+        timer = TrickleTimer(
+            imin_ms=1000,
+            imax_doublings=4,
+            k=3,
+            rng=lambda: next(samples),
+        )
         timer.start(0)
         gen_before = timer._generation
         timer.reset(500)
-        # Should not restart since already at Imin
-        assert timer._generation == gen_before
+        assert timer._generation == gen_before + 1
+        assert timer.interval_start == 500
+        assert timer.transmit_time == 1250
 
     def test_reset_before_start_starts(self) -> None:
         timer = TrickleTimer(imin_ms=1000, imax_doublings=4, k=3)

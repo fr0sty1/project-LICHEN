@@ -11,10 +11,15 @@ from lichen.timing.duty_cycle import (
     EU868_DUTY_CYCLE_PERCENT,
     EU868_MAX_PACKETS_PER_HOUR,
     EU868_SF9_AIRTIME_60B_MS,
+    REGIONAL_CONFIGS,
     REGIONAL_LIMITS,
     SIM_DUTY_CYCLE_LIMIT_PERCENT,
     SIM_WINDOW_S,
+    US915_FCC_DWELL_TIME_MS,
+    RegionalDutyCycleEnforcer,
+    RegionalDutyCycleLimit,
     duty_cycle_usage_percent,
+    get_regional_limit,
     max_packets_per_hour,
 )
 
@@ -53,6 +58,56 @@ class TestRegionalLimits:
 
     def test_us915_100_percent(self) -> None:
         assert REGIONAL_LIMITS["US915"] == 100.0
+
+    def test_eu868_configuration(self) -> None:
+        limit = get_regional_limit("EU868")
+        assert limit == RegionalDutyCycleLimit("EU868", duty_cycle_percent=1.0)
+        assert limit.max_dwell_time_ms is None
+
+    def test_us915_fcc_configuration(self) -> None:
+        limit = get_regional_limit("US915")
+        assert limit.duty_cycle_percent == 100.0
+        assert limit.max_dwell_time_ms == US915_FCC_DWELL_TIME_MS
+
+    def test_configurations_are_read_only(self) -> None:
+        with pytest.raises(TypeError):
+            REGIONAL_CONFIGS["EU868"] = RegionalDutyCycleLimit(  # type: ignore[index]
+                "EU868", duty_cycle_percent=2.0
+            )
+
+    def test_unknown_region_fails_closed(self) -> None:
+        with pytest.raises(ValueError, match="unknown duty-cycle region"):
+            get_regional_limit("UNKNOWN")
+
+
+class TestRegionalDutyCycleEnforcer:
+    """Regional configuration is applied to actual transmit decisions."""
+
+    def test_eu868_enforces_one_percent_rolling_budget(self) -> None:
+        enforcer = RegionalDutyCycleEnforcer("EU868")
+        assert enforcer.try_transmit(airtime_us=36_000_000, time_us=0)
+        assert not enforcer.try_transmit(airtime_us=1, time_us=0)
+        assert enforcer.usage(0) == pytest.approx(1.0)
+
+    def test_us915_enforces_fcc_dwell_limit(self) -> None:
+        enforcer = RegionalDutyCycleEnforcer("US915")
+        assert enforcer.try_transmit(airtime_us=400_000, time_us=0)
+        assert not enforcer.try_transmit(airtime_us=400_001, time_us=1_000_000)
+        assert enforcer.usage(1_000_000) == pytest.approx(400_000 / 3_600_000_000)
+
+    def test_regional_limit_is_configurable(self) -> None:
+        enforcer = RegionalDutyCycleEnforcer(
+            "EU868", duty_cycle_percent=2.0, window_s=100
+        )
+        assert enforcer.limit.duty_cycle_percent == 2.0
+        assert enforcer.limit.window_s == 100
+        assert enforcer.try_transmit(airtime_us=2_000_000, time_us=0)
+        assert not enforcer.can_transmit(airtime_us=1, time_us=0)
+
+    @pytest.mark.parametrize("airtime_us", [0, -1])
+    def test_nonpositive_airtime_rejected(self, airtime_us: int) -> None:
+        with pytest.raises(ValueError, match="airtime_us must be positive"):
+            RegionalDutyCycleEnforcer("EU868").can_transmit(airtime_us, 0)
 
 
 class TestMaxPacketsPerHour:

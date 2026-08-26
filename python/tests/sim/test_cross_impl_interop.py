@@ -228,7 +228,10 @@ class TestPythonToRust:
             "EncryptedUnsupported",
         ),
         "frame_too_large": (None, "FrameTooLarge"),
-        "frame_body_exceeds_254": (None, "FrameTooLarge"),
+        "frame_body_exceeds_254": (
+            "frame body is 255 bytes, exceeds 254",
+            "FrameTooLarge",
+        ),
         "reserved_bit_set": (None, "ReservedBitSet"),
         "reserved_mic_length": (None, "ReservedMicLength"),
         "length_mismatch": (None, "TooShort"),
@@ -342,7 +345,7 @@ class TestPythonToRust:
                 )
                 if rust_token is not None:
                     rust_error = json.loads(result.stdout).get("error", "")
-                    assert rust_token in rust_error, (
+                    assert rust_error == rust_token, (
                         f"Vector '{name}': expected Rust category "
                         f"'{rust_token}', got '{rust_error}'"
                     )

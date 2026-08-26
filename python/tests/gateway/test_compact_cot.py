@@ -11,11 +11,10 @@ import json
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from defusedxml import DefusedXmlException
-
-UTC = UTC
 
 from lichen.gateway.compact_cot import (
     ChatPayload,
@@ -54,6 +53,13 @@ def hex_to_bytes(hex_str: str) -> bytes:
     return bytes.fromhex(hex_str)
 
 
+def xml_vector_input(fields: dict[str, Any]) -> str | bytes:
+    """Build the exact XML input represented by a canonical vector."""
+    if "xml_input" in fields:
+        return cast(str, fields["xml_input"])
+    return bytes.fromhex(cast(str, fields["xml_input_utf8_hex"]))
+
+
 # -- Decoder tests --
 
 
@@ -86,7 +92,7 @@ class TestDecodeCompactCot:
     def test_decode_chat_invalid_dest_type(self) -> None:
         """Chat with invalid dest_type raises DecodeError."""
         data = bytes([0x01, 0xFF, 0x00])
-        with pytest.raises(DecodeError, match="Invalid dest_type"):
+        with pytest.raises(DecodeError, match="Invalid destination type"):
             decode_compact_cot(data)
 
     def test_decode_chat_message_truncated(self) -> None:
@@ -95,6 +101,45 @@ class TestDecodeCompactCot:
         data = bytes([0x01, 0x00, 0x0A, 0x41, 0x42, 0x43])
         with pytest.raises(DecodeError, match="truncated"):
             decode_compact_cot(data)
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "chat_invalid_dest_type",
+            "chat_invalid_team_zero",
+            "chat_invalid_team_above_range",
+            "chat_invalid_direct_truncated",
+            "chat_invalid_message_truncated",
+            "chat_invalid_trailing_byte",
+            "chat_invalid_utf8",
+        ],
+    )
+    def test_invalid_chat_vectors(self, name: str) -> None:
+        """Gateway rejects every canonical invalid chat destination/length vector."""
+        vector = next(vector for vector in load_vectors() if vector["name"] == name)
+        with pytest.raises(DecodeError, match=vector["decoded_fields"]["expect_error"]):
+            decode_compact_cot(hex_to_bytes(vector["binary_hex"]))
+
+    @pytest.mark.parametrize(
+        ("dest_type", "dest_team", "dest_address"),
+        [
+            (DestType.BROADCAST, Team.BLUE, None),
+            (DestType.BROADCAST, None, bytes(16)),
+            (DestType.TEAM, None, None),
+            (DestType.TEAM, 0, None),
+            (DestType.TEAM, 11, None),
+            (DestType.TEAM, True, None),
+            (DestType.TEAM, Team.BLUE, bytes(16)),
+            (DestType.DIRECT, Team.BLUE, bytes(16)),
+            (DestType.DIRECT, None, None),
+        ],
+    )
+    def test_chat_payload_rejects_inconsistent_destination(
+        self, dest_type: DestType, dest_team: int | None, dest_address: bytes | None
+    ) -> None:
+        """Gateway construction enforces destination/discriminator consistency."""
+        with pytest.raises(ValueError):
+            ChatPayload(dest_type, dest_team, dest_address, "message")
 
 
 class TestDecodeVectors:
@@ -192,7 +237,7 @@ class TestDecodeVectors:
         assert isinstance(cot.payload, ChatPayload)
         assert cot.payload.dest_type == DestType.BROADCAST
         assert cot.payload.dest_team is None
-        assert cot.payload.dest_iid is None
+        assert cot.payload.dest_address is None
         assert cot.payload.message == "Hello"
 
     def test_chat_team_blue(self, vectors: list[dict]) -> None:
@@ -226,7 +271,7 @@ class TestDecodeVectors:
 
         assert isinstance(cot.payload, ChatPayload)
         assert cot.payload.dest_type == DestType.DIRECT
-        assert cot.payload.dest_iid == bytes.fromhex("0011223344556677")
+        assert cot.payload.dest_address == bytes.fromhex("02000000000000000011223344556677")
         assert cot.payload.message == "Ack"
 
     def test_chat_broadcast_empty(self, vectors: list[dict]) -> None:
@@ -247,6 +292,19 @@ class TestDecodeVectors:
         assert isinstance(cot.payload, ChatPayload)
         assert cot.payload.dest_team == 10
         assert cot.payload.message == "Check in"
+
+    def test_all_positive_chat_vectors_reencode_byte_exact(self, vectors: list[dict]) -> None:
+        """Consume every canonical positive chat boundary in the gateway codec."""
+        positive = [
+            vector
+            for vector in vectors
+            if vector["name"].startswith("chat_") and "expect_error" not in vector["decoded_fields"]
+        ]
+        assert len(positive) == 9
+        for vector in positive:
+            wire = hex_to_bytes(vector["binary_hex"])
+            decoded = decode_compact_cot(wire)
+            assert encode_compact_cot(decoded) == wire, vector["name"]
 
     def test_marker(self, vectors: list[dict]) -> None:
         """Decode marker."""
@@ -386,7 +444,7 @@ class TestExpandCotToXml:
         chat = ChatPayload(
             dest_type=DestType.BROADCAST,
             dest_team=None,
-            dest_iid=None,
+            dest_address=None,
             message="Hello world",
         )
         cot = CompactCot(subtype=CompactCotType.CHAT, payload=chat)
@@ -418,7 +476,7 @@ class TestExpandCotToXml:
         chat = ChatPayload(
             dest_type=DestType.TEAM,
             dest_team=1,
-            dest_iid=None,
+            dest_address=None,
             message="Blue team message",
         )
         cot = CompactCot(subtype=CompactCotType.CHAT, payload=chat)
@@ -432,11 +490,11 @@ class TestExpandCotToXml:
 
     def test_chat_direct_xml(self, fixed_time: datetime) -> None:
         """Direct chat expands with IID destination."""
-        dest_iid = bytes.fromhex("0011223344556677")
+        dest_address = bytes.fromhex("02000000000000000011223344556677")
         chat = ChatPayload(
             dest_type=DestType.DIRECT,
             dest_team=None,
-            dest_iid=dest_iid,
+            dest_address=dest_address,
             message="Direct message",
         )
         cot = CompactCot(subtype=CompactCotType.CHAT, payload=chat)
@@ -446,7 +504,7 @@ class TestExpandCotToXml:
 
         detail = root.find("detail")
         chat_elem = detail.find("__chat")
-        assert chat_elem.get("chatroom") == "0011223344556677"
+        assert chat_elem.get("chatroom") == "02000000000000000011223344556677"
 
     def test_marker_xml(self, fixed_time: datetime) -> None:
         """Marker expands to marker XML."""
@@ -808,8 +866,8 @@ class TestParseXmlCot:
         with pytest.raises(ValueError, match="Speed .* cannot be negative"):
             parse_cot_xml(xml)
 
-    def test_parse_course_normalization(self) -> None:
-        """Course >= 360 is normalized to [0, 360)."""
+    def test_parse_course_above_profile_bound(self) -> None:
+        """Course >= 360 is rejected instead of silently normalized."""
         xml = """<event type="a-f-G-U-C" uid="TEST-1">
           <point lat="0" lon="0" hae="0"/>
           <detail>
@@ -817,10 +875,8 @@ class TestParseXmlCot:
           </detail>
         </event>"""
 
-        cot = parse_cot_xml(xml)
-        # 400 % 360 = 40 degrees
-        assert isinstance(cot.payload, PliPayload)
-        assert cot.payload.course_deg == pytest.approx(40.0, rel=0.01)
+        with pytest.raises(ValueError, match="Course .* out of range"):
+            parse_cot_xml(xml)
 
 
 class TestEncodeCompactCot:
@@ -847,7 +903,7 @@ class TestEncodeCompactCot:
         chat = ChatPayload(
             dest_type=DestType.BROADCAST,
             dest_team=None,
-            dest_iid=None,
+            dest_address=None,
             message="Hello",
         )
         cot = CompactCot(subtype=CompactCotType.CHAT, payload=chat)
@@ -860,7 +916,7 @@ class TestEncodeCompactCot:
         chat = ChatPayload(
             dest_type=DestType.TEAM,
             dest_team=1,
-            dest_iid=None,
+            dest_address=None,
             message="Move out",
         )
         cot = CompactCot(subtype=CompactCotType.CHAT, payload=chat)
@@ -1088,3 +1144,62 @@ class TestFullRoundtrip:
         assert isinstance(orig_cot.payload, ChatPayload)
         assert isinstance(result_cot.payload, ChatPayload)
         assert orig_cot.payload.message == result_cot.payload.message
+
+
+class TestCanonicalXmlVectors:
+    """Exercise canonical XML vectors through the gateway production path."""
+
+    def test_positive_vectors_round_trip_byte_exact(self) -> None:
+        count = 0
+        for vector in load_vectors():
+            name = cast(str, vector["name"])
+            fields = cast(dict[str, Any], vector["decoded_fields"])
+            if not name.startswith("xml_") or "xml_expect_error" in fields:
+                continue
+
+            expected = bytes.fromhex(cast(str, vector["binary_hex"]))
+            warning = fields.get("expect_warning")
+            if warning is None:
+                encoded = compress_cot_xml(xml_vector_input(fields))
+                decoded = decode_compact_cot(expected)
+            else:
+                with pytest.warns(UserWarning, match=cast(str, warning)):
+                    encoded = compress_cot_xml(xml_vector_input(fields))
+                with pytest.warns(UserWarning, match=cast(str, warning)):
+                    decoded = decode_compact_cot(expected)
+            assert encoded == expected, name
+
+            now = datetime.fromisoformat(cast(str, fields["xml_now"]))
+            canonical = expand_cot_to_xml(
+                decoded,
+                sender_uid=cast(str, fields["xml_uid"]),
+                sender_callsign=cast(str, fields["xml_callsign"]),
+                now=now,
+            )
+            assert canonical == fields["canonical_gateway_xml"], name
+            if warning is None:
+                reencoded = compress_cot_xml(canonical)
+            else:
+                with pytest.warns(UserWarning, match=cast(str, warning)):
+                    reencoded = compress_cot_xml(canonical)
+            assert reencoded == expected, name
+            count += 1
+
+        assert count == 4
+
+    def test_invalid_vectors_are_rejected(self) -> None:
+        count = 0
+        for vector in load_vectors():
+            name = cast(str, vector["name"])
+            fields = cast(dict[str, Any], vector["decoded_fields"])
+            if not name.startswith("xml_") or "xml_expect_error" not in fields:
+                continue
+
+            with pytest.raises(
+                (ValueError, UnicodeDecodeError, ET.ParseError),
+                match=cast(str, fields["xml_expect_error"]),
+            ):
+                compress_cot_xml(xml_vector_input(fields))
+            count += 1
+
+        assert count == 8

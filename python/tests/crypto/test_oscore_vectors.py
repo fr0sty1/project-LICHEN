@@ -10,6 +10,13 @@ from typing import Any
 
 import cbor2
 import pytest
+from aiocoap import CHANGED, GET, POST
+from aiocoap.message import Direction, Message
+from aiocoap.oscore import (
+    ProtectionInvalid,
+    ReplayError,
+    RequestIdentifiers,
+)
 
 from lichen.crypto.oscore import MemorySecurityContext
 
@@ -22,6 +29,42 @@ with open(VECTORS_PATH) as f:
 def get_vectors_by_type(type_name: str) -> list[dict[str, Any]]:
     """Get all test vectors of a specific type."""
     return [v for v in VECTORS_DATA["vectors"] if v.get("type") == type_name]
+
+
+def get_vector(name: str) -> dict[str, Any]:
+    """Get a single test vector by name."""
+    matches = [v for v in VECTORS_DATA["vectors"] if v.get("name") == name]
+    assert len(matches) == 1, f"Expected exactly one vector named {name!r}"
+    return matches[0]
+
+
+def parse_vector_ids(vector: dict[str, Any]) -> dict[str, Any]:
+    """Extract the common context-construction fields from a vector."""
+    return {
+        "master_secret": bytes.fromhex(vector["master_secret"]),
+        "master_salt": bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b"",
+        "sender_id": bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b"",
+        "recipient_id": bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b"",
+        "id_context": bytes.fromhex(vector["id_context"]) if vector.get("id_context") else None,
+    }
+
+
+def swap_sender_recipient(ids: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of context fields with sender and recipient IDs exchanged."""
+    swapped = dict(ids)
+    swapped["sender_id"] = ids["recipient_id"]
+    swapped["recipient_id"] = ids["sender_id"]
+    return swapped
+
+
+def plaintext_message(pt: dict[str, Any]) -> Message:
+    """Build an outgoing CoAP message from a vector plaintext {code, options, payload}."""
+    msg = Message(code=pt["code"])
+    msg.payload = msg.opt.decode(bytes.fromhex(pt["options"]))
+    payload = bytes.fromhex(pt["payload"])
+    if payload:
+        msg.payload = payload
+    return msg
 
 
 class TestKeyDerivation:
@@ -76,18 +119,10 @@ class TestRequestProtection:
     def test_request_protection(self, vector: dict[str, Any]) -> None:
         """Verify request protection produces expected ciphertext and OSCORE option."""
         master_secret = bytes.fromhex(vector["master_secret"])
-        master_salt = (
-            bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
-        )
-        sender_id = (
-            bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
-        )
-        recipient_id = (
-            bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
-        )
-        id_context = (
-            bytes.fromhex(vector["id_context"]) if vector.get("id_context") else None
-        )
+        master_salt = bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
+        sender_id = bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
+        recipient_id = bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
+        id_context = bytes.fromhex(vector["id_context"]) if vector.get("id_context") else None
         seq = vector.get("sender_seq", 0)
 
         # Create context to derive keys
@@ -107,9 +142,7 @@ class TestRequestProtection:
 
         # Verify nonce matches expected
         expected = vector["expected"]
-        assert nonce.hex() == expected["nonce"], (
-            f"nonce mismatch for {vector['name']}"
-        )
+        assert nonce.hex() == expected["nonce"], f"nonce mismatch for {vector['name']}"
 
         # Construct plaintext: code || options || [0xFF || payload]
         # RFC 8613 Section 8.1: payload marker 0xFF precedes payload when present
@@ -167,15 +200,9 @@ class TestResponseProtection:
     def test_response_protection(self, vector: dict[str, Any]) -> None:
         """Verify response protection produces expected ciphertext and OSCORE option."""
         master_secret = bytes.fromhex(vector["master_secret"])
-        master_salt = (
-            bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
-        )
-        sender_id = (
-            bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
-        )
-        recipient_id = (
-            bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
-        )
+        master_salt = bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
+        sender_id = bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
+        recipient_id = bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
 
         # Create context to derive keys
         ctx = MemorySecurityContext(
@@ -201,9 +228,7 @@ class TestResponseProtection:
 
         # Verify nonce matches expected
         expected = vector["expected"]
-        assert nonce.hex() == expected["nonce"], (
-            f"nonce mismatch for {vector['name']}"
-        )
+        assert nonce.hex() == expected["nonce"], f"nonce mismatch for {vector['name']}"
 
         # Construct plaintext: code || options || [0xFF || payload]
         # RFC 8613 Section 8.1: payload marker 0xFF precedes payload when present
@@ -273,6 +298,42 @@ class TestRoundtrip:
         assert sender_ctx.recipient_key == recipient_ctx.sender_key
         assert sender_ctx.common_iv == recipient_ctx.common_iv
 
+    @pytest.mark.parametrize(
+        "vector",
+        get_vectors_by_type("roundtrip"),
+        ids=lambda v: v["name"],
+    )
+    def test_roundtrip_full_exchange(self, vector: dict[str, Any]) -> None:
+        """Encrypt with protect(), decrypt with unprotect(): exact recovery.
+
+        Exercises the real message-protection path end to end, including
+        replay-window rejection of a duplicated request.
+        """
+        ids = parse_vector_ids(vector)
+        code = vector["plaintext"]["code"]
+        raw_options = bytes.fromhex(vector["plaintext"]["options"])
+        payload = bytes.fromhex(vector["plaintext"]["payload"])
+
+        sender_ctx = MemorySecurityContext(
+            **ids,
+            starting_sequence_number=vector.get("sender_seq", 0),
+        )
+        receiver_ctx = MemorySecurityContext(**swap_sender_recipient(ids))
+
+        protected, _request_id = sender_ctx.protect(plaintext_message(vector["plaintext"]))
+        assert protected.opt.oscore is not None
+        assert protected.payload != payload or not payload
+
+        protected.direction = Direction.INCOMING
+        recovered, _server_request_id = receiver_ctx.unprotect(protected)
+        assert recovered.code == code
+        assert recovered.opt.encode() == raw_options
+        assert recovered.payload == payload
+
+        # The same protected request is a replay and MUST be rejected.
+        with pytest.raises(ReplayError):
+            receiver_ctx.unprotect(protected)
+
 
 class TestReplayWindow:
     """Test OSCORE replay window behavior."""
@@ -341,6 +402,193 @@ class TestInvalidInputs:
             )
 
 
+class TestEndToEndRequestVectors:
+    """Encrypt requests with protect() and decrypt with unprotect().
+
+    Byte-exact validation against RFC 8613 Appendix C.4-C.6 published
+    ciphertexts, OSCORE options, and recovered plaintexts.
+    """
+
+    @pytest.mark.parametrize(
+        "vector",
+        get_vectors_by_type("request_protection"),
+        ids=lambda v: v["name"],
+    )
+    def test_protect_then_unprotect_request(self, vector: dict[str, Any]) -> None:
+        expected = vector["expected"]
+        ids = parse_vector_ids(vector)
+        client_ctx = MemorySecurityContext(
+            **ids,
+            starting_sequence_number=vector.get("sender_seq", 0),
+        )
+        server_ctx = MemorySecurityContext(**swap_sender_recipient(ids))
+
+        # Encrypt: protect() must reproduce the published ciphertext and
+        # OSCORE option byte for byte.
+        protected, _client_req_id = client_ctx.protect(plaintext_message(vector["plaintext"]))
+        assert protected.opt.oscore.hex() == expected["oscore_option"], (
+            f"OSCORE option mismatch for {vector['name']}"
+        )
+        assert protected.payload.hex() == expected["ciphertext"], (
+            f"ciphertext mismatch for {vector['name']}"
+        )
+
+        # Decrypt: feed the PUBLISHED option + ciphertext (independent of the
+        # output just produced) to the peer context. Per RFC 8613 Section 5.3
+        # the outer request code is POST; the real method is inside the
+        # encrypted plaintext.
+        incoming = Message(code=POST)
+        incoming.opt.oscore = bytes.fromhex(expected["oscore_option"])
+        incoming.payload = bytes.fromhex(expected["ciphertext"])
+        incoming.direction = Direction.INCOMING
+
+        recovered, _server_req_id = server_ctx.unprotect(incoming)
+        assert recovered.code == vector["plaintext"]["code"]
+        assert recovered.opt.encode() == bytes.fromhex(vector["plaintext"]["options"])
+        assert recovered.payload == bytes.fromhex(vector["plaintext"]["payload"])
+
+        # Decrypting the identical message again is a replay.
+        with pytest.raises(ReplayError):
+            server_ctx.unprotect(incoming)
+
+
+class TestEndToEndResponseVectors:
+    """Full request/response exchange against RFC 8613 Appendix C.7/C.8.
+
+    C.7 reuses the request nonce (empty OSCORE option); C.8 generates a fresh
+    Partial IV from the responder's sequence number.
+    """
+
+    @pytest.mark.parametrize(
+        "vector",
+        get_vectors_by_type("response_protection"),
+        ids=lambda v: v["name"],
+    )
+    def test_response_exchange(self, vector: dict[str, Any]) -> None:
+        expected = vector["expected"]
+        ids = parse_vector_ids(vector)
+        # The vector fields describe the responder's perspective.
+        server_ctx = MemorySecurityContext(
+            **ids,
+            starting_sequence_number=vector.get("sender_seq", 0),
+        )
+        client_ctx = MemorySecurityContext(**swap_sender_recipient(ids))
+
+        request_kid = bytes.fromhex(vector["request_kid"]) if vector["request_kid"] else b""
+        request_piv = bytes.fromhex(vector["request_piv"])
+
+        server_req_id = RequestIdentifiers(
+            kid=request_kid,
+            partial_iv=request_piv,
+            can_reuse_nonce=not vector["include_piv"],
+            request_code=POST,
+        )
+        response, _ = server_ctx.protect(plaintext_message(vector["plaintext"]), server_req_id)
+        assert response.opt.oscore.hex() == expected["oscore_option"], (
+            f"OSCORE option mismatch for {vector['name']}"
+        )
+        assert response.payload.hex() == expected["ciphertext"], (
+            f"ciphertext mismatch for {vector['name']}"
+        )
+
+        client_req_id = RequestIdentifiers(
+            kid=request_kid,
+            partial_iv=request_piv,
+            can_reuse_nonce=False,
+            request_code=POST,
+        )
+        incoming = Message(code=CHANGED, payload=response.payload)
+        incoming.opt.oscore = response.opt.oscore
+        incoming.direction = Direction.INCOMING
+        recovered, _ = client_ctx.unprotect(incoming, client_req_id)
+        assert recovered.code == vector["plaintext"]["code"]
+        assert recovered.opt.encode() == bytes.fromhex(vector["plaintext"]["options"])
+        assert recovered.payload == bytes.fromhex(vector["plaintext"]["payload"])
+
+
+class TestPivBoundaryVectors:
+    """Partial IV wire encoding and nonce construction at RFC 8613 boundaries."""
+
+    @pytest.mark.parametrize(
+        "vector",
+        get_vectors_by_type("piv_encoding"),
+        ids=lambda v: v["name"],
+    )
+    def test_piv_wire_encoding(self, vector: dict[str, Any]) -> None:
+        ctx = MemorySecurityContext(
+            master_secret=b"0" * 16,
+            master_salt=b"",
+            sender_id=b"\x01",
+            recipient_id=b"\x02",
+            starting_sequence_number=vector["piv_value"],
+        )
+        protected, _ = ctx.protect(Message(code=GET))
+        option = protected.opt.oscore
+        assert option is not None
+        n = option[0] & 0x07
+        assert n == vector["expected"]["piv_length"], f"PIV length mismatch for {vector['name']}"
+        assert option[1 : 1 + n].hex() == vector["expected"]["piv_bytes"], (
+            f"PIV encoding mismatch for {vector['name']}"
+        )
+        # Requests always carry the KID after the PIV.
+        assert len(option) == 1 + n + len(ctx.sender_id)
+
+    @pytest.mark.parametrize(
+        "vector",
+        get_vectors_by_type("piv_nonce"),
+        ids=lambda v: v["name"],
+    )
+    def test_nonce_construction_at_boundaries(self, vector: dict[str, Any]) -> None:
+        sender_id = bytes.fromhex(vector["sender_id"])
+        ctx = MemorySecurityContext(
+            master_secret=bytes.fromhex(vector["master_secret"]),
+            master_salt=bytes.fromhex(vector["master_salt"]),
+            sender_id=sender_id,
+            recipient_id=b"\x01",
+        )
+        assert ctx.common_iv.hex() == vector["expected"]["common_iv"]
+
+        piv_value = vector["piv"]
+        piv_length = max(1, (piv_value.bit_length() + 7) // 8)
+        piv = piv_value.to_bytes(piv_length, "big")
+        nonce = ctx._construct_nonce(piv, sender_id, ctx.alg_aead)
+        assert nonce.hex() == vector["expected"]["nonce"], f"nonce mismatch for {vector['name']}"
+
+
+class TestInvalidWireInputVectors:
+    """Decrypt-path rejection of malformed protected messages."""
+
+    def test_ciphertext_too_short(self) -> None:
+        """Ciphertext shorter than tag+code must be rejected."""
+        vector = get_vector("invalid_ciphertext_too_short")
+        ctx = MemorySecurityContext(
+            master_secret=b"0" * 16,
+            master_salt=b"",
+            sender_id=b"\x02",
+            recipient_id=b"\x01",
+        )
+        msg = Message(code=POST, payload=bytes.fromhex(vector["ciphertext"]))
+        msg.opt.oscore = b"\x09\x14\x01"  # k bit, 1-byte PIV, KID
+        msg.direction = Direction.INCOMING
+        with pytest.raises(ProtectionInvalid):
+            ctx.unprotect(msg)
+
+    def test_piv_overflow_rejected(self) -> None:
+        """A 6-byte PIV exceeds the RFC 8613 maximum and MUST be discarded."""
+        vector = get_vector("piv_overflow_rejected")
+        ctx = MemorySecurityContext(
+            master_secret=b"0" * 16,
+            master_salt=b"",
+            sender_id=b"\x02",
+            recipient_id=b"\x01",
+        )
+        msg = Message(code=POST, payload=b"\x11" * 32)
+        msg.opt.oscore = bytes([0x08 | 6]) + vector["piv_value"].to_bytes(6, "big") + b"\x01"
+        msg.direction = Direction.INCOMING
+        with pytest.raises(ProtectionInvalid, match="Partial IV"):
+            ctx.unprotect(msg)
+
+
 class TestSsnRestoreVectors:
     """Test OSCORE SSN restore vectors for NVM failure/recovery edge cases."""
 
@@ -352,18 +600,10 @@ class TestSsnRestoreVectors:
     def test_ssn_restore_nonce(self, vector: dict[str, Any]) -> None:
         """Verify restored context produces correct nonce matching vector."""
         master_secret = bytes.fromhex(vector["master_secret"])
-        master_salt = (
-            bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
-        )
-        sender_id = (
-            bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
-        )
-        recipient_id = (
-            bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
-        )
-        id_context = (
-            bytes.fromhex(vector["id_context"]) if vector.get("id_context") else None
-        )
+        master_salt = bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
+        sender_id = bytes.fromhex(vector["sender_id"]) if vector["sender_id"] else b""
+        recipient_id = bytes.fromhex(vector["recipient_id"]) if vector["recipient_id"] else b""
+        id_context = bytes.fromhex(vector["id_context"]) if vector.get("id_context") else None
 
         starting_seq = vector["starting_sequence_number"]
         ctx = MemorySecurityContext(
@@ -381,8 +621,7 @@ class TestSsnRestoreVectors:
         piv = starting_seq.to_bytes(5, "big").lstrip(b"\x00") or b"\x00"
         nonce = ctx._construct_nonce(piv, sender_id, algorithm)
         assert nonce.hex() == expected["nonce"], (
-            f"Nonce mismatch for {vector['name']}: "
-            f"got {nonce.hex()}, expected {expected['nonce']}"
+            f"Nonce mismatch for {vector['name']}: got {nonce.hex()}, expected {expected['nonce']}"
         )
 
         # Verify keys are correctly derived from the restored context
@@ -399,16 +638,13 @@ class TestSsnRestoreVectors:
     def test_ssn_restore_no_nonce_reuse(self) -> None:
         """Verify prior_sequence_number and starting_sequence_number nonces differ."""
         vectors = [
-            v for v in VECTORS_DATA["vectors"]
-            if v.get("name") == "ssn_restore_no_nonce_reuse"
+            v for v in VECTORS_DATA["vectors"] if v.get("name") == "ssn_restore_no_nonce_reuse"
         ]
         assert len(vectors) == 1, "Missing ssn_restore_no_nonce_reuse vector"
 
         vector = vectors[0]
         master_secret = bytes.fromhex(vector["master_secret"])
-        master_salt = (
-            bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
-        )
+        master_salt = bytes.fromhex(vector["master_salt"]) if vector["master_salt"] else b""
         prior_seq = vector["prior_sequence_number"]
         starting_seq = vector["starting_sequence_number"]
 
@@ -430,9 +666,7 @@ class TestSsnRestoreVectors:
             recipient_id=b"\x01",
             starting_sequence_number=starting_seq,
         )
-        restored_nonce = ctx_restored._construct_nonce(
-            b"\x03\xe8", b"", alg
-        )
+        restored_nonce = ctx_restored._construct_nonce(b"\x03\xe8", b"", alg)
 
         assert prior_nonce != restored_nonce, (
             f"Nonce reuse: seq={prior_seq} and seq={starting_seq} produce "

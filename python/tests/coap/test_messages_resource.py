@@ -217,7 +217,17 @@ class TestMessageReceipts:
             await client.shutdown()
             await server.shutdown()
 
-    async def test_ack_dispatches_normalized_receipts_to_handler(self) -> None:
+    @pytest.mark.parametrize(
+        ("status", "timestamp"),
+        [
+            ("delivered", 1_716_742_900),
+            ("read", 1_716_742_901),
+            ("failed", 1_716_742_902),
+        ],
+    )
+    async def test_ack_dispatches_normalized_receipts_to_handler(
+        self, status: str, timestamp: int
+    ) -> None:
         dispatched: list[dict[str, object]] = []
         net = InMemoryNetwork()
         receipts = MessageReceiptsResource(handler=dispatched.append)
@@ -229,13 +239,13 @@ class TestMessageReceipts:
                 Message(
                     code=POST,
                     uri="coap://srv/msg/ack",
-                    payload=cbor2.dumps({"id": 12345, "status": "read", "ts": 1_716_742_901}),
+                    payload=cbor2.dumps({"id": 12345, "status": status, "ts": timestamp}),
                     content_format=60,
                 )
             ).response
 
             assert resp.code == aiocoap.CHANGED
-            assert dispatched == [{"id": 12345, "status": "read", "ts": 1_716_742_901}]
+            assert dispatched == [{"id": 12345, "status": status, "ts": timestamp}]
         finally:
             await client.shutdown()
             await server.shutdown()
