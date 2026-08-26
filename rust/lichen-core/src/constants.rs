@@ -8,6 +8,16 @@ pub const LORA_PREAMBLE_SYMBOLS: u8 = 8;
 /// Maximum LoRa frame payload in bytes (SX1262 limit).
 pub const LORA_MAX_PAYLOAD: usize = 255;
 
+// CSMA/CA (spec 09 section 14.5)
+/// Channel activity detection timeout, measured in LoRa symbols.
+pub const CSMA_CAD_TIMEOUT_SYMBOLS: u8 = 3;
+/// Duration of one contention backoff slot, in milliseconds.
+pub const CSMA_BACKOFF_UNIT_MS: u32 = 10;
+/// Maximum backoff exponent (`CW = 2^backoff - 1`).
+pub const CSMA_BACKOFF_MAX: u8 = 5;
+/// Number of retries allowed before reporting transmission failure.
+pub const CSMA_RETRY_LIMIT: u8 = 3;
+
 // SCHC (RFC 8724)
 /// Maximum decompressed packet size for SCHC buffers (updated for SRH/Routing
 /// Header overhead in local_mesh paths per RFC 6554). Covers IPv6 MTU 1280

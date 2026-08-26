@@ -16,12 +16,199 @@
 //! - ELEVATED: only SOS/ROUTING/URGENT (P0-P2)
 //! - CRITICAL: only SOS/ROUTING (P0-P1)
 //! - EXHAUSTED: no transmission allowed
+//!
+//! # CSMA/CA Integration
+//!
+//! [`CsmaState`] consumes CAD observations and produces a [`CsmaAction`]. The
+//! caller owns the radio and entropy source; this module only maps a uniformly
+//! distributed `u32` draw into the current contention window. A transmit action
+//! can be applied directly with [`TxQueue::pop_after_csma`].
 
 use core::cmp::Ordering;
 use core::fmt;
 use heapless::binary_heap::{BinaryHeap, Max};
 
+use crate::constants::{
+    CSMA_BACKOFF_MAX, CSMA_BACKOFF_UNIT_MS, CSMA_CAD_TIMEOUT_SYMBOLS, CSMA_RETRY_LIMIT,
+};
 use crate::duty_cycle::{check_congestion_allows, CongestionLevel};
+
+/// Result reported by the radio's channel-activity-detection operation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CadObservation {
+    /// No LoRa preamble was detected; transmission may proceed.
+    Idle,
+    /// Channel activity was detected; defer and retry.
+    Busy,
+}
+
+/// Next operation selected by the CSMA/CA state machine.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CsmaAction {
+    /// The channel is idle and the caller may transmit immediately.
+    Transmit,
+    /// Wait for the selected number of contention slots, then perform CAD again.
+    Backoff {
+        /// Randomly selected slot count in the inclusive contention window.
+        slots: u8,
+        /// Backoff duration in milliseconds.
+        delay_ms: u32,
+    },
+    /// More than [`CSMA_RETRY_LIMIT`] busy CAD results were observed.
+    RetryExhausted,
+}
+
+impl CsmaAction {
+    /// Whether this action permits a queued packet to be transmitted.
+    #[inline]
+    pub const fn tx_allowed(self) -> bool {
+        matches!(self, Self::Transmit)
+    }
+}
+
+/// Invalid state supplied when restoring a CSMA/CA contention attempt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CsmaStateError {
+    /// The backoff exponent exceeds [`CSMA_BACKOFF_MAX`].
+    BackoffExponentOutOfRange,
+    /// The busy-CAD count exceeds the one terminal value the machine can reach.
+    RetryCountOutOfRange,
+}
+
+impl fmt::Display for CsmaStateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BackoffExponentOutOfRange => write!(f, "CSMA backoff exponent out of range"),
+            Self::RetryCountOutOfRange => write!(f, "CSMA retry count out of range"),
+        }
+    }
+}
+
+impl core::error::Error for CsmaStateError {}
+
+/// CAD-based CSMA/CA contention state (spec 09 section 14.5).
+///
+/// The caller performs CAD with a timeout of [`Self::cad_timeout_symbols`] and
+/// supplies a uniformly distributed `u32` to [`Self::on_cad`] for busy-channel
+/// backoff. Keeping entropy acquisition outside this type makes the state
+/// machine deterministic, portable, and `no_std` compatible.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CsmaState {
+    backoff_exponent: u8,
+    retries: u8,
+}
+
+impl Default for CsmaState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CsmaState {
+    /// Start a fresh contention attempt.
+    #[inline]
+    pub const fn new() -> Self {
+        Self {
+            backoff_exponent: 0,
+            retries: 0,
+        }
+    }
+
+    /// Restore a validated contention state.
+    ///
+    /// `CSMA_RETRY_LIMIT + 1` is the terminal exhausted state. Larger values
+    /// cannot be produced and are rejected rather than truncated.
+    pub const fn from_parts(backoff_exponent: u8, retries: u8) -> Result<Self, CsmaStateError> {
+        if backoff_exponent > CSMA_BACKOFF_MAX {
+            return Err(CsmaStateError::BackoffExponentOutOfRange);
+        }
+        if retries > CSMA_RETRY_LIMIT + 1 {
+            return Err(CsmaStateError::RetryCountOutOfRange);
+        }
+        Ok(Self {
+            backoff_exponent,
+            retries,
+        })
+    }
+
+    /// CAD timeout required by the LICHEN profile, in LoRa symbols.
+    #[inline]
+    pub const fn cad_timeout_symbols() -> u8 {
+        CSMA_CAD_TIMEOUT_SYMBOLS
+    }
+
+    /// Current bounded backoff exponent.
+    #[inline]
+    pub const fn backoff_exponent(&self) -> u8 {
+        self.backoff_exponent
+    }
+
+    /// Number of busy CAD results observed in this contention attempt.
+    #[inline]
+    pub const fn retries(&self) -> u8 {
+        self.retries
+    }
+
+    /// Whether the retry limit has already been exceeded.
+    #[inline]
+    pub const fn is_exhausted(&self) -> bool {
+        self.retries > CSMA_RETRY_LIMIT
+    }
+
+    /// Inclusive maximum slot index for the current contention window.
+    #[inline]
+    pub const fn contention_window(&self) -> u8 {
+        // The exponent is validated at construction and bounded at transition.
+        ((1u32 << self.backoff_exponent) - 1) as u8
+    }
+
+    /// Reset backoff and retry counters for a new contention attempt.
+    #[inline]
+    pub fn reset(&mut self) {
+        self.backoff_exponent = 0;
+        self.retries = 0;
+    }
+
+    /// Apply one CAD result and select the next operation.
+    ///
+    /// `random_draw` must be uniformly distributed across all `u32` values.
+    /// Contention-window sizes are powers of two, so masking is an exact,
+    /// modulo-bias-free mapping into `0..=CW`. The draw is ignored for an idle
+    /// channel and after exhaustion.
+    pub fn on_cad(&mut self, observation: CadObservation, random_draw: u32) -> CsmaAction {
+        if observation == CadObservation::Idle {
+            self.reset();
+            return CsmaAction::Transmit;
+        }
+
+        if self.is_exhausted() {
+            return CsmaAction::RetryExhausted;
+        }
+
+        self.retries += 1;
+        if self.is_exhausted() {
+            return CsmaAction::RetryExhausted;
+        }
+
+        self.backoff_exponent = self
+            .backoff_exponent
+            .saturating_add(1)
+            .min(CSMA_BACKOFF_MAX);
+        let slots = (random_draw & u32::from(self.contention_window())) as u8;
+        let delay_ms = u32::from(slots) * CSMA_BACKOFF_UNIT_MS;
+        CsmaAction::Backoff { slots, delay_ms }
+    }
+}
+
+/// Convert an externally supplied slot count to milliseconds without overflow.
+///
+/// State-machine-generated slot counts are bounded by the contention window;
+/// this checked helper is for persistence and scheduler boundaries that accept
+/// a wider integer representation.
+#[inline]
+pub const fn checked_csma_backoff_ms(slots: u32) -> Option<u32> {
+    slots.checked_mul(CSMA_BACKOFF_UNIT_MS)
+}
 
 /// Error returned when pushing to the TX queue fails.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +219,9 @@ pub enum TxQueueError {
     QueueFull,
     /// Payload exceeds maximum size.
     PayloadTooLarge,
+    /// The supplied absolute deadline has already passed at the queue's
+    /// monotonic time watermark.
+    DeadlineExpired,
 }
 
 impl fmt::Display for TxQueueError {
@@ -39,6 +229,7 @@ impl fmt::Display for TxQueueError {
         match self {
             Self::QueueFull => write!(f, "TX queue full"),
             Self::PayloadTooLarge => write!(f, "payload exceeds max size"),
+            Self::DeadlineExpired => write!(f, "TX item deadline has expired"),
         }
     }
 }
@@ -53,6 +244,13 @@ pub const DEADLINE_SOS_MS: u64 = 2_000;
 
 /// Default deadline for routing control messages (5 seconds).
 pub const DEADLINE_ROUTING_MS: u64 = 5_000;
+
+/// Default deadline for link-layer ACK/NACK (10 seconds).
+///
+/// spec/appendix-bufferbloat.md B.2.2. `TxPriority::Routing` covers ACK
+/// traffic; callers pass this deadline explicitly (same as the Python
+/// `Priority.ACK` alias).
+pub const DEADLINE_ACK_MS: u64 = 10_000;
 
 /// Default deadline for urgent/time-sensitive messages (30 seconds).
 pub const DEADLINE_URGENT_MS: u64 = 30_000;
@@ -257,6 +455,10 @@ pub struct TxQueue {
     max_latency_ms: u32,
     /// EWMA average latency (scaled by 8 for integer math).
     avg_latency_scaled: u32,
+    /// Greatest caller-supplied monotonic timestamp observed by the queue.
+    /// Regressing clock samples are clamped to this watermark so expired
+    /// entries cannot be admitted again after time has advanced.
+    observed_now_ms: u64,
 }
 
 impl Default for TxQueue {
@@ -280,6 +482,7 @@ impl TxQueue {
             packets_preempted: 0,
             max_latency_ms: 0,
             avg_latency_scaled: 0,
+            observed_now_ms: 0,
         }
     }
 
@@ -302,14 +505,17 @@ impl TxQueue {
         now_ms: u64,
         data: &[u8],
     ) -> Result<(), TxQueueError> {
-        let item = TxItem::new(priority, self.sequence, deadline_ms, now_ms, data)
-            .ok_or(TxQueueError::PayloadTooLarge)?;
-
         // Step 1: Expire stale items
         self.expire_before(now_ms);
+        let effective_now_ms = self.observed_now_ms;
+        if deadline_ms <= effective_now_ms {
+            return Err(TxQueueError::DeadlineExpired);
+        }
+        let item = TxItem::new(priority, self.sequence, deadline_ms, effective_now_ms, data)
+            .ok_or(TxQueueError::PayloadTooLarge)?;
 
         // Step 2: If not full, just push
-        if !self.is_full() {
+        if self.heap.len() < TX_QUEUE_CAPACITY {
             // Safe: we just checked it's not full
             self.heap.push(item).ok();
             self.sequence = self.sequence.wrapping_add(1);
@@ -339,12 +545,14 @@ impl TxQueue {
     ///
     /// Returns the number of items expired.
     pub fn expire_before(&mut self, now_ms: u64) -> usize {
+        self.observed_now_ms = self.observed_now_ms.max(now_ms);
+        let effective_now_ms = self.observed_now_ms;
         // For a small queue (4 items), drain and rebuild is efficient
         let mut temp = heapless::Vec::<TxItem, TX_QUEUE_CAPACITY>::new();
         let mut expired_count = 0usize;
 
         while let Some(item) = self.heap.pop() {
-            if item.is_expired(now_ms) {
+            if item.is_expired(effective_now_ms) {
                 // Expired: update stats but don't keep
                 self.bytes_pending -= item.len();
                 self.by_priority[item.priority as usize] -= 1;
@@ -429,12 +637,16 @@ impl TxQueue {
     /// Requires current timestamp to compute and track queue latency.
     /// Returns `None` if the queue is empty.
     pub fn pop(&mut self, now_ms: u64) -> Option<TxItem> {
+        self.expire_before(now_ms);
         let item = self.heap.pop()?;
         self.bytes_pending -= item.len();
         self.by_priority[item.priority as usize] -= 1;
 
         // Compute latency and update statistics
-        let latency_ms = now_ms.saturating_sub(item.enqueue_time_ms) as u32;
+        let latency_ms = self
+            .observed_now_ms
+            .saturating_sub(item.enqueue_time_ms)
+            .min(u64::from(u32::MAX)) as u32;
         if latency_ms > self.max_latency_ms {
             self.max_latency_ms = latency_ms;
         }
@@ -488,7 +700,10 @@ impl TxQueue {
                 self.by_priority[item.priority as usize] -= 1;
 
                 // Update latency stats
-                let latency_ms = now_ms.saturating_sub(item.enqueue_time_ms) as u32;
+                let latency_ms = self
+                    .observed_now_ms
+                    .saturating_sub(item.enqueue_time_ms)
+                    .min(u64::from(u32::MAX)) as u32;
                 if latency_ms > self.max_latency_ms {
                     self.max_latency_ms = latency_ms;
                 }
@@ -512,11 +727,30 @@ impl TxQueue {
         found
     }
 
+    /// Pop a packet only when both CSMA/CA and duty-cycle policy allow TX.
+    ///
+    /// Backoff and exhausted actions leave the queue unchanged. A transmit
+    /// action delegates to [`Self::pop_if_allowed`], preserving deadline expiry,
+    /// congestion gating, priority ordering, and queue statistics.
+    #[inline]
+    pub fn pop_after_csma(
+        &mut self,
+        now_ms: u64,
+        level: CongestionLevel,
+        action: CsmaAction,
+    ) -> Option<TxItem> {
+        if !action.tx_allowed() {
+            return None;
+        }
+        self.pop_if_allowed(now_ms, level)
+    }
+
     /// Check if any item in the queue is allowed at the given congestion level.
     ///
-    /// This is a quick check without modifying the queue.
+    /// Expired items are removed before the congestion policy is evaluated.
     #[inline]
-    pub fn has_allowed(&self, level: CongestionLevel) -> bool {
+    pub fn has_allowed(&mut self, now_ms: u64, level: CongestionLevel) -> bool {
+        self.expire_before(now_ms);
         if level == CongestionLevel::Exhausted {
             return false;
         }
@@ -527,24 +761,37 @@ impl TxQueue {
 
     /// Peek at the highest priority item without removing it.
     #[inline]
-    pub fn peek(&self) -> Option<&TxItem> {
+    pub fn peek(&mut self, now_ms: u64) -> Option<&TxItem> {
+        self.expire_before(now_ms);
         self.heap.peek()
     }
 
-    /// Check if the queue is empty.
+    /// Count unexpired items at `now_ms`.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.heap.is_empty()
+    pub fn count(&mut self, now_ms: u64) -> usize {
+        self.expire_before(now_ms);
+        self.heap.len()
     }
 
-    /// Check if the queue is full.
+    /// Check if the queue has no unexpired items at `now_ms`.
     #[inline]
-    pub fn is_full(&self) -> bool {
+    pub fn is_empty(&mut self, now_ms: u64) -> bool {
+        self.count(now_ms) == 0
+    }
+
+    /// Check if the unexpired queue is full at `now_ms`.
+    #[inline]
+    pub fn is_full(&mut self, now_ms: u64) -> bool {
+        self.expire_before(now_ms);
         self.heap.len() >= TX_QUEUE_CAPACITY
     }
 
-    /// Get current queue depth.
+    /// Get physical queue depth without advancing the queue clock.
+    ///
+    /// Prefer [`Self::count`] when a current timestamp is available. All
+    /// time-bearing queue operations prune expiry before returning.
     #[inline]
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.heap.len()
     }
@@ -586,6 +833,132 @@ mod tests {
     use super::*;
 
     #[test]
+    fn csma_idle_allows_tx_and_resets_contention() {
+        let mut state = CsmaState::from_parts(3, 2).unwrap();
+
+        let action = state.on_cad(CadObservation::Idle, u32::MAX);
+
+        assert_eq!(action, CsmaAction::Transmit);
+        assert!(action.tx_allowed());
+        assert_eq!(state.backoff_exponent(), 0);
+        assert_eq!(state.retries(), 0);
+        assert!(!state.is_exhausted());
+        assert_eq!(CsmaState::cad_timeout_symbols(), 3);
+    }
+
+    #[test]
+    fn csma_busy_uses_exact_random_window_boundaries() {
+        let mut low = CsmaState::new();
+        assert_eq!(
+            low.on_cad(CadObservation::Busy, 0),
+            CsmaAction::Backoff {
+                slots: 0,
+                delay_ms: 0,
+            }
+        );
+        assert_eq!(low.backoff_exponent(), 1);
+        assert_eq!(low.retries(), 1);
+        assert_eq!(low.contention_window(), 1);
+
+        let mut high = CsmaState::new();
+        assert_eq!(
+            high.on_cad(CadObservation::Busy, u32::MAX),
+            CsmaAction::Backoff {
+                slots: 1,
+                delay_ms: 10,
+            }
+        );
+        assert_eq!(
+            high.on_cad(CadObservation::Busy, u32::MAX),
+            CsmaAction::Backoff {
+                slots: 3,
+                delay_ms: 30,
+            }
+        );
+        assert_eq!(high.backoff_exponent(), 2);
+        assert_eq!(high.retries(), 2);
+        assert_eq!(high.contention_window(), 3);
+    }
+
+    #[test]
+    fn csma_backoff_exponent_saturates_at_profile_maximum() {
+        let mut state = CsmaState::from_parts(CSMA_BACKOFF_MAX, 0).unwrap();
+
+        assert_eq!(
+            state.on_cad(CadObservation::Busy, u32::MAX),
+            CsmaAction::Backoff {
+                slots: 31,
+                delay_ms: 310,
+            }
+        );
+        assert_eq!(state.backoff_exponent(), CSMA_BACKOFF_MAX);
+        assert_eq!(state.contention_window(), 31);
+    }
+
+    #[test]
+    fn csma_fourth_busy_result_exhausts_and_is_idempotent() {
+        let mut state = CsmaState::from_parts(5, CSMA_RETRY_LIMIT).unwrap();
+
+        assert_eq!(
+            state.on_cad(CadObservation::Busy, u32::MAX),
+            CsmaAction::RetryExhausted
+        );
+        assert_eq!(state.retries(), CSMA_RETRY_LIMIT + 1);
+        assert_eq!(state.backoff_exponent(), 5);
+        assert!(state.is_exhausted());
+
+        assert_eq!(
+            state.on_cad(CadObservation::Busy, 0),
+            CsmaAction::RetryExhausted
+        );
+        assert_eq!(state.retries(), CSMA_RETRY_LIMIT + 1);
+
+        assert_eq!(state.on_cad(CadObservation::Idle, 0), CsmaAction::Transmit);
+        assert_eq!(state, CsmaState::new());
+    }
+
+    #[test]
+    fn csma_restore_and_delay_math_reject_overflow() {
+        assert_eq!(
+            CsmaState::from_parts(CSMA_BACKOFF_MAX + 1, 0),
+            Err(CsmaStateError::BackoffExponentOutOfRange)
+        );
+        assert_eq!(
+            CsmaState::from_parts(0, CSMA_RETRY_LIMIT + 2),
+            Err(CsmaStateError::RetryCountOutOfRange)
+        );
+        assert_eq!(checked_csma_backoff_ms(31), Some(310));
+        assert_eq!(checked_csma_backoff_ms(u32::MAX), None);
+    }
+
+    #[test]
+    fn csma_action_directly_gates_queue_dequeue() {
+        let mut queue = TxQueue::new();
+        let now = 1_000;
+        queue
+            .push(TxPriority::Normal, now + DEADLINE_NORMAL_MS, now, b"data")
+            .unwrap();
+
+        assert!(queue
+            .pop_after_csma(
+                now,
+                CongestionLevel::Normal,
+                CsmaAction::Backoff {
+                    slots: 1,
+                    delay_ms: 10,
+                },
+            )
+            .is_none());
+        assert_eq!(queue.len(), 1);
+
+        let item = queue
+            .pop_after_csma(now, CongestionLevel::Normal, CsmaAction::Transmit)
+            .unwrap();
+        assert_eq!(item.data(), b"data");
+        assert!(queue.is_empty(now));
+    }
+
+    #[test]
     fn empty_queue_stats() {
         let queue = TxQueue::new();
         let stats = queue.stats();
@@ -617,7 +990,7 @@ mod tests {
         assert_eq!(item.data(), b"hello");
         assert_eq!(item.priority, TxPriority::Normal);
         assert_eq!(item.deadline_ms, deadline);
-        assert!(queue.is_empty());
+        assert!(queue.is_empty(pop_time));
     }
 
     #[test]
@@ -748,7 +1121,7 @@ mod tests {
                 .unwrap();
         }
 
-        assert!(queue.is_full());
+        assert!(queue.is_full(now));
         // Same priority cannot preempt, should fail
         assert!(queue
             .push(TxPriority::Normal, deadline, now, b"overflow")
@@ -780,9 +1153,9 @@ mod tests {
             .push(TxPriority::Normal, deadline, now, b"data")
             .unwrap();
 
-        assert_eq!(queue.peek().unwrap().data(), b"data");
+        assert_eq!(queue.peek(now).unwrap().data(), b"data");
         assert_eq!(queue.len(), 1);
-        assert_eq!(queue.peek().unwrap().data(), b"data");
+        assert_eq!(queue.peek(now).unwrap().data(), b"data");
     }
 
     #[test]
@@ -864,7 +1237,7 @@ mod tests {
             .push(TxPriority::Normal, now + 10000, now, b"keeper3")
             .unwrap();
 
-        assert!(queue.is_full());
+        assert!(queue.is_full(now));
 
         // Push new item after first one expired - should succeed due to expiry
         let later = now + 500;
@@ -898,7 +1271,7 @@ mod tests {
             .push(TxPriority::Bulk, deadline, now, b"bulk4")
             .unwrap();
 
-        assert!(queue.is_full());
+        assert!(queue.is_full(now));
 
         // Higher priority (Sos) should preempt
         queue
@@ -934,7 +1307,7 @@ mod tests {
             .push(TxPriority::Normal, deadline, now, b"normal2")
             .unwrap();
 
-        assert!(queue.is_full());
+        assert!(queue.is_full(now));
 
         // Push higher priority item
         queue.push(TxPriority::Sos, deadline, now, b"sos").unwrap();
@@ -968,6 +1341,7 @@ mod tests {
         // Verify spec-mandated deadlines
         assert_eq!(DEADLINE_SOS_MS, 2_000);
         assert_eq!(DEADLINE_ROUTING_MS, 5_000);
+        assert_eq!(DEADLINE_ACK_MS, 10_000);
         assert_eq!(DEADLINE_URGENT_MS, 30_000);
         assert_eq!(DEADLINE_NORMAL_MS, 60_000);
         assert_eq!(DEADLINE_BULK_MS, 120_000);
@@ -1144,7 +1518,7 @@ mod tests {
         // NORMAL level allows all priorities including Bulk
         let item = queue.pop_if_allowed(now, CongestionLevel::Normal).unwrap();
         assert_eq!(item.priority, TxPriority::Bulk);
-        assert!(queue.is_empty());
+        assert!(queue.is_empty(now));
     }
 
     #[test]
@@ -1304,25 +1678,25 @@ mod tests {
         let deadline = now + DEADLINE_NORMAL_MS;
 
         // Empty queue
-        assert!(!queue.has_allowed(CongestionLevel::Normal));
+        assert!(!queue.has_allowed(now, CongestionLevel::Normal));
 
         // Add bulk item
         queue
             .push(TxPriority::Bulk, deadline, now, b"bulk")
             .unwrap();
 
-        assert!(queue.has_allowed(CongestionLevel::Normal));
-        assert!(!queue.has_allowed(CongestionLevel::Elevated)); // Bulk not allowed
-        assert!(!queue.has_allowed(CongestionLevel::Critical));
-        assert!(!queue.has_allowed(CongestionLevel::Exhausted));
+        assert!(queue.has_allowed(now, CongestionLevel::Normal));
+        assert!(!queue.has_allowed(now, CongestionLevel::Elevated)); // Bulk not allowed
+        assert!(!queue.has_allowed(now, CongestionLevel::Critical));
+        assert!(!queue.has_allowed(now, CongestionLevel::Exhausted));
 
         // Add SOS item
         queue.push(TxPriority::Sos, deadline, now, b"sos").unwrap();
 
-        assert!(queue.has_allowed(CongestionLevel::Normal));
-        assert!(queue.has_allowed(CongestionLevel::Elevated));
-        assert!(queue.has_allowed(CongestionLevel::Critical));
-        assert!(!queue.has_allowed(CongestionLevel::Exhausted)); // Nothing allowed
+        assert!(queue.has_allowed(now, CongestionLevel::Normal));
+        assert!(queue.has_allowed(now, CongestionLevel::Elevated));
+        assert!(queue.has_allowed(now, CongestionLevel::Critical));
+        assert!(!queue.has_allowed(now, CongestionLevel::Exhausted)); // Nothing allowed
     }
 
     #[test]
@@ -1375,5 +1749,87 @@ mod tests {
         assert!(queue
             .pop_if_allowed(1000, CongestionLevel::Normal)
             .is_none());
+    }
+
+    #[test]
+    fn pop_discards_all_expired_items() {
+        let mut queue = TxQueue::new();
+        queue.push(TxPriority::Sos, 100, 0, b"sos").unwrap();
+        queue.push(TxPriority::Normal, 200, 0, b"normal").unwrap();
+
+        assert!(queue.pop(200).is_none());
+        assert_eq!(queue.count(200), 0);
+        assert!(queue.is_empty(200));
+        assert_eq!(queue.stats().packets_dropped_deadline, 2);
+    }
+
+    #[test]
+    fn pop_skips_expired_higher_priority_and_preserves_live_order() {
+        let mut queue = TxQueue::new();
+        queue.push(TxPriority::Sos, 100, 0, b"expired-sos").unwrap();
+        queue
+            .push(TxPriority::Normal, 1_000, 0, b"live-first")
+            .unwrap();
+        queue
+            .push(TxPriority::Normal, 1_000, 0, b"live-second")
+            .unwrap();
+
+        assert_eq!(queue.pop(100).unwrap().data(), b"live-first");
+        assert_eq!(queue.peek(100).unwrap().data(), b"live-second");
+        assert_eq!(queue.count(100), 1);
+    }
+
+    #[test]
+    fn observers_expire_at_exact_deadline_boundary() {
+        let mut pop_queue = TxQueue::new();
+        pop_queue
+            .push(TxPriority::Normal, 200, 100, b"boundary")
+            .unwrap();
+        assert_eq!(pop_queue.peek(199).unwrap().data(), b"boundary");
+        assert!(pop_queue.peek(200).is_none());
+
+        let mut count_queue = TxQueue::new();
+        count_queue
+            .push(TxPriority::Normal, 200, 100, b"boundary")
+            .unwrap();
+        assert_eq!(count_queue.count(199), 1);
+        assert_eq!(count_queue.count(200), 0);
+        assert!(count_queue.is_empty(200));
+    }
+
+    #[test]
+    fn regressing_clock_cannot_resurrect_or_admit_stale_items() {
+        let mut queue = TxQueue::new();
+        queue
+            .push(TxPriority::Normal, 900, 100, b"expires")
+            .unwrap();
+        assert_eq!(queue.count(1_000), 0);
+
+        assert_eq!(
+            queue.push(TxPriority::Normal, 700, 500, b"already-stale"),
+            Err(TxQueueError::DeadlineExpired)
+        );
+        assert!(queue.peek(500).is_none());
+        assert_eq!(queue.stats().packets_queued, 1);
+        assert_eq!(queue.stats().packets_dropped_deadline, 1);
+    }
+
+    #[test]
+    fn expired_capacity_is_reclaimed_by_observers() {
+        let mut queue = TxQueue::new();
+        for value in 0..TX_QUEUE_CAPACITY {
+            queue
+                .push(TxPriority::Normal, 100, 0, &[value as u8])
+                .unwrap();
+        }
+        assert_eq!(queue.len(), TX_QUEUE_CAPACITY);
+
+        assert_eq!(queue.count(100), 0);
+        assert!(!queue.is_full(100));
+        queue
+            .push(TxPriority::Normal, 1_000, 100, b"replacement")
+            .unwrap();
+        assert_eq!(queue.count(100), 1);
+        assert_eq!(queue.pop(100).unwrap().data(), b"replacement");
     }
 }
