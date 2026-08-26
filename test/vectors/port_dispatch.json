@@ -1,0 +1,61 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "UDP port dispatch (spec 07 section 9.1 / 10). Independent literals from the spec port table, not from implementation constants.",
+  "vectors": [
+    {
+      "name": "compact_cot",
+      "port": 5681,
+      "app": "compact_cot",
+      "transport": "raw_udp"
+    },
+    {
+      "name": "senml",
+      "port": 5682,
+      "app": "senml",
+      "transport": "raw_udp"
+    },
+    {
+      "name": "coap",
+      "port": 5683,
+      "app": "coap",
+      "transport": "coap"
+    },
+    {
+      "name": "coap_dtls_reserved",
+      "port": 5684,
+      "app": "reserved_dtls",
+      "transport": "unused"
+    },
+    {
+      "name": "cayenne_lpp",
+      "port": 5685,
+      "app": "cayenne_lpp",
+      "transport": "raw_udp"
+    },
+    {
+      "name": "aprs_is",
+      "port": 5686,
+      "app": "aprs_is",
+      "transport": "raw_udp"
+    },
+    {
+      "name": "nmea",
+      "port": 5687,
+      "app": "nmea",
+      "transport": "raw_udp"
+    },
+    {
+      "name": "mqtt_sn",
+      "port": 10883,
+      "app": "mqtt_sn",
+      "transport": "mqtt_sn"
+    },
+    {
+      "name": "unknown_port",
+      "port": 9999,
+      "app": "unknown",
+      "transport": "unknown"
+    }
+  ]
+}
