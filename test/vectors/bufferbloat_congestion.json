@@ -1,0 +1,38 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Appendix B.5 congestion scenarios. Literals from spec/appendix-bufferbloat.md Testing, not from queue implementations.",
+  "vectors": [
+    {
+      "name": "queue_full",
+      "scenario": "queue_full",
+      "tx_capacity": 4,
+      "expected": "ENOBUFS"
+    },
+    {
+      "name": "deadline_expiry",
+      "scenario": "deadline_expiry",
+      "routing_deadline_ms": 5000,
+      "ack_deadline_ms": 10000,
+      "app_deadline_ms": 60000,
+      "expected": "drop_before_tx"
+    },
+    {
+      "name": "priority_preemption",
+      "scenario": "priority_preemption",
+      "expected": "higher_preempts_lower"
+    },
+    {
+      "name": "multihop_latency",
+      "scenario": "multihop_latency",
+      "expected": "bounded_e2e_delay"
+    },
+    {
+      "name": "fairness",
+      "scenario": "fairness",
+      "max_packets_per_source": 2,
+      "max_forwarding_sources": 8,
+      "expected": "nack_when_source_full"
+    }
+  ]
+}
