@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.5.6",
   "title": "Cross-validate: Compact CoT parity",
-  "status": "open",
+  "notes": "Implemented Rust canonical Compact CoT PLI parity on clean lichen-core paths. Decoder now requires exactly 17 bytes and rejects latitude, longitude, and course values outside the profile bounds; encoder rejects noncanonical PLI fields. Added a Rust consumer for all 8 positive and 9 negative PLI vectors, checking field parity and byte-exact re-encoding. Green: cargo test -p lichen-core --test compact_cot_vectors (2), cargo test -p lichen-core compact_cot (20 focused), cargo check -p lichen-core --no-default-features, cargo clippy -p lichen-core --lib --no-default-features -- -D warnings; Python Compact CoT suites (137), focused ruff/mypy, and schema/vector selection (6). Workspace-wide Python gateway ruff has one pre-existing E402 in dirty tests/gateway/test_compact_cot.py; no edit made.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:23.816239Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:23.816239Z",
+  "updated_at": "2026-08-26T04:24:25.280649Z",
+  "started_at": "2026-08-26T04:20:55.341445Z",
+  "closed_at": "2026-08-26T04:24:25.280649Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.5.6",

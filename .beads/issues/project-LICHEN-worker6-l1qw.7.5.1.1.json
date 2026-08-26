@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.5.1.1",
   "title": "Python: PLI encode/decode",
-  "status": "open",
+  "notes": "Implemented strict Python PLI encoding/decoding in python/src/lichen/compact_cot.py: exact 17-byte canonical length, PLI subtype enforcement, semantic/storage bounds for all fields, finite/range validation before human-unit conversion, and DecodeError normalization. Added malformed/trailing/coordinate/course canonical negative vectors and boundary/NaN/out-of-range tests; corrected application spec arithmetic and explicit bounds. Validation: 136 compact-CoT tests passed across root+gateway suites (one existing max-speed warning), focused Ruff clean, strict mypy clean, compact_cot.json Draft 7 schema valid, jq and git diff --check clean. Codereview intentionally deferred to Phase 3 batch review per orchestrator. Modified: python/src/lichen/compact_cot.py, python/tests/test_compact_cot.py, test/vectors/compact_cot.json, spec/07-transport-app.md, spec/THINKING-APPLICATION.md. No commit/push.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:36.782249Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:36.782249Z",
+  "updated_at": "2026-08-26T02:27:59.398224Z",
+  "started_at": "2026-08-26T02:20:32.727585Z",
+  "closed_at": "2026-08-26T02:27:59.398224Z",
+  "close_reason": "Completed Python PLI canonical encode/decode, validation, vectors, tests, and spec alignment; all focused gates green",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.5.1.1",

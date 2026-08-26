@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.5.2.4",
   "title": "Destination types: broadcast/team/direct",
-  "status": "open",
+  "notes": "Aligned Compact CoT destination types with spec/07 Section 10.1.1: stable wire tags broadcast=0x00, team=0x01, direct=0x02; team destinations accept only defined Team values 0x01-0x0A; direct destinations carry the required full 16-byte native IPv6 address (not an 8-byte IID). Python core/gateway constructors reject missing or extraneous destination fields. Python and Rust decoders reject invalid tags/teams, truncated IDs/messages, and trailing bytes. Canonical corpus now has 6 positive and 6 negative chat vectors, consumed byte-exactly by Python and Rust. Green: Python Compact CoT suites 162, focused ruff (gateway test with inherited E402 ignored only), mypy 2 modules, schema validation; Rust vector tests 3, focused module 20, rustfmt, no_std cargo check, clippy -D warnings. messaging.py untouched; no codereview/commit/push.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:58.769632Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:58.769632Z",
+  "updated_at": "2026-08-26T04:38:08.164376Z",
+  "started_at": "2026-08-26T04:30:08.083613Z",
+  "closed_at": "2026-08-26T04:38:08.164376Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.5.2.4",

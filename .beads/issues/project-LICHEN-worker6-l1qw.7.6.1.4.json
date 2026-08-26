@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.6.1.4",
   "title": "RFC 8428 numeric key mapping",
-  "status": "open",
+  "notes": "Completed RFC 8428 Section 4.3/Table 1 numeric label mapping in Python/Rust/shared vectors without Zephyr/C. Conflict audit found no live exact-file owner; stale expired SenML claims were preserved. Added Python public bidirectional field/label lookup and exact-int validation, wired production decode through it. Added Rust SenmlLabel enum for all 15 labels (-6..-1,0..8), canonical CBOR key encode/decode, and full-label duplicate tracking in the production decoder while preserving accumulated wire/IPSO work. Added senml_labels.json + dedicated schema + README registration and Python/Rust consumers; literal key bytes are independently derived from canonical CBOR. Green: Python 38 tests, ruff, mypy; dedicated JSON Schema validation; Rust lichen-senml full suite (21 unit + 11 integration), label vectors, fmt, all-target clippy -D warnings, and no-default-features/no_std check.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:36.07601Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:36.07601Z",
+  "updated_at": "2026-08-26T15:50:15.997814Z",
+  "started_at": "2026-08-26T15:45:04.974481Z",
+  "closed_at": "2026-08-26T15:50:15.997814Z",
+  "close_reason": "Complete RFC 8428 numeric label registry and cross-language canonical vectors are green",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.6.1.4",

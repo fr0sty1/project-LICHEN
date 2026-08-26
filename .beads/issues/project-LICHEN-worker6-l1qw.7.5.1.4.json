@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.5.1.4",
   "title": "Field validation: lat/lon/alt/course/speed bounds",
-  "status": "open",
+  "notes": "Verified the shared PLI patch from sibling bead .1.1 covers strict constructor, from_degrees finite/range, encode subtype/type, and decode subtype/length/semantic validation. Added the two missing canonical subtype-negative vectors (unknown 0x06 and known non-PLI CHAT 0x01) to test/vectors/compact_cot.json; generic malformed-vector consumer rejects both. Gates: root+gateway Compact CoT pytest 136 passed (one existing max-speed warning); focused Ruff clean; strict mypy clean; compact_cot.json Draft 7 schema valid; jq and git diff --check clean. Full tests/test_vectors.py: 676 passed, 2 unrelated concurrent failures in EDHOC generator equality and CCP9 rendezvous expected channel; no Compact CoT failure. Codereview intentionally deferred to Phase 3 batch per orchestrator. No commit/push.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:44.081255Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:44.081255Z",
+  "updated_at": "2026-08-26T02:30:18.327326Z",
+  "started_at": "2026-08-26T02:28:41.183232Z",
+  "closed_at": "2026-08-26T02:30:18.327326Z",
+  "close_reason": "PLI field and subtype validation verified; missing canonical subtype-negative vectors added; focused gates green",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.5.1.4",

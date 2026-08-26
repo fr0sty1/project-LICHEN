@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.6.1.2",
   "title": "Rust: SenML pack/unpack",
-  "status": "open",
+  "notes": "Implemented complete allocation-free Rust SenML-CBOR pack/unpack without C/Zephyr. Replaced the upstream 8-field Record bottleneck with a source-compatible borrowed local Record covering all RFC 8428 fields: bn/bt/bu/bv/bs/bver/n/u/v/vs/vb/vd/s/t/ut. Encoder prevalidates names, finite numbers, bver 1..=10, and v/vs/vb/vd one-of before any output mutation; supports exact capacity reporting and definite byte strings. Decoder handles typed fields, all integer/float widths, duplicates, unknown numeric labels, optional string extensions, mandatory '_' extension rejection, malformed/trailing/capacity input, and no allocation. cbor compatibility API, Position, and IPSO callers remain green. Added shared senml_full_fields vector/schema with byte-exact Python/Rust encode/decode/re-encode consumers. Green: lichen-senml 21 unit + 15 integration tests, position SenML 4, fmt, all-target clippy -D warnings, no-default-features/no_std; Python parity/location/codec 61, ruff, mypy, both schemas.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:32.444765Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:32.444765Z",
+  "updated_at": "2026-08-26T15:59:14.723811Z",
+  "started_at": "2026-08-26T14:57:13.74706Z",
+  "closed_at": "2026-08-26T15:59:14.723811Z",
+  "close_reason": "Complete RFC 8428 Rust SenML pack/unpack and cross-language vectors are green",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.6.1.2",

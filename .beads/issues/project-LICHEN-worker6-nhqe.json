@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-nhqe",
+  "title": "EDHOC master_secret mismatch between oscore crate and Python reference",
+  "description": "Cross-validation test found that the Rust oscore crate EDHOC implementation produces different master_secret values than the Python reference in project-LICHEN. Rust produces 961b7e7f17a6dc0df69ddcdbc750c4fb, Python vectors expect 287085e3960287a06de008620bedba4e. Both use same seeds and RNG mock (0x42 bytes). The oscore crate is external at /Volumes/Attic/Desktop/Projects/crates/oscore. Root cause needs investigation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T01:45:23.770273Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T02:08:31.27852Z",
+  "started_at": "2026-08-26T02:04:01.147653Z",
+  "closed_at": "2026-08-26T02:08:31.27852Z",
+  "close_reason": "Fixed by updating oscore crate test vectors to match Python reference oracle"
+}

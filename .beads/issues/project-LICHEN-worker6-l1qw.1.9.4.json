@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.9.4",
   "title": "Cross-validate: sign in A, verify in B/C",
   "description": "Cross-platform signature interoperability validation",
+  "notes": "2026-08-25 cross-interop blocker: Python/PyNaCl and Rust verify every fixed link_frame_signed_modes.json signature and reject component/signature mutations. Existing C primitive schnorr48_verify also verified all 6 canonical preimage/signature pairs in a ctypes run, proving core Schnorr interoperability. But C schnorr48_verify_frame rejected all 6 (generic=True, frame=0 each). Root cause in lichen/subsys/lichen/link/schnorr48.c:282-380 and 385-475: signer_iid/signer_iid_len are [[maybe_unused]], frame hashing starts at LENGTH with header||payload, omitting mandatory LICHEN-LINK-v1\\0 domain and 8-byte signer EUI-64. Header contract claims signer coverage at include/lichen/schnorr48.h:129-131 but implementation contradicts it. The only C cross-language frame oracle is disabled at lichen/tests/schnorr48/main.c:502-607/633-634. Standalone existing C suite passes because it tests the same stale self-consistent helper. Current phase forbids C production edits, so cannot close until C frame transcript is corrected and the fixed-vector C consumer is enabled for all address modes/tamper cases.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:03.976082Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:03.976082Z",
+  "updated_at": "2026-08-26T04:31:03.383592Z",
+  "started_at": "2026-08-26T04:29:32.547244Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.9.4",

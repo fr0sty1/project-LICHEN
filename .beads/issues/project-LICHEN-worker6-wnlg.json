@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-wnlg",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/python/src/lichen/rpl/dao_paths.py:104 Line 104: raise DaoError stops iteration over candidates when one path exceeds MAX_ROUTE_HOPS_ALIAS. If candidate A has a long path but candidate B has a short valid path, the function fails instead of trying B. The raise should be continue to try other candidates.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T02:00:13.078939Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T02:04:52.292247Z",
+  "started_at": "2026-08-26T02:04:05.130893Z",
+  "closed_at": "2026-08-26T02:04:52.292247Z",
+  "close_reason": "Fixed by wave-fix: changed raise DaoError to continue so iteration tries other candidates",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

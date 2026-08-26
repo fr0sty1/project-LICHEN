@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-pkqt",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/link/link_ctx.c:664 Return type mismatch: lichen_tdma_compute_slot returns int b",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T15:08:57.87187Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T15:08:57.87187Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.8.16.7",
   "title": "Rust: 14.6 Time Synchronization implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:39.30205Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:23:39.30205Z",
+  "updated_at": "2026-08-26T02:57:38.164232Z",
+  "started_at": "2026-08-26T02:54:51.250034Z",
+  "closed_at": "2026-08-26T02:57:38.164232Z",
+  "close_reason": "Rust 14.6 time sync covered by lichen-link time-provider stack.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.16.7",

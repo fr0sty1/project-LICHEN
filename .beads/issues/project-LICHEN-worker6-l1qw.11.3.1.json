@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.11.3.1",
   "title": "200::/7 prefix in RPL DODAG",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:52.02743Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:52.02743Z",
+  "updated_at": "2026-08-26T16:21:22.336023Z",
+  "started_at": "2026-08-26T16:21:22.336023Z",
+  "lease_expires_at": "2026-08-26T16:26:22.336023Z",
+  "heartbeat_at": "2026-08-26T16:21:22.336023Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.11.3.1",

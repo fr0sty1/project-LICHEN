@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-z8zz",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/rpl/include/lichen/rpl_messages.h:66 LICHEN_RPL_OPT_DIO_TIME and LICHEN_RPL_OPT_PAD1 both defined",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T02:00:19.561115Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T02:04:33.513716Z",
+  "started_at": "2026-08-26T02:04:02.011914Z",
+  "closed_at": "2026-08-26T02:04:33.513716Z",
+  "close_reason": "Fixed by wave-fix: changed LICHEN_RPL_OPT_DIO_TIME from 0 to 0x12 to avoid collision with LICHEN_RPL_OPT_PAD1",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

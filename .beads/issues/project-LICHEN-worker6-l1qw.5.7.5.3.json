@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.5.3",
   "title": "Zephyr: Periodic announce",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:02.831686Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:02.831686Z",
+  "updated_at": "2026-08-26T02:11:56.609008Z",
+  "started_at": "2026-08-26T02:06:35.81619Z",
+  "closed_at": "2026-08-26T02:11:56.609008Z",
+  "close_reason": "Added CONFIG_LICHEN_ROUTING and CONFIG_LICHEN_ANNOUNCE_SCHEDULER to prj.conf. Integrated announce scheduler startup in lichen_l2_iface_init with tx callback wrapper. Periodic announces will be sent every 300s with 0-30s jitter per spec 9.4.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.5.3",

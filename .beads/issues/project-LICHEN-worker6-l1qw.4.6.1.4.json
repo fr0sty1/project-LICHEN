@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.6.1.4",
   "title": "Standard group constants (ff02::1, ff02::1a, ff03::fc)",
-  "status": "open",
+  "notes": "Implemented typed Python and Rust public multicast constants for ff02::1, ff02::1a, and ff03::fc using IPv6Address/Ipv6Addr, with byte-exact and scope tests. Preserved pre-existing hunks in shared python ipv6/__init__.py and rust lichen-core/src/lib.rs; touched no other dirty files. Green gates: Python pytest 24, ruff, strict mypy; Rust focused test, fmt, no_std cargo check, focused lib/test clippy. Broad all-targets clippy remains blocked only by pre-existing warnings in unrelated dirty yggdrasil_addr_vectors.rs, duty_cycle.rs, and prior lib.rs tests. Codereview intentionally deferred to batch phase per wave instructions.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:29.291974Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:29.291974Z",
+  "updated_at": "2026-08-26T02:23:57.828684Z",
+  "started_at": "2026-08-26T02:20:22.624432Z",
+  "closed_at": "2026-08-26T02:23:57.828684Z",
+  "close_reason": "Typed standard multicast constants and byte/scope tests implemented; focused Python/Rust gates green",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.6.1.4",

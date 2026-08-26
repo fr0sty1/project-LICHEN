@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.5.1.5",
   "title": "Vectors: PLI test cases",
-  "status": "open",
+  "notes": "Canonical PLI corpus verified through production lichen.compact_cot encode_pli/decode_pli. Added missing below-minimum signed wire cases for latitude and longitude; retained exact positive bytes for all four PLI subtypes and boundary cases plus invalid truncated, trailing, upper coordinate, course, unknown-subtype, and non-PLI-subtype cases. Added completeness guards and direct Draft 7 schema validation. Focused validation: pytest root+gateway Compact CoT 137 passed (one existing max-speed warning); Ruff check/format clean; strict mypy clean; jq and diff-check clean. Codereview intentionally deferred to Phase 3 batch per orchestrator. Files modified by this bead: test/vectors/compact_cot.json, python/tests/test_compact_cot.py. No commit/push.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:46.105632Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:46.105632Z",
+  "updated_at": "2026-08-26T02:39:09.273843Z",
+  "started_at": "2026-08-26T02:36:04.026865Z",
+  "closed_at": "2026-08-26T02:39:09.273843Z",
+  "close_reason": "Canonical PLI vectors complete and consumed by production codec; focused gates green",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.5.1.5",

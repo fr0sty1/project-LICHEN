@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.5.3.2",
   "title": "Rust: short address to IID",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:14.782281Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:14.782281Z",
+  "updated_at": "2026-08-26T15:49:31.478002Z",
+  "started_at": "2026-08-26T15:45:35.001805Z",
+  "closed_at": "2026-08-26T15:49:31.478002Z",
+  "close_reason": "Implemented allocation-free RFC 4944 short-address IID conversion (0000:00FF:FE00:XXXX, big-endian), reverse canonical-prefix parser, and explicit reserved-address classification in Rust. Added shared positive/reserved vector consumers and boundary/roundtrip tests. Full lichen-core tests and Python parity passed; focused Clippy -D warnings, no_std check, and targeted rustfmt passed. Workspace-wide lichen-core all-target Clippy/rustfmt additionally exposed only pre-existing unrelated findings in other dirty wave files, which were preserved.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.5.3.2",

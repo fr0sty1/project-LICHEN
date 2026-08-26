@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-f5uc",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/coap/coap_status.c:513 lichen_coap_encode_routes_cbor returns 0 instead of -ENOBUFS",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T15:08:26.801981Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T15:08:26.801981Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

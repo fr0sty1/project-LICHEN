@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-uq3p",
+  "title": "test_native_client_dependency_extras_are_declared fails - packaging issue",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T15:21:39.614832Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T15:28:18.6891Z",
+  "started_at": "2026-08-26T15:24:01.016287Z",
+  "closed_at": "2026-08-26T15:28:18.6891Z",
+  "close_reason": "Fixed dependency-extra assertions to validate bounded PEP 508 specs, kept BLE-only dependencies out of transport-neutral native-client installs, excluded the repository-only absolute test symlink from sdists, and verified lock freshness, wheel/sdist metadata, isolated wheel import/CLI, pytest, and Ruff.",
+  "labels": [
+    "wave-fix"
+  ]
+}

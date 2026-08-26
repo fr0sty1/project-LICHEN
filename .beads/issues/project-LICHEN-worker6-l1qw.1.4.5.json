@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.4.5",
   "title": "Cross-validate: roundtrip parity",
   "description": "Cross-platform roundtrip validation. DONE - shared vectors",
+  "notes": "2026-08-25 roundtrip parity blocker: Python focused frame/vector/schema suite passes (240 passed, 10 skipped); Rust spec frame parse+roundtrip tests pass (2) and shared vector consumer passes (8), including every signed address mode and signed max payload. Read-only ctypes exercise of existing C lichen_frame_parse/write over current test/vectors/link_frame.json and link_frame_signed_modes.json: all 9 unsigned positives roundtrip exact; signed_encrypted rejects -EPROTONOSUPPORT and unsigned 256-byte over-max rejects -EMSGSIZE; but every modern signed positive (broadcast, short, extended, elided, and all max-payload variants: 9 total) rejects -EINVAL, so no signed parity. Root cause: lichen/subsys/lichen/link/frame.c:19/76-85 treats LLSec bit 7 as reserved and parses no 8-byte signer identifier; write path frame.c:139-142/183-190 forbids signer and keeps bit 7 clear. The current profile requires S and SI together and carries signer EUI-64. Existing clean C test passes only because lichen/tests/frame/main.c:334-383 hardcodes stale 0x20/0x21 signed frames without signer while labeling them current link_frame.json; current vectors use 0xA0/0xA1 and are 8 bytes longer. C production/header are current-phase read-only, so cannot close until C frame struct/parser/writer adopt SI/signing layout and the C test consumes current fixed corpus including signed max and negative categories.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:41:48.041933Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:41:48.041933Z",
+  "updated_at": "2026-08-26T04:41:29.615405Z",
+  "started_at": "2026-08-26T04:38:44.168317Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.4.5",

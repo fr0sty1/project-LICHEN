@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.11.3.3",
   "title": "Route selection: Ygg vs link-local paths",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:57.110469Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:57.110469Z",
+  "updated_at": "2026-08-26T16:13:29.533891Z",
+  "started_at": "2026-08-26T16:07:59.363891Z",
+  "closed_at": "2026-08-26T16:13:29.533891Z",
+  "close_reason": "Implemented deterministic link-local/native/off-mesh route selection with local-first 0200::/8 handling and Yggdrasil/RPL fallback in Python and Rust; added shared canonical vectors and negative boundary cases. Python routing 83 passed with Ruff/mypy clean; Rust lichen-node 242 passed/1 ignored plus integration/doc tests, clippy clean, no-default-features check clean.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.11.3.3",

@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.5.2.2",
   "title": "Rust: Relay verifies, mutates, re-signs",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:54.695035Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:54.695035Z",
+  "updated_at": "2026-08-26T02:58:36.513889Z",
+  "started_at": "2026-08-26T02:43:50.326066Z",
+  "closed_at": "2026-08-26T02:58:36.513889Z",
+  "close_reason": "Implemented hop-by-hop relay verify-mutate-re-sign per spec/06-security.md 8.4: new lichen-link module src/relay.rs adds LinkLayer::relay_verified_frame() which runs the full RX pipeline (parse, signer-EUI64 lookup, Schnorr48 verify vs pinned peer key over exact wire transcript, key-pin check, sender replay-window advance) BEFORE any mutation or emission - on failure RelayError::Inbound is returned and the out buffer is untouched; then emits a NEW frame via build_frame_with_addr_mode signed with the RELAY'S OWN key, own signer EUI-64 and own epoch/seqnum (inbound MIC never forwarded). Tests in NEW file tests/relay_re_sign.rs (8 passing): byte-exact oracle computed by independent Python reference schnorr48.py hardcoded as EXPECTED_RELAYED_WIRE_HEX; canonical link_frame.json short_addr_signed vector accepted through relay path then re-signed (new MIC verifies under relay key, NOT under origin key); negative cases prove ordering - tampered payload/sig/epoch inbound, unsigned frame, unknown sender, and replayed inbound all return Err(Inbound) leaving output sentinel intact; permitted payload mutation (hop-limit style) flows through re-sign and authenticates downstream; single-byte flips at header/dst/payload/signature positions of the re-signed frame all detected by next hop; relay's own outbound counter replays rejected downstream. Untouched concurrent work in frame.rs/shared_vectors.rs/schnorr48_vectors.rs. Gates: cargo test -p lichen-link --all-features = 15 suites all ok (incl 143 lib tests), cargo clippy --all-features --all-targets -D warnings clean, cargo check --no-default-features clean.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.5.2.2",

@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.4.2.7",
   "title": "Cross-validate: same key -\u003e same address in all impls",
+  "notes": "2026-08-25 parity audit: Python cross-corpus address test added and green (124 IPv6/address tests; Ruff/MyPy; generator freshness). Rust lichen-core yggdrasil_addr_vectors 3/3 and no_std check green. BLOCKER: C declares/calls lichen_identity_ygg_addr_from_ed25519 but rg finds no C implementation under lichen/subsys. Existing link_crypto consumer cannot compile at origin/main a72dbaf7b7 due unrelated Kconfig loop (LICHEN_COAP_KEYS/ZCBOR), duplicate SCHC declarations, stale Schnorr signatures/fakes/TDMA APIs; build-only Kconfig workaround got through configuration and exposed those compile failures. Production C/identity files were explicitly read-only for this bead, so all-implementation parity cannot be completed or closed.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:48.699369Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:48.699369Z",
+  "updated_at": "2026-08-26T04:16:05.798052Z",
+  "started_at": "2026-08-26T04:10:23.575716Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.4.2.7",

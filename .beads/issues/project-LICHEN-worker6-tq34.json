@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-tq34",
+  "title": "python/src/lichen/crypto/edhoc.py:203 Connection ID compact integer encoding formula is incorrect.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T02:00:05.837825Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T02:10:33.911901Z",
+  "started_at": "2026-08-26T02:04:14.917585Z",
+  "closed_at": "2026-08-26T02:10:33.911901Z",
+  "close_reason": "False positive: Code is correct per RFC 9528. Formula val-256 for bytes 232-255 correctly produces -24 to -1. All tests pass.",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-lyzq",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/oscore/oscore_ctx.c:547 oscore_ctx_set_sender_seq returns OSCORE_OK even when contex",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T15:08:09.344558Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T15:08:09.344558Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

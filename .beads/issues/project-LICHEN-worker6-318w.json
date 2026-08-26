@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-318w",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/coap/sos_resource.c:94 sos_resource_activate does not check incoming sequence against stored value, defeating the replay protection claimed in sos_resource_reset comments (lines 177-180). After a cancel preserves seq=N, an attacker can replay an old activation with seq=M where M\u003cN, and it will succeed since only state (IDLE) is checked, not sequence.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T02:58:42.277289Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T14:47:53.616273Z",
+  "started_at": "2026-08-26T14:47:23.314667Z",
+  "closed_at": "2026-08-26T14:47:53.616273Z",
+  "close_reason": "Fixed by wave-fix: added sequence replay check in sos_resource_activate to ensure seq \u003e stored sequence",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-x3bc",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/oscore/oscore_ctx.c:692 oscore_ctx_get does not initialize *ctx_out to NULL before l",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T15:07:59.429262Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T15:07:59.429262Z",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

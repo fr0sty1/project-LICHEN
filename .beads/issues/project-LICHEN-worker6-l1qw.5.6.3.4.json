@@ -1,19 +1,29 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.3.4",
   "title": "DIS solicitation handling",
+  "notes": "Python and Rust solicitation handling implemented and green. Remaining all-implementation blockers: (1) Zephyr has no DIS codec or solicitation handler (only a header comment; project-LICHEN-worker6-l1qw.5.6.3.3 remains open), so multicast Trickle reset and unicast configured-DIO response cannot be validated there. (2) canonical test/vectors/rpl_messages.json case dis_solicited_no_dodagid_match is malformed against RFC 6550 6.7.9: option Data Length is 18 and omits the required final Version Number byte; generator carries the same defect. In-scope gates: Python RPL 629 passed; Ruff/mypy clean. Rust lichen-rpl 194 unit + 38 integration passed, doc test ignored; clippy -D warnings, rustfmt, and no_std check green.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:43.394697Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:43.394697Z",
+  "updated_at": "2026-08-26T16:03:46.352047Z",
+  "started_at": "2026-08-26T15:58:05.690964Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.3.4",
       "depends_on_id": "project-LICHEN-worker6-l1qw.5.6.3",
       "type": "parent-child",
       "created_at": "2026-07-25T03:43:44.050894Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.5.6.3.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.5.6.3.3",
+      "type": "blocks",
+      "created_at": "2026-08-26T16:03:45.234712Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

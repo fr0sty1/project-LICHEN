@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.12.1.2",
   "title": "Rust: encrypt + decrypt (fix AAD per project-LICHEN-2okc)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:16.941122Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:16.941122Z",
+  "updated_at": "2026-08-26T02:48:49.093834Z",
+  "started_at": "2026-08-26T02:43:19.942877Z",
+  "closed_at": "2026-08-26T02:48:49.093834Z",
+  "close_reason": "Verified and completed RFC 8613 encrypt+decrypt AAD path for lichen-oscore (now a re-export of the patched local oscore crate whose build_aad_cbor implements RFC 8613 Sec 5.4 Enc_structure). Added offline canonical-vector tests to rust/lichen-oscore/tests/vectors.rs consuming test/vectors/oscore.json: test_request_unprotection_vectors (decrypt C.4-C.6 canonical ciphertexts via unprotect_request on receiver-role context), test_response_unprotection_vectors (decrypt C.7-C.8 via begin_unprotect_response+commit on client-role context), test_request_protection_with_id_context_vectors (encrypt coverage for C.6 which the existing loop skipped). Also fixed pre-existing clippy expect_fun_call in same file. cargo test -p lichen-oscore: 16 pass, 0 fail; cargo clippy --all-targets -D warnings clean.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.12.1.2",

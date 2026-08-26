@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.4.3",
   "title": "Cross-validate: Schnorr48 signature parity",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:18.409381Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:18.409381Z",
+  "updated_at": "2026-08-26T02:07:59.9277Z",
+  "started_at": "2026-08-26T01:58:05.332081Z",
+  "closed_at": "2026-08-26T02:07:59.9277Z",
+  "close_reason": "Cross-validated Schnorr48 parity across Python (python/src/lichen/crypto/schnorr48.py) and Rust (lichen-link via schnorr48 crate) against canonical corpus test/vectors/schnorr48.json (14 vectors). Both implementations reproduce identical keypairs/signatures from every valid vector and reject all invalid ones. Added rust/lichen-link/tests/schnorr48_vectors.rs (full-corpus JSON-driven sign+verify+determinism, superseding determinism-only integration test); repointed python/tests/crypto/test_schnorr48.py from stale spec/test-vectors copy to canonical corpus and strengthened privkey+repeat-sign checks. Runtime sign-in-Py/verify-in-Rust and reverse cross-check over 8 fresh random inputs PASSED both directions incl. tamper rejection (throwaway CLI, removed after). Gates: pytest crypto 364 passed; cargo test -p lichen-link --features std,schnorr all passed (142 unit + integrations); clippy -D warnings clean; fmt clean for touched file.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.4.3",

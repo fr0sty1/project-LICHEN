@@ -1,0 +1,7 @@
+{
+  "id": "1787708775882595000-1",
+  "issue_id": "project-LICHEN-worker6-l1qw.6.8.8",
+  "author": "Mark Atwood",
+  "text": "Cross-validation found interop bug: oscore crate EDHOC produces different master_secret than Python reference (filed as project-LICHEN-worker6-nhqe). Cannot complete cross-validation until dependency bug is fixed.",
+  "created_at": "2026-08-26T01:46:15.882595Z"
+}

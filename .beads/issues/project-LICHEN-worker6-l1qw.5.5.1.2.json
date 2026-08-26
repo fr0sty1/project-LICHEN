@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.5.1.2",
   "title": "Address classification table implementation",
-  "status": "open",
+  "notes": "Implemented a public isolated AddressClassificationTable exported via lichen.rpl without touching dirty routing/dodag/loadng. Stable precedence: fe80::/10 direct_neighbor; canonical 0200::/8 with live authenticated evidence local_mesh; 0200::/8 without evidence identity_preserving_global; other/unknown off_mesh. Authenticated updates canonicalize equivalent IPv6 text and compose the 1200s EvidenceTable, inheriting exact expiry, bounded capacity, no live eviction, source validation, and monotonic u64 regression/overflow safety. Added dedicated closed schema plus 7 canonical operation scenarios covering precedence/expiry, canonical spellings, auth rejection, non-primary rejection, capacity fallback/reuse, time regression, overflow, and invalid addresses. Green: 28 focused pytest, ruff, mypy, JSON/schema and diff checks. Read-only Rust inspection found no corresponding classifier; dirty Rust loadng/lib untouched, cargo no_std check green. No codereview/commit/push.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:41:39.435146Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:41:39.435146Z",
+  "updated_at": "2026-08-26T14:54:30.436514Z",
+  "started_at": "2026-08-26T14:51:03.932965Z",
+  "closed_at": "2026-08-26T14:54:30.436514Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.5.1.2",

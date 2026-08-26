@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.13.1.1",
   "title": "Generation: ed25519 keypair",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:16.509509Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:16.509509Z",
+  "updated_at": "2026-08-26T14:56:31.543212Z",
+  "started_at": "2026-08-26T14:51:19.684787Z",
+  "closed_at": "2026-08-26T14:56:31.543212Z",
+  "close_reason": "Verified Ed25519/Schnorr key generation without touching dirty production identity or external crate code. Python clean tests pin one os.urandom(32) call, exact seed forwarding, original OS RNG exception propagation, malformed RNG output lengths 0/1/31/33/255 rejection, deterministic from_seed behavior, and Appendix A public key. Rust clean test pins Seed::new([u8;32]) compile-time length contract plus Appendix A private/public derivation and repeatability. Python crypto 398 passed (1 xfailed, 1 xpassed); focused identity/Schnorr 49 passed; ruff/mypy green. Rust full lichen-link schnorr tests green; std+schnorr all-target clippy -D warnings green; no_std+schnorr cargo check green. No production edits.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.13.1.1",

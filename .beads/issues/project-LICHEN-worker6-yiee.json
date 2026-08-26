@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-yiee",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/oscore/oscore_ctx.c:405 TOCTOU race in oscore_ctx_create_with_eui64: after oscore_ctx_create returns (which unlocks mutex), the function re-locks at line 394 and modifies ctx without verifying it has not been recycled. If another thread frees and recreates a context in the same slot, lines 405-408 write sender_seq and set s_seq_initialized on the wrong context.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T02:58:14.416417Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T14:48:38.060314Z",
+  "started_at": "2026-08-26T14:47:23.762189Z",
+  "closed_at": "2026-08-26T14:48:38.060314Z",
+  "close_reason": "Fixed by wave-fix: Added identity validation after re-acquiring mutex to detect slot recycling",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

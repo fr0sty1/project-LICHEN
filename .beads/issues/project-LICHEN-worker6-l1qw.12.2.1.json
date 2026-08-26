@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.12.2.1",
   "title": "Protected CoAP request/response round-trip",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:33.57786Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:33.57786Z",
+  "updated_at": "2026-08-26T16:21:39.643285Z",
+  "started_at": "2026-08-26T16:17:57.171442Z",
+  "closed_at": "2026-08-26T16:21:39.643285Z",
+  "close_reason": "Completed and verified in-scope protected CoAP request/response round-trip. Existing production paths cover Python SecureDatagramChannel EDHOC-derived contexts and Rust lichen-node SecureStack, with independent RFC 8613 request/response vectors and Python/Rust byte-exact cross fixtures exercising role-swapped keys, AAD, no-PIV/fresh-PIV responses, malformed inputs, correlation errors, and replay rejection. Fixed SecureDatagramChannel.send_message to preserve the base DatagramChannel check_congestion keyword and forward it to scheduling; added regression coverage, removed stale local typing suppressions, and fixed the scoped cancellation lint. Gates: Python 83 passed; Ruff green; mypy green on OSCORE/secure channel; Rust lichen-oscore vectors 13 passed, cross parity 4 passed/1 generator ignored, lichen-node secure_stack_oscore_roundtrip passed; lichen-oscore and lichen-node package fmt/check/no_std/clippy green. Workspace-wide rustfmt remains blocked only by unrelated active edits in lichen-core and lichen-gateway.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.12.2.1",

@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.1.4",
   "title": "Trickle timer (Imin=4s, Imax=17min)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:03.41599Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:03.41599Z",
+  "updated_at": "2026-08-26T04:45:14.452566Z",
+  "started_at": "2026-08-26T04:38:52.850479Z",
+  "closed_at": "2026-08-26T04:45:14.452566Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.1.4",

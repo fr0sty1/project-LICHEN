@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.8.16.8",
   "title": "Zephyr: 14.6 Time Synchronization implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:40.468619Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.460925Z",
+  "updated_at": "2026-08-26T14:53:02.761186Z",
+  "started_at": "2026-08-26T14:48:33.170488Z",
+  "closed_at": "2026-08-26T14:53:02.761186Z",
+  "close_reason": "Implemented 14.6 Time Synchronization: time source class enum, time stratum, epoch floor validation, DIO Time Option encode/decode, wall clock management",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.16.8",

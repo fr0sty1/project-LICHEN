@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.10.6.4",
   "title": "Cross-validate: waypoint encoding parity",
   "description": "Verify Python/Rust/Zephyr produce identical waypoint CBOR",
+  "notes": "2026-08-26 Phase-2 audit blocker: acceptance explicitly requires Python/Rust/Zephyr byte-identical waypoint CBOR. Python has an independent canonical consumer at python/tests/coap/test_waypoint_vectors.py and canonical test/vectors/waypoint.json; Rust waypoint.rs is already dirty from closed waypoint implementation/sharing beads but has no waypoint.json consumer. Zephyr has no /waypoints resource, waypoint codec, or waypoint.json consumer under lichen/subsys/lichen or lichen/tests; only Meshtastic adapter_nodedb.c marks waypoint app port unsupported. Required Zephyr beads project-LICHEN-worker6-l1qw.10.6.1.4 (/waypoints resource + storage), .10.6.1.5 (detail resource), and .10.6.2.3 (receive shared waypoint) remain open. Cross-validation cannot truthfully pass until a production Zephyr encoder/decoder exists. Left open and unclaimed; no files edited.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:16.47267Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:16.47267Z",
+  "updated_at": "2026-08-26T16:14:23.637906Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.6.4",

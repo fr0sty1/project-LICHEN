@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-79kb",
+  "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/routing/gradient.c:306 lichen_gradient_sf_select passes now_ms=0 to lichen_gradient_lookup, which sets entry-\u003elast_used_ms=0 and corrupts LRU tracking",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "claude-wave",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T02:00:39.265512Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T02:05:08.940827Z",
+  "started_at": "2026-08-26T02:04:02.624745Z",
+  "closed_at": "2026-08-26T02:05:08.940827Z",
+  "close_reason": "Fixed by wave-fix",
+  "labels": [
+    "codereview",
+    "wave-fix"
+  ]
+}

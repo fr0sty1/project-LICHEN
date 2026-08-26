@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.12.1.5",
   "title": "Cross-validate: ciphertext parity",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:26.513882Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:26.513882Z",
+  "updated_at": "2026-08-26T02:57:16.54629Z",
+  "started_at": "2026-08-26T02:43:33.135716Z",
+  "closed_at": "2026-08-26T02:57:16.54629Z",
+  "close_reason": "Proved byte-level OSCORE ciphertext parity Python\u003c-\u003eRust. New committed fixture test/vectors/oscore_cross_exchange.json (inputs derived deterministically from canonical test/vectors/oscore.json roundtrip vectors + synthesized no-PIV/PIV responses over same contexts) records each implementation's independent protect() output; all 6 exchanges came out byte-identical (options AND ciphertexts). New rust/lichen-oscore/tests/cross_parity.rs (4 tests): Rust output == Python bytes, Rust decrypts Python requests+responses to exact plaintext (+ replay rejection). New python/tests/crypto/test_oscore_cross_parity.py (12 tests): mirror assertions, Python decrypts Rust bytes both directions. New generator test/vectors/generate_oscore_cross.py regenerates fixture offline; regeneration is byte-identical (sha256-stable), so drift in either impl fails loudly. RFC C.4-C.8 ciphertexts remain the external oracle via pre-existing per-side vector suites. All tests offline; cargo test -p lichen-oscore 20 passed, pytest tests/crypto 391 passed, clippy/ruff/fmt clean. No edits to any existing file (Cargo.toml/provisioning.rs off-limits honored).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.12.1.5",

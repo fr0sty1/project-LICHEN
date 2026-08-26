@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.6.1",
   "title": "Python: SRH encode/decode",
-  "status": "open",
+  "notes": "Implemented RFC 6554 full-address SRH decode validation in Python: explicitly parses and rejects unsupported nonzero CmprI/CmprE, rejects nonzero Pad for the uncompressed profile, ignores Reserved bits as RFC-required while canonicalizing them to zero on encode, and rejects non-Routing extension wrappers. Added deterministic regressions for truncated fixed fields, compressed address modes, pad values, reserved-bit acceptance, misaligned address vectors, empty/zero-segment round trips, wrong wrapper types, and exact RFC 8200 Hdr Ext Len serialization. Verification green: full python/tests/rpl 650 passed (one unrelated pytest deprecation warning); relay SRH/source-route subset 8 passed, 35 deselected; Ruff passed; mypy passed; git diff --check passed. No forwarding/C/Zephyr scope added.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:29.566602Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:29.566602Z",
+  "updated_at": "2026-08-26T16:15:40.806113Z",
+  "started_at": "2026-08-26T01:51:42.035301Z",
+  "closed_at": "2026-08-26T16:15:40.806113Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.6.1",

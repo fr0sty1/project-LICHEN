@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.8.16.16",
   "title": "Zephyr: 14.8 TDMA CCP FSM implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:23:54.454974Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.457210Z",
+  "updated_at": "2026-08-26T14:52:05.408583Z",
+  "started_at": "2026-08-26T14:48:03.813572Z",
+  "closed_at": "2026-08-26T14:52:05.408583Z",
+  "close_reason": "Implemented CCP FSM with states UNJOINED/ACQUIRING/SYNCED/DRIFTING/REJOINING and transition function per spec/09-packets-timing.md section 14.8",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.8.16.16",

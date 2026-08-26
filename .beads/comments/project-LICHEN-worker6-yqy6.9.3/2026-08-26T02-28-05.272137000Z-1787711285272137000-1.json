@@ -1,0 +1,7 @@
+{
+  "id": "1787711285272137000-1",
+  "issue_id": "project-LICHEN-worker6-yqy6.9.3",
+  "author": "Mark Atwood",
+  "text": "Blocked on hardware: requires physical T1000-E and SX126X nodes for bench testing. Cannot be fixed through code changes.",
+  "created_at": "2026-08-26T02:28:05.272137Z"
+}

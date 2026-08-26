@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.4.2",
   "title": "SCHC rule for MQTT-SN port 10883",
+  "notes": "VERIFIED 2026-08-26: Rule 7 implementation and canonical consumers are green without new edits. Python: 126 focused SCHC/header/vector tests passed; ruff headers/test and mypy headers passed. Rust read-only: shared_vectors 3/3, mqtt_sn 10/10, no-default-features check, and lib clippy -D warnings passed. BLOCKER: Draft7Validator(schema.json).iter_errors(schc_compression.json) rejects the document because schc_vector currently requires rule_id/packet/compressed on every entry and forbids category/expect_error/compressed_prefix/tail_byte/tail_length/expected_packet_size used by canonical fallback/malformed/size-boundary vectors. test/vectors/schema.json and python/tests/test_vectors.py are shared dirty files owned by the active corpus-schema work (project-LICHEN-ojzg), so do not close until that schema owner makes this document validate. No files modified for this bead.\nRE-EVALUATED 2026-08-26: live agent audit found no current exact-file editor, but the shared schema blocker remains and the schema/test_vectors files are still dirty. Direct validation against definitions.schc_vector reports 45 errors across 26 canonical schc_compression vectors: fallback category is forbidden; malformed/malformed_input entries are forced to provide packet/compressed/rule_id; size_boundary entries are forced to provide packet/compressed; and category/expect_error/compressed_prefix/tail_byte/tail_length/expected_packet_size are forbidden. The full Draft7Validator document gate therefore still fails its top-level oneOf. project-LICHEN-ojzg remains in_progress with an expired historical lease; no live sibling owns it, but this bead is read-only and must not edit shared schema/test_vectors. All non-schema gates are green: Python SCHC/header/vector selection 95 passed/637 deselected; ruff and mypy pass. Rust shared_vectors 3/3, mqtt_sn 10/10, adaptation_vectors 2/2, no-default-features check and lib clippy -D warnings pass. No files modified; Rule 7 itself remains complete.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:16.281578Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:16.281578Z",
+  "updated_at": "2026-08-26T16:11:30.795003Z",
+  "started_at": "2026-08-26T15:02:58.955152Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.4.2",
