@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.2.4",
   "title": "Request/response round-trip validation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:16.02467Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:16.02467Z",
+  "updated_at": "2026-08-26T01:15:20.811131Z",
+  "started_at": "2026-08-26T01:14:01.240854Z",
+  "closed_at": "2026-08-26T01:15:20.811131Z",
+  "close_reason": "Round-trip already covered: python/tests/client/test_ip_coap.py request/observe/503 tests and rust lichen-coap CoapClient get/post. No additional code.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.2.4",

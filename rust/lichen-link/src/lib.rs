@@ -55,6 +55,7 @@ pub mod replay;
 pub mod seqnum;
 pub mod sos;
 pub mod sos_origin;
+pub mod time_source;
 
 pub use evidence::{
     AuthenticatedLinkFrame, DurablePeerKeyGeneration, PeerKeyGeneration, ReceiptClock,
@@ -82,6 +83,7 @@ pub use sos_origin::{compute_sos_transcript, sign_sos_origin, verify_sos_origin}
 pub use sos_origin::{
     SosOriginSignature, SosOriginSignatureError, SOS_ORIGIN_DOMAIN, SOS_ORIGIN_SIGNATURE_LENGTH,
 };
+pub use time_source::TimeSourceClass;
 
 #[cfg(all(feature = "schnorr", feature = "std"))]
 pub mod link_layer;
