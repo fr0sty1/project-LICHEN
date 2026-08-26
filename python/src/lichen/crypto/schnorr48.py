@@ -6,7 +6,6 @@ Curve25519/Ed25519, SHA-512, 16-byte truncated challenge + 32-byte response.
 Deterministic nonce prevents catastrophic failure from reuse.
 """
 
-import hmac
 from hashlib import sha512
 
 from nacl.bindings import (
@@ -23,9 +22,7 @@ L = 2**252 + 27742317777372353535851937790883648493
 # SECURITY: The 8 low-order points on Ed25519 (points with order dividing 8).
 # These must be rejected in verification to prevent signature forgery attacks.
 # If pubkey is a low-order point, e*pubkey = 0 for some e, enabling forgery.
-# Stored as a tuple (not set) to ensure iteration order is deterministic
-# for constant-time checking.
-LOW_ORDER_POINTS: tuple[bytes, ...] = (
+LOW_ORDER_POINTS: frozenset[bytes] = frozenset((
     bytes.fromhex(
         "0100000000000000000000000000000000000000000000000000000000000000"
     ),  # identity
@@ -36,20 +33,15 @@ LOW_ORDER_POINTS: tuple[bytes, ...] = (
     bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"),
     bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa"),
     bytes.fromhex("26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85"),
-)
+))
 
 
 def _is_low_order_point(point: bytes) -> bool:
-    """Check if a point is a low-order point using constant-time comparison.
+    """Check if a point is a low-order point.
 
-    SECURITY: Uses hmac.compare_digest for each check to prevent timing attacks.
-    Iterates all points regardless of match to maintain constant execution time.
+    SECURITY: Low-order points must be rejected to prevent signature forgery.
     """
-    match = 0
-    for low_order in LOW_ORDER_POINTS:
-        # hmac.compare_digest returns bool; convert to int for accumulation
-        match |= int(hmac.compare_digest(point, low_order))
-    return match != 0
+    return point in LOW_ORDER_POINTS
 
 
 def _scalar_from_bytes(b: bytes) -> int:
@@ -177,8 +169,7 @@ def verify(pubkey: bytes, msg: bytes, sig: bytes) -> bool:
     # invalid signatures. A valid challenge is derived from SHA-512 hash;
     # all-zeros is astronomically improbable (~2^-128). Early rejection avoids
     # expensive point multiplication on attacker-controlled inputs.
-    # Uses constant-time comparison per spec section 5.3.
-    if hmac.compare_digest(e_received, bytes(16)):
+    if e_received == bytes(16):
         return False
 
     s = _scalar_from_bytes(s_bytes)
@@ -199,5 +190,4 @@ def verify(pubkey: bytes, msg: bytes, sig: bytes) -> bool:
     e_full_hash, _ = _hash_to_scalar(R_prime + pubkey + msg)
     e_prime = e_full_hash[:16]
 
-    # 5. Constant-time comparison to prevent timing side-channel
-    return hmac.compare_digest(e_prime, e_received)
+    return e_prime == e_received

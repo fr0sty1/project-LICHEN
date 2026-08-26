@@ -11,7 +11,7 @@ Wire Format:
         subtype(1) + lat(4) + lon(4) + alt(2) + course(2) + speed(2) + team(1) + role(1)
 
     Chat encoding (variable length):
-        subtype(1) + dest_type(1) + dest_id(0/1/8) + length(1) + UTF-8 text
+        subtype(1) + dest_type(1) + dest_id(0/1/16) + length(1) + UTF-8 text
 
 All multi-byte integers are big-endian (network byte order).
 """
@@ -22,6 +22,11 @@ import struct
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from enum import IntEnum
+from math import isfinite
+
+from defusedxml.ElementTree import (  # type: ignore[import-untyped]
+    fromstring as safe_xml_fromstring,
+)
 
 
 class CotSubtype(IntEnum):
@@ -72,6 +77,30 @@ PLI_TOTAL_SIZE = 1 + PLI_PAYLOAD_SIZE  # 17 bytes with subtype
 INT16_MIN = -32768
 INT16_MAX = 32767
 UINT16_MAX = 65535
+UINT8_MAX = 255
+
+PLI_SUBTYPES = (
+    CotSubtype.FRIENDLY_PLI,
+    CotSubtype.HOSTILE_PLI,
+    CotSubtype.NEUTRAL_PLI,
+    CotSubtype.UNKNOWN_PLI,
+)
+
+
+def _validate_int_field(name: str, value: int, minimum: int, maximum: int) -> None:
+    """Validate an integer-backed PLI wire field without implicit coercion."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer")
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} {value} out of range [{minimum}, {maximum}]")
+
+
+def _validate_finite_field(name: str, value: float, minimum: float, maximum: float) -> None:
+    """Validate a human-unit PLI input before fixed-point conversion."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value):
+        raise ValueError(f"{name} must be finite")
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} {value} out of range [{minimum}, {maximum}]")
 
 
 @dataclass(frozen=True)
@@ -96,6 +125,16 @@ class PliPayload:
     team: int
     role: int
 
+    def __post_init__(self) -> None:
+        """Enforce the semantic and storage bounds of every PLI wire field."""
+        _validate_int_field("Latitude", self.lat_microdeg, -90_000_000, 90_000_000)
+        _validate_int_field("Longitude", self.lon_microdeg, -180_000_000, 180_000_000)
+        _validate_int_field("Altitude", self.alt_dm, INT16_MIN, INT16_MAX)
+        _validate_int_field("Course", self.course_cdeg, 0, 35_999)
+        _validate_int_field("Speed", self.speed_cm_s, 0, UINT16_MAX)
+        _validate_int_field("Team", self.team, 0, UINT8_MAX)
+        _validate_int_field("Role", self.role, 0, UINT8_MAX)
+
     @classmethod
     def from_degrees(
         cls,
@@ -118,17 +157,18 @@ class PliPayload:
             team: Team identifier.
             role: Role identifier.
         """
-        # Clamp altitude to int16 range (-3276.8m to +3276.7m)
-        alt_dm = max(INT16_MIN, min(INT16_MAX, int(alt_m * 10)))
-        # Clamp speed to uint16 range (0 to 655.35 m/s)
-        speed_cm_s = min(UINT16_MAX, max(0, int(speed_m_s * 100)))
+        _validate_finite_field("Latitude", lat, -90.0, 90.0)
+        _validate_finite_field("Longitude", lon, -180.0, 180.0)
+        _validate_finite_field("Altitude", alt_m, -3276.8, 3276.7)
+        _validate_finite_field("Course", course_deg, 0.0, 359.99)
+        _validate_finite_field("Speed", speed_m_s, 0.0, 655.35)
 
         return cls(
             lat_microdeg=int(lat * 1_000_000),
             lon_microdeg=int(lon * 1_000_000),
-            alt_dm=alt_dm,
+            alt_dm=int(alt_m * 10),
             course_cdeg=int(course_deg * 100),
-            speed_cm_s=speed_cm_s,
+            speed_cm_s=int(speed_m_s * 100),
             team=team,
             role=role,
         )
@@ -156,7 +196,29 @@ class ChatDest:
 
     dest_type: DestType
     team: int | None = None
-    iid: bytes | None = None
+    address: bytes | None = None
+
+    def __post_init__(self) -> None:
+        """Reject destination fields that do not match the wire discriminator."""
+        if not isinstance(self.dest_type, DestType):
+            raise ValueError("dest_type must be a DestType")
+        if self.dest_type == DestType.BROADCAST:
+            if self.team is not None or self.address is not None:
+                raise ValueError("broadcast destination must not include a destination ID")
+        elif self.dest_type == DestType.TEAM:
+            if isinstance(self.team, bool) or not isinstance(self.team, int):
+                raise ValueError("team destination requires a team")
+            try:
+                Team(self.team)
+            except ValueError as exc:
+                raise ValueError(f"invalid team destination: {self.team}") from exc
+            if self.address is not None:
+                raise ValueError("team destination must not include an IPv6 address")
+        elif self.dest_type == DestType.DIRECT:
+            if self.team is not None:
+                raise ValueError("direct destination must not include a team")
+            if not isinstance(self.address, bytes) or len(self.address) != 16:
+                raise ValueError("direct destination requires exactly 16 address bytes")
 
     @classmethod
     def broadcast(cls) -> ChatDest:
@@ -169,11 +231,9 @@ class ChatDest:
         return cls(dest_type=DestType.TEAM, team=team)
 
     @classmethod
-    def direct(cls, iid: bytes) -> ChatDest:
+    def direct(cls, address: bytes) -> ChatDest:
         """Create direct message destination."""
-        if len(iid) != 8:
-            raise ValueError("IID must be exactly 8 bytes")
-        return cls(dest_type=DestType.DIRECT, iid=iid)
+        return cls(dest_type=DestType.DIRECT, address=address)
 
 
 @dataclass(frozen=True)
@@ -189,8 +249,14 @@ class ChatPayload:
     message: bytes
 
     def __post_init__(self) -> None:
+        if not isinstance(self.message, bytes):
+            raise ValueError("Chat message must be bytes")
         if len(self.message) > 255:
             raise ValueError("Chat message cannot exceed 255 bytes")
+        try:
+            self.message.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("Chat message must be valid UTF-8") from exc
 
 
 # Union type for all compact CoT message types
@@ -219,6 +285,11 @@ def encode_pli(subtype: CotSubtype, pli: PliPayload) -> bytes:
     Returns:
         Encoded bytes (17 bytes).
     """
+    if not isinstance(subtype, CotSubtype) or subtype not in PLI_SUBTYPES:
+        raise EncodeError(f"Expected PLI subtype, got {subtype!r}")
+    if not isinstance(pli, PliPayload):
+        raise EncodeError("PLI encoding requires PliPayload")
+
     payload = struct.pack(
         PLI_PAYLOAD_FORMAT,
         pli.lat_microdeg,
@@ -236,7 +307,7 @@ def decode_pli(data: bytes) -> tuple[CotSubtype, PliPayload]:
     """Decode a PLI message.
 
     Args:
-        data: Raw bytes (at least 17 bytes).
+        data: Raw bytes (exactly 17 bytes).
 
     Returns:
         Tuple of (subtype, PliPayload).
@@ -244,8 +315,8 @@ def decode_pli(data: bytes) -> tuple[CotSubtype, PliPayload]:
     Raises:
         DecodeError: If data is too short or invalid.
     """
-    if len(data) < PLI_TOTAL_SIZE:
-        raise DecodeError(f"PLI requires {PLI_TOTAL_SIZE} bytes, got {len(data)}")
+    if len(data) != PLI_TOTAL_SIZE:
+        raise DecodeError(f"PLI requires {PLI_TOTAL_SIZE} bytes exactly, got {len(data)}")
 
     subtype_byte = data[0]
     try:
@@ -253,33 +324,27 @@ def decode_pli(data: bytes) -> tuple[CotSubtype, PliPayload]:
     except ValueError as e:
         raise DecodeError(f"Unknown subtype: 0x{subtype_byte:02x}") from e
 
-    if subtype not in (
-        CotSubtype.FRIENDLY_PLI,
-        CotSubtype.HOSTILE_PLI,
-        CotSubtype.NEUTRAL_PLI,
-        CotSubtype.UNKNOWN_PLI,
-    ):
+    if subtype not in PLI_SUBTYPES:
         raise DecodeError(f"Expected PLI subtype, got {subtype.name}")
 
     lat, lon, alt, course, speed, team, role = struct.unpack(
         PLI_PAYLOAD_FORMAT, data[1:PLI_TOTAL_SIZE]
     )
 
-    # Validate geographic coordinate ranges (microdegrees)
-    if not (-90_000_000 <= lat <= 90_000_000):
-        raise DecodeError(f"Latitude {lat} out of range [-90000000, 90000000]")
-    if not (-180_000_000 <= lon <= 180_000_000):
-        raise DecodeError(f"Longitude {lon} out of range [-180000000, 180000000]")
+    try:
+        payload = PliPayload(
+            lat_microdeg=lat,
+            lon_microdeg=lon,
+            alt_dm=alt,
+            course_cdeg=course,
+            speed_cm_s=speed,
+            team=team,
+            role=role,
+        )
+    except ValueError as exc:
+        raise DecodeError(str(exc)) from exc
 
-    return subtype, PliPayload(
-        lat_microdeg=lat,
-        lon_microdeg=lon,
-        alt_dm=alt,
-        course_cdeg=course,
-        speed_cm_s=speed,
-        team=team,
-        role=role,
-    )
+    return subtype, payload
 
 
 def encode_chat(chat: ChatPayload) -> bytes:
@@ -294,9 +359,11 @@ def encode_chat(chat: ChatPayload) -> bytes:
     parts = [bytes([CotSubtype.CHAT, chat.dest.dest_type])]
 
     if chat.dest.dest_type == DestType.TEAM:
-        parts.append(bytes([chat.dest.team or 0]))
+        assert chat.dest.team is not None
+        parts.append(bytes([chat.dest.team]))
     elif chat.dest.dest_type == DestType.DIRECT:
-        parts.append(chat.dest.iid or bytes(8))
+        assert chat.dest.address is not None
+        parts.append(chat.dest.address)
 
     parts.append(bytes([len(chat.message)]))
     parts.append(chat.message)
@@ -333,13 +400,16 @@ def decode_chat(data: bytes) -> ChatPayload:
     elif dest_type == DestType.TEAM:
         if len(data) < pos + 1:
             raise DecodeError("Chat team destination truncated")
-        dest = ChatDest.to_team(data[pos])
+        try:
+            dest = ChatDest.to_team(data[pos])
+        except ValueError as exc:
+            raise DecodeError(str(exc)) from exc
         pos += 1
     elif dest_type == DestType.DIRECT:
-        if len(data) < pos + 8:
+        if len(data) < pos + 16:
             raise DecodeError("Chat direct destination truncated")
-        dest = ChatDest.direct(bytes(data[pos : pos + 8]))
-        pos += 8
+        dest = ChatDest.direct(bytes(data[pos : pos + 16]))
+        pos += 16
     else:
         raise DecodeError(f"Unsupported destination type: {dest_type}")
 
@@ -349,13 +419,21 @@ def decode_chat(data: bytes) -> ChatPayload:
     msg_len = data[pos]
     pos += 1
 
-    if len(data) < pos + msg_len:
+    expected_size = pos + msg_len
+    if len(data) < expected_size:
         raise DecodeError(
             f"Chat message truncated: expected {msg_len} bytes, got {len(data) - pos}"
         )
+    if len(data) > expected_size:
+        raise DecodeError(
+            f"Chat has trailing bytes: expected {expected_size} bytes, got {len(data)}"
+        )
 
-    message = bytes(data[pos : pos + msg_len])
-    return ChatPayload(dest=dest, message=message)
+    message = bytes(data[pos:expected_size])
+    try:
+        return ChatPayload(dest=dest, message=message)
+    except ValueError as exc:
+        raise DecodeError(str(exc)) from exc
 
 
 def encode(cot: CompactCot) -> bytes:
@@ -374,12 +452,7 @@ def encode(cot: CompactCot) -> bytes:
             raise EncodeError("CHAT subtype requires ChatPayload")
         return encode_chat(payload)
 
-    if subtype in (
-        CotSubtype.FRIENDLY_PLI,
-        CotSubtype.HOSTILE_PLI,
-        CotSubtype.NEUTRAL_PLI,
-        CotSubtype.UNKNOWN_PLI,
-    ):
+    if subtype in PLI_SUBTYPES:
         if not isinstance(payload, PliPayload):
             raise EncodeError(f"{subtype.name} requires PliPayload")
         return encode_pli(subtype, payload)
@@ -414,12 +487,7 @@ def decode(data: bytes) -> CompactCot:
     if subtype == CotSubtype.CHAT:
         return (subtype, decode_chat(data))
 
-    if subtype in (
-        CotSubtype.FRIENDLY_PLI,
-        CotSubtype.HOSTILE_PLI,
-        CotSubtype.NEUTRAL_PLI,
-        CotSubtype.UNKNOWN_PLI,
-    ):
+    if subtype in PLI_SUBTYPES:
         _, pli = decode_pli(data)
         return (subtype, pli)
 
@@ -498,6 +566,16 @@ def subtype_to_cot_type(subtype: CotSubtype) -> str:
     return mapping[subtype]
 
 
+def _xml_local_name(tag: str) -> str:
+    """Return an XML element's local name, ignoring an optional namespace."""
+    return tag.rsplit("}", 1)[-1]
+
+
+def _xml_child(parent: ET.Element, name: str) -> ET.Element | None:
+    """Find one direct child by local name across default/prefixed CoT XML."""
+    return next((child for child in parent if _xml_local_name(child.tag) == name), None)
+
+
 def parse_xml_cot(xml_data: str | bytes) -> CompactCot:
     """Parse CoT XML and convert to compact binary format.
 
@@ -523,9 +601,9 @@ def parse_xml_cot(xml_data: str | bytes) -> CompactCot:
     if isinstance(xml_data, bytes):
         xml_data = xml_data.decode("utf-8")
 
-    root = ET.fromstring(xml_data)
-    if root.tag != "event":
-        raise ValueError(f"Expected <event> root element, got <{root.tag}>")
+    root = safe_xml_fromstring(xml_data)
+    if _xml_local_name(root.tag) != "event":
+        raise ValueError(f"Expected <event> root element, got <{_xml_local_name(root.tag)}>")
 
     cot_type = root.get("type")
     if not cot_type:
@@ -552,7 +630,7 @@ def parse_xml_cot(xml_data: str | bytes) -> CompactCot:
 
 def _parse_xml_pli(root: ET.Element, subtype: CotSubtype) -> CompactCot:
     """Parse PLI from XML event element."""
-    point = root.find("point")
+    point = _xml_child(root, "point")
     if point is None:
         raise ValueError("Missing <point> element for PLI")
 
@@ -571,9 +649,9 @@ def _parse_xml_pli(root: ET.Element, subtype: CotSubtype) -> CompactCot:
     # Extract course/speed from <track> element
     course_deg = 0.0
     speed_m_s = 0.0
-    detail = root.find("detail")
+    detail = _xml_child(root, "detail")
     if detail is not None:
-        track = detail.find("track")
+        track = _xml_child(detail, "track")
         if track is not None:
             course_str = track.get("course")
             speed_str = track.get("speed")
@@ -586,7 +664,7 @@ def _parse_xml_pli(root: ET.Element, subtype: CotSubtype) -> CompactCot:
     team_val = Team.BLUE
     role_val = 1
     if detail is not None:
-        group = detail.find("__group")
+        group = _xml_child(detail, "__group")
         if group is not None:
             team_name = group.get("name")
             if team_name:
@@ -629,12 +707,12 @@ def _parse_role(role_str: str) -> int:
 
 def _parse_xml_chat(root: ET.Element) -> CompactCot:
     """Parse chat message from XML event element."""
-    detail = root.find("detail")
+    detail = _xml_child(root, "detail")
     if detail is None:
         raise ValueError("Missing <detail> element for chat")
 
     # Chat message is in <remarks> element
-    remarks = detail.find("remarks")
+    remarks = _xml_child(detail, "remarks")
     message = remarks.text.encode("utf-8") if remarks is not None and remarks.text else b""
 
     # For now, assume broadcast. Proper chat routing uses
@@ -642,11 +720,11 @@ def _parse_xml_chat(root: ET.Element) -> CompactCot:
     dest = ChatDest.broadcast()
 
     # Check for team or direct destination in __chat element
-    chat_elem = detail.find("__chat")
+    chat_elem = _xml_child(detail, "__chat")
     if chat_elem is not None:
         chat_group = chat_elem.get("chatroom")
         if chat_group:
-            # Check team names first to avoid ambiguity with 16-char hex names
+            # Check team names first to avoid ambiguity with hex identifiers.
             # Handle both "Blue" and "Team Blue" formats (roundtrip)
             team_name = chat_group.lower()
             if team_name.startswith("team "):
@@ -654,11 +732,11 @@ def _parse_xml_chat(root: ET.Element) -> CompactCot:
             team = TEAM_BY_NAME.get(team_name)
             if team:
                 dest = ChatDest.to_team(team)
-            elif len(chat_group) == 16:
-                # Direct message: hex IID = 16 hex chars = 8 bytes
+            elif len(chat_group) == 32:
+                # Direct message: native IPv6 address = 32 hex chars = 16 bytes.
                 try:
-                    iid = bytes.fromhex(chat_group)
-                    dest = ChatDest.direct(iid)
+                    address = bytes.fromhex(chat_group)
+                    dest = ChatDest.direct(address)
                 except ValueError:
                     pass  # Not valid hex, leave as broadcast
 
@@ -731,7 +809,7 @@ def compact_to_xml(data: bytes, uid: str = "LICHEN-1") -> str:
 
         # <track>
         track = ET.SubElement(detail, "track")
-        track.set("course", f"{course_deg:.1f}")
+        track.set("course", f"{course_deg:.2f}")
         track.set("speed", f"{speed_m_s:.2f}")
 
     elif isinstance(payload, ChatPayload):
@@ -742,8 +820,16 @@ def compact_to_xml(data: bytes, uid: str = "LICHEN-1") -> str:
         point.set("hae", "0.0")
 
         detail = ET.SubElement(event, "detail")
+        if payload.dest.dest_type == DestType.TEAM:
+            assert payload.dest.team is not None
+            chat = ET.SubElement(detail, "__chat")
+            chat.set("chatroom", f"Team {Team(payload.dest.team).name.title()}")
+        elif payload.dest.dest_type == DestType.DIRECT:
+            assert payload.dest.address is not None
+            chat = ET.SubElement(detail, "__chat")
+            chat.set("chatroom", payload.dest.address.hex())
         remarks = ET.SubElement(detail, "remarks")
-        remarks.text = payload.message.decode("utf-8", errors="replace")
+        remarks.text = payload.message.decode("utf-8")
 
     else:
         # Marker/Alert - minimal structure

@@ -31,6 +31,7 @@ from ipaddress import IPv6Address, IPv6Network
 from types import MappingProxyType
 from typing import Literal, Protocol
 
+from lichen import port_dispatch
 from lichen._sync_callbacks import reject_awaitable_result, require_sync_callable
 from lichen.announce.messages import AnnounceMessage
 from lichen.announce.persistence import AnnounceStatePersistence
@@ -686,6 +687,21 @@ class Node:
         """
         return await self.link.send(wrap_routing_payload(data))
 
+    @staticmethod
+    def dispatch_udp(ipv6: bytes) -> port_dispatch.Dispatched:
+        """Parse and dispatch an IPv6/UDP packet by destination port."""
+        return port_dispatch.dispatch_udp(ipv6)
+
+    @staticmethod
+    def udp_ports(ipv6: bytes) -> tuple[int, int] | None:
+        """Return an IPv6/UDP packet's source and destination ports."""
+        return port_dispatch.udp_ports(ipv6)
+
+    @staticmethod
+    def udp_dst_port(ipv6: bytes) -> int | None:
+        """Return an IPv6/UDP packet's destination port."""
+        return port_dispatch.udp_dst_port(ipv6)
+
     def set_on_receive(self, callback: Callable[[bytes, PeerIdentity], None]) -> None:
         """Set callback for received application data.
 
@@ -1302,6 +1318,15 @@ class Node:
             announce = AnnounceMessage.from_bytes(payload)
         except Exception as e:
             logger.warning("failed to parse announce: %s", e)
+            return
+
+        # SECURITY: Drop announces that originate from ourselves (loopback guard).
+        # This prevents routing loops and wasted processing of our own broadcasts.
+        if announce.originator_iid == self.identity.iid:
+            logger.debug(
+                "announce self-announce suppressed: originator=%s",
+                announce.originator_iid.hex(),
+            )
             return
 
         # Preflight the derived identity before AnnounceProcessor mutates its

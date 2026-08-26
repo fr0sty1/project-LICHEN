@@ -10,11 +10,12 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any, Protocol, Self
+from urllib.parse import urlsplit
 
-import aiocoap  # type: ignore[import-untyped]  # no official stubs
+import aiocoap
 import cbor2
 from aiocoap import Message
-from aiocoap.numbers import ContentFormat  # type: ignore[import-untyped]
+from aiocoap.numbers import ContentFormat
 
 from lichen.client.lci import ResourceSubscription, ResourceTransport
 from lichen.client.model import CoapResult
@@ -153,7 +154,8 @@ class AiocoapResourceTransport(ResourceTransport):
             ServiceUnavailableError: If peer is backed off or 5.03 received.
             CoapTransportError: For transport-level failures.
         """
-        peer = self.config.base_uri
+        uri = self._uri_for_path(path)
+        peer = _uri_origin(uri, fallback=self.config.base_uri)
         # SECURITY: Block requests to peers in backoff per spec 07 section 10.2.3.
         # The spec MUST requirement ("Senders receiving 5.03 MUST back off for the
         # indicated duration") protects peers from traffic they've explicitly asked
@@ -178,7 +180,7 @@ class AiocoapResourceTransport(ResourceTransport):
         try:
             message = _build_message(
                 method,
-                self._uri_for_path(path),
+                uri,
                 payload=payload,
                 content_format=content_format,
                 observe=observe,
@@ -231,7 +233,8 @@ class AiocoapResourceTransport(ResourceTransport):
             ServiceUnavailableError: If peer is backed off.
             CoapTransportError: For transport-level failures.
         """
-        peer = self.config.base_uri
+        uri = self._uri_for_path(path)
+        peer = _uri_origin(uri, fallback=self.config.base_uri)
         # SECURITY: Block observe requests to peers in backoff (same rationale as request()).
         if self.config.enforce_503_backoff:
             backoff_entry = self._peer_backoffs.get(peer)
@@ -250,7 +253,7 @@ class AiocoapResourceTransport(ResourceTransport):
 
         context = self._require_context()
         try:
-            message = _build_message(method, self._uri_for_path(path), observe=True)
+            message = _build_message(method, uri, observe=True)
             handle = context.request(message)
         except Exception as exc:
             raise CoapTransportError(f"{method} {path} observe failed: {exc}") from exc
@@ -267,9 +270,22 @@ class AiocoapResourceTransport(ResourceTransport):
         return self._context
 
     def _uri_for_path(self, path: str) -> str:
+        if path.startswith(("coap://", "coaps://")):
+            return path
         base = self.config.base_uri.rstrip("/")
         suffix = path if path.startswith("/") else f"/{path}"
         return f"{base}{suffix}"
+
+
+def _uri_origin(uri: str, *, fallback: str) -> str:
+    """Return the scheme and authority used for per-peer backoff state."""
+    try:
+        parsed = urlsplit(uri)
+    except ValueError:
+        return fallback
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return fallback
 
 
 class AiocoapResourceSubscription(ResourceSubscription):

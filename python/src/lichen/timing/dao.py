@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import random
+
 # §14.2 DAO Timing table
 DAO_INITIAL_DELAY_MIN_MS: int = 0
 DAO_INITIAL_DELAY_MAX_MS: int = 2000  # Random 0-2 seconds after joining
@@ -12,6 +14,12 @@ DAO_REFRESH_S: int = 15 * 60  # 15 minutes
 DAO_SOFT_STATE_LIFETIME_S: int = 30 * 60  # 30 minutes (refresh = lifetime / 2)
 DAO_SEQUENCE_MAX: int = 0xFFFFFFFFFFFFFFFF
 DAO_SEQUENCE_START_MIN: int = 1  # starts above zero, must not wrap
+
+
+def dao_initial_delay(rng: random.Random | None = None) -> int:
+    """Return a uniformly random initial DAO delay in inclusive milliseconds."""
+    source = rng if rng is not None else random
+    return source.randint(DAO_INITIAL_DELAY_MIN_MS, DAO_INITIAL_DELAY_MAX_MS)
 
 
 def dao_retry_delay(attempt: int) -> int | None:
@@ -53,6 +61,7 @@ __all__ = [
     "DAO_SEQUENCE_MAX",
     "DAO_SEQUENCE_START_MIN",
     "DAO_SOFT_STATE_LIFETIME_S",
+    "dao_initial_delay",
     "dao_retry_delay",
     "dao_retry_exhausted",
     "is_valid_dao_sequence",

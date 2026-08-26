@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Literal
 
 from lichen.ipv6 import to_ipv6
 from lichen.ipv6.packet import IPv6Header
-from lichen.rpl.messages import DIO
+from lichen.rpl.messages import DIO, DIO_FLAG_GATEWAY_CENTRIC
 from lichen.rpl.root_signature import verify_dodagid_binding
 from lichen.schc.context import versions_compatible
 from lichen.schc.rules import RULE_SET_VERSION, SCHC_RULE_VERSION_TYPE, SchcRuleVersionOption
@@ -80,8 +80,14 @@ def lollipop_cmp(a: int, b: int) -> int | None:
     a_linear = a < _LOLLIPOP_LINEAR_START
     b_linear = b < _LOLLIPOP_LINEAR_START
     if a_linear == b_linear:
-        if abs(a - b) <= SEQUENCE_WINDOW:
-            return 1 if a > b else -1
+        # Serial arithmetic with mod-128 window per RFC 6550 Section 7.2.
+        # Matches rust/lichen-rpl routing.rs seq_is_newer formulation.
+        diff_a_minus_b = (a - b) & 0x7F
+        diff_b_minus_a = (b - a) & 0x7F
+        if 1 <= diff_a_minus_b <= SEQUENCE_WINDOW:
+            return 1
+        if 1 <= diff_b_minus_a <= SEQUENCE_WINDOW:
+            return -1
         return None
     if a_linear:
         wrap_distance = 256 - b + a
@@ -172,6 +178,7 @@ class DodagState:
     max_rank_increase: int = MAX_RANK_INCREASE
     parent_switch_threshold: int = PARENT_SWITCH_THRESHOLD
     gateway_centric: bool = False
+    grounded: bool = False
     _lowest_rank: int = INFINITE_RANK
     _lock: threading.RLock = field(
         default_factory=threading.RLock, init=False, repr=False, compare=False
@@ -219,15 +226,43 @@ class DodagState:
 
         No-op if the node is not currently a root.
         """
-        if self.role is DodagRole.ROOT:
-            self.role = DodagRole.UNJOINED
-            self.preferred_parent = None
-            self.rank = INFINITE_RANK
-            self.parents.clear()
-            self._lowest_rank = INFINITE_RANK
+        with self._lock:
+            if self.role is DodagRole.ROOT:
+                self.role = DodagRole.UNJOINED
+                self.preferred_parent = None
+                self.rank = INFINITE_RANK
+                self.parents.clear()
+                self._lowest_rank = INFINITE_RANK
 
     def get_rank(self) -> int:
         return self.rank
+
+    def set_ygg_reachable(self, reachable: bool) -> bool:
+        """Set whether this root can reach the identity-preserving global profile.
+
+        The RPL Grounded bit is the standard reachability advertisement.  The
+        single-primary profile deliberately does not advertise a Prefix
+        Information option for ``0200::/8``.
+        """
+        if type(reachable) is not bool:
+            raise TypeError("reachable must be a bool")
+        if not self.is_root() or self.grounded is reachable:
+            return False
+        self.grounded = reachable
+        return True
+
+    def build_dio(self) -> DIO:
+        """Build this node's canonical DIO reachability advertisement."""
+        return DIO(
+            rpl_instance_id=self.rpl_instance_id,
+            version=self.version,
+            rank=self.rank,
+            dtsn=0,
+            dodag_id=self.dodag_id,
+            grounded=self.grounded,
+            mode_of_operation=1,
+            flags=DIO_FLAG_GATEWAY_CENTRIC if self.gateway_centric else 0,
+        )
 
     def process_dio(self, dio: DIO, neighbor_id: IPv6Address | str, link_etx: float = 1.0) -> None:
         """Process a received DIO from ``neighbor_id`` and re-select a parent.
@@ -306,6 +341,7 @@ class DodagState:
             return
         self.parents[neighbor_id] = candidate
         self.gateway_centric = dio.gateway_centric
+        self.grounded = dio.grounded
         self.select_parent()
 
     def _would_accept_dio_unlocked(
@@ -496,6 +532,7 @@ class DodagState:
         self.rank = INFINITE_RANK
         self._lowest_rank = INFINITE_RANK
         self.role = DodagRole.UNJOINED
+        self.grounded = dio.grounded
 
     def _admissible(self, candidate: ParentCandidate) -> bool:
         mhri = self.min_hop_rank_increase
@@ -550,5 +587,6 @@ class DodagState:
 
         ``neighbor_id`` may be an IPv6Address or a string representation.
         """
-        self.parents.pop(to_ipv6(neighbor_id), None)
-        self.select_parent()
+        with self._lock:
+            self.parents.pop(to_ipv6(neighbor_id), None)
+            self.select_parent()

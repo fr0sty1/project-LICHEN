@@ -6,8 +6,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import math
 from collections.abc import AsyncIterator, Mapping
-from typing import Any, Protocol, Self
+from ipaddress import IPv6Address
+from typing import Any, Protocol, Self, TypeGuard
+from urllib.parse import quote
 
 import cbor2
 
@@ -345,6 +348,51 @@ class LciClient:
                 "POST",
                 path,
                 payload=payload,
+                content_format=CBOR_CONTENT_FORMAT,
+            )
+        except Exception as exc:
+            return SendResult(
+                state=DeliveryState.TRANSPORT_ERROR,
+                detail=str(exc),
+            )
+        if result.is_success:
+            return SendResult(
+                state=DeliveryState.ACCEPTED,
+                coap_code=result.code,
+                location_path=result.location_path,
+            )
+        return SendResult(
+            state=DeliveryState.REJECTED,
+            coap_code=result.code,
+            detail=_result_detail(result),
+        )
+
+    async def share_waypoint(
+        self,
+        peer: str,
+        waypoint: Mapping[str, Any],
+    ) -> SendResult:
+        """POST a waypoint directly to one unicast mesh peer (spec 18.3.2).
+
+        ``peer`` is a bare IPv6 address, optionally with a zone identifier for
+        link-local neighbors. The request is sent to that peer's ``/waypoints``
+        resource rather than to the transport's configured local-node URI.
+        """
+        detail = _waypoint_validation_error(waypoint)
+        if detail is not None:
+            return SendResult(state=DeliveryState.VALIDATION_ERROR, detail=detail)
+        try:
+            path = _peer_waypoints_uri(peer)
+        except (TypeError, ValueError) as exc:
+            return SendResult(
+                state=DeliveryState.VALIDATION_ERROR,
+                detail=str(exc),
+            )
+        try:
+            result = await self._transport.request(
+                "POST",
+                path,
+                payload=cbor2.dumps(dict(waypoint)),
                 content_format=CBOR_CONTENT_FORMAT,
             )
         except Exception as exc:
@@ -879,6 +927,83 @@ def _valid_receipt_id(value: Any) -> bool:
 
 def _valid_receipt_timestamp(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+_WAYPOINT_FIELDS = frozenset({
+    "id",
+    "name",
+    "lat",
+    "lon",
+    "alt",
+    "icon",
+    "color",
+    "notes",
+    "created",
+    "creator",
+    "expires",
+})
+
+
+def _waypoint_validation_error(waypoint: Mapping[str, Any]) -> str | None:
+    """Return a validation diagnostic for a spec 18.3 waypoint, if any."""
+    if not isinstance(waypoint, Mapping):
+        return "waypoint must be a map"
+    unknown = set(waypoint) - _WAYPOINT_FIELDS
+    if unknown:
+        return f"waypoint has unsupported fields: {', '.join(sorted(map(str, unknown)))}"
+    if not isinstance(waypoint.get("name"), str) or not waypoint["name"]:
+        return "waypoint name must be a non-empty string"
+    for field, lower, upper in (("lat", -90.0, 90.0), ("lon", -180.0, 180.0)):
+        value = waypoint.get(field)
+        if not _is_finite_number(value):
+            return f"waypoint {field} must be a number"
+        if not lower <= value <= upper:
+            return f"waypoint {field} must be finite and in [{lower:g}, {upper:g}]"
+    if "alt" in waypoint:
+        altitude = waypoint["alt"]
+        if not _is_finite_number(altitude):
+            return "waypoint alt must be a finite number"
+    for field in ("id", "icon", "color", "notes", "creator"):
+        if field in waypoint and (
+            not isinstance(waypoint[field], str) or not waypoint[field]
+        ):
+            return f"waypoint {field} must be a non-empty string"
+    for field in ("created", "expires"):
+        if field in waypoint and (
+            isinstance(waypoint[field], bool)
+            or not isinstance(waypoint[field], int)
+            or waypoint[field] < 0
+        ):
+            return f"waypoint {field} must be an unsigned integer"
+    return None
+
+
+def _is_finite_number(value: Any) -> TypeGuard[int | float]:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
+def _peer_waypoints_uri(peer: str) -> str:
+    """Build the direct ``/waypoints`` URI for one unicast IPv6 peer."""
+    if not isinstance(peer, str) or not peer:
+        raise ValueError("waypoint peer must be a non-empty IPv6 address")
+    address_text, separator, scope = peer.partition("%")
+    if separator and not scope:
+        raise ValueError("waypoint peer has an empty IPv6 zone identifier")
+    try:
+        address = IPv6Address(address_text)
+    except ValueError as exc:
+        raise ValueError("waypoint peer must be a bare IPv6 address") from exc
+    if address.is_multicast or address.is_unspecified:
+        raise ValueError("waypoint peer must be a unicast IPv6 address")
+    authority = address.compressed
+    if scope:
+        authority = f"{authority}%25{quote(scope, safe='')}"
+    return f"coap://[{authority}]/waypoints"
 
 
 def _str_or_none(value: Any) -> str | None:

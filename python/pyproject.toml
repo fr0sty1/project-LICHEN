@@ -61,7 +61,8 @@ meshtastic = [
     "bleak>=0.21",
 ]
 ble = [
-    "bleak>=0.21",
+    "bleak>=0.21,<0.22",
+    "bless>=0.2.6,<0.3",
 ]
 coap = [
     "aiocoap==0.4.17",
@@ -87,6 +88,11 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lichen"]
+
+[tool.hatch.build.targets.sdist]
+# The repository-level protocol vector corpus is linked here for source-tree
+# tests, but it is not package data and may point outside this checkout.
+exclude = ["/test"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

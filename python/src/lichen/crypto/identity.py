@@ -138,8 +138,9 @@ def hash_32(data: bytes | str) -> int:
 def _pubkey_to_iid(pubkey: bytes) -> bytes:
     """Derive IID from Ed25519 public key.
 
-    MUST use SHA-512, not SHA-256. This matches Yggdrasil's AddrForKey
-    (yggdrasil-go/src/address/address.go) for key-derivation interop.
+    LICHEN native profile inspired by Yggdrasil 0200::/8 range; NOT
+    wire-compatible with upstream AddrForKey (which bit-packs without hashing).
+    See test/vectors/yggdrasil_address.json for divergence documentation.
     """
     if len(pubkey) != 32:
         raise ValueError(f"pubkey must be 32 bytes, got {len(pubkey)}")
@@ -205,9 +206,11 @@ def iid_to_human_address(iid: bytes) -> str:
 def yggdrasil_address(pubkey: bytes) -> IPv6Address:
     """Derive the native 0200::/8 address from an Ed25519 public key.
 
-    Implements the exact `AddrForKey` algorithm from yggdrasil-go
-    (`src/address/address.go`), matching the official Yggdrasil daemon
-    bit-for-bit:
+    LICHEN native profile inspired by Yggdrasil 0200::/8 range; NOT
+    wire-compatible with upstream AddrForKey (which bit-packs the pubkey
+    without hashing). See test/vectors/yggdrasil_address.json for divergence.
+
+    Algorithm:
 
       1. Compute `h = SHA-512(pubkey)`
       2. `addr = [0x02] || h[0:7] || h[0:8]`

@@ -49,6 +49,7 @@ class AnnounceRejectReason(Enum):
     MALFORMED = auto()
     PIN_TABLE_FULL = auto()
     KEY_MISMATCH = auto()  # TOFU: pubkey differs from pinned key
+    SELF_ANNOUNCE = auto()  # originator == receiver (own TX loopback)
 
 
 @dataclass
@@ -142,18 +143,6 @@ class AnnounceProcessor:
                 reject_reason=AnnounceRejectReason.STALE_SEQNUM,
             )
 
-        if announce.hop_count > MAX_ANNOUNCE_HOPS:
-            logger.warning(
-                "announce hop limit exceeded: originator=%s hops=%d",
-                iid.hex(),
-                announce.hop_count,
-            )
-            return AnnounceResult(
-                accepted=False,
-                should_relay=False,
-                reject_reason=AnnounceRejectReason.HOP_LIMIT_EXCEEDED,
-            )
-
         # Complete TOFU admission before constructing or mutating routing
         # state. A rejected colliding key, or a first-seen key when the pin
         # table is full, must have no effect on the gradient table.
@@ -211,6 +200,8 @@ class AnnounceProcessor:
         # update succeed, preserving retryability on local routing failures.
         self._pinned_keys[iid] = announce.pubkey
         self._pinned_keys.move_to_end(iid)
+        while len(self._pinned_keys) > MAX_ENTRIES:
+            self._pinned_keys.popitem(last=False)
 
         self._seen[iid] = announce.seq_num
         self._seen.move_to_end(iid)

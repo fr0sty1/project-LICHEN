@@ -19,6 +19,12 @@ _UL_BIT = 0x0200_0000_0000_0000
 LINK_LOCAL_NETWORK = IPv6Network("fe80::/10")
 NATIVE_NETWORK = IPv6Network("0200::/8")
 
+# Standard groups from spec/04-network.md section 6.3.1.  All-nodes is
+# defined by ICMPv6 because Neighbor Discovery consumes it directly; the
+# remaining LICHEN-wide groups live with the address profile.
+ALL_RPL_NODES_MULTICAST: IPv6Address = IPv6Address("ff02::1a")
+ALL_LICHEN_NODES_MULTICAST: IPv6Address = IPv6Address("ff03::fc")
+
 
 def to_ipv6(value: IPv6Address | str | bytes) -> IPv6Address:
     """Coerce a value to IPv6Address.
@@ -92,11 +98,50 @@ def address_from_prefix(prefix: IPv6Network, iid: bytes) -> IPv6Address:
     return IPv6Address(prefix.network_address.packed[:8] + iid)
 
 
-def make_link_local(iid: bytes) -> IPv6Address:
-    """Build the link-local address ``fe80::<IID>`` (spec 6.1)."""
+def _normalize_zone_id(zone_id: str | int | None) -> str | None:
+    """Return a zone identifier accepted by :class:`IPv6Address`.
+
+    A zone is local interface metadata, not part of the 128-bit IPv6 address.
+    Integer interface indexes are rendered in their canonical decimal form;
+    interface names are preserved exactly.  Zero cannot identify an owning
+    interface, and ``%`` is reserved as the address/zone delimiter.
+    """
+    if zone_id is None:
+        return None
+    if type(zone_id) is int:
+        if zone_id <= 0:
+            raise AddrError("IPv6 zone index must be positive")
+        return str(zone_id)
+    if type(zone_id) is not str:
+        raise AddrError("IPv6 zone must be a string or positive interface index")
+    if not zone_id:
+        raise AddrError("IPv6 zone must not be empty")
+    if "%" in zone_id or any(character.isspace() for character in zone_id):
+        raise AddrError("IPv6 zone contains invalid characters")
+    return zone_id
+
+
+def make_link_local(iid: bytes, *, zone_id: str | int | None = None) -> IPv6Address:
+    """Build the canonical ``fe80::/64`` address for an IID (spec 6.1).
+
+    The canonical prefix is inside IPv6's ``fe80::/10`` link-local range.
+    ``zone_id``, when supplied, records the owning local interface (for
+    example ``"lci0"`` or interface index ``3``).  The zone is preserved by
+    :class:`IPv6Address` but is not included in :attr:`IPv6Address.packed` and
+    therefore is never transmitted as part of the address.
+    """
+    if type(iid) is not bytes:
+        raise AddrError("IID must be immutable bytes")
     if len(iid) != 8:
         raise AddrError(f"IID must be 8 bytes, got {len(iid)}")
-    return IPv6Address(b"\xfe\x80" + b"\x00" * 6 + iid)
+    address = IPv6Address(b"\xfe\x80" + b"\x00" * 6 + iid)
+    zone = _normalize_zone_id(zone_id)
+    if zone is None:
+        return address
+    try:
+        return IPv6Address(f"{address}%{zone}")
+    except ValueError as exc:  # Defensive boundary around stdlib validation.
+        raise AddrError("invalid IPv6 zone") from exc
 
 
 def native_address_from_pubkey(pubkey: bytes) -> IPv6Address:
@@ -136,13 +181,13 @@ def is_unflagged_multicast(addr: IPv6Address | str | bytes) -> bool:
     return flags_and_scope & 0xF0 == 0 and 0x01 <= flags_and_scope <= 0x0E
 
 
-def link_local_from_pubkey(pubkey: bytes) -> IPv6Address:
-    """Return the link-local address bound to the same Ed25519 public key."""
+def link_local_from_pubkey(pubkey: bytes, *, zone_id: str | int | None = None) -> IPv6Address:
+    """Return the optionally zoned link-local address bound to a public key."""
     if type(pubkey) is not bytes:
         raise AddrError("public key must be immutable bytes")
     try:
         from lichen.crypto.identity import PeerIdentity
 
-        return make_link_local(PeerIdentity.from_pubkey(pubkey).iid)
+        return make_link_local(PeerIdentity.from_pubkey(pubkey).iid, zone_id=zone_id)
     except ValueError as exc:
         raise AddrError(str(exc)) from exc

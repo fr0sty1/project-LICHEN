@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import ipaddress
 import logging
 import signal
 from typing import TYPE_CHECKING
@@ -25,6 +26,39 @@ from lichen.sim.simulation import Simulation, TimeMode
 
 if TYPE_CHECKING:
     from starlette.applications import Starlette
+
+
+def _is_loopback_bind_host(host: str) -> bool:
+    """Return whether *host* is an explicit loopback bind target.
+
+    Hostnames other than ``localhost`` are deliberately not resolved here:
+    DNS can change between validation and binding, while literal loopback
+    addresses are stable. All addresses in 127.0.0.0/8 and IPv6 ``::1`` are
+    accepted.
+    """
+    normalized = host.rstrip(".").casefold()
+    if normalized == "localhost":
+        return True
+
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def _validate_bind_security(bind_host: str, *, allow_remote: bool) -> bool:
+    """Validate CLI remote-bind acknowledgement and return loopback status.
+
+    Raises:
+        ValueError: If a non-loopback target was not explicitly enabled.
+    """
+    is_loopback = _is_loopback_bind_host(bind_host)
+    if not is_loopback and not allow_remote:
+        raise ValueError(
+            "Binding to non-localhost requires --allow-remote flag.\n"
+            "This is a safety measure to prevent accidental network exposure."
+        )
+    return is_loopback
 
 
 class SimulatorServer:
@@ -376,17 +410,16 @@ def main() -> None:
             print(f"ERROR: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # SECURITY: Refuse to bind to non-localhost unless --allow-remote is passed
-    is_localhost = args.bind_address in ("127.0.0.1", "localhost", "::1")
-    if not is_localhost and not args.allow_remote:
-        print(
-            "ERROR: Binding to non-localhost requires --allow-remote flag.",
-            file=sys.stderr,
+    # SECURITY: Refuse to bind to non-loopback unless --allow-remote is passed.
+    # Only explicit loopback literals and localhost are trusted; arbitrary
+    # hostnames are not resolved for this check to avoid DNS rebinding races.
+    try:
+        is_localhost = _validate_bind_security(
+            args.bind_address,
+            allow_remote=args.allow_remote,
         )
-        print(
-            "This is a safety measure to prevent accidental network exposure.",
-            file=sys.stderr,
-        )
+    except ValueError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
 
     # SECURITY: Warn when binding to non-localhost (with --allow-remote)

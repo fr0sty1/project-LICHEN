@@ -9,7 +9,7 @@ LORA_SPREADING_FACTOR: int = 10
 LORA_BANDWIDTH_HZ: int = 125_000
 LORA_PREAMBLE_SYMBOLS: int = 8
 LORA_SYNC_WORD: int = 0x34  # Distinct from Meshtastic (0x2B)
-LORA_CAD_SYMBOLS: int = 2  # Symbols to detect in CAD mode (2-4 typical)
+LORA_CAD_SYMBOLS: int = 3  # CAD timeout per spec §14.5
 LORA_CAD_TIMEOUT_MS: int = 35  # Default CAD timeout (covers ~4 symbols + overhead)
 CAD_SLOT_MS: int = 10  # Backoff slot duration for CAD-based CSMA
 CAD_MAX_BACKOFF_EXPONENT: int = 5  # Max slots = 2^5 - 1 = 31
@@ -21,8 +21,13 @@ FREQ_EU_HZ: int = 868_100_000  # EU 868 MHz band
 FREQ_AU_NZ_HZ: int = 916_800_000  # AU/NZ 915 MHz ISM band
 
 # Well-known port numbers
+PORT_COMPACT_COT: int = 5681
+PORT_SENML: int = 5682
 PORT_COAP: int = 5683
 PORT_COAP_DTLS: int = 5684
+PORT_CAYENNE_LPP: int = 5685
+PORT_APRS_IS: int = 5686
+PORT_NMEA: int = 5687
 PORT_MQTT_SN: int = 10883
 
 # SCHC compression rule IDs (RFC 8724; spec appendix-schc.md)
@@ -51,6 +56,7 @@ RPL_LIFETIME_UNIT_S: int = 60
 # RPL Trickle timer parameters (RFC 6206)
 RPL_TRICKLE_IMIN_MS: int = 4000  # 4 seconds per spec (draft-lichen-rpl-lora-00.md)
 RPL_TRICKLE_IMAX_DOUBLINGS: int = 8  # max = imin * 2^8 = 2^20 ms (~17 min)
+RPL_TRICKLE_IMAX_MS: int = RPL_TRICKLE_IMIN_MS << RPL_TRICKLE_IMAX_DOUBLINGS
 RPL_TRICKLE_K: int = 10  # Redundancy constant
 
 # LICHEN Announce message (spec §05-routing)

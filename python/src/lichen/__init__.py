@@ -5,6 +5,20 @@
 A mesh networking protocol stack for LoRa radios using standard IPv6 and CoAP.
 """
 
+from lichen.address_collision import (
+    ADDRESS_CLAIM_LIFETIME_SECONDS,
+    MAX_COLLISION_ADDRESSES,
+    MAX_KEYS_PER_ADDRESS,
+    AddressBindingError,
+    AddressCollisionCapacityError,
+    AddressCollisionDetector,
+    AddressCollisionError,
+    AddressCollisionTimeError,
+    AddressKind,
+    CollisionObservation,
+    ObservationStatus,
+    verify_native_address_binding,
+)
 from lichen.channel_plan import (
     AS923,
     AU915,
@@ -31,8 +45,15 @@ from lichen.time_provider import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "ADDRESS_CLAIM_LIFETIME_SECONDS",
     "AS923",
     "AU915",
+    "AddressBindingError",
+    "AddressCollisionCapacityError",
+    "AddressCollisionDetector",
+    "AddressCollisionError",
+    "AddressCollisionTimeError",
+    "AddressKind",
     "CN470",
     "ChannelEntry",
     "ChannelPlan",
@@ -40,6 +61,10 @@ __all__ = [
     "IN865",
     "KR920",
     "MonotonicTimeProvider",
+    "MAX_COLLISION_ADDRESSES",
+    "MAX_KEYS_PER_ADDRESS",
+    "CollisionObservation",
+    "ObservationStatus",
     "REGIONAL_PLANS",
     "REGIONAL_PLANS_BY_NAME",
     "SimulatedTimeProvider",
@@ -50,4 +75,5 @@ __all__ = [
     "get_plan",
     "get_plan_by_name",
     "select_channel",
+    "verify_native_address_binding",
 ]

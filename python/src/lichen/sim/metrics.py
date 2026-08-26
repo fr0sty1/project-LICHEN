@@ -441,6 +441,10 @@ class Metrics:
         """Return True if this receiver has already counted tx_id."""
         return (rx_node_id, tx_id) in self._delivered
 
+    def has_any_reception_for_tx(self, tx_id: str) -> bool:
+        """Return True if any receiver has already counted tx_id."""
+        return any(key[1] == tx_id for key in self._delivered)
+
     def _forget_tx_ids(self, tx_ids: list[str]) -> None:
         """Drop start times and companion identity caches for pruned TXs."""
         if not tx_ids:

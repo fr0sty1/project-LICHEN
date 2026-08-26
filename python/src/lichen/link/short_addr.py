@@ -35,6 +35,11 @@ import binascii
 import logging
 import random
 from dataclasses import dataclass, field
+from ipaddress import IPv6Address
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from lichen.ipv6.packet import IPv6Packet
 
 logger = logging.getLogger(__name__)
 
@@ -49,15 +54,27 @@ SHORT_ADDR_MAX_INCREMENTAL = 0xFFEF
 SHORT_ADDR_RESERVED_NULL = 0x0000
 SHORT_ADDR_RESERVED_UNSPECIFIED = 0xFFFE
 SHORT_ADDR_RESERVED_BROADCAST = 0xFFFF
-SHORT_ADDR_RESERVED = frozenset({
-    SHORT_ADDR_RESERVED_NULL,
-    SHORT_ADDR_RESERVED_UNSPECIFIED,
-    SHORT_ADDR_RESERVED_BROADCAST,
-})
+SHORT_ADDR_RESERVED = frozenset(
+    {
+        SHORT_ADDR_RESERVED_NULL,
+        SHORT_ADDR_RESERVED_UNSPECIFIED,
+        SHORT_ADDR_RESERVED_BROADCAST,
+    }
+)
 DAD_MAX_SEED = 255
 DAD_PROBE_COUNT = 3
 DAD_JITTER_MIN_MS = 0
 DAD_JITTER_MAX_MS = 500
+
+
+class DadJitterSource(Protocol):
+    """Injectable source for unbiased DAD jitter sampling."""
+
+    def randrange(self, stop: int, /) -> int:
+        """Return an integer in ``range(stop)``."""
+
+
+_DEFAULT_DAD_JITTER_SOURCE = random.SystemRandom()
 
 
 def is_reserved_addr(addr: int) -> bool:
@@ -157,34 +174,56 @@ def dad_retry(eui64: bytes, existing_addrs: set[int]) -> int | None:
 def dad_retry_incremental(start: int, existing_addrs: set[int]) -> int | None:
     """Conflict resolution via ``+1 mod 0xffef`` (bd 1.8.2.6).
 
-    Starting from ``(start + 1) % 0xFFF0`` probes up to ``0xFFEF`` distinct
-    values. Skips reserved addresses (0x0000). Returns ``None`` if all
-    non-reserved addresses are taken. This is the incremental fallback
-    described in the beads child; the canonical retry is :func:`dad_retry`
-    (seed mixing). Both are provided for compliance.
+    Starting from ``(start + 1) % 0xFFF0``, probes every usable value in
+    ``0x0001..0xFFEF`` exactly once.  A usable ``start`` is the address that
+    just collided and is not returned again; a reserved or out-of-pool
+    16-bit ``start`` is only a cursor, so the scan still covers the complete
+    usable pool. Returns ``None`` only when every eligible address is taken.
+
+    This is the incremental fallback described in the beads child; the
+    canonical retry is :func:`dad_retry` (seed mixing). Both are provided for
+    compliance.
     """
     if not 0 <= start <= 0xFFFF:
         raise ValueError(f"start out of range: {start}")
-    for offset in range(1, SHORT_ADDR_MAX_INCREMENTAL + 1):
-        cand = (start + offset) % (SHORT_ADDR_MAX_INCREMENTAL + 1)
-        # Skip reserved null address (0x0000); 0xFFFE/0xFFFF already excluded
-        # by SHORT_ADDR_MAX_INCREMENTAL boundary
-        if cand not in existing_addrs and cand != SHORT_ADDR_RESERVED_NULL:
+    modulus = SHORT_ADDR_MAX_INCREMENTAL + 1
+    for offset in range(1, modulus + 1):
+        cand = (start + offset) % modulus
+        # A valid start represents the address whose DAD attempt collided.
+        # Reserved/out-of-pool starts are merely cursors and must not cause
+        # their modulo residue to be omitted from the usable address pool.
+        if cand == start or is_reserved_addr(cand):
+            continue
+        if cand not in existing_addrs:
             return cand
     return None
 
 
-def dad_jitter_ms(rng: random.Random | None = None) -> int:
-    """Random jitter for DAD probes (0..500 ms, bd 1.8.2.5)."""
-    r = rng if rng is not None else random
-    return r.randint(DAD_JITTER_MIN_MS, DAD_JITTER_MAX_MS)
+def dad_jitter_ms(rng: DadJitterSource | None = None) -> int:
+    """Sample unbiased random jitter for one DAD probe, inclusive of both bounds.
+
+    ``randrange(501)`` avoids modulo bias and permits callers to inject a
+    deterministic source for simulation and test-vector replay. The default
+    source is :class:`random.SystemRandom`, so independent processes do not
+    inherit identical pseudo-random state.
+    """
+    source = rng if rng is not None else _DEFAULT_DAD_JITTER_SOURCE
+    jitter = source.randrange(DAD_JITTER_MAX_MS - DAD_JITTER_MIN_MS + 1)
+    if isinstance(jitter, bool) or not isinstance(jitter, int):
+        raise TypeError("DAD jitter source must return an integer")
+    jitter += DAD_JITTER_MIN_MS
+    if not DAD_JITTER_MIN_MS <= jitter <= DAD_JITTER_MAX_MS:
+        raise ValueError("DAD jitter source returned a value outside 0..500 ms")
+    return jitter
 
 
 def dad_probe_schedule(
     count: int = DAD_PROBE_COUNT,
-    rng: random.Random | None = None,
+    rng: DadJitterSource | None = None,
 ) -> list[int]:
     """Return ``count`` jitter values for the 3-probe DAD sequence."""
+    if isinstance(count, bool) or not isinstance(count, int):
+        raise TypeError("count must be an integer")
     if count < 1:
         raise ValueError(f"count must be >=1, got {count}")
     return [dad_jitter_ms(rng) for _ in range(count)]
@@ -203,6 +242,25 @@ class DadProbe:
     short_addr: int
     jitter_ms: int = 0
 
+    def __post_init__(self) -> None:
+        _check_eui64(self.eui64)
+        object.__setattr__(self, "eui64", bytes(self.eui64))
+        if not 0 <= self.short_addr <= 0xFFFF or is_reserved_addr(self.short_addr):
+            raise ValueError(f"invalid DAD short address: {self.short_addr}")
+        if not DAD_JITTER_MIN_MS <= self.jitter_ms <= DAD_JITTER_MAX_MS:
+            raise ValueError(f"DAD jitter out of range: {self.jitter_ms}")
+
+    @property
+    def target(self) -> IPv6Address:
+        """RFC 4944 link-local target represented by this short address."""
+        return short_addr_dad_target(self.short_addr)
+
+    def to_packet(self) -> IPv6Packet:
+        """Encode the logical probe as an RFC 4862 Neighbor Solicitation."""
+        from lichen.ipv6.icmpv6 import make_dad_probe
+
+        return make_dad_probe(self.target)
+
 
 @dataclass(frozen=True)
 class DadConflict:
@@ -211,6 +269,136 @@ class DadConflict:
     short_addr: int
     owner_eui64: bytes
     challenger_eui64: bytes
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.short_addr <= 0xFFFF or is_reserved_addr(self.short_addr):
+            raise ValueError(f"invalid DAD short address: {self.short_addr}")
+        _check_eui64(self.owner_eui64)
+        _check_eui64(self.challenger_eui64)
+        object.__setattr__(self, "owner_eui64", bytes(self.owner_eui64))
+        object.__setattr__(self, "challenger_eui64", bytes(self.challenger_eui64))
+        if self.owner_eui64 == self.challenger_eui64:
+            raise ValueError("DAD conflict requires distinct node identities")
+
+
+def short_addr_dad_target(short_addr: int) -> IPv6Address:
+    """Map a non-reserved short address to its RFC 4944 link-local target."""
+    if not 0 <= short_addr <= 0xFFFF or is_reserved_addr(short_addr):
+        raise ValueError(f"invalid DAD short address: {short_addr}")
+    from lichen.ipv6.addr import make_link_local, short_addr_to_iid
+
+    return make_link_local(short_addr_to_iid(short_addr))
+
+
+@dataclass
+class DadProbeSequence:
+    """State for the mandatory three-probe short-address DAD exchange.
+
+    Jitter is supplied up front, which makes simulation and canonical vectors
+    deterministic while :meth:`randomized` supplies production randomness.
+    The candidate succeeds only after all three probes and no validated
+    Neighbor Advertisement conflict.
+    """
+
+    eui64: bytes
+    short_addr: int
+    jitters_ms: tuple[int, ...]
+    probes_sent: int = field(init=False, default=0)
+    conflict_detected: bool = field(init=False, default=False)
+    cancelled: bool = field(init=False, default=False)
+    completed: bool = field(init=False, default=False)
+
+    def __post_init__(self) -> None:
+        _check_eui64(self.eui64)
+        self.eui64 = bytes(self.eui64)
+        short_addr_dad_target(self.short_addr)
+        self.jitters_ms = tuple(self.jitters_ms)
+        if len(self.jitters_ms) != DAD_PROBE_COUNT:
+            raise ValueError(
+                f"DAD requires exactly {DAD_PROBE_COUNT} jitter values, got {len(self.jitters_ms)}"
+            )
+        if any(
+            isinstance(jitter, bool) or not isinstance(jitter, int)
+            for jitter in self.jitters_ms
+        ):
+            raise TypeError("DAD jitter values must be integers")
+        if any(
+            jitter < DAD_JITTER_MIN_MS or jitter > DAD_JITTER_MAX_MS
+            for jitter in self.jitters_ms
+        ):
+            raise ValueError("DAD jitter values must each be in 0..500 ms")
+
+    @classmethod
+    def randomized(
+        cls,
+        eui64: bytes,
+        short_addr: int,
+        rng: DadJitterSource | None = None,
+    ) -> DadProbeSequence:
+        jitters = dad_probe_schedule(rng=rng)
+        return cls(eui64, short_addr, (jitters[0], jitters[1], jitters[2]))
+
+    @property
+    def target(self) -> IPv6Address:
+        return short_addr_dad_target(self.short_addr)
+
+    @property
+    def succeeded(self) -> bool:
+        return self.completed and not self.conflict_detected and not self.cancelled
+
+    def next_probe(self) -> DadProbe:
+        """Return the next probe, or stop after conflict/all three probes."""
+        if self.conflict_detected:
+            raise RuntimeError("cannot continue DAD after a conflict")
+        if self.cancelled:
+            raise RuntimeError("cannot continue cancelled DAD")
+        if self.completed:
+            raise StopIteration("DAD is already complete")
+        if self.probes_sent >= DAD_PROBE_COUNT:
+            raise StopIteration("all DAD probes have been emitted")
+        probe = DadProbe(
+            self.eui64,
+            self.short_addr,
+            self.jitters_ms[self.probes_sent],
+        )
+        self.probes_sent += 1
+        return probe
+
+    def finish(self) -> bool:
+        """Finish after the third response window and report DAD success."""
+        if self.cancelled:
+            raise RuntimeError("cannot finish cancelled DAD")
+        if self.conflict_detected:
+            raise RuntimeError("cannot finish DAD after a conflict")
+        if self.probes_sent != DAD_PROBE_COUNT:
+            raise RuntimeError("cannot finish DAD before all three probes")
+        self.completed = True
+        return self.succeeded
+
+    def cancel(self) -> bool:
+        """Cancel outstanding probes, returning whether cancellation took effect.
+
+        A completed or conflicted exchange remains in its terminal state and
+        cannot be retroactively cancelled. Repeated cancellation is
+        idempotent and reports ``False``.
+        """
+        if self.completed:
+            return False
+        self.cancelled = True
+        self.completed = True
+        return True
+
+    def record_conflict(self, packet: IPv6Packet) -> bool:
+        """Record a valid NA conflict for this candidate; ignore other input."""
+        from lichen.ipv6.icmpv6 import parse_dad_conflict
+
+        if self.cancelled or (self.completed and not self.conflict_detected):
+            return False
+        if parse_dad_conflict(packet, self.target) is None:
+            return False
+        self.conflict_detected = True
+        self.completed = True
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -330,9 +518,7 @@ class CoordinatorAddressTable:
             )
         return DaoAck(eui64=key, assigned_short=assigned, status=0, dao_sequence=req.dao_sequence)
 
-    def handle_dao_ack(
-        self, ack: DaoAck, *, self_eui64: bytes | None = None
-    ) -> bool:
+    def handle_dao_ack(self, ack: DaoAck, *, self_eui64: bytes | None = None) -> bool:
         """Apply a received DAO-ACK at the node side (store assignment).
 
         Args:
@@ -518,7 +704,9 @@ __all__ = [
     "CoordinatorAddressTable",
     "CollisionEvent",
     "DadConflict",
+    "DadJitterSource",
     "DadProbe",
+    "DadProbeSequence",
     "DaoAck",
     "DaoRequest",
     "ShortAddressCollisionDetector",
@@ -532,5 +720,6 @@ __all__ = [
     "derive_short_addr_with_seed",
     "hash_32_fnv1a",
     "is_reserved_addr",
+    "short_addr_dad_target",
     "transition_to_coordinator_managed",
 ]

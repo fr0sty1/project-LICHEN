@@ -45,7 +45,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from ipaddress import IPv6Address
-from typing import TypedDict
+from typing import Any, TypedDict, cast
 
 from lichen.ipv6 import AddrError, to_ipv6
 from lichen.rpl.dao_types import RplTarget, TransitInformation
@@ -571,9 +571,9 @@ class DaoBackboneBridge:
             t = transit_list[i] if i < len(transit_list) else default_transit
             parent = str(t.get("parent", ""))
             transit = TransitInformation(
-                path_sequence=int(t["path_sequence"]),
-                path_lifetime=int(t["path_lifetime"]),
-                path_control=int(t["path_control"]),
+                path_sequence=cast(int, t["path_sequence"]),
+                path_lifetime=cast(int, t["path_lifetime"]),
+                path_control=cast(int, t["path_control"]),
                 parent_address=to_ipv6(parent) if parent else None,
             )
             routes.append(
@@ -659,7 +659,7 @@ def validate_rpl_instance_id(instance_id: int) -> tuple[bool, str]:
     return (True, f"All gateways configured for RPLInstanceID {instance_id}")
 
 
-def generate_multi_instance_vectors() -> list[dict]:
+def generate_multi_instance_vectors() -> list[dict[str, Any]]:
     """Assemble the canonical RPL Multi-Instance Coordination test vectors.
 
     These vectors test the oracle implementation per the test/vectors/README.md
@@ -667,7 +667,7 @@ def generate_multi_instance_vectors() -> list[dict]:
     spec rules (spec/08-gateway-coordination.md GCP-5/GCP-6/GCP-9, RFC 6550);
     nothing here is computed by running the implementation under test.
     """
-    vectors: list[dict] = []
+    vectors: list[dict[str, Any]] = []
 
     # Vector 1: Basic multi-root coordination.
     # fe80::1234:... < fe80::abcd:... byte-wise (0x12 < 0xab at octet 9),
@@ -943,7 +943,7 @@ def generate_multi_instance_vectors() -> list[dict]:
     _guard_receiver = "fe80::abcd:ef01:2345:6789"
     _guard_origin = "fe80::1234:5678:9abc:def0"
 
-    def _guard_message(timestamp: float | str) -> dict:
+    def _guard_message(timestamp: float | str) -> dict[str, Any]:
         return {
             "origin_gateway": _guard_origin,
             "rpl_instance_id": 0,

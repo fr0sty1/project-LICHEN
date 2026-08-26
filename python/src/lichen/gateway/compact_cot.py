@@ -8,7 +8,7 @@ Implements spec/07-transport-app.md Section 10.1.1:
 
 Wire formats:
   PLI (17 bytes): subtype(1) + lat(4) + lon(4) + alt(2) + course(2) + speed(2) + team(1) + role(1)
-  Chat (variable): subtype(1) + dest_type(1) + dest_id(0/1/8) + len(1) + text(N)
+  Chat (variable): subtype(1) + dest_type(1) + dest_id(0/1/16) + len(1) + text(N)
 """
 
 from __future__ import annotations
@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import IntEnum
 from xml.etree.ElementTree import Element, SubElement, tostring
+
+from defusedxml.ElementTree import fromstring  # type: ignore[import-untyped]
 
 UTC = UTC
 
@@ -88,7 +90,7 @@ class DestType(IntEnum):
         elif self == DestType.TEAM:
             return 1
         else:  # DIRECT
-            return 8
+            return 16
 
 
 class Team(IntEnum):
@@ -191,8 +193,8 @@ def _derive_uid_from_cot(cot: CompactCot) -> str:
         parts.append(str(chat.dest_type.value))
         if chat.dest_team is not None:
             parts.append(str(chat.dest_team))
-        if chat.dest_iid is not None:
-            parts.append(chat.dest_iid)
+        if chat.dest_address is not None:
+            parts.append(chat.dest_address)
         parts.append(chat.message)
     return _derive_uid("sender", *parts)
 
@@ -208,7 +210,7 @@ class PliPayload:
     lon_microdeg: int  # int32 microdegrees
     alt_dm: int  # int16 decimeters
     course_cdeg: int  # uint16 centidegrees (0-35999)
-    speed_cm_s: int  # uint16 cm/s; 0xFFFF may indicate sensor invalid/no-fix
+    speed_cm_s: int  # uint16 cm/s; the full 0..65535 profile range is valid
     team: int  # uint8
     role: int  # uint8
 
@@ -234,9 +236,7 @@ class PliPayload:
 
     @property
     def speed_m_s(self) -> float:
-        """Speed in m/s. 0xFFFF sentinel treated as 0 (no valid fix)."""
-        if self.speed_cm_s == UINT16_MAX:
-            return 0.0
+        """Speed in m/s across the complete canonical uint16 range."""
         return self.speed_cm_s / 100.0
 
     @property
@@ -257,8 +257,30 @@ class ChatPayload:
 
     dest_type: DestType
     dest_team: int | None  # Only if dest_type == TEAM
-    dest_iid: bytes | None  # Only if dest_type == DIRECT (8 bytes)
+    dest_address: bytes | None  # Only if dest_type == DIRECT (16-byte native IPv6)
     message: str  # UTF-8 text
+
+    def __post_init__(self) -> None:
+        """Reject destination fields inconsistent with the wire discriminator."""
+        if not isinstance(self.dest_type, DestType):
+            raise ValueError("dest_type must be a DestType")
+        if self.dest_type == DestType.BROADCAST:
+            if self.dest_team is not None or self.dest_address is not None:
+                raise ValueError("broadcast destination must not include a destination ID")
+        elif self.dest_type == DestType.TEAM:
+            if (
+                isinstance(self.dest_team, bool)
+                or not isinstance(self.dest_team, int)
+                or Team.from_byte(self.dest_team) is None
+            ):
+                raise ValueError(f"invalid team destination: {self.dest_team}")
+            if self.dest_address is not None:
+                raise ValueError("team destination must not include an IPv6 address")
+        elif self.dest_type == DestType.DIRECT:
+            if self.dest_team is not None:
+                raise ValueError("direct destination must not include a team")
+            if not isinstance(self.dest_address, bytes) or len(self.dest_address) != 16:
+                raise ValueError("direct destination requires exactly 16 address bytes")
 
 
 @dataclass
@@ -336,8 +358,7 @@ def _decode_pli(subtype: CompactCotType, data: bytes) -> CompactCot:
         raise DecodeError(f"Course {course} out of range [0, 35999]")
     if speed > int(MAX_PLAUSIBLE_SPEED_M_S * 100):
         warnings.warn(
-            f"Implausible speed {speed}cm/s ({speed / 100.0:.1f}m/s) in PLI "
-            f"from mesh (0xFFFF may indicate sensor error/no GPS fix)",
+            f"Implausible speed {speed}cm/s ({speed / 100.0:.1f}m/s) in PLI from mesh",
             stacklevel=2,
         )
 
@@ -361,7 +382,7 @@ def _decode_chat(data: bytes) -> CompactCot:
     try:
         dest_type = DestType(data[1])
     except ValueError as exc:
-        raise DecodeError(f"Invalid dest_type: 0x{data[1]:02x}") from exc
+        raise DecodeError(f"Invalid destination type: 0x{data[1]:02x}") from exc
 
     dest_id_size = dest_type.dest_id_size()
     header_size = 2 + dest_id_size + 1  # subtype + dest_type + dest_id + length
@@ -370,12 +391,14 @@ def _decode_chat(data: bytes) -> CompactCot:
         raise DecodeError(f"Chat header too short: {len(data)} < {header_size}")
 
     dest_team = None
-    dest_iid = None
+    dest_address = None
 
     if dest_type == DestType.TEAM:
         dest_team = data[2]
+        if Team.from_byte(dest_team) is None:
+            raise DecodeError(f"Invalid team destination: 0x{dest_team:02x}")
     elif dest_type == DestType.DIRECT:
-        dest_iid = bytes(data[2:10])
+        dest_address = bytes(data[2:18])
 
     len_pos = 2 + dest_id_size
     msg_len = data[len_pos]
@@ -384,7 +407,7 @@ def _decode_chat(data: bytes) -> CompactCot:
     if len(data) < total_size:
         raise DecodeError(f"Chat message truncated: {len(data)} < {total_size}")
     if len(data) > total_size:
-        warnings.warn(f"Chat message has {len(data) - total_size} trailing bytes", stacklevel=2)
+        raise DecodeError(f"Chat has trailing bytes: {len(data)} > {total_size}")
 
     msg_start = len_pos + 1
     msg_bytes = data[msg_start : msg_start + msg_len]
@@ -397,7 +420,7 @@ def _decode_chat(data: bytes) -> CompactCot:
     payload = ChatPayload(
         dest_type=dest_type,
         dest_team=dest_team,
-        dest_iid=dest_iid,
+        dest_address=dest_address,
         message=message,
     )
     return CompactCot(subtype=CompactCotType.CHAT, payload=payload)
@@ -549,7 +572,7 @@ def _expand_chat_to_xml(
         chat_elem.set("id", f"Team {team_name}")
         chat_elem.set("groupOwner", "true")
     elif chat.dest_type == DestType.DIRECT:
-        dest_uid = chat.dest_iid.hex() if chat.dest_iid else "unknown"
+        dest_uid = chat.dest_address.hex() if chat.dest_address else "unknown"
         chat_elem.set("chatroom", dest_uid)
         chat_elem.set("id", dest_uid)
 
@@ -632,7 +655,7 @@ def _get_dest_uid(chat: ChatPayload) -> str:
         team = Team.from_byte(chat.dest_team or 0)
         return f"Team {team.to_name()}" if team else "Team Unknown"
     elif chat.dest_type == DestType.DIRECT:
-        return chat.dest_iid.hex() if chat.dest_iid else "unknown"
+        return chat.dest_address.hex() if chat.dest_address else "unknown"
     return "unknown"
 
 
@@ -694,15 +717,11 @@ def _encode_chat(chat: ChatPayload) -> bytes:
     parts = [bytes([CompactCotType.CHAT, chat.dest_type])]
 
     if chat.dest_type == DestType.TEAM:
-        if chat.dest_team is None:
-            raise ValueError("dest_team required when dest_type is TEAM")
+        assert chat.dest_team is not None
         parts.append(bytes([chat.dest_team]))
     elif chat.dest_type == DestType.DIRECT:
-        if chat.dest_iid is None:
-            raise ValueError("dest_iid required when dest_type is DIRECT")
-        if len(chat.dest_iid) != 8:
-            raise ValueError("dest_iid must be exactly 8 bytes")
-        parts.append(chat.dest_iid)
+        assert chat.dest_address is not None
+        parts.append(chat.dest_address)
 
     parts.append(bytes([len(msg_bytes)]))
     parts.append(msg_bytes)
@@ -745,16 +764,12 @@ def parse_cot_xml(xml_data: str | bytes) -> CompactCot:
     Raises:
         ValueError: If XML cannot be parsed or required elements are missing.
     """
-    # SECURITY: Use defusedxml to prevent XML entity expansion attacks
-    # (Billion Laughs, Quadratic Blowup) from untrusted ATAK sources
-    from defusedxml.ElementTree import fromstring
-
     if isinstance(xml_data, bytes):
         xml_data = xml_data.decode("utf-8")
 
     root = fromstring(xml_data)
-    if root.tag != "event":
-        raise ValueError(f"Expected <event> root element, got <{root.tag}>")
+    if _xml_local_name(root.tag) != "event":
+        raise ValueError(f"Expected <event> root element, got <{_xml_local_name(root.tag)}>")
 
     cot_type = root.get("type")
     if not cot_type:
@@ -770,6 +785,16 @@ def parse_cot_xml(xml_data: str | bytes) -> CompactCot:
 
     # Marker and Alert don't have payloads defined yet
     return CompactCot(subtype=subtype, payload=None)
+
+
+def _xml_local_name(tag: str) -> str:
+    """Return an XML element's local name, ignoring an optional namespace."""
+    return tag.rsplit("}", 1)[-1]
+
+
+def _xml_child(parent: Element, name: str) -> Element | None:
+    """Find one direct child by local name across default/prefixed CoT XML."""
+    return next((child for child in parent if _xml_local_name(child.tag) == name), None)
 
 
 def _cot_type_to_subtype(cot_type: str) -> CompactCotType:
@@ -805,7 +830,7 @@ def _cot_type_to_subtype(cot_type: str) -> CompactCotType:
 
 def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
     """Parse PLI from XML event element."""
-    point = root.find("point")
+    point = _xml_child(root, "point")
     if point is None:
         raise ValueError("Missing <point> element for PLI")
 
@@ -828,12 +853,14 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
     alt_m = float(hae_str) if hae_str else 0.0
     if not math.isfinite(alt_m):
         raise ValueError(f"Altitude value {alt_m} is not a finite number")
+    if not (-3276.8 <= alt_m <= 3276.7):
+        raise ValueError(f"Altitude {alt_m} out of range [-3276.8, 3276.7]")
 
     course_deg = 0.0
     speed_m_s = 0.0
-    detail = root.find("detail")
+    detail = _xml_child(root, "detail")
     if detail is not None:
-        track = detail.find("track")
+        track = _xml_child(detail, "track")
         if track is not None:
             course_str = track.get("course")
             speed_str = track.get("speed")
@@ -841,26 +868,27 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
                 course_deg = float(course_str)
                 if not math.isfinite(course_deg):
                     raise ValueError(f"Course value {course_deg} is not a finite number")
-                course_deg = course_deg % 360.0
+                if not 0 <= course_deg <= 359.99:
+                    raise ValueError(f"Course {course_deg} out of range [0, 359.99]")
             if speed_str:
                 speed_m_s = float(speed_str)
                 if not math.isfinite(speed_m_s):
                     raise ValueError(f"Speed value {speed_m_s} is not a finite number")
                 if speed_m_s < 0:
                     raise ValueError(f"Speed {speed_m_s} cannot be negative")
+                if speed_m_s > 655.35:
+                    raise ValueError(f"Speed {speed_m_s} out of range [0, 655.35]")
                 if speed_m_s > MAX_PLAUSIBLE_SPEED_M_S:
                     warnings.warn(
-                        f"Implausible speed {speed_m_s:.1f} m/s from CoT XML "
-                        f"(clamped; 0xFFFF sentinel may indicate sensor error)",
+                        f"Implausible speed {speed_m_s:.1f} m/s from CoT XML",
                         stacklevel=3,
                     )
-                    speed_m_s = MAX_PLAUSIBLE_SPEED_M_S
 
     # Extract team/role from <__group> element
     team_val = Team.BLUE
     role_val = 1
     if detail is not None:
-        group = detail.find("__group")
+        group = _xml_child(detail, "__group")
         if group is not None:
             team_name = group.get("name")
             if team_name:
@@ -869,11 +897,8 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
             if role_str:
                 role_val = ROLE_BY_NAME.get(role_str.lower(), 1)
 
-    # Clamp altitude to int16 range (-3276.8m to +3276.7m)
-    alt_dm = max(INT16_MIN, min(INT16_MAX, int(alt_m * 10)))
-    # Clamp speed to uint16 range (0-65535 cm/s). Implausible values (>100m/s)
-    # warned and clamped above per project-LICHEN-z4zm (0xFFFF sentinel).
-    speed_cm_s = min(UINT16_MAX, max(0, int(speed_m_s * 100)))
+    alt_dm = int(alt_m * 10)
+    speed_cm_s = int(speed_m_s * 100)
 
     pli = PliPayload(
         lat_microdeg=int(lat * 1_000_000),
@@ -890,25 +915,25 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
 
 def _parse_xml_chat(root: Element, subtype: CompactCotType) -> CompactCot:
     """Parse chat message from XML event element."""
-    detail = root.find("detail")
+    detail = _xml_child(root, "detail")
     if detail is None:
         raise ValueError("Missing <detail> element for chat")
 
     # Chat message is in <remarks> element
-    remarks = detail.find("remarks")
+    remarks = _xml_child(detail, "remarks")
     message = remarks.text if remarks is not None and remarks.text else ""
 
     # Determine destination
     dest_type = DestType.BROADCAST
     dest_team = None
-    dest_iid = None
+    dest_address = None
 
     # Check for team destination in __chat element
-    chat_elem = detail.find("__chat")
+    chat_elem = _xml_child(detail, "__chat")
     if chat_elem is not None:
         chat_group = chat_elem.get("chatroom")
         if chat_group:
-            # Check team names first to avoid ambiguity with 16-char hex names
+            # Check team names first to avoid ambiguity with hex identifiers.
             # Handle both "Blue" and "Team Blue" formats (roundtrip)
             team_name = chat_group.lower()
             if team_name.startswith("team "):
@@ -917,10 +942,10 @@ def _parse_xml_chat(root: Element, subtype: CompactCotType) -> CompactCot:
             if team:
                 dest_type = DestType.TEAM
                 dest_team = team
-            elif len(chat_group) == 16:
-                # Direct message: hex IID = 16 hex chars = 8 bytes
+            elif len(chat_group) == 32:
+                # Direct message: native IPv6 address = 32 hex chars = 16 bytes.
                 try:
-                    dest_iid = bytes.fromhex(chat_group)
+                    dest_address = bytes.fromhex(chat_group)
                     dest_type = DestType.DIRECT
                 except ValueError:
                     pass  # Not valid hex, leave as broadcast
@@ -928,7 +953,7 @@ def _parse_xml_chat(root: Element, subtype: CompactCotType) -> CompactCot:
     chat = ChatPayload(
         dest_type=dest_type,
         dest_team=dest_team,
-        dest_iid=dest_iid,
+        dest_address=dest_address,
         message=message,
     )
 

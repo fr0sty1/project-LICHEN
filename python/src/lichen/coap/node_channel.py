@@ -23,7 +23,6 @@ from lichen.coap.transport import (
     DatagramChannel,
     Endpoint,
     EndpointPolicy,
-    Priority,
     ReceiveCallback,
     parse_channel_endpoint,
     unscoped_ipv6,
@@ -31,6 +30,7 @@ from lichen.coap.transport import (
 from lichen.ipv6.packet import IPv6Packet, NextHeader
 from lichen.ipv6.udp import UdpDatagram, udp_checksum
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
+from lichen.link.tx_queue import Priority
 from lichen.schc.headers import decompress_packet
 
 logger = logging.getLogger(__name__)

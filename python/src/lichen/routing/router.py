@@ -4,8 +4,8 @@
 
 The Router decides how to forward each packet based on destination address:
 1. Link-local (fe80::/10): Direct neighbor delivery
-2. Mesh-local (ULA or mesh GUA): Gradient lookup → LOADng discovery
-3. External: Forward to RPL parent toward border router
+2. Native (0200::/8): local gradient/LOADng first, then Yggdrasil via RPL
+3. Other addresses: Forward to the RPL parent toward the border router
 
 Why separate Router from LOADng/RPL: Each protocol has its own state machine.
 The Router orchestrates them based on address classification and route availability.
@@ -53,7 +53,7 @@ class AddressClass(Enum):
     """
 
     LINK_LOCAL = auto()  # fe80::/10 - direct neighbor
-    MESH_LOCAL = auto()  # ULA or mesh GUA - peer in mesh
+    MESH_LOCAL = auto()  # Native 0200::/8 (plus legacy configured prefixes)
     EXTERNAL = auto()  # Other GUA or unknown - route via border router
 
 
@@ -405,7 +405,13 @@ class Router:
     # start with fe80:: through febf::, which is fe80::/10.
     _LINK_LOCAL_PREFIX = IPv6Network("fe80::/10")
 
-    # Why fd00::/8: RFC 4193 ULA prefix. LICHEN meshes typically use ULA.
+    # The single-primary LICHEN profile reserves 0200::/8 for key-derived
+    # native addresses.  These addresses always try local mesh routes before
+    # the identity-preserving global/Yggdrasil fallback.
+    _NATIVE_PREFIX = IPv6Network("0200::/8")
+
+    # Legacy compatibility for callers that still configure pre-single-primary
+    # mesh prefixes.  Native 0200::/8 handling above does not depend on this.
     _ULA_PREFIX = IPv6Network("fd00::/8")
 
     def classify_address(self, addr: IPv6Address) -> AddressClass:
@@ -427,8 +433,10 @@ class Router:
         if addr in self._LINK_LOCAL_PREFIX:
             return AddressClass.LINK_LOCAL
 
-        # Why check ULA: LICHEN meshes typically use fd00::/8 ULA prefixes
-        # for mesh-internal addressing.
+        if addr in self._NATIVE_PREFIX:
+            return AddressClass.MESH_LOCAL
+
+        # Retained for compatibility with explicitly configured legacy meshes.
         if addr in self._ULA_PREFIX:
             return AddressClass.MESH_LOCAL
 
@@ -499,7 +507,7 @@ class Router:
         dst: IPv6Address,
         now_ms: int,
     ) -> tuple[RouteDecision, IPv6Address | None]:
-        """Route to a mesh-local address (ULA or mesh GUA).
+        """Route to a native or legacy mesh-local address.
 
         Strategy (spec 7.2):
         1. Check gradient table for existing route
@@ -515,7 +523,8 @@ class Router:
             )
             return RouteDecision.FORWARD, entry.next_hop
 
-        # Why check loadng: If LOADng isn't configured, try GPSR fallback.
+        # Why check loadng: If LOADng isn't configured, try GPSR before the
+        # native-address Yggdrasil fallback.
         if self.loadng is None:
             # Try GPSR if we know destination coords (spec 9.7, project-LICHEN-gom9)
             # SECURITY: Pass now_ms to reject expired entries (lookup uses
@@ -526,6 +535,12 @@ class Router:
                 next_hop = self.gpsr_forward(dst_entry.coords)
                 if next_hop is not None:
                     return RouteDecision.FORWARD, next_hop
+            if dst in self._NATIVE_PREFIX:
+                logger.debug(
+                    "no local route for native destination %s; using Yggdrasil/RPL fallback",
+                    dst,
+                )
+                return self._route_external()
             logger.warning("no gradient for %s, LOADng not configured, GPSR failed", dst)
             return RouteDecision.DROP, None
 

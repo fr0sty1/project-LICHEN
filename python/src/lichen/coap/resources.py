@@ -21,8 +21,9 @@ Observable resources (RFC 7641):
   sensor readings; clients subscribe with ``Observe: 0`` and receive pushed
   updates whenever the node calls its ``update()`` method.
 
-* ``SenMLLocationResource`` — ``/location`` — SenML+CBOR lat/lon/alt pack;
-  updated by calling its ``update()`` method.
+* ``SenMLLocationResource`` — ``/sensors/location`` — observable SenML+CBOR
+  position pack; updated by calling its ``update()`` method. ``/location``
+  remains a compatibility alias.
 
 * ``PresenceResource`` — ``/presence`` — CBOR list of recently-heard neighbour
   nodes; updated by calling ``seen()`` whenever a beacon arrives from a mesh

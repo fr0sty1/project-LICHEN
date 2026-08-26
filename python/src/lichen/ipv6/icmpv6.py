@@ -4,8 +4,9 @@
 
 Implements the diagnostic message types — Echo Request/Reply and the error
 messages (Destination Unreachable, Packet Too Big, Time Exceeded) — plus the
-RFC 4443 checksum over the IPv6 pseudo-header, and a handler that answers echo
-requests.
+Neighbor Solicitation/Advertisement messages used by Duplicate Address
+Detection (RFC 4861/4862), the RFC 4443 checksum over the IPv6 pseudo-header,
+and a handler that answers echo and neighbor solicitations.
 
 The checksum covers the IPv6 pseudo-header (source, destination, upper-layer
 length, and Next Header = 58) followed by the ICMPv6 message, so serialization
@@ -21,6 +22,9 @@ from ipaddress import IPv6Address
 from lichen.ipv6.packet import IPv6Header, IPv6Packet, NextHeader
 
 ICMPV6_NEXT_HEADER = 58
+ND_HOP_LIMIT = 255
+ALL_NODES_MULTICAST = IPv6Address("ff02::1")
+UNSPECIFIED_ADDRESS = IPv6Address("::")
 # Cap the invoking packet quoted in an error message. RFC 4443 allows up to the
 # IPv6 minimum MTU; LICHEN frames are far smaller, so a small bound is ample and
 # keeps error messages from bloating.
@@ -35,6 +39,8 @@ class Icmpv6Type(IntEnum):
     TIME_EXCEEDED = 3
     ECHO_REQUEST = 128
     ECHO_REPLY = 129
+    NEIGHBOR_SOLICITATION = 135
+    NEIGHBOR_ADVERTISEMENT = 136
 
 
 class DestUnreachableCode(IntEnum):
@@ -180,6 +186,181 @@ def _parse_echo_body(body: bytes) -> tuple[int, int, bytes]:
     return identifier, sequence, body[4:]
 
 
+def _validate_nd_options(options: bytes) -> None:
+    """Validate RFC 4861's 8-octet-unit Neighbor Discovery options."""
+    offset = 0
+    while offset < len(options):
+        if len(options) - offset < 2:
+            raise Icmpv6Error("truncated Neighbor Discovery option header")
+        units = options[offset + 1]
+        if units == 0:
+            raise Icmpv6Error("Neighbor Discovery option length must be non-zero")
+        option_length = units * 8
+        if option_length > len(options) - offset:
+            raise Icmpv6Error("truncated Neighbor Discovery option")
+        offset += option_length
+
+
+def _has_nd_option(options: bytes, option_type: int) -> bool:
+    _validate_nd_options(options)
+    offset = 0
+    while offset < len(options):
+        if options[offset] == option_type:
+            return True
+        offset += options[offset + 1] * 8
+    return False
+
+
+def solicited_node_multicast(target: IPv6Address) -> IPv6Address:
+    """Return ``ff02::1:ffXX:XXXX`` for an IPv6 unicast target."""
+    if target.is_multicast or target.is_unspecified:
+        raise Icmpv6Error("DAD target must be a unicast IPv6 address")
+    packed = bytearray(16)
+    packed[0:2] = b"\xff\x02"
+    packed[11:13] = b"\x01\xff"
+    packed[13:16] = target.packed[13:16]
+    return IPv6Address(bytes(packed))
+
+
+@dataclass
+class NeighborSolicitation:
+    """ICMPv6 Neighbor Solicitation (RFC 4861 section 4.3)."""
+
+    target: IPv6Address
+    options: bytes = b""
+
+    def __post_init__(self) -> None:
+        self.target = IPv6Address(self.target)
+        if self.target.is_multicast or self.target.is_unspecified:
+            raise Icmpv6Error("Neighbor Solicitation target must be unicast")
+        if not isinstance(self.options, bytes):
+            raise Icmpv6Error("Neighbor Solicitation options must be bytes")
+        _validate_nd_options(self.options)
+
+    def to_message(self) -> Icmpv6Message:
+        return Icmpv6Message(
+            Icmpv6Type.NEIGHBOR_SOLICITATION,
+            0,
+            bytes(4) + self.target.packed + self.options,
+        )
+
+    @classmethod
+    def from_message(cls, msg: Icmpv6Message) -> NeighborSolicitation:
+        if msg.type != Icmpv6Type.NEIGHBOR_SOLICITATION:
+            raise Icmpv6Error(f"not a Neighbor Solicitation: type {msg.type}")
+        if msg.code != 0:
+            raise Icmpv6Error(f"Neighbor Solicitation code must be 0, got {msg.code}")
+        if len(msg.body) < 20:
+            raise Icmpv6Error(f"Neighbor Solicitation body too short: {len(msg.body)} bytes")
+        return cls(IPv6Address(msg.body[4:20]), msg.body[20:])
+
+    @property
+    def has_source_link_layer_option(self) -> bool:
+        """Whether the message contains a Source Link-Layer Address option."""
+        return _has_nd_option(self.options, 1)
+
+
+@dataclass
+class NeighborAdvertisement:
+    """ICMPv6 Neighbor Advertisement (RFC 4861 section 4.4)."""
+
+    target: IPv6Address
+    router: bool = False
+    solicited: bool = False
+    override: bool = False
+    options: bytes = b""
+
+    def __post_init__(self) -> None:
+        self.target = IPv6Address(self.target)
+        if self.target.is_multicast or self.target.is_unspecified:
+            raise Icmpv6Error("Neighbor Advertisement target must be unicast")
+        if not isinstance(self.options, bytes):
+            raise Icmpv6Error("Neighbor Advertisement options must be bytes")
+        _validate_nd_options(self.options)
+
+    def to_message(self) -> Icmpv6Message:
+        flags = (
+            (0x80 if self.router else 0)
+            | (0x40 if self.solicited else 0)
+            | (0x20 if self.override else 0)
+        )
+        return Icmpv6Message(
+            Icmpv6Type.NEIGHBOR_ADVERTISEMENT,
+            0,
+            bytes([flags, 0, 0, 0]) + self.target.packed + self.options,
+        )
+
+    @classmethod
+    def from_message(cls, msg: Icmpv6Message) -> NeighborAdvertisement:
+        if msg.type != Icmpv6Type.NEIGHBOR_ADVERTISEMENT:
+            raise Icmpv6Error(f"not a Neighbor Advertisement: type {msg.type}")
+        if msg.code != 0:
+            raise Icmpv6Error(f"Neighbor Advertisement code must be 0, got {msg.code}")
+        if len(msg.body) < 20:
+            raise Icmpv6Error(f"Neighbor Advertisement body too short: {len(msg.body)} bytes")
+        flags = msg.body[0]
+        return cls(
+            target=IPv6Address(msg.body[4:20]),
+            router=bool(flags & 0x80),
+            solicited=bool(flags & 0x40),
+            override=bool(flags & 0x20),
+            options=msg.body[20:],
+        )
+
+
+def make_dad_probe(target: IPv6Address) -> IPv6Packet:
+    """Build an RFC 4862 DAD probe for ``target``.
+
+    A DAD Neighbor Solicitation has source ``::``, destination equal to the
+    target's solicited-node multicast address, hop limit 255, and no Source
+    Link-Layer Address option.
+    """
+    target = IPv6Address(target)
+    destination = solicited_node_multicast(target)
+    payload = NeighborSolicitation(target).to_message().to_bytes(UNSPECIFIED_ADDRESS, destination)
+    return IPv6Packet(
+        header=IPv6Header(
+            src_addr=UNSPECIFIED_ADDRESS,
+            dst_addr=destination,
+            next_header=NextHeader.ICMPV6,
+            hop_limit=ND_HOP_LIMIT,
+        ),
+        payload=payload,
+    )
+
+
+def parse_dad_conflict(
+    packet: IPv6Packet, expected_target: IPv6Address
+) -> NeighborAdvertisement | None:
+    """Validate and parse an advertisement that conflicts with a DAD probe.
+
+    Invalid, unrelated, or solicited advertisements return ``None``.  DAD
+    conflicts must be sent to all-nodes multicast with hop limit 255 and a
+    valid checksum; their Solicited flag is clear because the probe source was
+    unspecified.
+    """
+    expected_target = IPv6Address(expected_target)
+    if (
+        packet.header.next_header != ICMPV6_NEXT_HEADER
+        or packet.header.hop_limit != ND_HOP_LIMIT
+        or packet.header.src_addr.is_unspecified
+        or packet.header.src_addr.is_multicast
+        or packet.header.dst_addr != ALL_NODES_MULTICAST
+        or len(packet.payload) < 4
+        or not Icmpv6Message.verify_checksum(
+            packet.header.src_addr, packet.header.dst_addr, packet.payload
+        )
+    ):
+        return None
+    try:
+        advertisement = NeighborAdvertisement.from_message(Icmpv6Message.from_bytes(packet.payload))
+    except Icmpv6Error:
+        return None
+    if advertisement.target != expected_target or advertisement.solicited:
+        return None
+    return advertisement
+
+
 @dataclass
 class Icmpv6ErrorMessage:
     """An ICMPv6 error message quoting the packet that triggered it.
@@ -251,8 +432,9 @@ def handle_icmpv6(packet: IPv6Packet, local_addr: IPv6Address | None = None) -> 
     all processing. Malformed packets are dropped silently (or with metrics
     in callers).
 
-    Only Echo Requests produce a reply. Replies and error messages are
-    consumed without response.
+    Echo Requests and Neighbor Solicitations for ``local_addr`` can produce a
+    reply. Replies, advertisements, and error messages are consumed without a
+    response.
     """
     if packet.header.next_header != ICMPV6_NEXT_HEADER:
         raise Icmpv6Error("packet does not carry ICMPv6")
@@ -270,6 +452,48 @@ def handle_icmpv6(packet: IPv6Packet, local_addr: IPv6Address | None = None) -> 
         return None
 
     msg = Icmpv6Message.from_bytes(packet.payload)
+    if msg.type == Icmpv6Type.NEIGHBOR_SOLICITATION:
+        if local_addr is None or packet.header.hop_limit != ND_HOP_LIMIT:
+            return None
+        try:
+            solicitation = NeighborSolicitation.from_message(msg)
+        except Icmpv6Error:
+            return None
+
+        local_addr = IPv6Address(local_addr)
+        if solicitation.target != local_addr:
+            return None
+
+        source = packet.header.src_addr
+        if source.is_multicast:
+            return None
+        is_dad = source.is_unspecified
+        if is_dad:
+            if (
+                packet.header.dst_addr != solicited_node_multicast(solicitation.target)
+                or solicitation.has_source_link_layer_option
+            ):
+                return None
+            reply_destination = ALL_NODES_MULTICAST
+        else:
+            reply_destination = source
+
+        advertisement = NeighborAdvertisement(
+            target=local_addr,
+            solicited=not is_dad,
+            override=True,
+        )
+        reply_payload = advertisement.to_message().to_bytes(local_addr, reply_destination)
+        return IPv6Packet(
+            header=IPv6Header(
+                src_addr=local_addr,
+                dst_addr=reply_destination,
+                next_header=NextHeader.ICMPV6,
+                hop_limit=ND_HOP_LIMIT,
+            ),
+            payload=reply_payload,
+        )
+
     if msg.type != Icmpv6Type.ECHO_REQUEST:
         return None
 

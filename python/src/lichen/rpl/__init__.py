@@ -6,6 +6,11 @@ RPL carries border-router traffic via a proactive DODAG tree. This package
 currently provides the control-message codecs (DIO, DIS, DAO, DAO-ACK).
 """
 
+from lichen.rpl.address_classification import (
+    AddressClassification,
+    AddressClassificationError,
+    AddressClassificationTable,
+)
 from lichen.rpl.dao import (
     DaoError,
     DaoManager,
@@ -35,6 +40,15 @@ from lichen.rpl.dao_persistence import (
     TxState,
 )
 from lichen.rpl.dodag import DodagRole, DodagState, ParentCandidate
+from lichen.rpl.evidence import (
+    LOCAL_EVIDENCE_LIFETIME_SECONDS,
+    MAX_LOCAL_EVIDENCE_PEERS,
+    EvidenceCapacityError,
+    EvidenceError,
+    EvidenceTable,
+    EvidenceTimeError,
+    GradientEntry,
+)
 from lichen.rpl.messages import (
     DAO,
     DIO,
@@ -84,6 +98,9 @@ from lichen.rpl.visualize import (
 )
 
 __all__ = [
+    "AddressClassification",
+    "AddressClassificationError",
+    "AddressClassificationTable",
     "DAO",
     "DAO_ORIGIN_DOMAIN",
     "DAO_ORIGIN_SIGNATURE_LENGTH",
@@ -103,8 +120,15 @@ __all__ = [
     "DaoPersistenceError",
     "DodagRole",
     "DodagState",
+    "EvidenceCapacityError",
+    "EvidenceError",
+    "EvidenceTable",
+    "EvidenceTimeError",
     "GatewayInfo",
     "GatewayRole",
+    "GradientEntry",
+    "LOCAL_EVIDENCE_LIFETIME_SECONDS",
+    "MAX_LOCAL_EVIDENCE_PEERS",
     "MemoryPersistence",
     "ModeOfOperation",
     "MultiRootCoordinator",

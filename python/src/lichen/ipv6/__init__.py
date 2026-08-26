@@ -7,6 +7,8 @@ Key-derived native/link-local address handling and IPv6 packet construction.
 
 from lichen.crypto.identity import Identity, PeerIdentity, yggdrasil_address
 from lichen.ipv6.addr import (
+    ALL_LICHEN_NODES_MULTICAST,
+    ALL_RPL_NODES_MULTICAST,
     LINK_LOCAL_NETWORK,
     NATIVE_NETWORK,
     AddrError,
@@ -16,11 +18,14 @@ from lichen.ipv6.addr import (
     link_local_from_pubkey,
     mac48_to_eui64,
     make_link_local,
+    multicast_scope,
     native_address_from_pubkey,
     short_addr_to_iid,
     to_ipv6,
 )
 from lichen.ipv6.icmpv6 import (
+    ALL_NODES_MULTICAST,
+    ND_HOP_LIMIT,
     DestUnreachableCode,
     EchoReply,
     EchoRequest,
@@ -28,12 +33,17 @@ from lichen.ipv6.icmpv6 import (
     Icmpv6ErrorMessage,
     Icmpv6Message,
     Icmpv6Type,
+    NeighborAdvertisement,
+    NeighborSolicitation,
     TimeExceededCode,
     handle_icmpv6,
     icmpv6_checksum,
+    make_dad_probe,
     make_dest_unreachable,
     make_packet_too_big,
     make_time_exceeded,
+    parse_dad_conflict,
+    solicited_node_multicast,
 )
 from lichen.ipv6.packet import (
     HEADER_LENGTH,
@@ -52,8 +62,12 @@ from lichen.ipv6.udp import (
 )
 
 __all__ = [
+    "ALL_LICHEN_NODES_MULTICAST",
+    "ALL_NODES_MULTICAST",
+    "ALL_RPL_NODES_MULTICAST",
     "HEADER_LENGTH",
     "LINK_LOCAL_NETWORK",
+    "ND_HOP_LIMIT",
     "NATIVE_NETWORK",
     "AddrError",
     "DestUnreachableCode",
@@ -69,6 +83,8 @@ __all__ = [
     "Identity",
     "PeerIdentity",
     "NextHeader",
+    "NeighborAdvertisement",
+    "NeighborSolicitation",
     "PacketError",
     "TimeExceededCode",
     "UDP_HEADER_LENGTH",
@@ -83,9 +99,13 @@ __all__ = [
     "icmpv6_checksum",
     "mac48_to_eui64",
     "make_dest_unreachable",
+    "make_dad_probe",
     "make_link_local",
     "make_packet_too_big",
     "make_time_exceeded",
+    "multicast_scope",
+    "parse_dad_conflict",
+    "solicited_node_multicast",
     "link_local_from_pubkey",
     "native_address_from_pubkey",
     "short_addr_to_iid",

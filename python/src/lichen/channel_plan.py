@@ -93,21 +93,18 @@ class ChannelPlan:
         return power_dbm <= self.channels[channel_index].max_power_dbm
 
     def select_channel(self, eui64: bytes, epoch: int, density: int) -> int:
-        """Select a channel per spec 02a §2a.3.1.
+        """Select a valid channel index per the CCP-12 priority chain.
 
-        density > 8 forces control channel CH0; otherwise returns a
-        1-based channel number in [1, max(num_channels, 3)].
+        Density above eight forces control channel CH0. Degenerate plans are
+        explicit: a one-channel plan has only CH0, while a two-channel plan
+        has only CH1 for data. Plans with three or more entries retain the
+        normative 1-based hash domain ``[1, num_channels]``.
 
         ``epoch`` is truncated to u32 (``& 0xFFFFFFFF``) before the
         little-endian hash input, matching the C/Rust truncate
         semantics so every implementation agrees for epochs >= 2^32.
         """
-        if density > 8:
-            return 0
-        data = eui64 + (epoch & 0xFFFFFFFF).to_bytes(4, "little")
-        h = hash_32(data)
-        n = max(self.num_channels, 3)
-        return 1 + (h % n)
+        return _select_channel_index(eui64, epoch, density, self.num_channels)
 
 
 EU868: ChannelPlan = ChannelPlan(
@@ -266,10 +263,26 @@ def ch0_fallback_required(plan_id: int, version: int = 1) -> bool:
 
 def channel_frequency(plan: ChannelPlan, channel_number: int) -> int:
     if channel_number < 1 or channel_number > plan.num_channels:
-        raise ValueError(
-            f"channel number {channel_number} out of range [1, {plan.num_channels}]"
-        )
+        raise ValueError(f"channel number {channel_number} out of range [1, {plan.num_channels}]")
     return plan.frequency(channel_number - 1)
+
+
+def _select_channel_index(eui64: bytes, epoch: int, density: int, n_channels: int) -> int:
+    """Implement CCP-12 hash selection for an explicitly bounded plan.
+
+    ``n_channels`` must be positive; callers cannot select from an empty or
+    nonsensical negative-size plan. The one- and two-channel branches prevent
+    the spec's minimum-three modulo domain from producing a nonexistent CH2.
+    """
+    if type(n_channels) is not int or n_channels <= 0:
+        raise ValueError("n_channels must be a positive integer")
+    if density > 8 or n_channels == 1:
+        return 0
+    if n_channels == 2:
+        return 1
+    data = eui64 + (epoch & 0xFFFFFFFF).to_bytes(4, "little")
+    h = hash_32(data)
+    return 1 + (h % n_channels)
 
 
 def select_channel(
@@ -281,9 +294,4 @@ def select_channel(
     """Select a channel per spec 02a §2a.3.1 (see
     :meth:`ChannelPlan.select_channel` for the contract, including the
     u32 epoch truncation)."""
-    if density > 8:
-        return 0
-    data = eui64 + (epoch & 0xFFFFFFFF).to_bytes(4, "little")
-    h = hash_32(data)
-    n = max(plan.num_channels, 3)
-    return 1 + (h % n)
+    return _select_channel_index(eui64, epoch, density, plan.num_channels)

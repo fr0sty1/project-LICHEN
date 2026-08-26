@@ -111,7 +111,12 @@ def select_channel(
         return announce_rx_channel
 
     # Priority 2: GNSS-synced (when enabled and time available)
-    if gnss_config and gnss_config.enabled and time_provider:
+    if (
+        gnss_config
+        and gnss_config.enabled
+        and time_provider
+        and time_provider.wall_clock_valid
+    ):
         unix_us = time_provider.unix_time_us()
         if unix_us is not None:
             computed_sfn = sfn_from_unix_time(

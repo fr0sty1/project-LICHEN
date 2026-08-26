@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import aiocoap  # type: ignore[import-untyped]  # no official stubs
+import aiocoap
 
 from lichen.coap.resources import SosResource, build_site
 

@@ -69,6 +69,25 @@ _FIELD_TYPES: dict[str, str] = {
 _VALUE_FIELDS: set[str] = {"v", "vs", "vb", "vd"}
 
 
+def field_for_label(label: int) -> str | None:
+    """Return the RFC 8428 field name for a CBOR integer label.
+
+    Unknown integer labels return ``None`` so callers can apply the RFC 8428
+    extension rule. Booleans are rejected even though ``bool`` subclasses
+    ``int`` in Python; CBOR true/false values are not integer map labels.
+    """
+    if type(label) is not int:
+        raise TypeError("SenML CBOR label must be an integer")
+    return _LABEL_TO_FIELD.get(label)
+
+
+def label_for_field(field: str) -> int | None:
+    """Return the RFC 8428 CBOR integer label for a short field name."""
+    if type(field) is not str:
+        raise TypeError("SenML field name must be a string")
+    return _FIELD_TO_LABEL.get(field)
+
+
 def _validate_field_type(name: str, value: object) -> None:
     """Validate that a SenML field value has the correct type per RFC 8428.
 
@@ -181,11 +200,11 @@ class SenmlRecord:
                 if label.endswith("_"):
                     raise ValueError(f"unknown mandatory SenML label '{label}'")
                 continue
-            if not isinstance(label, int):
+            if type(label) is not int:
                 raise ValueError(
                     f"SenML label must be an integer or string, got {type(label).__name__}"
                 )
-            name = _LABEL_TO_FIELD.get(label)
+            name = field_for_label(label)
             if name is not None:
                 _validate_field_type(name, val)
                 if name == "bver" and not (1 <= val <= 10):

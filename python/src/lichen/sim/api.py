@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+import secrets
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -28,7 +29,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket
 
-from lichen.sim.auth import BearerAuthMiddleware
+from lichen.sim.auth import BearerAuthMiddleware, extract_websocket_token
 from lichen.sim.simulation import Simulation, TimeMode
 from lichen.sim.websocket import (
     WebSocketManager,
@@ -1180,6 +1181,17 @@ class SimulatorAPI:
           - {"cmd": "ping"} -> {"event": "pong"}
         """
         sim_id = websocket.path_params["sim_id"]
+
+        # BaseHTTPMiddleware only processes HTTP scopes, so the bearer
+        # middleware used by create_app() cannot authenticate WebSockets.
+        # Enforce the same configured credential explicitly before revealing
+        # whether a simulation exists or accepting the connection.
+        if self._api_token is not None:
+            supplied_token = extract_websocket_token(websocket.scope.get("subprotocols", []))
+            token_to_compare = supplied_token if supplied_token is not None else ""
+            if not secrets.compare_digest(token_to_compare, self._api_token):
+                await websocket.close(code=4401, reason="Unauthorized")
+                return
 
         if sim_id not in self._simulations:
             await websocket.close(code=4004, reason=f"Simulation '{sim_id}' not found")

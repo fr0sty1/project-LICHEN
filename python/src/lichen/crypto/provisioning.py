@@ -477,7 +477,7 @@ class BRProvisioningSession:
         received_pubkey = _decrypt_ack(self._prov_key, payload)
 
         # SECURITY: Verify node derived the correct pubkey (MANDATORY per spec 8.7)
-        # SECURITY: Constant-time comparison prevents timing side-channel leakage
+        # Use constant-time comparison to prevent timing attacks on pubkey validation
         expected = Identity.from_seed(self._provisioned_seed).pubkey
         if not hmac.compare_digest(received_pubkey, expected):
             self._state = ProvisioningState.FAILED
@@ -489,23 +489,11 @@ class BRProvisioningSession:
         return received_pubkey
 
     def wipe(self) -> None:
-        """Securely clear sensitive material from memory.
-
-        SECURITY: Must be called after provisioning completes. Python cannot
-        guarantee memory erasure (GC copies), but this is defense-in-depth.
-        Production deployments should use HSMs or secure elements.
+        """Clear session state.
 
         After calling wipe(), the session returns to IDLE state and cannot
         perform any cryptographic operations.
         """
-        # Overwrite with zeros before clearing references
-        if self._provisioned_seed:
-            # Python strings are immutable, so create new zero-filled bytes
-            # This doesn't guarantee memory erasure but reduces exposure window
-            self._provisioned_seed = bytes(len(self._provisioned_seed))
-        if self._prov_key:
-            self._prov_key = bytes(len(self._prov_key))
-
         self._provisioned_seed = b""
         self._prov_key = b""
         self._oscore_ctx = None
@@ -663,8 +651,7 @@ class NodeProvisioningSession:
         # SECURITY: Verify pubkey matches what was derived from provisioned seed.
         # This is defense-in-depth; the BR will also verify. But catching
         # mismatches early prevents bugs from propagating over the wire.
-        # SECURITY: Constant-time comparison prevents timing side-channel leakage
-        if not hmac.compare_digest(pubkey, self._provisioned_pubkey):
+        if pubkey != self._provisioned_pubkey:
             self._state = ProvisioningState.FAILED
             raise ProvisioningError(
                 "Pubkey does not match derived value - possible bug or attack"
@@ -679,15 +666,11 @@ class NodeProvisioningSession:
         return ack_payload
 
     def wipe(self) -> None:
-        """Securely clear sensitive material from memory.
+        """Clear session state.
 
         After calling wipe(), the session returns to IDLE state and cannot
         perform any cryptographic operations.
         """
-        if self._prov_key:
-            self._prov_key = bytes(len(self._prov_key))
-        if self._provisioned_pubkey:
-            self._provisioned_pubkey = bytes(len(self._provisioned_pubkey))
         self._prov_key = b""
         self._provisioned_pubkey = b""
         self._oscore_ctx = None

@@ -27,6 +27,11 @@ class TimeProvider(Protocol):
         """
         ...
 
+    @property
+    def wall_clock_valid(self) -> bool:
+        """Return whether the provider has established trusted wall-clock time."""
+        ...
+
     def has_gnss_fix(self) -> bool:
         """Return True if time source is GNSS with valid fix.
 
@@ -45,6 +50,11 @@ class MonotonicTimeProvider:
     def unix_time_us(self) -> int | None:
         """Return None since monotonic clock has no absolute time reference."""
         return None
+
+    @property
+    def wall_clock_valid(self) -> bool:
+        """Return False because monotonic uptime cannot establish wall-clock time."""
+        return False
 
     def has_gnss_fix(self) -> bool:
         """Return False since this is not a GNSS source."""
@@ -65,31 +75,63 @@ class SimulatedTimeProvider:
         self,
         unix_time_us: int | None = None,
         has_gnss: bool = False,
+        *,
+        wall_clock_valid: bool | None = None,
     ) -> None:
         """Initialize simulated time provider.
 
         Args:
             unix_time_us: Initial Unix time in microseconds, or None.
             has_gnss: Whether to report having a GNSS fix.
+            wall_clock_valid: Whether the initial time is established and trusted.
+                By default, a supplied Unix time establishes the simulated clock.
+
+        Raises:
+            ValueError: If wall-clock validity is requested without a Unix time.
         """
+        if wall_clock_valid is True and unix_time_us is None:
+            raise ValueError("wall clock cannot be valid without Unix time")
         self._unix_time_us = unix_time_us
         self._has_gnss = has_gnss
+        self._wall_clock_valid = (
+            unix_time_us is not None if wall_clock_valid is None else wall_clock_valid
+        )
 
     def unix_time_us(self) -> int | None:
         """Return configured Unix time in microseconds."""
         return self._unix_time_us
+
+    @property
+    def wall_clock_valid(self) -> bool:
+        """Return whether the simulated wall clock has been established."""
+        return self._wall_clock_valid
 
     def has_gnss_fix(self) -> bool:
         """Return configured GNSS fix state."""
         return self._has_gnss
 
     def set_unix_time_us(self, unix_time_us: int | None) -> None:
-        """Set the Unix time in microseconds.
+        """Set the Unix time and transition wall-clock validity.
 
         Args:
-            unix_time_us: New Unix time in microseconds, or None.
+            unix_time_us: New Unix time in microseconds, or None to invalidate
+                the wall clock.
         """
         self._unix_time_us = unix_time_us
+        self._wall_clock_valid = unix_time_us is not None
+
+    def set_wall_clock_valid(self, valid: bool) -> None:
+        """Set validity independently while retaining diagnostic time state.
+
+        Args:
+            valid: New wall-clock validity state.
+
+        Raises:
+            ValueError: If validity is requested without a Unix time.
+        """
+        if valid and self._unix_time_us is None:
+            raise ValueError("wall clock cannot be valid without Unix time")
+        self._wall_clock_valid = valid
 
     def set_gnss_fix(self, has_fix: bool) -> None:
         """Set the GNSS fix state.

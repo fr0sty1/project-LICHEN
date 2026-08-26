@@ -55,7 +55,7 @@ from lichen.rpl.dao_types import (
     sequence_relation,
 )
 from lichen.rpl.messages import DAO, DAOAck, RplError, RplOptionType, _exact_received_dao_wire
-from lichen.rpl.routing import RoutingTable
+from lichen.rpl.routing import RouteTarget, RoutingTable
 
 # Map DaoOriginRejectReason to DaoError reason strings for consistency
 _ORIGIN_REJECT_TO_REASON: dict[DaoOriginRejectReason, str] = {
@@ -1104,16 +1104,16 @@ class DaoManager:
         self.routing_table.replace_routes(routes)
         return DaoOutcome(True, state_changed, False, reason)
 
-    def _existing_host_routes(self) -> dict[IPv6Address, list[IPv6Address]]:
+    def _existing_host_routes(self) -> dict[RouteTarget, list[IPv6Address]]:
         return self.routing_table.routes()
 
     def _merge_prefix_routes(
-        self, host_routes: dict[IPv6Address, list[IPv6Address]]
-    ) -> dict[IPv6Address, list[IPv6Address]]:
+        self, host_routes: dict[RouteTarget, list[IPv6Address]]
+    ) -> dict[RouteTarget, list[IPv6Address]]:
         merged = dict(host_routes)
         for rt, entry in self.routing_table._routes.items():
             if rt.prefix_len < 128 and entry.is_usable():
-                merged[rt.prefix] = list(entry.path)
+                merged[rt] = list(entry.path)
         return merged
 
     def expire_routes(self, now_seconds: float | None = None) -> bool:
@@ -1218,7 +1218,11 @@ class DaoManager:
                 }
             )
         route_records: list[dict[str, Any]] = []
-        for target in sorted(self.routing_table.routes()):
+        for rt in sorted(self.routing_table.routes()):
+            if rt.prefix_len < 128:
+                # Skip prefix routes in target-focused snapshot
+                continue
+            target = rt.prefix
             selected = select_path(
                 target, self.node_address, self._parent_map, self._candidate_map, self.pcs, set()
             )
@@ -1228,7 +1232,7 @@ class DaoManager:
             installed_at, expires_at = self._candidate_timing[(target, candidate.parent)]
             route_records.append(
                 {
-                    "prefix_length": 128,
+                    "prefix_length": rt.prefix_len,
                     "prefix": target.packed.hex(),
                     "path": [hop.packed.hex() for hop in path],
                     "path_lifetime": candidate.path_lifetime,
@@ -1244,8 +1248,8 @@ class DaoManager:
     def routing_table_snapshot(self) -> dict[str, list[str]]:
         """Return exact installed complete paths keyed by target hex."""
         return {
-            target.packed.hex(): [hop.packed.hex() for hop in path]
-            for target, path in sorted(self.routing_table.routes().items())
+            rt.prefix.packed.hex(): [hop.packed.hex() for hop in path]
+            for rt, path in sorted(self.routing_table.routes().items())
         }
 
     def build_dao_ack(self, dao: DAO, status: int = 0) -> DAOAck:
