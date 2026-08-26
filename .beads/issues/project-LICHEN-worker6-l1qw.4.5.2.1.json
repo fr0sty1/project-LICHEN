@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.5.2.1",
   "title": "Python: SHA-256(pubkey)[0:8] with U/L cleared",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:06.951706Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:06.951706Z",
+  "updated_at": "2026-08-26T02:09:39.059595Z",
+  "started_at": "2026-08-26T02:09:36.035195Z",
+  "closed_at": "2026-08-26T02:09:39.059595Z",
+  "close_reason": "Spec/vectors use SHA-512(pubkey)[0:8] with U/L cleared (_pubkey_to_iid), not SHA-256. Bead title is outdated; same close as rust 4.5.2.2.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.5.2.1",
