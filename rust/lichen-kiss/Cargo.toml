@@ -28,3 +28,4 @@ log = { version = "0.4", default-features = false, optional = true }
 
 [dev-dependencies]
 lichen-link = { path = "../lichen-link" }
+serde_json = "1.0"

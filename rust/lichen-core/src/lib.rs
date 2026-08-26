@@ -48,6 +48,7 @@ impl Default for GnssHopConfig {
 
 pub mod access_level;
 pub mod addr;
+pub mod airtime;
 pub mod announce;
 pub mod checksum;
 pub mod compact_cot;
@@ -58,9 +59,11 @@ pub mod icmpv6;
 pub mod ipv6;
 pub mod l2_payload;
 pub mod loadng;
+pub mod multicast;
 pub mod neighbor_monitor;
 pub mod rf_health;
 pub mod sf_assignment;
+pub mod short_addr;
 pub mod tdma_beacon;
 pub mod transport;
 pub mod tx_queue;

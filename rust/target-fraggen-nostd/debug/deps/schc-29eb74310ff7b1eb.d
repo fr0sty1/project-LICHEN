@@ -1,0 +1,10 @@
+/Volumes/Attic/Desktop/Projects/project-LICHEN/rust/target-fraggen-nostd/debug/deps/schc-29eb74310ff7b1eb.d: /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/lib.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/compress.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/error.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/fragment/mod.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/fragment/wire.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/fragment/ack_on_error.rs
+
+/Volumes/Attic/Desktop/Projects/project-LICHEN/rust/target-fraggen-nostd/debug/deps/libschc-29eb74310ff7b1eb.rmeta: /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/lib.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/compress.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/error.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/fragment/mod.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/fragment/wire.rs /Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/fragment/ack_on_error.rs
+
+/Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/lib.rs:
+/Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/compress.rs:
+/Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/error.rs:
+/Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/fragment/mod.rs:
+/Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/fragment/wire.rs:
+/Users/markatwood/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/schc-0.1.0/src/fragment/ack_on_error.rs:

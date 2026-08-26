@@ -171,6 +171,8 @@ pub struct Router {
     pub(crate) last_now_ms: u64,
     /// Latest independently verified root-owned version authorization.
     version_authorization: Option<DodagVersionAuthorization>,
+    /// DODAG Grounded state: the root has an identity-preserving global path.
+    grounded: bool,
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
@@ -197,6 +199,7 @@ impl Router {
             dodag_config,
             last_now_ms: 0,
             version_authorization: None,
+            grounded: false,
             node_coords: None,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
@@ -238,6 +241,10 @@ impl Router {
             dodag_config,
             last_now_ms: 0,
             version_authorization: None,
+            // Existing component-level root constructors represent an active
+            // border router. Production Gateway startup updates this from the
+            // actual upstream/TUN state before serving packets.
+            grounded: true,
             node_coords: None,
             #[cfg(test)]
             test_storage: lichen_hal::storage::mem::MemStorage::new(),
@@ -562,6 +569,8 @@ impl Router {
         self.dodag = staged_dodag;
         self.neighbors = staged_neighbors;
         self.dodag_config = proposed_config;
+        let grounded_changed = self.grounded != dio.grounded;
+        self.grounded = dio.grounded;
         if let Some(authorization) = version_authorization {
             self.version_authorization = Some(authorization);
         }
@@ -569,6 +578,7 @@ impl Router {
         let now_joined = self.dodag.is_joined();
         let new_parent = self.dodag.preferred_parent;
         let inconsistent = config_changed
+            || grounded_changed
             || old_version != self.dodag.version
             || old_rank != self.dodag.rank
             || was_joined != now_joined
@@ -795,6 +805,20 @@ impl Router {
         self.build_dio_with_authorization(out, None)
     }
 
+    /// Update the root's identity-preserving global reachability state.
+    ///
+    /// The standard RPL Grounded bit carries this advertisement. LICHEN's
+    /// single-primary profile intentionally emits no Prefix Information option.
+    #[must_use]
+    pub fn set_ygg_reachable(&mut self, reachable: bool) -> bool {
+        if !self.dodag.is_root() || self.grounded == reachable {
+            return false;
+        }
+        self.grounded = reachable;
+        self.trickle.reset(self.last_now_ms, 0);
+        true
+    }
+
     /// Build a DIO with the root authorization minted locally by a root or
     /// propagated unchanged by a non-root router.
     pub fn build_authenticated_dio(&self, out: &mut [u8], link: &LinkLayer) -> usize {
@@ -830,7 +854,7 @@ impl Router {
             rpl_instance_id: RPL_INSTANCE_ID,
             version: self.dodag.version,
             rank: self.dodag.rank,
-            grounded: true,
+            grounded: self.grounded,
             mode_of_operation: 1, // Non-Storing
             preference: 0,
             dtsn: 0,

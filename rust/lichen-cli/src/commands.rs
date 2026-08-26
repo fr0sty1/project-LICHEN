@@ -8,7 +8,7 @@ use lichen_client::keys::{KeyEntry, KeyList, KeyPin};
 use lichen_client::msg::{Inbox, OutgoingMessage, Sent, SentMessage};
 use lichen_client::paths;
 use lichen_client::pos::Position;
-use lichen_client::status::Neighbors;
+use lichen_client::status::{Neighbors, Routes};
 use lichen_coap::client;
 use sha2::{Digest, Sha256};
 use std::net::{Ipv6Addr, SocketAddr};
@@ -112,6 +112,34 @@ pub async fn neighbors(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
                         n.trust
                     );
                 }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub async fn routes(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
+    let resp = client::get(node, paths::STATUS_ROUTES).await?;
+    if !resp.is_success() {
+        return Err(format!("routes failed: {}", resp.code_str()).into());
+    }
+    let table = Routes::from_cbor(&resp.payload)?;
+    match fmt {
+        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&table)?),
+        OutputFormat::Human => {
+            if table.routes.is_empty() {
+                println!("(no routes)");
+            } else {
+                for route in &table.routes {
+                    println!(
+                        "  {} via {} metric={} lifetime={}s",
+                        route.prefix, route.via, route.metric, route.lifetime_s
+                    );
+                }
+            }
+            match table.default_route {
+                Some(via) => println!("  default via {via}"),
+                None => println!("  default: (none)"),
             }
         }
     }

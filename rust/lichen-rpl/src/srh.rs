@@ -56,10 +56,11 @@ impl SourceRoutingHeader {
         if data[0] != 3 {
             return Err(RplError::BadRoutingType(data[0]));
         }
-        // SECURITY: Reject compressed SRHs (CmprI/CmprE > 0 per RFC 6554 Section 3).
-        // We only support uncompressed addresses (16 bytes each). Compressed SRHs
-        // would be parsed incorrectly, leading to misrouted packets.
-        if data[2] != 0 || data[3] != 0 {
+        // SECURITY: Reject compressed or padded SRHs. We only support full
+        // 16-byte addresses, so accepting either would change the address
+        // boundaries below. RFC 6554 requires receivers to ignore the low
+        // reserved nibble of data[3] and the reserved bytes data[4..6].
+        if data[2] != 0 || data[3] & 0xf0 != 0 {
             return Err(RplError::InvalidOption);
         }
         let addr_bytes = &data[6..];
@@ -70,6 +71,9 @@ impl SourceRoutingHeader {
             .chunks_exact(16)
             .map(|chunk| chunk.try_into().unwrap())
             .collect();
+        if addresses.len() > MAX_ROUTE_HOPS {
+            return Err(RplError::InvalidOption);
+        }
         let segments_left = data[1];
         if (segments_left as usize) > addresses.len() {
             return Err(RplError::InvalidOption);
@@ -82,7 +86,7 @@ impl SourceRoutingHeader {
 
     pub fn from_route(route: &[[u8; 16]]) -> Result<Self, RplError> {
         let remaining = route.len().checked_sub(1).ok_or(RplError::InvalidOption)?;
-        if remaining == 0 || remaining > u8::MAX as usize {
+        if remaining == 0 || route.len() > MAX_ROUTE_HOPS {
             return Err(RplError::InvalidOption);
         }
         let addresses = route[1..].to_vec();

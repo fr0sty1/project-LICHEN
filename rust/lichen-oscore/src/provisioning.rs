@@ -44,6 +44,7 @@ use ccm::{
 };
 use hkdf::Hkdf;
 use sha2::Sha256;
+use subtle::ConstantTimeEq;
 
 /// AES-CCM-16-64-128 as used in Suite 0.
 type AesCcm = Ccm<Aes128, U8, U13>;
@@ -902,16 +903,9 @@ fn derive_pubkey_from_seed(seed: &[u8; 32]) -> [u8; PUBKEY_LEN] {
     verifying_key.to_bytes()
 }
 
-/// Constant-time byte array comparison.
+/// Constant-time byte array comparison using subtle crate.
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    let mut diff = 0u8;
-    for (x, y) in a.iter().zip(b.iter()) {
-        diff |= x ^ y;
-    }
-    diff == 0
+    a.ct_eq(b).into()
 }
 
 #[cfg(test)]

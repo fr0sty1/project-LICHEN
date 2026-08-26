@@ -10,6 +10,7 @@ use lichen_core::constants::{
     PORT_APRS_IS, PORT_CAYENNE_LPP, PORT_COAP, PORT_COAP_DTLS, PORT_COMPACT_COT, PORT_MQTT_SN,
     PORT_NMEA, PORT_SENML,
 };
+use lichen_core::error::TooShort;
 
 /// Application protocol identified by UDP destination port.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,7 +53,7 @@ pub enum DispatchError {
     /// Port is not a recognized application protocol.
     UnknownPort(u16),
     /// Payload is too short for the protocol.
-    PayloadTooShort,
+    PayloadTooShort(TooShort),
     /// Port 5684 is reserved (CoAPS/DTLS not used, OSCORE instead).
     ReservedPort,
 }
@@ -70,7 +71,7 @@ pub enum UdpDispatchError {
     /// Port is not a recognized application protocol.
     UnknownPort(u16),
     /// Payload is too short for the protocol.
-    PayloadTooShort,
+    PayloadTooShort(TooShort),
     /// Port 5684 is reserved (CoAPS/DTLS not used, OSCORE instead).
     ReservedPort,
 }
@@ -80,8 +81,17 @@ impl core::fmt::Display for UdpDispatchError {
         match self {
             Self::NotUdp => write!(f, "not a UDP packet"),
             Self::UnknownPort(p) => write!(f, "unknown application port {}", p),
-            Self::PayloadTooShort => write!(f, "payload too short"),
+            Self::PayloadTooShort(e) => write!(f, "payload {}", e),
             Self::ReservedPort => write!(f, "port 5684 reserved (use OSCORE, not DTLS)"),
+        }
+    }
+}
+
+impl core::error::Error for UdpDispatchError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::PayloadTooShort(e) => Some(e),
+            _ => None,
         }
     }
 }
@@ -90,7 +100,7 @@ impl From<DispatchError> for UdpDispatchError {
     fn from(e: DispatchError) -> Self {
         match e {
             DispatchError::UnknownPort(p) => Self::UnknownPort(p),
-            DispatchError::PayloadTooShort => Self::PayloadTooShort,
+            DispatchError::PayloadTooShort(e) => Self::PayloadTooShort(e),
             DispatchError::ReservedPort => Self::ReservedPort,
         }
     }
@@ -100,9 +110,24 @@ impl core::fmt::Display for DispatchError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::UnknownPort(p) => write!(f, "unknown application port {}", p),
-            Self::PayloadTooShort => write!(f, "payload too short"),
+            Self::PayloadTooShort(e) => write!(f, "payload {}", e),
             Self::ReservedPort => write!(f, "port 5684 reserved (use OSCORE, not DTLS)"),
         }
+    }
+}
+
+impl core::error::Error for DispatchError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::PayloadTooShort(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl From<TooShort> for DispatchError {
+    fn from(e: TooShort) -> Self {
+        Self::PayloadTooShort(e)
     }
 }
 
@@ -158,6 +183,7 @@ pub const fn is_schc_compressible_port(port: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::format;
 
     #[test]
     fn dispatch_coap() {
@@ -222,6 +248,25 @@ mod tests {
     fn dispatch_unknown_port() {
         let result = dispatch_by_port(8080, &[]);
         assert_eq!(result.unwrap_err(), DispatchError::UnknownPort(8080));
+    }
+
+    #[test]
+    fn payload_too_short_preserves_expected_and_actual_lengths() {
+        let too_short = TooShort::new(4, 2);
+        let dispatch_error = DispatchError::from(too_short);
+
+        assert_eq!(
+            dispatch_error,
+            DispatchError::PayloadTooShort(TooShort::new(4, 2))
+        );
+        assert_eq!(
+            UdpDispatchError::from(dispatch_error),
+            UdpDispatchError::PayloadTooShort(TooShort::new(4, 2))
+        );
+        assert_eq!(
+            format!("{dispatch_error}"),
+            "payload buffer too short: expected 4 bytes, got 2"
+        );
     }
 
     #[test]

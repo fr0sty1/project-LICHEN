@@ -1,5 +1,16 @@
-//! Trickle timer per RFC 6206 for RPL DIO pacing. Matches the 6-rule
-//! pseudocode exactly (rules 1-6 in §4.2). Deterministic, caller-driven.
+//! Trickle timer for RPL DIO pacing, based on RFC 6206. The LICHEN
+//! inconsistency profile restarts at Imin even when already at Imin so every
+//! accepted topology change gets a fresh transmit sample. Deterministic and
+//! caller-driven.
+
+/// Exact LICHEN RPL Trickle minimum interval: four seconds.
+pub const LICHEN_TRICKLE_IMIN_MS: u32 = 4_000;
+/// The maximum is reached after eight doublings of Imin.
+pub const LICHEN_TRICKLE_IMAX_DOUBLINGS: u32 = 8;
+/// Exact maximum interval: 1,024 seconds (approximately 17.07 minutes).
+pub const LICHEN_TRICKLE_IMAX_MS: u32 = LICHEN_TRICKLE_IMIN_MS << LICHEN_TRICKLE_IMAX_DOUBLINGS;
+/// LICHEN redundancy constant.
+pub const LICHEN_TRICKLE_K: u32 = 10;
 
 /// The next scheduled timer event.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,8 +49,16 @@ pub struct InvalidTrickleTransition {
     pub to: TrickleState,
 }
 
-/// Trickle timer matching RFC 6206 §4.2 pseudocode exactly. All times in ms.
-/// Caller supplies random offset for deterministic tests (no RNG).
+/// Identity that determines whether a received DIO is consistent with the
+/// timer's active DODAG interval.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TrickleScope {
+    pub dodag_id: [u8; 16],
+    pub version: u8,
+}
+
+/// LICHEN-profile Trickle timer. All times are milliseconds. Caller supplies a
+/// random offset for deterministic operation without an internal RNG.
 #[derive(Debug)]
 pub struct TrickleTimer {
     pub imin: u32,
@@ -50,6 +69,7 @@ pub struct TrickleTimer {
     pub interval_start: u64,
     pub transmit_time: u64,
     pub state: TrickleState,
+    scope: Option<TrickleScope>,
     transmitted: bool,
 }
 
@@ -71,8 +91,42 @@ impl TrickleTimer {
             interval_start: 0,
             transmit_time: 0,
             state: TrickleState::Stopped,
+            scope: None,
             transmitted: false,
         }
+    }
+
+    /// Construct the exact LICHEN RPL profile.
+    pub fn lichen_profile() -> Self {
+        Self::new(
+            LICHEN_TRICKLE_IMIN_MS,
+            LICHEN_TRICKLE_IMAX_DOUBLINGS,
+            LICHEN_TRICKLE_K,
+        )
+    }
+
+    /// Construct the exact LICHEN profile bound to a DODAG identity/version.
+    pub fn lichen_profile_scoped(scope: TrickleScope) -> Self {
+        Self::new_scoped(
+            LICHEN_TRICKLE_IMIN_MS,
+            LICHEN_TRICKLE_IMAX_DOUBLINGS,
+            LICHEN_TRICKLE_K,
+            scope,
+        )
+    }
+
+    /// Create a timer whose consistency counter accepts only DIOs from the
+    /// exact DODAG identity and version.
+    pub fn new_scoped(imin_ms: u32, imax_doublings: u32, k: u32, scope: TrickleScope) -> Self {
+        let mut timer = Self::new(imin_ms, imax_doublings, k);
+        timer.scope = Some(scope);
+        timer
+    }
+
+    /// Change the accepted DODAG identity/version without resetting the timer.
+    /// The caller performs a separate reset after an authorized inconsistency.
+    pub fn set_scope(&mut self, scope: TrickleScope) {
+        self.scope = Some(scope);
     }
 
     fn transition_to(&mut self, next: TrickleState) -> Result<(), InvalidTrickleTransition> {
@@ -102,12 +156,13 @@ impl TrickleTimer {
         now: u64,
         rand_offset: u32,
     ) -> Result<(), InvalidTrickleTransition> {
-        if now.checked_add(u64::from(self.interval)).is_none() {
-            return self.transition_to(TrickleState::Stopped);
-        }
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
+        if now.checked_add(u64::from(self.interval)).is_none() {
+            self.transmit_time = now;
+            return self.transition_to(TrickleState::Stopped);
+        }
         // RFC 6206 §4.2 rule 2: t uniform in [I/2, I). Bitwise form is
         // bias-free for odd I and safe at u32::MAX (avoids overflow). Matches
         // C impl, tests, and Python equivalent.
@@ -125,14 +180,30 @@ impl TrickleTimer {
         self.interval_start.saturating_add(u64::from(self.interval))
     }
 
-    /// Record a consistent transmission (RFC 6206 §4.2 rule 3).
-    pub fn heard_consistent(&mut self) {
+    /// Record a consistent transmission on an unscoped active timer.
+    /// Scoped timers must use [`Self::heard_consistent_for`].
+    pub fn heard_consistent(&mut self) -> bool {
+        if self.scope.is_some() || self.state == TrickleState::Stopped {
+            return false;
+        }
         self.counter = self.counter.saturating_add(1);
+        true
+    }
+
+    /// Record a DIO only when the timer is active and its DODAG identity and
+    /// version match exactly. A mismatch is not an implicit inconsistency
+    /// reset; callers invoke [`Self::reset`] separately when appropriate.
+    pub fn heard_consistent_for(&mut self, observed: TrickleScope) -> bool {
+        if self.state == TrickleState::Stopped || self.scope != Some(observed) {
+            return false;
+        }
+        self.counter = self.counter.saturating_add(1);
+        true
     }
 
     /// Whether to transmit at t (counter < k per RFC 6206 §4.2 rule 4).
     pub fn should_transmit(&self) -> bool {
-        self.counter < self.k
+        self.state != TrickleState::Stopped && self.counter < self.k
     }
 
     /// Mark the transmit point reached; returns `true` if a DIO should be sent.
@@ -172,9 +243,9 @@ impl TrickleTimer {
         self.begin_interval(now, rand_offset)
     }
 
-    /// Handle an inconsistency per RFC 6206 §4.2 rule 6: if Stopped or
-    /// interval > imin, set I=imin and restart. No-op if at imin and running.
-    /// State proxy for cross-impl (cf. C interval==0, Python generation==0).
+    /// Handle an inconsistency by setting I=Imin and restarting the interval.
+    /// Every accepted inconsistency, including one already at Imin, resets c
+    /// and consumes the caller's fresh random offset.
     pub fn reset(&mut self, now: u64, rand_offset: u32) {
         let r = self.try_reset(now, rand_offset);
         debug_assert!(r.is_ok(), "invalid trickle timer transition");
@@ -185,11 +256,8 @@ impl TrickleTimer {
         now: u64,
         rand_offset: u32,
     ) -> Result<(), InvalidTrickleTransition> {
-        if self.state == TrickleState::Stopped || self.interval > self.imin {
-            self.interval = self.imin;
-            self.begin_interval(now, rand_offset)?;
-        }
-        Ok(())
+        self.interval = self.imin;
+        self.begin_interval(now, rand_offset)
     }
 
     /// The next scheduled event.
@@ -268,6 +336,61 @@ mod tests {
     }
 
     #[test]
+    fn scoped_consistency_requires_active_exact_identity_and_version() {
+        let scope = TrickleScope {
+            dodag_id: [1; 16],
+            version: 7,
+        };
+        let mut t = TrickleTimer::new_scoped(1000, 4, 2, scope);
+        assert!(!t.heard_consistent_for(scope));
+        t.start(0, 0);
+        assert!(!t.heard_consistent());
+        assert!(!t.heard_consistent_for(TrickleScope {
+            dodag_id: [2; 16],
+            version: 7,
+        }));
+        assert!(!t.heard_consistent_for(TrickleScope {
+            dodag_id: [1; 16],
+            version: 8,
+        }));
+        assert_eq!(t.counter, 0);
+        assert!(t.heard_consistent_for(scope));
+        assert_eq!(t.counter, 1);
+        assert!(t.fire_transmit());
+        assert!(t.heard_consistent_for(scope));
+        assert_eq!(t.counter, 2);
+    }
+
+    #[test]
+    fn scope_change_and_inconsistency_reset_are_separate() {
+        let first = TrickleScope {
+            dodag_id: [1; 16],
+            version: 7,
+        };
+        let second = TrickleScope {
+            dodag_id: [2; 16],
+            version: 8,
+        };
+        let mut t = TrickleTimer::new_scoped(1000, 4, 2, first);
+        t.start(10, 0);
+        assert!(t.heard_consistent_for(first));
+        let before = (t.interval_start, t.transmit_time, t.counter, t.state);
+        assert!(!t.heard_consistent_for(second));
+        assert_eq!(
+            (t.interval_start, t.transmit_time, t.counter, t.state),
+            before
+        );
+        t.set_scope(second);
+        assert_eq!(
+            (t.interval_start, t.transmit_time, t.counter, t.state),
+            before
+        );
+        t.reset(20, 0);
+        assert_eq!(t.counter, 0);
+        assert!(t.heard_consistent_for(second));
+    }
+
+    #[test]
     fn expire_doubles_interval_capped_at_max() {
         let mut t = TrickleTimer::new(1000, 2, 10); // max = 4000
         t.start(0, 0);
@@ -295,12 +418,33 @@ mod tests {
     }
 
     #[test]
-    fn reset_noop_when_already_at_imin() {
+    fn reset_at_imin_restarts_and_resamples() {
         let mut t = TrickleTimer::new(1000, 4, 10);
         t.start(0, 0);
-        let tt_before = t.transmit_time;
+        t.heard_consistent();
         t.reset(0, 999);
-        assert_eq!(t.transmit_time, tt_before);
+        assert_eq!(t.counter, 0);
+        assert_eq!(t.transmit_time, 999);
+        assert_eq!(t.state, TrickleState::WaitingTransmit);
+    }
+
+    #[test]
+    fn reset_from_every_running_state_and_repeated_reset_are_fresh() {
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        t.start(0, 0);
+        t.reset(100, 100);
+        assert_eq!(t.transmit_time, 700);
+
+        t.fire_transmit();
+        t.heard_consistent();
+        t.reset(200, 200);
+        assert_eq!(t.counter, 0);
+        assert_eq!(t.transmit_time, 900);
+        assert_eq!(t.state, TrickleState::WaitingTransmit);
+
+        t.reset(300, 300);
+        assert_eq!(t.transmit_time, 1100);
+        assert_eq!(t.state, TrickleState::WaitingTransmit);
     }
 
     #[test]
@@ -379,6 +523,22 @@ mod tests {
         let mut t = TrickleTimer::new(1000, 4, 10);
         t.start(u64::MAX - 999, 0);
         assert_eq!(t.next_event(), TrickleEvent::Stopped);
+        assert_eq!(t.counter, 0);
+        assert_eq!(t.interval_start, u64::MAX - 999);
+        assert_eq!(t.transmit_time, u64::MAX - 999);
+
+        // Exact boundary remains representable; one tick later stops again.
+        t.reset(u64::MAX - 1000, 0);
+        assert_eq!(t.interval_end(), u64::MAX);
+        assert_eq!(t.state, TrickleState::WaitingTransmit);
+        t.heard_consistent();
+        t.reset(u64::MAX - 999, 0);
+        assert_eq!(t.counter, 0);
+        assert_eq!(t.next_event(), TrickleEvent::Stopped);
+
+        // A reconstructed low monotonic epoch can restart the stopped timer.
+        t.reset(0, 0);
+        assert_eq!(t.next_event(), TrickleEvent::Transmit { at_ms: 500 });
     }
 
     #[test]

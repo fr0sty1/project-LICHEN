@@ -45,6 +45,9 @@ pub mod ble;
 #[cfg(feature = "bridge")]
 pub mod bridge;
 
+/// RFC 1055 SLIP framing used by the Local Client Interface.
+pub mod slip;
+
 // Re-export core types from kiss-framing crate when kiss feature is enabled
 #[cfg(feature = "kiss")]
 pub use kiss_framing::{

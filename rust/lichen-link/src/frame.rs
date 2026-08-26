@@ -3,53 +3,6 @@
 use crate::seqnum::LinkSeqNum;
 use lichen_core::error::{BufferTooSmall, TooShort};
 
-/// Coarse states in zero-copy link-frame parsing.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum FrameProcessingState {
-    Start,
-    LengthRead,
-    HeaderRead,
-    Parsed,
-    Failed,
-}
-
-impl FrameProcessingState {
-    pub fn can_transition_to(self, next: Self) -> bool {
-        matches!(
-            (self, next),
-            (Self::Start, Self::LengthRead)
-                | (Self::Start, Self::Failed)
-                | (Self::LengthRead, Self::HeaderRead)
-                | (Self::LengthRead, Self::Failed)
-                | (Self::HeaderRead, Self::Parsed)
-                | (Self::HeaderRead, Self::Failed)
-                | (Self::Parsed, Self::Parsed)
-                | (Self::Failed, Self::Failed)
-        )
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct InvalidFrameProcessingTransition {
-    pub from: FrameProcessingState,
-    pub to: FrameProcessingState,
-}
-
-fn transition_frame_state(
-    state: &mut FrameProcessingState,
-    next: FrameProcessingState,
-) -> Result<(), InvalidFrameProcessingTransition> {
-    if state.can_transition_to(next) {
-        *state = next;
-        Ok(())
-    } else {
-        Err(InvalidFrameProcessingTransition {
-            from: *state,
-            to: next,
-        })
-    }
-}
-
 /// Destination addressing mode (LLSec bits 0-1, spec 4.3).
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -96,6 +49,10 @@ impl AddrMode {
 }
 
 /// MIC length setting (LLSec bits 2-4, spec 4.2).
+///
+/// Wire values 0 and 1 select the compatibility encodings below. Values 2
+/// through 7 are reserved and are rejected by [`LichenFrame::from_bytes`]
+/// with [`FrameError::ReservedMicLength`].
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum MicLength {
@@ -193,9 +150,10 @@ impl core::fmt::Display for FrameError {
             Self::AddrLenMismatch => write!(f, "address length mismatch"),
             Self::MicLenMismatch => write!(f, "MIC length mismatch"),
             Self::SignatureMicMismatch => write!(f, "signature MIC must be 48 bytes"),
-            Self::SignatureSignerMismatch => {
-                write!(f, "signed frames require exactly one 8-byte signer EUI-64")
-            }
+            Self::SignatureSignerMismatch => write!(
+                f,
+                "signer EUI-64 must be 8 bytes when signed, empty when unsigned"
+            ),
             Self::EncryptedUnsupported => {
                 write!(f, "encrypted frames are unsupported")
             }
@@ -237,9 +195,11 @@ impl From<BufferTooSmall> for FrameError {
 /// format, NOT whether it has been cryptographically verified. Similarly, the
 /// `mic` field contains the raw MIC bytes but does not imply authentication.
 ///
-/// Callers must use `LinkLayer::verify()` or equivalent to cryptographically
-/// validate frames before trusting their contents. A `LichenFrame` obtained
-/// from `from_bytes()` should be treated as untrusted input.
+/// Production receivers must pass wire bytes to
+/// `LinkLayer::receive_frame` (or `LinkLayer::receive_frame_at`) and trust only
+/// the returned `AuthenticatedFrame`. A `LichenFrame` obtained from
+/// `from_bytes()` is untrusted input; successful parsing and
+/// [`Signature::Present`] are not proof of authenticity.
 ///
 /// Payload is stored as a reference to avoid heap allocation in `no_std`
 /// contexts. Use `LichenFrameBuf` (future work) for an owned variant.
@@ -288,7 +248,12 @@ impl<'a> LichenFrame<'a> {
                 FrameError::MicLenMismatch
             });
         }
-        if self.signature.is_present() != (self.signer_eui64.len() == 8) {
+        let signer_len_ok = if self.signature.is_present() {
+            self.signer_eui64.len() == 8
+        } else {
+            self.signer_eui64.is_empty()
+        };
+        if !signer_len_ok {
             return Err(FrameError::SignatureSignerMismatch);
         }
         let body_len =
@@ -320,45 +285,26 @@ impl<'a> LichenFrame<'a> {
 
     /// Parse a frame from a byte slice.
     ///
-    /// # Panics
-    ///
-    /// This function does not panic. Internal `.expect()` calls guard state
-    /// machine transitions that are provably valid by control flow. Malformed
-    /// input returns `Err(FrameError)`, never a panic.
+    /// Malformed input returns `Err(FrameError)`.
     pub fn from_bytes(data: &'a [u8]) -> Result<Self, FrameError> {
-        let mut state = FrameProcessingState::Start;
         if data.is_empty() {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("empty input can fail before length read");
             return Err(FrameError::Empty);
         }
         if data.len() > MAX_FRAME_LEN {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("oversized input can fail before length read");
             return Err(FrameError::FrameTooLarge);
         }
         let length = data[0] as usize;
-        transition_frame_state(&mut state, FrameProcessingState::LengthRead)
-            .expect("non-empty frame can read length");
         if length > MAX_FRAME_BODY {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("length-read frame can fail size check");
             return Err(FrameError::FrameTooLarge);
         }
         let expected_total = 1 + length;
         if data.len() > expected_total {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("length-read frame can fail trailing-bytes check");
             return Err(FrameError::TrailingBytes);
         }
         let Some(body) = data.get(1..expected_total) else {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("length-read frame can fail bounds check");
             return Err(TooShort::new(expected_total, data.len()).into());
         };
         if length < 4 {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("length-read frame can fail minimum body length check");
             return Err(TooShort::new(4, length).into());
         }
         let llsec = body[0];
@@ -367,36 +313,30 @@ impl<'a> LichenFrame<'a> {
         // reports as `EncryptedUnsupported` (spec 4.2, link_frame.json
         // `signed_encrypted_unsupported`).
         if llsec & ENCRYPTED_BIT != 0 {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("length-read frame can fail encrypted check");
             return Err(FrameError::EncryptedUnsupported);
         }
-        // ADDR_MODE_MASK is 0b11, so value is always 0-3; from_u8 covers all cases
-        let addr_mode = AddrMode::from_u8(llsec & ADDR_MODE_MASK).unwrap();
+        let addr_mode = match llsec & ADDR_MODE_MASK {
+            0 => AddrMode::None,
+            1 => AddrMode::Short,
+            2 => AddrMode::Extended,
+            _ => AddrMode::Elided,
+        };
         let mic_field = (llsec >> MIC_LEN_SHIFT) & MIC_LEN_MASK;
         let Some(mic_length) = MicLength::from_u8(mic_field) else {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("length-read frame can fail MIC length decoding");
             return Err(FrameError::ReservedMicLength(mic_field));
         };
         let epoch = body[1];
         let seqnum = LinkSeqNum::from_be_bytes([body[2], body[3]]);
-        transition_frame_state(&mut state, FrameProcessingState::HeaderRead)
-            .expect("valid fixed header can advance to header-read");
         let addr_len = addr_mode.addr_len();
         let signature = llsec & SIGNATURE_BIT != 0;
         let signer_present = llsec & SIGNER_EUI64_BIT != 0;
         if signature != signer_present {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("header-read frame can fail S/SI consistency check");
             return Err(FrameError::SignatureSignerMismatch);
         }
         let signer_len = if signer_present { 8 } else { 0 };
         let mic_len = if signature { 48 } else { 0 };
         let min_body = 4 + addr_len + signer_len + mic_len;
         if body.len() < min_body {
-            transition_frame_state(&mut state, FrameProcessingState::Failed)
-                .expect("header-read frame can fail variable length check");
             return Err(TooShort::new(min_body, body.len()).into());
         }
         let dst_addr = &body[4..4 + addr_len];
@@ -405,8 +345,6 @@ impl<'a> LichenFrame<'a> {
         let signer_eui64 = &body[signer_start..signer_start + signer_len];
         let payload = &body[signer_start + signer_len..payload_end];
         let mic = &body[payload_end..];
-        transition_frame_state(&mut state, FrameProcessingState::Parsed)
-            .expect("header-read frame can parse successfully");
         Ok(LichenFrame {
             epoch,
             seqnum,
@@ -421,11 +359,7 @@ impl<'a> LichenFrame<'a> {
             } else {
                 Signature::Absent
             },
-            encryption: if llsec & ENCRYPTED_BIT != 0 {
-                Encryption::Encrypted
-            } else {
-                Encryption::Plaintext
-            },
+            encryption: Encryption::Plaintext,
         })
     }
 }
@@ -435,17 +369,6 @@ mod tests {
     use super::*;
     use crate::test_utils::from_hex;
     use std::vec;
-
-    #[test]
-    fn frame_processing_transition_table_rejects_recovery_from_failure() {
-        assert!(FrameProcessingState::Start.can_transition_to(FrameProcessingState::LengthRead));
-        assert!(
-            FrameProcessingState::LengthRead.can_transition_to(FrameProcessingState::HeaderRead)
-        );
-        assert!(FrameProcessingState::HeaderRead.can_transition_to(FrameProcessingState::Parsed));
-        assert!(!FrameProcessingState::Failed.can_transition_to(FrameProcessingState::Parsed));
-        assert!(!FrameProcessingState::Parsed.can_transition_to(FrameProcessingState::HeaderRead));
-    }
 
     #[test]
     fn broadcast_min_roundtrip() {
@@ -508,6 +431,17 @@ mod tests {
     }
 
     #[test]
+    fn all_reserved_mic_lengths_are_rejected() {
+        for mic_length in 2..=7 {
+            let wire = [4, mic_length << MIC_LEN_SHIFT, 0, 0, 0];
+            assert_eq!(
+                LichenFrame::from_bytes(&wire),
+                Err(FrameError::ReservedMicLength(mic_length))
+            );
+        }
+    }
+
+    #[test]
     fn signed_encrypted_is_rejected() {
         // Signed + encrypted: signature bit (0x20) + encrypted bit (0x40) = 0x60
         let mut wire = vec![0x35, 0x60, 0x03, 0x00, 0x04, 0x78];
@@ -525,6 +459,82 @@ mod tests {
     }
 
     #[test]
+    fn every_prefix_below_minimum_frame_reports_precise_size() {
+        // A complete minimum frame is LENGTH(4) plus the four-byte body.
+        // Every non-empty proper prefix retains that declared length, so the
+        // error reports total wire bytes: expected 5, actual 1..=4.
+        let minimum = [4, 0, 0, 0, 0];
+        assert_eq!(
+            LichenFrame::from_bytes(&minimum[..0]),
+            Err(FrameError::Empty)
+        );
+        for actual in 1..minimum.len() {
+            assert_eq!(
+                LichenFrame::from_bytes(&minimum[..actual]),
+                Err(FrameError::TooShort(TooShort::new(minimum.len(), actual)))
+            );
+        }
+    }
+
+    #[test]
+    fn every_declared_body_length_below_fixed_header_reports_precise_size() {
+        // These are complete wires whose own LENGTH is invalid. The size
+        // category is therefore the four-byte body minimum, not total wire
+        // truncation (which the prefix test above covers independently).
+        for body_len in 0..4 {
+            let mut wire = vec![0; body_len + 1];
+            wire[0] = body_len as u8;
+            assert_eq!(
+                LichenFrame::from_bytes(&wire),
+                Err(FrameError::TooShort(TooShort::new(4, body_len)))
+            );
+        }
+    }
+
+    #[test]
+    fn address_and_signed_minimum_bodies_are_exact_boundaries() {
+        for mode in [
+            AddrMode::None,
+            AddrMode::Short,
+            AddrMode::Extended,
+            AddrMode::Elided,
+        ] {
+            for signed in [false, true] {
+                let security_bytes = if signed { 8 + 48 } else { 0 };
+                let minimum_body = 4 + mode.addr_len() + security_bytes;
+                let llsec = mode as u8
+                    | if signed {
+                        SIGNATURE_BIT | SIGNER_EUI64_BIT
+                    } else {
+                        0
+                    };
+
+                let mut exact = vec![0; minimum_body + 1];
+                exact[0] = minimum_body as u8;
+                exact[1] = llsec;
+                let parsed = LichenFrame::from_bytes(&exact)
+                    .unwrap_or_else(|error| panic!("{mode:?}/{signed} minimum: {error:?}"));
+                assert_eq!(parsed.addr_mode, mode);
+                assert_eq!(parsed.signature.is_present(), signed);
+                assert!(parsed.payload.is_empty());
+
+                let short_body = minimum_body - 1;
+                let mut truncated = vec![0; short_body + 1];
+                truncated[0] = short_body as u8;
+                truncated[1] = llsec;
+                assert_eq!(
+                    LichenFrame::from_bytes(&truncated),
+                    Err(FrameError::TooShort(TooShort::new(
+                        minimum_body,
+                        short_body
+                    ))),
+                    "{mode:?}/{signed} one-byte-short boundary"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn too_short_error() {
         assert!(matches!(
             LichenFrame::from_bytes(&[0x0f, 0x00]),
@@ -537,6 +547,26 @@ mod tests {
         let wire = from_hex("0b8001000261626301020304");
         assert_eq!(
             LichenFrame::from_bytes(&wire),
+            Err(FrameError::SignatureSignerMismatch)
+        );
+    }
+
+    #[test]
+    fn serializer_rejects_partial_signer_on_unsigned_frame() {
+        let frame = LichenFrame {
+            epoch: 0,
+            seqnum: LinkSeqNum::new(0),
+            dst_addr: &[],
+            signer_eui64: &[0xaa, 0xbb, 0xcc, 0xdd, 0xee],
+            payload: b"abc",
+            mic: &[],
+            addr_mode: AddrMode::None,
+            mic_length: MicLength::Bits32,
+            signature: Signature::Absent,
+            encryption: Encryption::Plaintext,
+        };
+        assert_eq!(
+            frame.write_to(&mut [0; 64]),
             Err(FrameError::SignatureSignerMismatch)
         );
     }

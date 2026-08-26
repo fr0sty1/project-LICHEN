@@ -119,6 +119,11 @@ pub mod link_layer;
 #[cfg(all(feature = "schnorr", feature = "std"))]
 pub use link_layer::LinkRxError;
 
+#[cfg(all(feature = "schnorr", feature = "std"))]
+pub mod relay;
+#[cfg(all(feature = "schnorr", feature = "std"))]
+pub use relay::{RelayError, RelayOutcome};
+
 #[cfg(any(test, feature = "std"))]
 extern crate std;
 

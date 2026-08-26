@@ -24,6 +24,15 @@ pub const STATUS_ROUTES: &str = "/status/routes";
 /// Per spec/appendix-bufferbloat.md "Measuring Queue Latency".
 pub const STATUS_QUEUES: &str = "/status/queues";
 
+/// Node configuration document (GET). §17.5.2.
+pub const CONFIG: &str = "/config";
+
+/// Radio configuration document (GET). §17.5.2.
+pub const CONFIG_RADIO: &str = "/config/radio";
+
+/// Read-only node identity document (GET). §17.5.2.
+pub const CONFIG_IDENTITY: &str = "/config/identity";
+
 /// Read the inbox (GET, Observable).
 pub const MSG_INBOX: &str = "/msg/inbox";
 
@@ -54,6 +63,11 @@ pub const SENSORS_LOCATION: &str = "/sensors/location";
 /// Broadcast this node's position beacon (PUT, `application/senml+cbor`). §18.2.1.
 pub const POS: &str = "/pos";
 
+// --- Waypoint sharing (spec §18.3) -----------------------------------------
+
+/// Create or share a waypoint (POST, `application/cbor`). §18.3.2.
+pub const WAYPOINTS: &str = "/waypoints";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -62,5 +76,17 @@ mod tests {
     fn messaging_paths_match_firmware_resources() {
         assert_eq!(MSG_INBOX, "/msg/inbox");
         assert_eq!(MSG_SENT, "/msg/sent");
+    }
+
+    #[test]
+    fn identity_path_matches_lci_spec() {
+        assert_eq!(CONFIG, "/config");
+        assert_eq!(CONFIG_RADIO, "/config/radio");
+        assert_eq!(CONFIG_IDENTITY, "/config/identity");
+    }
+
+    #[test]
+    fn waypoint_path_matches_application_spec() {
+        assert_eq!(WAYPOINTS, "/waypoints");
     }
 }

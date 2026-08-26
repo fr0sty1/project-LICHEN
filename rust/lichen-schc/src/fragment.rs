@@ -17,14 +17,23 @@ pub const FRAGMENT_T: u8 = 0;
 pub const ALL_1_FCN: u8 = (1 << FRAGMENT_N) - 1;
 pub const MIC_LENGTH: usize = 4;
 pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
+pub const RETRANSMISSION_TIMEOUT_MILLIS: u64 = RETRANSMISSION_TIMEOUT_S as u64 * 1_000;
 pub const MAX_ACK_REQUESTS: u32 = 4;
 pub const INACTIVITY_TIMEOUT_S: u32 = 60;
 pub const INACTIVITY_TIMEOUT_MILLIS: u64 = INACTIVITY_TIMEOUT_S as u64 * 1_000;
 
-pub const TILE_SIZE: usize = 179;
+pub const FRAGMENT_RULE_ID_BITS: usize = 8;
+pub const FRAGMENT_ENVELOPE_MTU: usize = 185;
+pub const FRAGMENT_HEADER_BITS: usize =
+    FRAGMENT_RULE_ID_BITS + FRAGMENT_T as usize + FRAGMENT_M as usize + FRAGMENT_N as usize;
+pub const TILE_SIZE: usize =
+    (FRAGMENT_ENVELOPE_MTU * 8 - FRAGMENT_HEADER_BITS - MIC_LENGTH * 8) / 8;
 pub const WINDOW_SIZE: usize = 63;
 pub const BITMAP_MASK: u64 = (1u64 << WINDOW_SIZE) - 1;
 pub const MAX_PACKET_SIZE: usize = SCHC_FRAG_MAX_PACKET_SIZE;
+/// Largest encoded fragment accepted by the fixed profile: Rule ID, W/FCN,
+/// 32-bit RCS, one full tile, and the final zero pad bit.
+pub const MAX_FRAGMENT_WIRE_SIZE: usize = TILE_SIZE + MIC_LENGTH + 2;
 pub const FRAGMENT_TOMBSTONE_MILLIS: u64 = 60_000;
 pub const RULE_ID_A_TO_B: u8 = 0x78;
 pub const RULE_ID_B_TO_A: u8 = 0x79;
@@ -37,6 +46,84 @@ const FLOOR_RECORD_BODY_LEN: usize =
     FLOOR_RECORD_DOMAIN.len() + 1 + 8 + 4 + 32 + 32 + 16 + 1 + 8 + 4 + 1 + 1 + 8 + 1 + 1 + 1;
 #[cfg(feature = "std")]
 const FLOOR_RECORD_LEN: usize = FLOOR_RECORD_BODY_LEN + FLOOR_RECORD_SIGNATURE_LEN;
+
+/// Failures while deriving a byte-exact SCHC tile capacity from an MTU.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum TileSizeError {
+    InvalidMtu,
+    ArithmeticOverflow,
+    NoPayload,
+}
+
+impl core::fmt::Display for TileSizeError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::InvalidMtu => write!(f, "MTU must be positive"),
+            Self::ArithmeticOverflow => write!(f, "tile-size arithmetic overflow"),
+            Self::NoPayload => write!(f, "fragment cannot carry one whole payload byte"),
+        }
+    }
+}
+
+impl core::error::Error for TileSizeError {}
+
+/// Return the number of whole payload bytes fitting one SCHC fragment.
+///
+/// The Rule ID, DTag, window, FCN, and optional RCS widths are counted before
+/// the fragment's trailing byte-alignment padding. Checked `u64` arithmetic
+/// keeps this calculation deterministic on 32-bit and 64-bit targets.
+pub fn fragment_payload_capacity(
+    mtu_bytes: u64,
+    rule_id_bits: u64,
+    dtag_bits: u64,
+    window_bits: u64,
+    fcn_bits: u64,
+    rcs_bits: u64,
+) -> Result<u64, TileSizeError> {
+    if mtu_bytes == 0 {
+        return Err(TileSizeError::InvalidMtu);
+    }
+    let overhead_bits = rule_id_bits
+        .checked_add(dtag_bits)
+        .and_then(|bits| bits.checked_add(window_bits))
+        .and_then(|bits| bits.checked_add(fcn_bits))
+        .and_then(|bits| bits.checked_add(rcs_bits))
+        .ok_or(TileSizeError::ArithmeticOverflow)?;
+    let available_bits = mtu_bytes
+        .checked_mul(8)
+        .ok_or(TileSizeError::ArithmeticOverflow)?;
+    let payload_bits = available_bits
+        .checked_sub(overhead_bits)
+        .ok_or(TileSizeError::NoPayload)?;
+    let payload_bytes = payload_bits / 8;
+    if payload_bytes == 0 {
+        return Err(TileSizeError::NoPayload);
+    }
+    Ok(payload_bytes)
+}
+
+/// Return a tile size fitting regular/All-0 and RCS-bearing All-1 fragments.
+pub fn tile_size_for_mtu(
+    mtu_bytes: u64,
+    rule_id_bits: u64,
+    dtag_bits: u64,
+    window_bits: u64,
+    fcn_bits: u64,
+    rcs_bits: u64,
+) -> Result<u64, TileSizeError> {
+    let regular =
+        fragment_payload_capacity(mtu_bytes, rule_id_bits, dtag_bits, window_bits, fcn_bits, 0)?;
+    let terminal = fragment_payload_capacity(
+        mtu_bytes,
+        rule_id_bits,
+        dtag_bits,
+        window_bits,
+        fcn_bits,
+        rcs_bits,
+    )?;
+    Ok(regular.min(terminal))
+}
 
 /// Derive the fixed Rule Set v3 data Rule ID from authenticated endpoint keys.
 /// Endpoint A is the lexicographically smaller full signer key; endpoint B is
@@ -244,6 +331,30 @@ impl<const MAX_PEERS: usize> FragmentationPolicy<MAX_PEERS> {
             }
         }
         snapshot
+    }
+
+    /// Expire every sender and receiver reservation whose inactivity deadline
+    /// has arrived. The monotonic timestamp is validated for every peer before
+    /// any state is changed, so a regressing/wrapped clock fails atomically.
+    ///
+    /// Receiver expiry retains the canonical Receiver-Abort in a replay-safe
+    /// tombstone; sender expiry retains its authenticated counter floor. The
+    /// returned count is the number of live reservations reclaimed.
+    pub fn expire_due(&self, now_ms: u64) -> Result<usize, FragmentError> {
+        let mut entries = self.entries.borrow_mut();
+        if entries
+            .iter()
+            .flatten()
+            .any(|entry| now_ms < entry.last_now_ms)
+        {
+            return Err(FragmentError::InvalidPeerEvidence);
+        }
+        let mut expired = 0;
+        for entry in entries.iter_mut().flatten() {
+            entry.last_now_ms = now_ms;
+            expired += expire_sessions_at(entry, now_ms);
+        }
+        Ok(expired)
     }
 
     /// Replace the current policy for an authenticated signer and issue a new permit.
@@ -514,10 +625,11 @@ impl<const MAX_PEERS: usize> FragmentationPolicy<MAX_PEERS> {
             return Err(FragmentError::SessionBusy);
         }
         entry.sender_tombstones[index] = None;
+        let expires_at_ms = inactivity_deadline(now)?;
         let id = next_session_id(&mut entry)?;
         entry.sender_sessions[index] = Some(SessionReservation {
             id,
-            expires_at_ms: now.saturating_add(INACTIVITY_TIMEOUT_MILLIS),
+            expires_at_ms,
             high_counter: initial_counter,
         });
         Ok(id)
@@ -554,10 +666,11 @@ impl<const MAX_PEERS: usize> FragmentationPolicy<MAX_PEERS> {
             initial_counter
         };
         entry.receiver_tombstones[index] = None;
+        let expires_at_ms = inactivity_deadline(now)?;
         let id = next_session_id(&mut entry)?;
         entry.receiver_sessions[index] = Some(SessionReservation {
             id,
-            expires_at_ms: now.saturating_add(INACTIVITY_TIMEOUT_MILLIS),
+            expires_at_ms,
             high_counter: admission_floor,
         });
         Ok((id, admission_floor))
@@ -577,9 +690,10 @@ impl<const MAX_PEERS: usize> FragmentationPolicy<MAX_PEERS> {
         if entry.sender_sessions[index].is_none_or(|session| session.id != session_id) {
             return Err(FragmentError::InvalidState);
         }
+        let until_ms = tombstone_deadline(now)?;
         entry.sender_sessions[index] = None;
         entry.sender_tombstones[index] = Some(TerminalTombstone {
-            until_ms: now.saturating_add(FRAGMENT_TOMBSTONE_MILLIS),
+            until_ms,
             high_counter,
             result: ReceiverResult::default(),
         });
@@ -604,9 +718,10 @@ impl<const MAX_PEERS: usize> FragmentationPolicy<MAX_PEERS> {
         if session.id != session_id {
             return Err(FragmentError::InvalidState);
         }
+        let until_ms = tombstone_deadline(now)?;
         entry.receiver_sessions[index] = None;
         entry.receiver_tombstones[index] = Some(TerminalTombstone {
-            until_ms: now.saturating_add(FRAGMENT_TOMBSTONE_MILLIS),
+            until_ms,
             high_counter: high_counter.max(session.high_counter),
             // A duplicate terminal control may need the same final ACK/abort,
             // but the completed packet remains owned by the released receiver.
@@ -629,13 +744,21 @@ impl<const MAX_PEERS: usize> FragmentationPolicy<MAX_PEERS> {
         let mut entry = self.current_entry_mut(permit)?;
         let index = rule_index(rule_id)?;
         observe_policy_now(&mut entry, now_ms)?;
-        let Some(session) = entry.sender_sessions[index].as_mut() else {
+        let Some(session) = entry.sender_sessions[index] else {
             return Err(FragmentError::InvalidState);
         };
-        if session.id != session_id || now_ms >= session.expires_at_ms {
+        if session.id != session_id {
             return Err(FragmentError::InvalidState);
         }
-        session.expires_at_ms = now_ms.saturating_add(INACTIVITY_TIMEOUT_MILLIS);
+        if now_ms >= session.expires_at_ms {
+            expire_sender_session(&mut entry, index, now_ms);
+            return Err(FragmentError::InvalidState);
+        }
+        let expires_at_ms = inactivity_deadline(now_ms)?;
+        entry.sender_sessions[index]
+            .as_mut()
+            .expect("validated sender reservation")
+            .expires_at_ms = expires_at_ms;
         Ok(())
     }
 
@@ -650,14 +773,42 @@ impl<const MAX_PEERS: usize> FragmentationPolicy<MAX_PEERS> {
         let mut entry = self.current_entry_mut(permit)?;
         let index = rule_index(rule_id)?;
         observe_policy_now(&mut entry, now_ms)?;
-        let Some(session) = entry.receiver_sessions[index].as_mut() else {
+        let Some(session) = entry.receiver_sessions[index] else {
             return Err(FragmentError::InvalidState);
         };
-        if session.id != session_id || now_ms >= session.expires_at_ms {
+        if session.id != session_id {
             return Err(FragmentError::InvalidState);
         }
-        session.expires_at_ms = now_ms.saturating_add(INACTIVITY_TIMEOUT_MILLIS);
+        if now_ms >= session.expires_at_ms {
+            expire_receiver_session(&mut entry, index, now_ms);
+            return Err(FragmentError::InvalidState);
+        }
+        let expires_at_ms = inactivity_deadline(now_ms)?;
+        let session = entry.receiver_sessions[index]
+            .as_mut()
+            .expect("validated receiver reservation");
+        session.expires_at_ms = expires_at_ms;
         session.high_counter = session.high_counter.max(counter);
+        Ok(())
+    }
+
+    fn expire_receiver(
+        &self,
+        permit: &AuthenticatedFragmentationPermit,
+        rule_id: u8,
+        session_id: u32,
+        now_ms: u64,
+    ) -> Result<(), FragmentError> {
+        let mut entry = self.current_entry_mut(permit)?;
+        let index = rule_index(rule_id)?;
+        observe_policy_now(&mut entry, now_ms)?;
+        let Some(session) = entry.receiver_sessions[index] else {
+            return Err(FragmentError::InvalidState);
+        };
+        if session.id != session_id || now_ms < session.expires_at_ms {
+            return Err(FragmentError::InvalidState);
+        }
+        expire_receiver_session(&mut entry, index, now_ms);
         Ok(())
     }
 
@@ -1004,6 +1155,94 @@ fn observe_policy_now(
     Ok(())
 }
 
+fn inactivity_deadline(now_ms: u64) -> Result<u64, FragmentError> {
+    let expires_at = now_ms
+        .checked_add(INACTIVITY_TIMEOUT_MILLIS)
+        .ok_or(FragmentError::InvalidPeerEvidence)?;
+    // Reserve enough monotonic range for the mandatory terminal hold-down as
+    // well. This rejects clock-domain exhaustion before creating or extending
+    // a lease that could not later be cleaned up safely.
+    expires_at
+        .checked_add(FRAGMENT_TOMBSTONE_MILLIS)
+        .ok_or(FragmentError::InvalidPeerEvidence)?;
+    Ok(expires_at)
+}
+
+fn tombstone_deadline(now_ms: u64) -> Result<u64, FragmentError> {
+    now_ms
+        .checked_add(FRAGMENT_TOMBSTONE_MILLIS)
+        .ok_or(FragmentError::InvalidPeerEvidence)
+}
+
+fn retransmission_deadline(now_ms: u64) -> Result<u64, FragmentError> {
+    now_ms
+        .checked_add(RETRANSMISSION_TIMEOUT_MILLIS)
+        .ok_or(FragmentError::InvalidPeerEvidence)
+}
+
+fn expire_sender_session(entry: &mut FragmentationPolicyEntry, index: usize, now_ms: u64) {
+    let Some(session) = entry.sender_sessions[index].take() else {
+        return;
+    };
+    entry.sender_tombstones[index] = Some(TerminalTombstone {
+        // Reservation admitted only when its expiry plus this full hold-down
+        // was representable. Saturation remains a conservative fallback for
+        // a caller that polls long after the original deadline.
+        until_ms: now_ms.saturating_add(FRAGMENT_TOMBSTONE_MILLIS),
+        high_counter: session.high_counter,
+        result: ReceiverResult::default(),
+    });
+}
+
+fn expire_receiver_session(entry: &mut FragmentationPolicyEntry, index: usize, now_ms: u64) {
+    let Some(session) = entry.receiver_sessions[index].take() else {
+        return;
+    };
+    let rule_id = if index == 0 {
+        RULE_ID_A_TO_B
+    } else {
+        RULE_ID_B_TO_A
+    };
+    entry.receiver_tombstones[index] = Some(TerminalTombstone {
+        until_ms: now_ms.saturating_add(FRAGMENT_TOMBSTONE_MILLIS),
+        high_counter: session.high_counter,
+        result: ReceiverResult {
+            response: Some(ReceiverResponse::ReceiverAbort { rule_id }),
+            aborted: true,
+            ..ReceiverResult::default()
+        },
+    });
+}
+
+fn expire_sessions_at(entry: &mut FragmentationPolicyEntry, now_ms: u64) -> usize {
+    // Retire old terminal caches before inserting tombstones for newly expired
+    // reservations. A newly inserted tombstone therefore survives this poll
+    // even at the exhausted u64 boundary, while new leases still fail closed.
+    for tombstone in &mut entry.sender_tombstones {
+        if tombstone.is_some_and(|value| now_ms >= value.until_ms) {
+            *tombstone = None;
+        }
+    }
+    for tombstone in &mut entry.receiver_tombstones {
+        if tombstone.is_some_and(|value| now_ms >= value.until_ms) {
+            *tombstone = None;
+        }
+    }
+
+    let mut expired = 0;
+    for index in 0..2 {
+        if entry.sender_sessions[index].is_some_and(|session| now_ms >= session.expires_at_ms) {
+            expire_sender_session(entry, index, now_ms);
+            expired += 1;
+        }
+        if entry.receiver_sessions[index].is_some_and(|session| now_ms >= session.expires_at_ms) {
+            expire_receiver_session(entry, index, now_ms);
+            expired += 1;
+        }
+    }
+    expired
+}
+
 fn next_session_id(entry: &mut FragmentationPolicyEntry) -> Result<u32, FragmentError> {
     let id = entry.next_session_id;
     entry.next_session_id = entry
@@ -1270,21 +1509,26 @@ impl<'a> Fragment<'a> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
+        if data.len() > MAX_FRAGMENT_WIRE_SIZE {
+            return Err(FragmentError::InvalidTileLength);
+        }
         let rule_id = data[0];
         let window = (data[1] >> 7) & 1;
         let fcn = (data[1] >> 1) & ((1 << FRAGMENT_N) - 1);
         let content_len = data.len() - 2;
         let content_offset = if fcn == ALL_1_FCN { MIC_LENGTH } else { 0 };
-        let payload_len = content_len - content_offset;
-        if fcn == ALL_1_FCN {
+        let payload_len = if fcn == ALL_1_FCN {
             if !(MIC_LENGTH + 1..=MIC_LENGTH + TILE_SIZE).contains(&content_len) {
                 return Err(FragmentError::InvalidTileLength);
             }
+            content_len - content_offset
         } else if data.len() != TILE_SIZE + 2 {
             return Err(FragmentError::InvalidTileLength);
         } else if window == 1 && fcn == 0 {
             return Err(FragmentError::InvalidFcn);
-        }
+        } else {
+            TILE_SIZE
+        };
         if out.len() < payload_len {
             return Err(BufferTooSmall::new(payload_len, out.len()).into());
         }
@@ -1369,6 +1613,7 @@ impl Ack {
         }
         out[..needed].fill(0);
         out[0] = self.rule_id;
+        out[1] = self.window << 7;
         let first_byte_bits = n.min(6);
         for i in 0..first_byte_bits {
             if self.bitmap & (1u64 << (62 - i)) != 0 {
@@ -1383,12 +1628,19 @@ impl Ack {
             }
         }
         // Trailing 1s can be elided per RFC 8724, but to byte-align we must
-        // restore some of them. Only do this if there are trailing 1s to restore.
+        // restore some of them. The first ACK body octet has six bitmap bits
+        // after W and C, so restoration can end in that octet as well as in a
+        // later bitmap octet.
         if trailing > 0 {
-            let restored = body_bytes * 8 - remaining;
-            if restored > 0 {
-                let last_byte = &mut out[needed - 1];
-                *last_byte |= (1u8 << restored) - 1;
+            let encoded_bits = 6 + body_bytes * 8;
+            for i in n..encoded_bits {
+                if i < 6 {
+                    out[1] |= 1 << (5 - i);
+                } else {
+                    let byte_idx = 2 + (i - 6) / 8;
+                    let bit_idx = 7 - ((i - 6) % 8);
+                    out[byte_idx] |= 1 << bit_idx;
+                }
             }
         }
         Ok(needed)
@@ -1402,9 +1654,14 @@ impl Ack {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
-        if data.len() == 2 {
-            if data[1] & 0x40 == 0 {
-                return Err(TooShort::new(3, data.len()).into());
+        // W + C + the 63-bit uncompressed bitmap plus end padding occupies at
+        // most nine octets after the Rule ID.
+        if data.len() > 10 {
+            return Err(FragmentError::MalformedAck);
+        }
+        if data[1] & 0x40 != 0 {
+            if data.len() != 2 {
+                return Err(FragmentError::MalformedAck);
             }
             let rule_id = data[0];
             let window = (data[1] >> 7) & 1;
@@ -1501,6 +1758,24 @@ pub const fn receiver_abort(rule_id: u8) -> Control {
     Control::ReceiverAbort { rule_id }
 }
 
+fn is_sender_facing_control(data: &[u8], rule_id: u8) -> Result<bool, FragmentError> {
+    let mut control = [0u8; 3];
+    let receiver_abort_len = receiver_abort(rule_id).write_to(&mut control)?;
+    if data == &control[..receiver_abort_len] {
+        return Ok(true);
+    }
+    let sender_abort_len = sender_abort(rule_id).write_to(&mut control)?;
+    if data == &control[..sender_abort_len] {
+        return Ok(false);
+    }
+    let window = data.get(1).copied().unwrap_or(0) >> 7;
+    let ack_request_len = ack_request(rule_id, window).write_to(&mut control)?;
+    if data == &control[..ack_request_len] {
+        return Ok(false);
+    }
+    Ok(Ack::from_bytes(data).is_ok())
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SenderStatus {
     Ready,
@@ -1539,6 +1814,8 @@ pub struct FragmentSender<'a, 'policy> {
     remote_signer: [u8; 32],
     permit: AuthenticatedFragmentationPermit,
     ack_high_counter: Option<u32>,
+    retransmit_at_ms: Option<u64>,
+    last_timer_ms: u64,
     session_id: u32,
     reservation_active: bool,
 }
@@ -1577,6 +1854,7 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         sender.session_id =
             policy.reserve_sender(permit, rule_id, now_ms, peer.authenticated_counter())?;
         sender.reservation_active = true;
+        sender.last_timer_ms = now_ms;
         Ok(sender)
     }
 
@@ -1600,6 +1878,7 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         sender.session_id =
             policy.reserve_sender(permit, rule_id, now_ms, peer.authenticated_counter())?;
         sender.reservation_active = true;
+        sender.last_timer_ms = now_ms;
         Ok(sender)
     }
 
@@ -1617,8 +1896,8 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         if payload.is_empty() {
             return Err(FragmentError::EmptyPacket);
         }
-        if payload.len() > SCHC_FRAG_MAX_PACKET_SIZE {
-            return Err(BufferTooSmall::new(SCHC_FRAG_MAX_PACKET_SIZE, payload.len()).into());
+        if payload.len() > MAX_PACKET_SIZE {
+            return Err(FragmentError::PacketTooLarge);
         }
         if payload.len() > receiver_limit {
             return Err(FragmentError::PacketTooLarge);
@@ -1634,6 +1913,8 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
             remote_signer: permit.signer,
             permit,
             ack_high_counter: None,
+            retransmit_at_ms: None,
+            last_timer_ms: 0,
             session_id: 0,
             reservation_active: false,
         })
@@ -1664,6 +1945,11 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         self.status
     }
 
+    /// Absolute monotonic deadline for the next authenticated timeout poll.
+    pub const fn retransmission_deadline_ms(&self) -> Option<u64> {
+        self.retransmit_at_ms
+    }
+
     /// Authenticated remote signer this sender is authorized for.
     pub const fn remote_signer(&self) -> &[u8; 32] {
         &self.remote_signer
@@ -1692,11 +1978,18 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         peer: &AuthenticatedPeerSchcContext,
         now_ms: u64,
     ) -> Result<(), FragmentError> {
+        if self.status != SenderStatus::Ready {
+            return Err(FragmentError::InvalidState);
+        }
         if !policy.accepts_current(&self.permit, link, peer) {
             return Err(FragmentError::InvalidPeerEvidence);
         }
+        let deadline = retransmission_deadline(now_ms)?;
         policy.touch_sender(&self.permit, self.rule_id, self.session_id, now_ms)?;
-        self.start_inner()
+        self.start_inner()?;
+        self.last_timer_ms = now_ms;
+        self.retransmit_at_ms = Some(deadline);
+        Ok(())
     }
 
     /// State-producing transition with current no-std authority revalidation.
@@ -1707,11 +2000,18 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         peer: &AuthenticatedPeerSchcContext,
         now_ms: u64,
     ) -> Result<(), FragmentError> {
+        if self.status != SenderStatus::Ready {
+            return Err(FragmentError::InvalidState);
+        }
         if !policy.accepts_with_authority(&self.permit, authority, peer) {
             return Err(FragmentError::InvalidPeerEvidence);
         }
+        let deadline = retransmission_deadline(now_ms)?;
         policy.touch_sender(&self.permit, self.rule_id, self.session_id, now_ms)?;
-        self.start_inner()
+        self.start_inner()?;
+        self.last_timer_ms = now_ms;
+        self.retransmit_at_ms = Some(deadline);
+        Ok(())
     }
 
     fn get_fragment_inner(&self, index: usize) -> Option<Fragment<'a>> {
@@ -1752,6 +2052,9 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         index: usize,
         now_ms: u64,
     ) -> Result<Option<Fragment<'a>>, FragmentError> {
+        if index >= self.count {
+            return Ok(None);
+        }
         if !policy.accepts_current(&self.permit, link, peer) {
             return Err(FragmentError::InvalidPeerEvidence);
         }
@@ -1767,6 +2070,9 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         index: usize,
         now_ms: u64,
     ) -> Result<Option<Fragment<'a>>, FragmentError> {
+        if index >= self.count {
+            return Ok(None);
+        }
         if !policy.accepts_with_authority(&self.permit, authority, peer) {
             return Err(FragmentError::InvalidPeerEvidence);
         }
@@ -1805,6 +2111,7 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         let abort_len = receiver_abort(self.rule_id).write_to(&mut control)?;
         if data == &control[..abort_len] {
             self.status = SenderStatus::Aborted;
+            self.retransmit_at_ms = None;
             return Ok(SenderOutput::None);
         }
         let ack = Ack::from_bytes(data)?;
@@ -1869,13 +2176,20 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
             return Err(FragmentError::InvalidPeerEvidence);
         }
         self.validate_authenticated_control(frame.payload())?;
+        if now_ms < self.last_timer_ms {
+            return Err(FragmentError::InvalidPeerEvidence);
+        }
+        let next_deadline = retransmission_deadline(now_ms)?;
+        policy.touch_sender(&self.permit, self.rule_id, self.session_id, now_ms)?;
         let output = self.handle_ack_bytes_inner(frame.payload())?;
         self.ack_high_counter = Some(counter);
+        self.last_timer_ms = now_ms;
         if matches!(self.status, SenderStatus::Succeeded | SenderStatus::Aborted) {
             policy.release_sender(&self.permit, self.rule_id, self.session_id, now_ms, counter)?;
             self.reservation_active = false;
-        } else {
-            policy.touch_sender(&self.permit, self.rule_id, self.session_id, now_ms)?;
+            self.retransmit_at_ms = None;
+        } else if matches!(output, SenderOutput::Retransmit { .. }) {
+            self.retransmit_at_ms = Some(next_deadline);
         }
         Ok(output)
     }
@@ -1903,13 +2217,19 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
             return Err(FragmentError::InvalidPeerEvidence);
         }
         self.validate_authenticated_control(input.payload())?;
+        let now_ms = input
+            .receipt()
+            .monotonic_millis()
+            .ok_or(FragmentError::InvalidPeerEvidence)?;
+        if now_ms < self.last_timer_ms {
+            return Err(FragmentError::InvalidPeerEvidence);
+        }
+        let next_deadline = retransmission_deadline(now_ms)?;
+        policy.touch_sender(&self.permit, self.rule_id, self.session_id, now_ms)?;
         let output = self.handle_ack_bytes_inner(input.payload())?;
         self.ack_high_counter = Some(input.authenticated_counter());
+        self.last_timer_ms = now_ms;
         if matches!(self.status, SenderStatus::Succeeded | SenderStatus::Aborted) {
-            let now_ms = input
-                .receipt()
-                .monotonic_millis()
-                .ok_or(FragmentError::InvalidPeerEvidence)?;
             policy.release_sender(
                 &self.permit,
                 self.rule_id,
@@ -1918,12 +2238,9 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
                 input.authenticated_counter(),
             )?;
             self.reservation_active = false;
-        } else {
-            let now_ms = input
-                .receipt()
-                .monotonic_millis()
-                .ok_or(FragmentError::InvalidPeerEvidence)?;
-            policy.touch_sender(&self.permit, self.rule_id, self.session_id, now_ms)?;
+            self.retransmit_at_ms = None;
+        } else if matches!(output, SenderOutput::Retransmit { .. }) {
+            self.retransmit_at_ms = Some(next_deadline);
         }
         Ok(output)
     }
@@ -1937,6 +2254,7 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
                 return SenderOutput::None;
             }
             self.status = SenderStatus::Succeeded;
+            self.retransmit_at_ms = None;
             return SenderOutput::Success;
         }
         if ack.window > self.final_window() {
@@ -1996,11 +2314,23 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         peer: &AuthenticatedPeerSchcContext,
         now_ms: u64,
     ) -> Result<SenderOutput, FragmentError> {
+        if self.status != SenderStatus::Active {
+            return Err(FragmentError::InvalidState);
+        }
         if !policy.accepts_current(&self.permit, link, peer) {
             return Err(FragmentError::InvalidPeerEvidence);
         }
+        if now_ms < self.last_timer_ms {
+            return Err(FragmentError::InvalidPeerEvidence);
+        }
+        let deadline = self.retransmit_at_ms.ok_or(FragmentError::InvalidState)?;
+        if now_ms < deadline {
+            return Ok(SenderOutput::None);
+        }
+        let next_deadline = retransmission_deadline(now_ms)?;
         policy.touch_sender(&self.permit, self.rule_id, self.session_id, now_ms)?;
         let output = self.timeout_inner()?;
+        self.last_timer_ms = now_ms;
         if self.status == SenderStatus::Aborted {
             policy.release_sender(
                 &self.permit,
@@ -2011,6 +2341,9 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
                     .unwrap_or(peer.authenticated_counter()),
             )?;
             self.reservation_active = false;
+            self.retransmit_at_ms = None;
+        } else {
+            self.retransmit_at_ms = Some(next_deadline);
         }
         Ok(output)
     }
@@ -2023,11 +2356,23 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         peer: &AuthenticatedPeerSchcContext,
         now_ms: u64,
     ) -> Result<SenderOutput, FragmentError> {
+        if self.status != SenderStatus::Active {
+            return Err(FragmentError::InvalidState);
+        }
         if !policy.accepts_with_authority(&self.permit, authority, peer) {
             return Err(FragmentError::InvalidPeerEvidence);
         }
+        if now_ms < self.last_timer_ms {
+            return Err(FragmentError::InvalidPeerEvidence);
+        }
+        let deadline = self.retransmit_at_ms.ok_or(FragmentError::InvalidState)?;
+        if now_ms < deadline {
+            return Ok(SenderOutput::None);
+        }
+        let next_deadline = retransmission_deadline(now_ms)?;
         policy.touch_sender(&self.permit, self.rule_id, self.session_id, now_ms)?;
         let output = self.timeout_inner()?;
+        self.last_timer_ms = now_ms;
         if self.status == SenderStatus::Aborted {
             policy.release_sender(
                 &self.permit,
@@ -2038,6 +2383,9 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
                     .unwrap_or(peer.authenticated_counter()),
             )?;
             self.reservation_active = false;
+            self.retransmit_at_ms = None;
+        } else {
+            self.retransmit_at_ms = Some(next_deadline);
         }
         Ok(output)
     }
@@ -2060,11 +2408,13 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
             self.ack_high_counter.unwrap_or(0),
         )?;
         self.reservation_active = false;
+        self.retransmit_at_ms = None;
         Ok(())
     }
 
     fn abort_output(&mut self) -> SenderOutput {
         self.status = SenderStatus::Aborted;
+        self.retransmit_at_ms = None;
         SenderOutput::Abort { written: false }
     }
 
@@ -2144,6 +2494,10 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         out: &mut [u8],
         now_ms: u64,
     ) -> Result<Option<usize>, FragmentError> {
+        let mut probe = *output;
+        if self.write_next_inner(&mut probe, out)?.is_none() {
+            return Ok(None);
+        }
         if !policy.accepts_current(&self.permit, link, peer) {
             return Err(FragmentError::InvalidPeerEvidence);
         }
@@ -2160,6 +2514,10 @@ impl<'a, 'policy> FragmentSender<'a, 'policy> {
         out: &mut [u8],
         now_ms: u64,
     ) -> Result<Option<usize>, FragmentError> {
+        let mut probe = *output;
+        if self.write_next_inner(&mut probe, out)?.is_none() {
+            return Ok(None);
+        }
         if !policy.accepts_with_authority(&self.permit, authority, peer) {
             return Err(FragmentError::InvalidPeerEvidence);
         }
@@ -2333,6 +2691,9 @@ impl<'a, 'policy> AuthenticatedFragmentReceiver<'a, 'policy> {
         if rule_id != policy.inbound_rule(permit)? {
             return Err(FragmentError::InvalidPeerEvidence);
         }
+        if is_sender_facing_control(frame.payload(), rule_id)? {
+            return Err(FragmentError::MalformedAck);
+        }
         let counter = (u32::from(frame.epoch()) << 16) | u32::from(frame.seqnum().get());
         policy.replay_receiver_terminal(permit, rule_id, counter, now_ms, frame.payload())
     }
@@ -2365,6 +2726,9 @@ impl<'a, 'policy> AuthenticatedFragmentReceiver<'a, 'policy> {
             )))?;
         if rule_id != policy.inbound_rule(permit)? {
             return Err(FragmentError::InvalidPeerEvidence);
+        }
+        if is_sender_facing_control(frame.payload(), rule_id)? {
+            return Err(FragmentError::MalformedAck);
         }
         policy.replay_receiver_terminal(
             permit,
@@ -2576,14 +2940,7 @@ impl<'a, 'policy> AuthenticatedFragmentReceiver<'a, 'policy> {
         if self.terminal {
             return Err(FragmentError::InvalidState);
         }
-        policy.release_receiver(
-            &self.permit,
-            self.rule_id,
-            self.session_id,
-            now_ms,
-            self.high_counter.unwrap_or(0),
-            ReceiverResult::default(),
-        )?;
+        policy.expire_receiver(&self.permit, self.rule_id, self.session_id, now_ms)?;
         self.terminal = true;
         Ok(())
     }
@@ -2659,15 +3016,13 @@ impl<'a> FragmentReceiver<'a> {
         check_rule(data[0])?;
         let rule_id = data[0];
         let mut control = [0u8; 3];
-        for abort in [sender_abort(rule_id), receiver_abort(rule_id)] {
-            let length = abort.write_to(&mut control)?;
-            if data == &control[..length] {
-                self.release();
-                return Ok(ReceiverResult {
-                    aborted: true,
-                    ..ReceiverResult::default()
-                });
-            }
+        let sender_abort_len = sender_abort(rule_id).write_to(&mut control)?;
+        if data == &control[..sender_abort_len] {
+            self.release();
+            return Ok(ReceiverResult {
+                aborted: true,
+                ..ReceiverResult::default()
+            });
         }
         let window = data[1] >> 7;
         let request_len = ack_request(rule_id, window).write_to(&mut control)?;
@@ -2676,6 +3031,9 @@ impl<'a> FragmentReceiver<'a> {
                 self.reset();
             }
             return self.receive_ack_request(rule_id);
+        }
+        if is_sender_facing_control(data, rule_id)? {
+            return Err(FragmentError::MalformedAck);
         }
         let mut tile = [0u8; TILE_SIZE];
         match Fragment::from_bytes(data, &mut tile) {
@@ -3227,6 +3585,161 @@ mod tests {
 
     #[cfg(feature = "test-utils")]
     #[test]
+    fn invalid_sender_calls_do_not_refresh_inactivity() {
+        let (authority, peer, policy, permit) = authorized_peer(1);
+        let payload = [0x55; 16];
+        let mut sender = FragmentSender::new_with_authority(
+            &policy, &permit, &authority, &peer, &payload, 64, 1,
+        )
+        .unwrap();
+        let index = rule_index(sender.rule_id()).unwrap();
+        let initial_deadline = policy.current_entry_mut(&permit).unwrap().sender_sessions[index]
+            .unwrap()
+            .expires_at_ms;
+
+        assert_eq!(
+            sender
+                .get_fragment_with_authority(
+                    &policy,
+                    &authority,
+                    &peer,
+                    sender.fragment_count(),
+                    2,
+                )
+                .unwrap(),
+            None
+        );
+        assert_eq!(
+            policy.current_entry_mut(&permit).unwrap().sender_sessions[index]
+                .unwrap()
+                .expires_at_ms,
+            initial_deadline
+        );
+
+        sender
+            .start_with_authority(&policy, &authority, &peer, 10)
+            .unwrap();
+        let valid_deadline = 10 + INACTIVITY_TIMEOUT_MILLIS;
+        assert_eq!(
+            sender.start_with_authority(&policy, &authority, &peer, 20),
+            Err(FragmentError::InvalidState)
+        );
+        let mut no_output = SenderOutput::None;
+        assert_eq!(
+            sender
+                .write_next_with_authority(
+                    &policy,
+                    &authority,
+                    &peer,
+                    &mut no_output,
+                    &mut [0u8; MAX_FRAGMENT_WIRE_SIZE],
+                    30,
+                )
+                .unwrap(),
+            None
+        );
+        assert_eq!(
+            policy.current_entry_mut(&permit).unwrap().sender_sessions[index]
+                .unwrap()
+                .expires_at_ms,
+            valid_deadline
+        );
+        assert_eq!(policy.expire_due(valid_deadline - 1).unwrap(), 0);
+        assert_eq!(policy.expire_due(valid_deadline).unwrap(), 1);
+        let snapshot = policy.snapshot_for_tests();
+        assert_eq!(snapshot.sender_session_count, 0);
+        assert_eq!(snapshot.sender_tombstone_count, 1);
+    }
+
+    #[cfg(feature = "test-utils")]
+    #[test]
+    fn expiry_reclaims_multiple_sessions_and_rejects_late_fragments() {
+        let (authority, peer, policy, permit) = authorized_peer(1);
+        let payload = [0x55; 16];
+        let _sender = FragmentSender::new_with_authority(
+            &policy, &permit, &authority, &peer, &payload, 64, 1,
+        )
+        .unwrap();
+        let mut storage = [0u8; 256];
+        let mut receiver = AuthenticatedFragmentReceiver::new_with_authority(
+            &policy,
+            &permit,
+            &authority,
+            &peer,
+            &mut storage,
+            1,
+        )
+        .unwrap();
+        let receiver_rule = receiver.rule_id;
+        let deadline = 1 + INACTIVITY_TIMEOUT_MILLIS;
+
+        assert_eq!(
+            receiver.timeout(&policy, deadline - 1),
+            Err(FragmentError::InvalidState)
+        );
+        receiver.timeout(&policy, deadline).unwrap();
+        assert_eq!(policy.expire_due(deadline).unwrap(), 1);
+        let snapshot = policy.snapshot_for_tests();
+        assert_eq!(snapshot.sender_session_count, 0);
+        assert_eq!(snapshot.receiver_session_count, 0);
+        assert_eq!(snapshot.sender_tombstone_count, 1);
+        assert_eq!(snapshot.receiver_tombstone_count, 1);
+
+        let late_regular = [receiver_rule, 0x7c];
+        assert_eq!(
+            policy
+                .replay_receiver_terminal(&permit, receiver_rule, 2, deadline + 1, &late_regular,)
+                .unwrap(),
+            None
+        );
+        let request = [receiver_rule, 0x00];
+        let terminal = policy
+            .replay_receiver_terminal(&permit, receiver_rule, 3, deadline + 2, &request)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            terminal.response,
+            Some(ReceiverResponse::ReceiverAbort {
+                rule_id: receiver_rule
+            })
+        );
+        assert!(terminal.aborted);
+    }
+
+    #[cfg(feature = "test-utils")]
+    #[test]
+    fn deadline_overflow_and_clock_wrap_fail_without_leaking_sessions() {
+        let mut authority = PeerContextAuthority::<1>::new([0x24; 32]).unwrap();
+        let peer = authority
+            .issue_test_peer([0x42; 32], 1, 3, 7, u64::MAX - 1)
+            .unwrap();
+        let mut policy = FragmentationPolicy::<1>::new().unwrap();
+        let permit = policy
+            .accept_peer_with_authority(&authority, &peer, u64::MAX - 1)
+            .unwrap();
+        let payload = [0x55; 16];
+        assert!(matches!(
+            FragmentSender::new_with_authority(
+                &policy,
+                &permit,
+                &authority,
+                &peer,
+                &payload,
+                64,
+                u64::MAX - 1,
+            ),
+            Err(FragmentError::InvalidPeerEvidence)
+        ));
+        assert_eq!(policy.snapshot_for_tests().sender_session_count, 0);
+        assert_eq!(
+            policy.expire_due(u64::MAX - 2),
+            Err(FragmentError::InvalidPeerEvidence)
+        );
+        assert_eq!(policy.snapshot_for_tests().sender_session_count, 0);
+    }
+
+    #[cfg(feature = "test-utils")]
+    #[test]
     fn authenticated_sender_ack_high_water_rejects_replay() {
         let (authority, peer, policy, permit) = authorized_peer(1);
         let payload = [0x55; 16];
@@ -3266,6 +3779,170 @@ mod tests {
         );
         assert_eq!(
             sender.handle_ack_link_verified(&policy, &authority, &peer, input),
+            Err(FragmentError::InvalidPeerEvidence)
+        );
+    }
+
+    #[cfg(feature = "test-utils")]
+    #[test]
+    fn authenticated_ack_resets_timer_only_after_valid_fresh_control() {
+        let (authority, peer, policy, permit) = authorized_peer(1);
+        let rule_id = policy.outbound_rule(&permit).unwrap();
+        let payload = [0x55; 16];
+        let mut sender = FragmentSender::new_with_authority(
+            &policy, &permit, &authority, &peer, &payload, 64, 1,
+        )
+        .unwrap();
+        sender
+            .start_with_authority(&policy, &authority, &peer, 1)
+            .unwrap();
+        let receiving_link_retired = core::sync::atomic::AtomicBool::new(false);
+        let peer_generation_retired = core::sync::atomic::AtomicBool::new(false);
+        let mut malformed_wire = [0u8; 10];
+        let malformed_len = Ack::new(rule_id, 1, 0, true)
+            .write_to(&mut malformed_wire)
+            .unwrap();
+        assert_eq!(
+            sender.handle_ack_link_verified(
+                &policy,
+                &authority,
+                &peer,
+                authenticated_input(
+                    &malformed_wire[..malformed_len],
+                    authority.local_eui64(),
+                    *peer.signer_identity(),
+                    2,
+                    2,
+                    1,
+                    &receiving_link_retired,
+                    &peer_generation_retired,
+                ),
+            ),
+            Err(FragmentError::MalformedAck)
+        );
+        assert_eq!(sender.attempts(), 1);
+        assert_eq!(sender.retransmission_deadline_ms(), Some(10_001));
+
+        let mut negative_wire = [0u8; 10];
+        let negative_len = Ack::new(rule_id, 0, 0, false)
+            .write_to(&mut negative_wire)
+            .unwrap();
+        let negative = authenticated_input(
+            &negative_wire[..negative_len],
+            authority.local_eui64(),
+            *peer.signer_identity(),
+            3,
+            3,
+            1,
+            &receiving_link_retired,
+            &peer_generation_retired,
+        );
+        assert!(matches!(
+            sender
+                .handle_ack_link_verified(&policy, &authority, &peer, negative)
+                .unwrap(),
+            SenderOutput::Retransmit { .. }
+        ));
+        assert_eq!(sender.attempts(), 2);
+        assert_eq!(sender.retransmission_deadline_ms(), Some(10_003));
+        assert_eq!(
+            sender.handle_ack_link_verified(&policy, &authority, &peer, negative),
+            Err(FragmentError::InvalidPeerEvidence)
+        );
+        assert_eq!(sender.attempts(), 2);
+        assert_eq!(sender.retransmission_deadline_ms(), Some(10_003));
+
+        let mut abort_wire = [0u8; 3];
+        let abort_len = receiver_abort(rule_id).write_to(&mut abort_wire).unwrap();
+        assert_eq!(
+            sender
+                .handle_ack_link_verified(
+                    &policy,
+                    &authority,
+                    &peer,
+                    authenticated_input(
+                        &abort_wire[..abort_len],
+                        authority.local_eui64(),
+                        *peer.signer_identity(),
+                        4,
+                        4,
+                        1,
+                        &receiving_link_retired,
+                        &peer_generation_retired,
+                    ),
+                )
+                .unwrap(),
+            SenderOutput::None
+        );
+        assert_eq!(sender.status(), SenderStatus::Aborted);
+        assert_eq!(sender.retransmission_deadline_ms(), None);
+    }
+
+    #[cfg(feature = "test-utils")]
+    #[test]
+    fn authenticated_fixed_retransmission_timer_is_exact_and_bounded() {
+        let (authority, peer, policy, permit) = authorized_peer(1);
+        let payload = [0x55; 16];
+        let mut sender = FragmentSender::new_with_authority(
+            &policy, &permit, &authority, &peer, &payload, 64, 1,
+        )
+        .unwrap();
+        sender
+            .start_with_authority(&policy, &authority, &peer, 1)
+            .unwrap();
+        assert_eq!(RETRANSMISSION_TIMEOUT_MILLIS, 10_000);
+        assert_eq!(sender.retransmission_deadline_ms(), Some(10_001));
+        assert_eq!(
+            sender.timeout_with_authority(&policy, &authority, &peer, 0),
+            Err(FragmentError::InvalidPeerEvidence)
+        );
+        assert_eq!(
+            sender
+                .timeout_with_authority(&policy, &authority, &peer, 10_000)
+                .unwrap(),
+            SenderOutput::None
+        );
+        assert_eq!(sender.attempts(), 1);
+
+        for (now_ms, expected_attempts, next_deadline) in [
+            (10_001, 2, 20_001),
+            (20_001, 3, 30_001),
+            (30_001, 4, 40_001),
+        ] {
+            assert_eq!(
+                sender
+                    .timeout_with_authority(&policy, &authority, &peer, now_ms)
+                    .unwrap(),
+                SenderOutput::AckRequest { written: false }
+            );
+            assert_eq!(sender.attempts(), expected_attempts);
+            assert_eq!(sender.retransmission_deadline_ms(), Some(next_deadline));
+            assert_eq!(
+                sender
+                    .timeout_with_authority(&policy, &authority, &peer, now_ms)
+                    .unwrap(),
+                SenderOutput::None
+            );
+        }
+
+        assert_eq!(
+            sender
+                .timeout_with_authority(&policy, &authority, &peer, 40_001)
+                .unwrap(),
+            SenderOutput::Abort { written: false }
+        );
+        assert_eq!(sender.status(), SenderStatus::Aborted);
+        assert_eq!(sender.attempts(), MAX_ACK_REQUESTS as u8);
+        assert_eq!(sender.retransmission_deadline_ms(), None);
+        let snapshot = policy.snapshot_for_tests();
+        assert_eq!(snapshot.sender_session_count, 0);
+        assert_eq!(snapshot.sender_tombstone_count, 1);
+        assert_eq!(
+            sender.timeout_with_authority(&policy, &authority, &peer, 40_002),
+            Err(FragmentError::InvalidState)
+        );
+        assert_eq!(
+            retransmission_deadline(u64::MAX - RETRANSMISSION_TIMEOUT_MILLIS + 1),
             Err(FragmentError::InvalidPeerEvidence)
         );
     }
@@ -3371,6 +4048,154 @@ mod tests {
             Err(FragmentError::InvalidPeerEvidence)
         ));
         assert!(receiver.packet().is_none());
+    }
+
+    #[cfg(feature = "test-utils")]
+    #[test]
+    fn authenticated_receiver_routes_abort_by_role_and_tombstones_once() {
+        let (authority, peer, policy, permit) = authorized_peer(1);
+        let rule_id = policy.inbound_rule(&permit).unwrap();
+        let tile = [0x23; TILE_SIZE];
+        let opener = Fragment {
+            rule_id,
+            window: 0,
+            fcn: 62,
+            payload: &tile,
+            mic: [0; MIC_LENGTH],
+        };
+        let mut opener_wire = [0u8; TILE_SIZE + 2];
+        let opener_len = opener.write_to(&mut opener_wire).unwrap();
+        let mut receiver_abort_wire = [0u8; 3];
+        let receiver_abort_len = receiver_abort(rule_id)
+            .write_to(&mut receiver_abort_wire)
+            .unwrap();
+        let mut sender_abort_wire = [0u8; 3];
+        let sender_abort_len = sender_abort(rule_id)
+            .write_to(&mut sender_abort_wire)
+            .unwrap();
+        let receiving_link_retired = core::sync::atomic::AtomicBool::new(false);
+        let peer_generation_retired = core::sync::atomic::AtomicBool::new(false);
+        let mut storage = [0u8; MAX_PACKET_SIZE];
+        let mut receiver = AuthenticatedFragmentReceiver::new_with_authority(
+            &policy,
+            &permit,
+            &authority,
+            &peer,
+            &mut storage,
+            1,
+        )
+        .unwrap();
+        receiver
+            .receive_link_verified(
+                &policy,
+                &authority,
+                &peer,
+                authenticated_input(
+                    &opener_wire[..opener_len],
+                    authority.local_eui64(),
+                    *peer.signer_identity(),
+                    2,
+                    2,
+                    1,
+                    &receiving_link_retired,
+                    &peer_generation_retired,
+                ),
+            )
+            .unwrap();
+
+        assert_eq!(
+            receiver.receive_link_verified(
+                &policy,
+                &authority,
+                &peer,
+                authenticated_input(
+                    &receiver_abort_wire[..receiver_abort_len],
+                    authority.local_eui64(),
+                    *peer.signer_identity(),
+                    3,
+                    3,
+                    1,
+                    &receiving_link_retired,
+                    &peer_generation_retired,
+                ),
+            ),
+            Err(FragmentError::MalformedAck)
+        );
+        let snapshot = policy.snapshot_for_tests();
+        assert_eq!(snapshot.receiver_session_count, 1);
+        assert_eq!(snapshot.receiver_tombstone_count, 0);
+        assert_eq!(snapshot.max_receiver_high_counter, Some(2));
+
+        let result = receiver
+            .receive_link_verified(
+                &policy,
+                &authority,
+                &peer,
+                authenticated_input(
+                    &sender_abort_wire[..sender_abort_len],
+                    authority.local_eui64(),
+                    *peer.signer_identity(),
+                    3,
+                    3,
+                    1,
+                    &receiving_link_retired,
+                    &peer_generation_retired,
+                ),
+            )
+            .unwrap();
+        assert!(result.aborted);
+        let snapshot = policy.snapshot_for_tests();
+        assert_eq!(snapshot.receiver_session_count, 0);
+        assert_eq!(snapshot.receiver_tombstone_count, 1);
+        assert_eq!(snapshot.max_receiver_high_counter, Some(3));
+        drop(receiver);
+
+        assert_eq!(
+            AuthenticatedFragmentReceiver::replay_terminal_link_evidence(
+                &policy,
+                &permit,
+                &authority,
+                &peer,
+                authenticated_input(
+                    &sender_abort_wire[..sender_abort_len],
+                    authority.local_eui64(),
+                    *peer.signer_identity(),
+                    4,
+                    4,
+                    1,
+                    &receiving_link_retired,
+                    &peer_generation_retired,
+                ),
+            ),
+            Ok(None)
+        );
+        assert_eq!(
+            policy.snapshot_for_tests().max_receiver_high_counter,
+            Some(4)
+        );
+        assert_eq!(
+            AuthenticatedFragmentReceiver::replay_terminal_link_evidence(
+                &policy,
+                &permit,
+                &authority,
+                &peer,
+                authenticated_input(
+                    &receiver_abort_wire[..receiver_abort_len],
+                    authority.local_eui64(),
+                    *peer.signer_identity(),
+                    5,
+                    5,
+                    1,
+                    &receiving_link_retired,
+                    &peer_generation_retired,
+                ),
+            ),
+            Err(FragmentError::MalformedAck)
+        );
+        assert_eq!(
+            policy.snapshot_for_tests().max_receiver_high_counter,
+            Some(4)
+        );
     }
 
     #[cfg(feature = "test-utils")]

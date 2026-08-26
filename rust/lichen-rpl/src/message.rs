@@ -90,6 +90,55 @@ pub const CODE_DIO: u8 = 1;
 pub const CODE_DAO: u8 = 2;
 pub const CODE_DAO_ACK: u8 = 3;
 
+// ── DIS ──────────────────────────────────────────────────────────────────────
+
+/// DODAG Information Solicitation (RFC 6550 6.2).
+///
+/// A 2-byte base object (flags, reserved) followed by an optional chain of
+/// RPL options. The reserved byte MUST be zero on transmit and is rejected
+/// if nonzero on receive per RFC 6550 6.2.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Dis {
+    pub flags: u8,
+    pub reserved: u8,
+}
+
+impl Dis {
+    pub const BASE_LEN: usize = 2;
+
+    pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
+        if data.len() < Self::BASE_LEN {
+            return Err(TooShort::new(Self::BASE_LEN, data.len()).into());
+        }
+        let reserved = data[1];
+        if reserved != 0 {
+            return Err(RplError::InvalidOption);
+        }
+        Ok(Self {
+            flags: data[0],
+            reserved,
+        })
+    }
+
+    pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
+        if out.len() < Self::BASE_LEN {
+            return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
+        }
+        out[0] = self.flags;
+        out[1] = self.reserved;
+        Ok(Self::BASE_LEN)
+    }
+
+    /// Options slice (everything after the 2-byte base).
+    pub fn options_tail(data: &[u8]) -> &[u8] {
+        if data.len() > Self::BASE_LEN {
+            &data[Self::BASE_LEN..]
+        } else {
+            &[]
+        }
+    }
+}
+
 // ── DIO ──────────────────────────────────────────────────────────────────────
 
 /// DIO base object (24 bytes), decoded from the ICMPv6 body after the 4-byte
@@ -441,6 +490,99 @@ impl<'a> SignedDaoEnvelope<'a> {
     }
 }
 
+// ── DAO-ACK ──────────────────────────────────────────────────────────────────
+
+/// DAO Acknowledgement (RFC 6550 6.5).
+///
+/// The D flag (bit 7 of byte 1) determines whether the 16-byte DODAGID follows
+/// the 4-byte base. LICHEN primarily uses D=0 (no DODAGID), but both are
+/// supported for completeness.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DaoAck {
+    pub rpl_instance_id: u8,
+    pub flags: u8,
+    pub dao_sequence: u8,
+    pub status: u8,
+    pub dodag_id: Option<[u8; 16]>,
+}
+
+impl DaoAck {
+    pub const BASE_LEN_NO_DODAGID: usize = 4;
+    pub const BASE_LEN_WITH_DODAGID: usize = 20;
+
+    pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
+        if data.len() < Self::BASE_LEN_NO_DODAGID {
+            return Err(TooShort::new(Self::BASE_LEN_NO_DODAGID, data.len()).into());
+        }
+        let d_byte = data[1];
+        let d_flag = (d_byte >> 7) & 1;
+        let base_len = if d_flag == 1 {
+            Self::BASE_LEN_WITH_DODAGID
+        } else {
+            Self::BASE_LEN_NO_DODAGID
+        };
+        if data.len() < base_len {
+            return Err(TooShort::new(base_len, data.len()).into());
+        }
+        let dodag_id = if d_flag == 1 {
+            Some(data[4..20].try_into().unwrap())
+        } else {
+            None
+        };
+        // Reject local RPLInstanceID 0xC0-0xFF per RFC 6550 5.1
+        let rpl_instance_id = data[0];
+        if rpl_instance_id >= 0xC0 {
+            return Err(RplError::LocalInstanceId(rpl_instance_id));
+        }
+        Ok(Self {
+            rpl_instance_id,
+            flags: d_byte & 0x7F,
+            dao_sequence: data[2],
+            status: data[3],
+            dodag_id,
+        })
+    }
+
+    pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
+        // Reject local RPLInstanceID 0xC0-0xFF per RFC 6550 5.1
+        if self.rpl_instance_id >= 0xC0 {
+            return Err(RplError::LocalInstanceId(self.rpl_instance_id));
+        }
+        let base_len = if self.dodag_id.is_some() {
+            Self::BASE_LEN_WITH_DODAGID
+        } else {
+            Self::BASE_LEN_NO_DODAGID
+        };
+        if out.len() < base_len {
+            return Err(BufferTooSmall::new(base_len, out.len()).into());
+        }
+        let d_byte = ((self.dodag_id.is_some() as u8) << 7) | (self.flags & 0x7F);
+        out[0] = self.rpl_instance_id;
+        out[1] = d_byte;
+        out[2] = self.dao_sequence;
+        out[3] = self.status;
+        if let Some(dodag_id) = self.dodag_id {
+            out[4..20].copy_from_slice(&dodag_id);
+        }
+        Ok(base_len)
+    }
+
+    /// Options slice (everything after the base).
+    pub fn options_tail(data: &[u8]) -> &[u8] {
+        if data.len() < Self::BASE_LEN_NO_DODAGID {
+            return &[];
+        }
+        let d_byte = data[1];
+        let d_flag = (d_byte >> 7) & 1;
+        let base_len = if d_flag == 1 {
+            Self::BASE_LEN_WITH_DODAGID
+        } else {
+            Self::BASE_LEN_NO_DODAGID
+        };
+        data.get(base_len..).unwrap_or_default()
+    }
+}
+
 // ── DODAG Configuration option (type 4) ──────────────────────────────────────
 
 pub const DODAG_CONFIG_DATA_LEN: usize = 14;
@@ -563,7 +705,10 @@ impl RplTarget {
     }
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
-        // Always encode full /128 for simplicity
+        // IPv6 prefix cannot exceed 128 bits (16 bytes)
+        if self.prefix_len > 128 {
+            return Err(RplError::InvalidOption);
+        }
         let nbytes = (self.prefix_len as usize).div_ceil(8);
         let data_len = 2 + nbytes;
         let needed = 2 + data_len;
@@ -1247,5 +1392,271 @@ mod tests {
         };
         let mut buf = [0u8; 20];
         assert_eq!(dao.write_to(&mut buf), Err(RplError::LocalInstanceId(0xC0)));
+    }
+
+    // ── DIS round-trip ────────────────────────────────────────────────────────
+
+    #[test]
+    fn dis_encode_decode_roundtrip() {
+        let orig = Dis {
+            flags: 0,
+            reserved: 0,
+        };
+        let mut buf = [0u8; 2];
+        let written = orig.write_to(&mut buf).unwrap();
+        assert_eq!(written, 2);
+        assert_eq!(buf, [0, 0]);
+        let decoded = Dis::from_bytes(&buf).unwrap();
+        assert_eq!(decoded, orig);
+    }
+
+    #[test]
+    fn dis_preserves_flags() {
+        let orig = Dis {
+            flags: 0xA5,
+            reserved: 0,
+        };
+        let mut buf = [0u8; 2];
+        orig.write_to(&mut buf).unwrap();
+        assert_eq!(buf[0], 0xA5);
+        let decoded = Dis::from_bytes(&buf).unwrap();
+        assert_eq!(decoded.flags, 0xA5);
+    }
+
+    #[test]
+    fn dis_rejects_nonzero_reserved() {
+        let buf = [0x00, 0x01]; // flags=0, reserved=1
+        assert_eq!(Dis::from_bytes(&buf), Err(RplError::InvalidOption));
+    }
+
+    #[test]
+    fn dis_too_short() {
+        for length in 0..Dis::BASE_LEN {
+            assert_eq!(
+                Dis::from_bytes(&[0u8; Dis::BASE_LEN][..length]),
+                Err(TooShort::new(Dis::BASE_LEN, length).into())
+            );
+        }
+    }
+
+    #[test]
+    fn every_dis_matches_committed_cross_language_vectors() {
+        let document: serde_json::Value =
+            serde_json::from_str(include_str!("../../../test/vectors/rpl_messages.json")).unwrap();
+        let vectors = document["vectors"].as_array().unwrap();
+        let mut executed = 0;
+        for vector in vectors.iter().filter(|vector| vector["type"] == "dis") {
+            let encoded_hex = vector["encoded"].as_str().unwrap();
+            let encoded = decode_hex(encoded_hex);
+
+            if let Some(expect_error) = vector.get("expect_error") {
+                let err_type = expect_error.as_str().unwrap();
+                let result = Dis::from_bytes(&encoded);
+                match err_type {
+                    "too_short" => {
+                        assert!(
+                            matches!(result, Err(RplError::TooShort(_))),
+                            "{}: expected TooShort, got {:?}",
+                            vector["name"],
+                            result
+                        );
+                    }
+                    "nonzero_reserved" => {
+                        assert_eq!(result, Err(RplError::InvalidOption), "{}", vector["name"]);
+                    }
+                    other => panic!("unknown expect_error type: {}", other),
+                }
+            } else {
+                let fields = &vector["fields"];
+                let dis = Dis {
+                    flags: fields["flags"].as_u64().unwrap() as u8,
+                    reserved: fields["reserved"].as_u64().unwrap() as u8,
+                };
+                // Verify decode
+                let decoded = Dis::from_bytes(&encoded).unwrap();
+                assert_eq!(decoded, dis, "{}", vector["name"]);
+                // Verify encode
+                let mut actual = [0u8; 64];
+                let written = dis.write_to(&mut actual).unwrap();
+                // DIS encode is just the 2-byte base (options not included in write_to)
+                assert_eq!(&actual[..written], &encoded[..2], "{}", vector["name"]);
+            }
+            executed += 1;
+        }
+        assert!(
+            executed >= 5,
+            "expected at least 5 DIS vectors, got {}",
+            executed
+        );
+    }
+
+    // ── DAO-ACK round-trip ────────────────────────────────────────────────────
+
+    #[test]
+    fn dao_ack_encode_decode_roundtrip() {
+        let orig = DaoAck {
+            rpl_instance_id: 0,
+            flags: 0,
+            dao_sequence: 5,
+            status: 0,
+            dodag_id: None,
+        };
+        let mut buf = [0u8; 4];
+        let written = orig.write_to(&mut buf).unwrap();
+        assert_eq!(written, 4);
+        assert_eq!(buf, [0, 0, 5, 0]);
+        let decoded = DaoAck::from_bytes(&buf).unwrap();
+        assert_eq!(decoded, orig);
+    }
+
+    #[test]
+    fn dao_ack_with_dodagid_roundtrip() {
+        let mut dodag_id = [0u8; 16];
+        dodag_id[0] = 0xfd;
+        dodag_id[15] = 1;
+
+        let orig = DaoAck {
+            rpl_instance_id: 0,
+            flags: 0,
+            dao_sequence: 9,
+            status: 0,
+            dodag_id: Some(dodag_id),
+        };
+        let mut buf = [0u8; 20];
+        let written = orig.write_to(&mut buf).unwrap();
+        assert_eq!(written, 20);
+        assert_eq!(buf[0], 0); // rpl_instance_id
+        assert_eq!(buf[1], 0x80); // D=1, flags=0
+        assert_eq!(buf[2], 9); // dao_sequence
+        assert_eq!(buf[3], 0); // status
+        assert_eq!(&buf[4..20], &dodag_id);
+        let decoded = DaoAck::from_bytes(&buf).unwrap();
+        assert_eq!(decoded, orig);
+    }
+
+    #[test]
+    fn dao_ack_too_short() {
+        for length in 0..DaoAck::BASE_LEN_NO_DODAGID {
+            assert_eq!(
+                DaoAck::from_bytes(&[0u8; 4][..length]),
+                Err(TooShort::new(DaoAck::BASE_LEN_NO_DODAGID, length).into())
+            );
+        }
+    }
+
+    #[test]
+    fn dao_ack_missing_dodagid() {
+        // D flag set but only 4 bytes provided
+        let buf = [0, 0x80, 5, 0];
+        assert_eq!(
+            DaoAck::from_bytes(&buf),
+            Err(TooShort::new(DaoAck::BASE_LEN_WITH_DODAGID, 4).into())
+        );
+    }
+
+    #[test]
+    fn dao_ack_rejects_local_instance_id_0xc0() {
+        let buf = [0xC0, 0, 5, 0];
+        assert_eq!(
+            DaoAck::from_bytes(&buf),
+            Err(RplError::LocalInstanceId(0xC0))
+        );
+    }
+
+    #[test]
+    fn dao_ack_rejects_local_instance_id_0xff() {
+        let buf = [0xFF, 0, 5, 0];
+        assert_eq!(
+            DaoAck::from_bytes(&buf),
+            Err(RplError::LocalInstanceId(0xFF))
+        );
+    }
+
+    #[test]
+    fn dao_ack_accepts_global_instance_id_0xbf() {
+        let buf = [0xBF, 0, 5, 0];
+        let dao_ack = DaoAck::from_bytes(&buf).unwrap();
+        assert_eq!(dao_ack.rpl_instance_id, 0xBF);
+    }
+
+    #[test]
+    fn dao_ack_write_rejects_local_instance_id() {
+        let dao_ack = DaoAck {
+            rpl_instance_id: 0xC0,
+            flags: 0,
+            dao_sequence: 1,
+            status: 0,
+            dodag_id: None,
+        };
+        let mut buf = [0u8; 4];
+        assert_eq!(
+            dao_ack.write_to(&mut buf),
+            Err(RplError::LocalInstanceId(0xC0))
+        );
+    }
+
+    #[test]
+    fn every_dao_ack_matches_committed_cross_language_vectors() {
+        let document: serde_json::Value =
+            serde_json::from_str(include_str!("../../../test/vectors/rpl_messages.json")).unwrap();
+        let vectors = document["vectors"].as_array().unwrap();
+        let mut executed = 0;
+        for vector in vectors.iter().filter(|vector| vector["type"] == "dao_ack") {
+            let encoded_hex = vector["encoded"].as_str().unwrap();
+            let encoded = decode_hex(encoded_hex);
+
+            if let Some(expect_error) = vector.get("expect_error") {
+                let err_type = expect_error.as_str().unwrap();
+                let result = DaoAck::from_bytes(&encoded);
+                match err_type {
+                    "too_short" => {
+                        assert!(
+                            matches!(result, Err(RplError::TooShort(_))),
+                            "{}: expected TooShort, got {:?}",
+                            vector["name"],
+                            result
+                        );
+                    }
+                    "missing_dodagid" => {
+                        assert!(
+                            matches!(result, Err(RplError::TooShort(_))),
+                            "{}: expected TooShort for missing DODAGID, got {:?}",
+                            vector["name"],
+                            result
+                        );
+                    }
+                    other => panic!("unknown expect_error type: {}", other),
+                }
+            } else {
+                let fields = &vector["fields"];
+                let dodag_id = if fields["dodag_id"].is_null() {
+                    None
+                } else {
+                    let addr_str = fields["dodag_id"].as_str().unwrap();
+                    let addr: core::net::Ipv6Addr = addr_str.parse().unwrap();
+                    Some(addr.octets())
+                };
+                let dao_ack = DaoAck {
+                    rpl_instance_id: fields["rpl_instance_id"].as_u64().unwrap() as u8,
+                    flags: fields["flags"].as_u64().unwrap() as u8,
+                    dao_sequence: fields["dao_sequence"].as_u64().unwrap() as u8,
+                    status: fields["status"].as_u64().unwrap() as u8,
+                    dodag_id,
+                };
+                // Verify decode
+                let decoded = DaoAck::from_bytes(&encoded).unwrap();
+                assert_eq!(decoded, dao_ack, "{}", vector["name"]);
+                // Verify encode
+                let mut actual = [0u8; 64];
+                let written = dao_ack.write_to(&mut actual).unwrap();
+                assert_eq!(&actual[..written], &encoded[..], "{}", vector["name"]);
+            }
+            executed += 1;
+        }
+        assert!(
+            executed >= 5,
+            "expected at least 5 DAO-ACK vectors, got {}",
+            executed
+        );
     }
 }

@@ -565,6 +565,10 @@ async fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    // Advertise global/Yggdrasil reachability only while an actual upstream
+    // TUN path is owned by this process. `--no-tun` and unsupported hosts must
+    // fail closed with the DIO Grounded bit clear.
+    let _ = gw.set_ygg_reachable(tun.is_some());
     if let Err(error) = configure_gateway_federation(&mut gw, &mut config.gateway_coordination) {
         error!("gateway federation provisioning failed: {error}");
         return ExitCode::FAILURE;

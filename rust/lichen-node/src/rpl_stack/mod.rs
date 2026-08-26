@@ -127,6 +127,12 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         &self.rpl
     }
 
+    /// Update the root DIO Grounded bit from the owned upstream runtime state.
+    #[must_use]
+    pub fn set_ygg_reachable(&mut self, reachable: bool) -> bool {
+        self.rpl.set_ygg_reachable(reachable)
+    }
+
     #[cfg(feature = "raw-rpl-test-api")]
     pub fn rpl_node_mut(&mut self) -> &mut RplNode {
         &mut self.rpl

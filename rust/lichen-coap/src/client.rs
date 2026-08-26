@@ -397,12 +397,10 @@ fn decode(data: &[u8], expected_mid: u16, expected_token: &[u8]) -> std::io::Res
 
     // Parse Max-Age option (RFC 7252 §5.10.5)
     let mut max_age: Option<u32> = None;
-    for opt_result in packet.options() {
-        if let Ok(opt) = opt_result {
-            if opt.number == OptionNumber::MaxAge as u16 {
-                max_age = opt.as_uint().ok();
-                break;
-            }
+    for opt in packet.options().flatten() {
+        if opt.number == OptionNumber::MaxAge as u16 {
+            max_age = opt.as_uint().ok();
+            break;
         }
     }
 

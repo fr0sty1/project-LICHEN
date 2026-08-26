@@ -24,6 +24,18 @@ pub const SIG_SIZE: usize = 48;
 /// Minimum beacon size (header + signature, no CBOR options).
 pub const MIN_BEACON_SIZE: usize = HEADER_SIZE + SIG_SIZE;
 
+/// Derive the node's TDMA slot for one superframe.
+///
+/// The hash addition wraps in `u32` before the positive slot modulus, as
+/// required by CCP-15 and the SFN-wrap vectors.
+pub fn slot_for(eui64: &[u8; 8], sfn: u32, num_slots: u8) -> Option<u8> {
+    if num_slots == 0 {
+        return None;
+    }
+    let hash = crate::lichen_hash_32(eui64);
+    Some((hash.wrapping_add(sfn) % u32::from(num_slots)) as u8)
+}
+
 /// TDMA beacon header (24 bytes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TdmaBeaconHeader {

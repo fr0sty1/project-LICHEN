@@ -15,6 +15,9 @@ oscore = { version = "0.1", default-features = false }
 # Re-export heapless for public API types
 heapless = "0.8"
 
+# Constant-time comparison for cryptographic operations
+subtle = { version = "2", default-features = false }
+
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
 log = { version = "0.4", default-features = false, optional = true }

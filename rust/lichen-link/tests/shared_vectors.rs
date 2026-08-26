@@ -18,6 +18,36 @@ struct CryptoMetadata {
     public_key: String,
     preimage: String,
     signature: String,
+    #[serde(default)]
+    verification: Option<VerificationInputs>,
+    #[serde(default)]
+    tamper_cases: Vec<SignedTamperCase>,
+}
+
+#[derive(Deserialize)]
+#[cfg(feature = "schnorr")]
+struct VerificationInputs {
+    length: u8,
+    llsec: u8,
+    epoch: u8,
+    seqnum: u16,
+    dst_len: u8,
+    dst_addr: String,
+    signer_eui64: String,
+    payload: String,
+    signature: String,
+}
+
+#[derive(Deserialize)]
+#[cfg(feature = "schnorr")]
+struct SignedTamperCase {
+    name: String,
+    component: String,
+    production_path: String,
+    verification: VerificationInputs,
+    preimage: String,
+    wire: String,
+    expected_valid: bool,
 }
 
 #[derive(Deserialize)]
@@ -71,6 +101,387 @@ fn parser_rejects_length_255_frame() {
         LichenFrame::from_bytes(&encoded),
         Err(FrameError::FrameTooLarge)
     );
+}
+
+#[cfg(feature = "schnorr")]
+#[test]
+fn canonical_link_signature_covers_exact_normative_transcript() {
+    use lichen_link::schnorr::{verify_frame, verify_profile_message};
+    use lichen_link::{LinkSeqNum, PublicKey};
+    use std::collections::BTreeSet;
+
+    let vectors_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/link_frame.json");
+    let content = fs::read_to_string(vectors_path).expect("read canonical link-frame vectors");
+    let vectors: VectorFile =
+        serde_json::from_str(&content).expect("parse canonical link-frame vectors");
+    let vector = vectors
+        .vectors
+        .iter()
+        .find(|vector| vector.name == "short_addr_signed")
+        .expect("canonical short-address signed vector");
+    let crypto = vector
+        .crypto
+        .as_ref()
+        .expect("signed vector crypto metadata");
+    let wire = hex_decode(&vector.encoded);
+    let frame = LichenFrame::from_bytes(&wire).expect("parse canonical signed frame");
+    let public_key = PublicKey::new(
+        hex_decode(&crypto.public_key)
+            .try_into()
+            .expect("canonical public key is 32 bytes"),
+    );
+    let signature = hex_decode(&crypto.signature);
+    let canonical = crypto
+        .verification
+        .as_ref()
+        .expect("canonical structured verification inputs");
+
+    assert_eq!(frame.mic, signature);
+    assert_eq!(canonical.dst_len as usize, frame.dst_addr.len());
+    assert_eq!(hex_decode(&canonical.signature), signature);
+    assert!(verify_frame(
+        canonical.length,
+        canonical.llsec,
+        canonical.epoch,
+        LinkSeqNum::new(canonical.seqnum),
+        &hex_decode(&canonical.dst_addr),
+        &hex_decode(&canonical.signer_eui64),
+        &hex_decode(&canonical.payload),
+        &signature,
+        &public_key,
+    ));
+
+    // The independently generated canonical preimage verifies as-is. MIC is
+    // an input to verification, not part of the signed transcript itself.
+    let preimage = hex_decode(&crypto.preimage);
+    assert!(verify_profile_message(&public_key, &preimage, &signature));
+    let mut preimage_with_mic = preimage;
+    preimage_with_mic.extend_from_slice(&signature);
+    assert!(!verify_profile_message(
+        &public_key,
+        &preimage_with_mic,
+        &signature,
+    ));
+
+    let covered: BTreeSet<_> = crypto
+        .tamper_cases
+        .iter()
+        .map(|case| case.component.as_str())
+        .collect();
+    assert_eq!(
+        covered,
+        BTreeSet::from([
+            "dst_addr",
+            "dst_len",
+            "epoch",
+            "length",
+            "llsec",
+            "payload",
+            "seqnum",
+            "signature",
+            "signer_eui64",
+        ])
+    );
+
+    for case in &crypto.tamper_cases {
+        let inputs = &case.verification;
+        let destination = hex_decode(&inputs.dst_addr);
+        let signer = hex_decode(&inputs.signer_eui64);
+        let payload = hex_decode(&inputs.payload);
+        let tampered_signature = hex_decode(&inputs.signature);
+        let mut exact_wire = vec![inputs.length, inputs.llsec, inputs.epoch];
+        exact_wire.extend_from_slice(&inputs.seqnum.to_be_bytes());
+        exact_wire.extend_from_slice(&destination);
+        exact_wire.extend_from_slice(&signer);
+        exact_wire.extend_from_slice(&payload);
+        exact_wire.extend_from_slice(&tampered_signature);
+        assert_eq!(exact_wire, hex_decode(&case.wire), "{} wire", case.name);
+        assert!(!case.expected_valid, "{} verdict", case.name);
+
+        let fixed_preimage = hex_decode(&case.preimage);
+        if case.production_path == "frame" {
+            assert_eq!(
+                inputs.dst_len as usize,
+                destination.len(),
+                "{} DST_LEN",
+                case.name
+            );
+            assert!(
+                !verify_frame(
+                    inputs.length,
+                    inputs.llsec,
+                    inputs.epoch,
+                    LinkSeqNum::new(inputs.seqnum),
+                    &destination,
+                    &signer,
+                    &payload,
+                    &tampered_signature,
+                    &public_key,
+                ),
+                "{} production verifier accepted tamper",
+                case.name
+            );
+        } else {
+            assert_eq!(case.component, "dst_len");
+            assert_eq!(case.production_path, "preimage");
+        }
+        assert!(
+            !verify_profile_message(&public_key, &fixed_preimage, &tampered_signature),
+            "{} fixed preimage accepted tamper",
+            case.name
+        );
+    }
+}
+
+#[cfg(feature = "schnorr")]
+#[test]
+fn signed_address_modes_match_fixed_oracle_and_wire_boundaries() {
+    use lichen_link::schnorr::{verify_frame, verify_profile_message};
+    use lichen_link::{LinkSeqNum, PublicKey};
+    use std::collections::BTreeSet;
+
+    let vectors_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/vectors/link_frame_signed_modes.json");
+    let content = fs::read_to_string(vectors_path).expect("read signed-mode vectors");
+    let vectors: VectorFile = serde_json::from_str(&content).expect("parse signed-mode vectors");
+    let mut covered_modes = BTreeSet::new();
+    let mut max_modes = BTreeSet::new();
+
+    for vector in &vectors.vectors {
+        let wire = hex_decode(&vector.encoded);
+        let frame = LichenFrame::from_bytes(&wire).expect("parse fixed signed-mode frame");
+        let crypto = vector
+            .crypto
+            .as_ref()
+            .expect("signed vector crypto metadata");
+        let public_key = PublicKey::new(
+            hex_decode(&crypto.public_key)
+                .try_into()
+                .expect("fixed public key is 32 bytes"),
+        );
+        let signature = hex_decode(&crypto.signature);
+        let length = wire[0];
+        let llsec = wire[1];
+
+        covered_modes.insert(frame.addr_mode as u8);
+        assert_eq!(frame.mic, signature, "{} MIC bytes", vector.name);
+        assert!(
+            verify_frame(
+                length,
+                llsec,
+                frame.epoch,
+                frame.seqnum,
+                frame.dst_addr,
+                frame.signer_eui64,
+                frame.payload,
+                &signature,
+                &public_key,
+            ),
+            "{} production verification",
+            vector.name
+        );
+        assert!(
+            verify_profile_message(&public_key, &hex_decode(&crypto.preimage), &signature,),
+            "{} fixed preimage verification",
+            vector.name
+        );
+
+        let mut rebuilt = vec![0; wire.len()];
+        let written = frame
+            .write_to(&mut rebuilt)
+            .expect("re-encode signed-mode frame");
+        assert_eq!(&rebuilt[..written], wire, "{} canonical wire", vector.name);
+
+        // Every proper prefix is incomplete, and a byte beyond the declared
+        // LENGTH is never accepted (including 256-byte max-frame extensions).
+        for cut in 0..wire.len() {
+            assert!(
+                LichenFrame::from_bytes(&wire[..cut]).is_err(),
+                "{} accepted truncation at {}",
+                vector.name,
+                cut
+            );
+        }
+        let mut extended_wire = wire.clone();
+        extended_wire.push(0);
+        assert!(
+            LichenFrame::from_bytes(&extended_wire).is_err(),
+            "{} accepted trailing byte",
+            vector.name
+        );
+
+        // Mutate each transcript component through the production verifier.
+        // For zero-width broadcast/elided destinations, a one-byte argument
+        // mutates both the non-wire DST_LEN and the destination component.
+        let mut altered_destination = frame.dst_addr.to_vec();
+        if altered_destination.is_empty() {
+            altered_destination.push(1);
+        } else {
+            altered_destination[0] ^= 1;
+        }
+        let mut altered_signer = frame.signer_eui64.to_vec();
+        altered_signer[0] ^= 1;
+        let mut altered_payload = frame.payload.to_vec();
+        altered_payload[0] ^= 1;
+        let mut altered_signature = signature.clone();
+        altered_signature[0] ^= 1;
+
+        let mutations = [
+            (
+                length ^ 1,
+                llsec,
+                frame.epoch,
+                frame.seqnum,
+                frame.dst_addr,
+                frame.signer_eui64,
+                frame.payload,
+                signature.as_slice(),
+            ),
+            (
+                length,
+                llsec ^ 4,
+                frame.epoch,
+                frame.seqnum,
+                frame.dst_addr,
+                frame.signer_eui64,
+                frame.payload,
+                signature.as_slice(),
+            ),
+            (
+                length,
+                llsec,
+                frame.epoch ^ 1,
+                frame.seqnum,
+                frame.dst_addr,
+                frame.signer_eui64,
+                frame.payload,
+                signature.as_slice(),
+            ),
+            (
+                length,
+                llsec,
+                frame.epoch,
+                LinkSeqNum::new(frame.seqnum.get().wrapping_add(1)),
+                frame.dst_addr,
+                frame.signer_eui64,
+                frame.payload,
+                signature.as_slice(),
+            ),
+            (
+                length,
+                llsec,
+                frame.epoch,
+                frame.seqnum,
+                altered_destination.as_slice(),
+                frame.signer_eui64,
+                frame.payload,
+                signature.as_slice(),
+            ),
+            (
+                length,
+                llsec,
+                frame.epoch,
+                frame.seqnum,
+                frame.dst_addr,
+                altered_signer.as_slice(),
+                frame.payload,
+                signature.as_slice(),
+            ),
+            (
+                length,
+                llsec,
+                frame.epoch,
+                frame.seqnum,
+                frame.dst_addr,
+                frame.signer_eui64,
+                altered_payload.as_slice(),
+                signature.as_slice(),
+            ),
+            (
+                length,
+                llsec,
+                frame.epoch,
+                frame.seqnum,
+                frame.dst_addr,
+                frame.signer_eui64,
+                frame.payload,
+                altered_signature.as_slice(),
+            ),
+        ];
+        for (
+            mutation,
+            (
+                mut_length,
+                mut_llsec,
+                mut_epoch,
+                mut_seqnum,
+                mut_dst,
+                mut_signer,
+                mut_payload,
+                mut_signature,
+            ),
+        ) in mutations.into_iter().enumerate()
+        {
+            assert!(
+                !verify_frame(
+                    mut_length,
+                    mut_llsec,
+                    mut_epoch,
+                    mut_seqnum,
+                    mut_dst,
+                    mut_signer,
+                    mut_payload,
+                    mut_signature,
+                    &public_key,
+                ),
+                "{} accepted transcript mutation {}",
+                vector.name,
+                mutation
+            );
+        }
+
+        if vector.name.contains("max_payload") {
+            max_modes.insert(frame.addr_mode as u8);
+            let expected_payload = 254 - 4 - frame.addr_mode.addr_len() - 8 - 48;
+            assert_eq!(
+                wire.len(),
+                MAX_FRAME_LEN,
+                "{} maximum wire size",
+                vector.name
+            );
+            assert_eq!(
+                frame.payload.len(),
+                expected_payload,
+                "{} maximum payload",
+                vector.name
+            );
+
+            let mut oversized_payload = frame.payload.to_vec();
+            oversized_payload.push(0);
+            let oversized = LichenFrame {
+                epoch: frame.epoch,
+                seqnum: frame.seqnum,
+                dst_addr: frame.dst_addr,
+                signer_eui64: frame.signer_eui64,
+                payload: &oversized_payload,
+                mic: frame.mic,
+                addr_mode: frame.addr_mode,
+                mic_length: frame.mic_length,
+                signature: frame.signature,
+                encryption: frame.encryption,
+            };
+            assert_eq!(
+                oversized.write_to(&mut [0; MAX_FRAME_LEN + 1]),
+                Err(FrameError::FrameTooLarge),
+                "{} one-byte overflow",
+                vector.name
+            );
+        }
+    }
+
+    assert_eq!(covered_modes, BTreeSet::from([0, 1, 2, 3]));
+    assert_eq!(max_modes, BTreeSet::from([0, 1, 2, 3]));
 }
 
 #[test]

@@ -119,7 +119,7 @@ pub enum DestType {
     Broadcast = 0x00,
     /// Send to a specific team.
     Team = 0x01,
-    /// Direct message to a specific IID.
+    /// Direct message to a full native IPv6 address.
     Direct = 0x02,
 }
 
@@ -139,7 +139,7 @@ impl DestType {
         match self {
             Self::Broadcast => 0,
             Self::Team => 1,
-            Self::Direct => 8,
+            Self::Direct => 16,
         }
     }
 }
@@ -164,6 +164,20 @@ pub struct PliPayload {
 }
 
 impl PliPayload {
+    /// Validate the geographic and angular bounds required by the wire profile.
+    pub const fn validate(&self) -> Result<(), PliValidationError> {
+        if self.lat_microdeg < -90_000_000 || self.lat_microdeg > 90_000_000 {
+            return Err(PliValidationError::Latitude(self.lat_microdeg));
+        }
+        if self.lon_microdeg < -180_000_000 || self.lon_microdeg > 180_000_000 {
+            return Err(PliValidationError::Longitude(self.lon_microdeg));
+        }
+        if self.course_cdeg > 35_999 {
+            return Err(PliValidationError::Course(self.course_cdeg));
+        }
+        Ok(())
+    }
+
     /// Encode PLI payload to buffer (excluding subtype byte).
     /// Returns number of bytes written (always 16).
     fn encode(&self, buf: &mut [u8]) -> Result<usize, BufferTooSmall> {
@@ -206,9 +220,9 @@ pub enum ChatDest {
     /// Broadcast to all nodes.
     Broadcast,
     /// Send to a specific team.
-    Team(u8),
-    /// Direct message to a specific IID (8 bytes).
-    Direct([u8; 8]),
+    Team(Team),
+    /// Direct message to a full native IPv6 address (16 bytes).
+    Direct([u8; 16]),
 }
 
 impl ChatDest {
@@ -237,6 +251,7 @@ pub struct ChatPayload {
 impl ChatPayload {
     /// Create a new chat payload.
     pub fn new(dest: ChatDest, message: &[u8]) -> Option<Self> {
+        core::str::from_utf8(message).ok()?;
         let mut msg = heapless::Vec::new();
         msg.extend_from_slice(message).ok()?;
         Some(Self { dest, message: msg })
@@ -269,12 +284,12 @@ impl ChatPayload {
         match &self.dest {
             ChatDest::Broadcast => {}
             ChatDest::Team(team) => {
-                buf[pos] = *team;
+                buf[pos] = *team as u8;
                 pos += 1;
             }
-            ChatDest::Direct(iid) => {
-                buf[pos..pos + 8].copy_from_slice(iid);
-                pos += 8;
+            ChatDest::Direct(address) => {
+                buf[pos..pos + 16].copy_from_slice(address);
+                pos += 16;
             }
         }
 
@@ -314,11 +329,13 @@ impl ChatPayload {
 
         let dest = match dest_type {
             DestType::Broadcast => ChatDest::Broadcast,
-            DestType::Team => ChatDest::Team(data[2]),
+            DestType::Team => {
+                ChatDest::Team(Team::from_byte(data[2]).ok_or(DecodeError::InvalidTeam(data[2]))?)
+            }
             DestType::Direct => {
-                let mut iid = [0u8; 8];
-                iid.copy_from_slice(&data[2..10]);
-                ChatDest::Direct(iid)
+                let mut address = [0u8; 16];
+                address.copy_from_slice(&data[2..18]);
+                ChatDest::Direct(address)
             }
         };
 
@@ -329,9 +346,16 @@ impl ChatPayload {
         if data.len() < total_size {
             return Err(DecodeError::TooShort(TooShort::new(total_size, data.len())));
         }
+        if data.len() != total_size {
+            return Err(DecodeError::InvalidChatLength {
+                expected: total_size,
+                actual: data.len(),
+            });
+        }
 
         let msg_start = len_pos + 1;
         let msg_bytes = &data[msg_start..msg_start + msg_len];
+        core::str::from_utf8(msg_bytes).map_err(|_| DecodeError::InvalidUtf8)?;
 
         let payload = ChatPayload::new(dest, msg_bytes).ok_or(DecodeError::MessageTooLong)?;
         Ok(payload)
@@ -399,10 +423,20 @@ pub enum DecodeError {
     UnknownSubtype(u8),
     /// Invalid destination type.
     InvalidDestType(u8),
+    /// Invalid team byte for a team destination.
+    InvalidTeam(u8),
     /// Message too long for internal buffer.
     MessageTooLong,
     /// Expected a PLI subtype but got a different subtype.
     NotPliSubtype(u8),
+    /// PLI datagram has bytes beyond the canonical 17-byte representation.
+    InvalidPliLength { expected: usize, actual: usize },
+    /// A decoded PLI field violates the profile bounds.
+    InvalidPli(PliValidationError),
+    /// Chat datagram has bytes beyond its length-delimited representation.
+    InvalidChatLength { expected: usize, actual: usize },
+    /// Chat message bytes are not valid UTF-8.
+    InvalidUtf8,
 }
 
 impl fmt::Display for DecodeError {
@@ -411,8 +445,19 @@ impl fmt::Display for DecodeError {
             Self::TooShort(e) => write!(f, "{}", e),
             Self::UnknownSubtype(b) => write!(f, "unknown compact CoT subtype: 0x{:02x}", b),
             Self::InvalidDestType(b) => write!(f, "invalid chat destination type: 0x{:02x}", b),
+            Self::InvalidTeam(b) => write!(f, "invalid chat team destination: 0x{:02x}", b),
             Self::MessageTooLong => write!(f, "chat message exceeds 255 bytes"),
             Self::NotPliSubtype(b) => write!(f, "expected PLI subtype, got: 0x{:02x}", b),
+            Self::InvalidPliLength { expected, actual } => write!(
+                f,
+                "compact CoT PLI requires exactly {expected} bytes, got {actual}"
+            ),
+            Self::InvalidPli(error) => write!(f, "invalid compact CoT PLI: {error}"),
+            Self::InvalidChatLength { expected, actual } => write!(
+                f,
+                "compact CoT chat requires {expected} bytes, got {actual}"
+            ),
+            Self::InvalidUtf8 => write!(f, "compact CoT chat message is not valid UTF-8"),
         }
     }
 }
@@ -425,17 +470,43 @@ impl core::error::Error for DecodeError {}
 pub enum EncodeError {
     /// Output buffer too small.
     BufferTooSmall(BufferTooSmall),
+    /// A PLI field violates the profile bounds.
+    InvalidPli(PliValidationError),
 }
 
 impl fmt::Display for EncodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::BufferTooSmall(e) => write!(f, "{}", e),
+            Self::InvalidPli(error) => write!(f, "invalid compact CoT PLI: {error}"),
         }
     }
 }
 
 impl core::error::Error for EncodeError {}
+
+/// Geographic/angular PLI validation failure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum PliValidationError {
+    Latitude(i32),
+    Longitude(i32),
+    Course(u16),
+}
+
+impl fmt::Display for PliValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Latitude(value) => write!(f, "latitude {value} is outside -90000000..90000000"),
+            Self::Longitude(value) => {
+                write!(f, "longitude {value} is outside -180000000..180000000")
+            }
+            Self::Course(value) => write!(f, "course {value} is outside 0..35999"),
+        }
+    }
+}
+
+impl core::error::Error for PliValidationError {}
 
 /// Encode a PLI payload with its subtype byte.
 fn encode_pli(
@@ -443,6 +514,7 @@ fn encode_pli(
     payload: &PliPayload,
     buf: &mut [u8],
 ) -> Result<usize, EncodeError> {
+    payload.validate().map_err(EncodeError::InvalidPli)?;
     if buf.is_empty() {
         return Err(EncodeError::BufferTooSmall(BufferTooSmall::new(
             PLI_TOTAL_SIZE,
@@ -485,15 +557,26 @@ pub fn encode(cot: &CompactCot, buf: &mut [u8]) -> Result<usize, EncodeError> {
     }
 }
 
-/// Decode a PLI payload from data buffer, constructing the appropriate CompactCot variant.
-fn decode_pli(subtype: CompactCotType, data: &[u8]) -> Result<CompactCot, DecodeError> {
+/// Decode an exact 17-byte PLI datagram.
+pub fn decode_pli(data: &[u8]) -> Result<CompactCot, DecodeError> {
     if data.len() < PLI_TOTAL_SIZE {
         return Err(DecodeError::TooShort(TooShort::new(
             PLI_TOTAL_SIZE,
             data.len(),
         )));
     }
+    if data.len() != PLI_TOTAL_SIZE {
+        return Err(DecodeError::InvalidPliLength {
+            expected: PLI_TOTAL_SIZE,
+            actual: data.len(),
+        });
+    }
+    let subtype = CompactCotType::from_byte(data[0]).ok_or(DecodeError::UnknownSubtype(data[0]))?;
+    if !subtype.is_pli() {
+        return Err(DecodeError::NotPliSubtype(data[0]));
+    }
     let payload = PliPayload::decode(&data[1..]).map_err(DecodeError::TooShort)?;
+    payload.validate().map_err(DecodeError::InvalidPli)?;
     match subtype {
         CompactCotType::FriendlyPli => Ok(CompactCot::FriendlyPli(payload)),
         CompactCotType::HostilePli => Ok(CompactCot::HostilePli(payload)),
@@ -522,7 +605,7 @@ pub fn decode(data: &[u8]) -> Result<CompactCot, DecodeError> {
         CompactCotType::FriendlyPli
         | CompactCotType::HostilePli
         | CompactCotType::NeutralPli
-        | CompactCotType::UnknownPli => decode_pli(subtype, data),
+        | CompactCotType::UnknownPli => decode_pli(data),
         CompactCotType::Marker => Ok(CompactCot::Marker),
         CompactCotType::Alert => Ok(CompactCot::Alert),
     }
@@ -781,7 +864,7 @@ mod tests {
         let expected_hex = "010101084d6f7665206f7574";
         let expected = hex_to_bytes(expected_hex);
 
-        let chat = ChatPayload::new(ChatDest::Team(1), b"Move out").unwrap();
+        let chat = ChatPayload::new(ChatDest::Team(Team::Blue), b"Move out").unwrap();
         let cot = CompactCot::Chat(chat);
 
         // Encode
@@ -799,7 +882,7 @@ mod tests {
         let expected_hex = "0101020d486f6c6420706f736974696f6e";
         let expected = hex_to_bytes(expected_hex);
 
-        let chat = ChatPayload::new(ChatDest::Team(2), b"Hold position").unwrap();
+        let chat = ChatPayload::new(ChatDest::Team(Team::Red), b"Hold position").unwrap();
         let cot = CompactCot::Chat(chat);
 
         // Encode
@@ -814,11 +897,14 @@ mod tests {
 
     #[test]
     fn chat_direct_ack() {
-        let expected_hex = "010200112233445566770341636b";
+        let expected_hex = "0102020000000000000000112233445566770341636b";
         let expected = hex_to_bytes(expected_hex);
 
-        let iid: [u8; 8] = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
-        let chat = ChatPayload::new(ChatDest::Direct(iid), b"Ack").unwrap();
+        let address: [u8; 16] = [
+            0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55,
+            0x66, 0x77,
+        ];
+        let chat = ChatPayload::new(ChatDest::Direct(address), b"Ack").unwrap();
         let cot = CompactCot::Chat(chat);
 
         // Encode
@@ -854,7 +940,7 @@ mod tests {
         let expected_hex = "01010a08436865636b20696e";
         let expected = hex_to_bytes(expected_hex);
 
-        let chat = ChatPayload::new(ChatDest::Team(10), b"Check in").unwrap();
+        let chat = ChatPayload::new(ChatDest::Team(Team::Yellow), b"Check in").unwrap();
         let cot = CompactCot::Chat(chat);
 
         // Encode

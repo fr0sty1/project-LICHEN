@@ -25,6 +25,254 @@ use serde::{Deserialize, Serialize};
 
 use crate::Error;
 
+/// A waypoint payload sent directly to a peer's `/waypoints` resource.
+///
+/// Only `name`, `lat`, and `lon` are required when creating or sharing a
+/// waypoint. The receiving node assigns fields such as `id` and `created`
+/// when the sender omits them (spec Section 18.3.2).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WaypointShare {
+    /// Existing waypoint ID when forwarding a stored waypoint.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// Human-readable name.
+    pub name: String,
+    /// WGS84 latitude in decimal degrees.
+    pub lat: f64,
+    /// WGS84 longitude in decimal degrees.
+    pub lon: f64,
+    /// Altitude in meters.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alt: Option<f64>,
+    /// Icon hint.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<WaypointIcon>,
+    /// Color hint as a text value, normally `#RRGGBB`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// Description or operational notes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
+    /// Original creation timestamp when forwarding a stored waypoint.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created: Option<u64>,
+    /// Originating node address.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub creator: Option<String>,
+    /// Expiration timestamp.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires: Option<u64>,
+}
+
+impl WaypointShare {
+    /// Build a minimal waypoint-sharing request.
+    pub fn new(name: impl Into<String>, lat: f64, lon: f64) -> Self {
+        Self {
+            id: None,
+            name: name.into(),
+            lat,
+            lon,
+            alt: None,
+            icon: None,
+            color: None,
+            notes: None,
+            created: None,
+            creator: None,
+            expires: None,
+        }
+    }
+
+    /// Validate fields that a receiver would otherwise reject.
+    pub fn validate(&self) -> Result<(), WaypointValidationError> {
+        if self.name.is_empty() {
+            return Err(WaypointValidationError::EmptyText("name"));
+        }
+        validate_coordinate("lat", self.lat, -90.0, 90.0)?;
+        validate_coordinate("lon", self.lon, -180.0, 180.0)?;
+        if self.alt.is_some_and(|altitude| !altitude.is_finite()) {
+            return Err(WaypointValidationError::NonFinite("alt"));
+        }
+        for (field, value) in [
+            ("id", self.id.as_deref()),
+            ("color", self.color.as_deref()),
+            ("notes", self.notes.as_deref()),
+            ("creator", self.creator.as_deref()),
+        ] {
+            if value.is_some_and(str::is_empty) {
+                return Err(WaypointValidationError::EmptyText(field));
+            }
+        }
+        Ok(())
+    }
+
+    /// Encode the validated sharing payload as CBOR.
+    pub fn to_cbor(&self) -> Result<Vec<u8>, WaypointClientError> {
+        self.validate()?;
+        let mut buf = Vec::new();
+        ciborium::into_writer(self, &mut buf)
+            .map_err(|error| WaypointClientError::Encode(Error::Encode(error.to_string())))?;
+        Ok(buf)
+    }
+}
+
+impl From<&Waypoint> for WaypointShare {
+    fn from(waypoint: &Waypoint) -> Self {
+        Self {
+            id: Some(waypoint.id.clone()),
+            name: waypoint.name.clone(),
+            lat: waypoint.lat,
+            lon: waypoint.lon,
+            alt: waypoint.alt,
+            icon: waypoint.icon,
+            color: waypoint.color.clone(),
+            notes: waypoint.notes.clone(),
+            created: Some(waypoint.created),
+            creator: Some(waypoint.creator.clone()),
+            expires: waypoint.expires,
+        }
+    }
+}
+
+/// Invalid waypoint-sharing payload.
+#[derive(Debug, Clone, PartialEq)]
+pub enum WaypointValidationError {
+    /// A required or supplied text field was empty.
+    EmptyText(&'static str),
+    /// A numeric field was NaN or infinite.
+    NonFinite(&'static str),
+    /// A coordinate was outside the WGS84 range.
+    OutOfRange {
+        /// Field name (`lat` or `lon`).
+        field: &'static str,
+        /// Inclusive minimum.
+        min: f64,
+        /// Inclusive maximum.
+        max: f64,
+    },
+}
+
+impl core::fmt::Display for WaypointValidationError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::EmptyText(field) => write!(formatter, "waypoint {field} must not be empty"),
+            Self::NonFinite(field) => write!(formatter, "waypoint {field} must be finite"),
+            Self::OutOfRange { field, min, max } => {
+                write!(formatter, "waypoint {field} must be in [{min}, {max}]")
+            }
+        }
+    }
+}
+
+impl std::error::Error for WaypointValidationError {}
+
+fn validate_coordinate(
+    field: &'static str,
+    value: f64,
+    min: f64,
+    max: f64,
+) -> Result<(), WaypointValidationError> {
+    if !value.is_finite() {
+        return Err(WaypointValidationError::NonFinite(field));
+    }
+    if !(min..=max).contains(&value) {
+        return Err(WaypointValidationError::OutOfRange { field, min, max });
+    }
+    Ok(())
+}
+
+/// Error returned by [`WaypointClient`] sharing operations.
+#[derive(Debug)]
+pub enum WaypointClientError {
+    /// The waypoint is invalid and no request was sent.
+    Validation(WaypointValidationError),
+    /// CBOR encoding failed.
+    Encode(Error),
+    /// CoAP transport failed.
+    #[cfg(feature = "tokio")]
+    Transport(lichen_coap::client::ClientError),
+    /// The peer returned a non-success CoAP response.
+    CoapResponse {
+        /// CoAP response code, such as `4.00`.
+        code: String,
+    },
+}
+
+impl core::fmt::Display for WaypointClientError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Validation(error) => write!(formatter, "validation error: {error}"),
+            Self::Encode(error) => write!(formatter, "encode error: {error}"),
+            #[cfg(feature = "tokio")]
+            Self::Transport(error) => write!(formatter, "transport error: {error}"),
+            Self::CoapResponse { code } => write!(formatter, "share waypoint failed: CoAP {code}"),
+        }
+    }
+}
+
+impl std::error::Error for WaypointClientError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Validation(error) => Some(error),
+            Self::Encode(error) => Some(error),
+            #[cfg(feature = "tokio")]
+            Self::Transport(error) => Some(error),
+            Self::CoapResponse { .. } => None,
+        }
+    }
+}
+
+impl From<WaypointValidationError> for WaypointClientError {
+    fn from(error: WaypointValidationError) -> Self {
+        Self::Validation(error)
+    }
+}
+
+#[cfg(feature = "tokio")]
+impl From<lichen_coap::client::ClientError> for WaypointClientError {
+    fn from(error: lichen_coap::client::ClientError) -> Self {
+        Self::Transport(error)
+    }
+}
+
+/// Stateful unicast client for sharing waypoints directly with peers.
+#[cfg(feature = "tokio")]
+#[derive(Debug, Default)]
+pub struct WaypointClient {
+    coap: lichen_coap::client::CoapClient,
+}
+
+#[cfg(feature = "tokio")]
+impl WaypointClient {
+    /// Create a client with no active peer backoffs.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Validate and POST a waypoint directly to one peer's `/waypoints` resource.
+    pub async fn share(
+        &mut self,
+        peer: std::net::SocketAddr,
+        waypoint: &WaypointShare,
+    ) -> Result<(), WaypointClientError> {
+        let payload = waypoint.to_cbor()?;
+        let response = self
+            .coap
+            .post(peer, crate::paths::WAYPOINTS, &payload)
+            .await?;
+        if !response.is_success() {
+            return Err(WaypointClientError::CoapResponse {
+                code: response.code_str(),
+            });
+        }
+        Ok(())
+    }
+
+    /// Clear all remembered 5.03 backoff state.
+    pub fn clear_all_backoffs(&mut self) {
+        self.coap.clear_all_backoffs();
+    }
+}
+
 /// Waypoint icon hints (spec Section 18.3.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -395,5 +643,143 @@ mod tests {
         assert!(w.color.is_none());
         assert!(w.notes.is_none());
         assert!(w.expires.is_none());
+    }
+
+    #[test]
+    fn waypoint_share_encodes_minimal_post_payload() {
+        let share = WaypointShare::new("Checkpoint 3", 37.78, -122.42);
+        let encoded = share.to_cbor().unwrap();
+        let value: Value = ciborium::from_reader(encoded.as_slice()).unwrap();
+        let map = value.as_map().expect("share payload must be a map");
+
+        assert_eq!(map.len(), 3);
+        assert_eq!(
+            map.iter().find(|(key, _)| key == &txt("name")).unwrap().1,
+            txt("Checkpoint 3")
+        );
+        assert_eq!(
+            map.iter().find(|(key, _)| key == &txt("lat")).unwrap().1,
+            Value::Float(37.78)
+        );
+        assert_eq!(
+            map.iter().find(|(key, _)| key == &txt("lon")).unwrap().1,
+            Value::Float(-122.42)
+        );
+    }
+
+    #[test]
+    fn waypoint_share_rejects_invalid_fields() {
+        for (share, expected) in [
+            (
+                WaypointShare::new("", 1.0, 2.0),
+                WaypointValidationError::EmptyText("name"),
+            ),
+            (
+                WaypointShare::new("bad latitude", 90.1, 2.0),
+                WaypointValidationError::OutOfRange {
+                    field: "lat",
+                    min: -90.0,
+                    max: 90.0,
+                },
+            ),
+            (
+                WaypointShare::new("bad longitude", 1.0, f64::NEG_INFINITY),
+                WaypointValidationError::NonFinite("lon"),
+            ),
+        ] {
+            assert_eq!(share.validate(), Err(expected));
+        }
+
+        let mut share = WaypointShare::new("bad altitude", 1.0, 2.0);
+        share.alt = Some(f64::NAN);
+        assert_eq!(
+            share.validate(),
+            Err(WaypointValidationError::NonFinite("alt"))
+        );
+
+        let mut share = WaypointShare::new("empty creator", 1.0, 2.0);
+        share.creator = Some(String::new());
+        assert_eq!(
+            share.validate(),
+            Err(WaypointValidationError::EmptyText("creator"))
+        );
+    }
+
+    #[test]
+    fn stored_waypoint_converts_to_forwardable_share() {
+        let mut waypoint = Waypoint::new("wpt-8", "Water", 1.0, 2.0, 42, "0200::8");
+        waypoint.icon = Some(WaypointIcon::Water);
+        waypoint.expires = Some(84);
+
+        let share = WaypointShare::from(&waypoint);
+        assert_eq!(share.id.as_deref(), Some("wpt-8"));
+        assert_eq!(share.creator.as_deref(), Some("0200::8"));
+        assert_eq!(share.created, Some(42));
+        assert_eq!(share.icon, Some(WaypointIcon::Water));
+        assert_eq!(share.expires, Some(84));
+        share.validate().unwrap();
+    }
+
+    #[cfg(feature = "tokio")]
+    #[tokio::test]
+    async fn client_posts_share_to_peer_waypoints_resource() {
+        use lichen_coap::{CoapBuilder, CoapPacket, MessageCode, MessageType};
+        use tokio::net::UdpSocket;
+
+        let server = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let address = server.local_addr().unwrap();
+        let server_task = tokio::spawn(async move {
+            let mut request_bytes = [0u8; 1280];
+            let (length, peer) = server.recv_from(&mut request_bytes).await.unwrap();
+            let request = CoapPacket::from_bytes(&request_bytes[..length]).unwrap();
+            assert_eq!(request.code(), MessageCode::POST);
+            let path: Vec<&str> = request
+                .options()
+                .map(|option| option.unwrap())
+                .filter(|option| option.is_uri_path())
+                .map(|option| std::str::from_utf8(option.value).unwrap())
+                .collect();
+            assert_eq!(path, ["waypoints"]);
+
+            let share: WaypointShare = ciborium::from_reader(request.payload()).unwrap();
+            assert_eq!(share.name, "Rally Point Alpha");
+            assert_eq!(share.lat, 37.774929);
+            assert_eq!(share.lon, -122.419416);
+            assert_eq!(share.creator.as_deref(), Some("0200::1111"));
+
+            let mut response_bytes = [0u8; 64];
+            let response = CoapBuilder::new(
+                &mut response_bytes,
+                MessageType::Acknowledgement,
+                MessageCode::CREATED,
+                request.message_id(),
+                request.token(),
+            )
+            .unwrap();
+            let response_length = response.finish();
+            server
+                .send_to(&response_bytes[..response_length], peer)
+                .await
+                .unwrap();
+        });
+
+        let mut share = WaypointShare::new("Rally Point Alpha", 37.774929, -122.419416);
+        share.creator = Some("0200::1111".into());
+        WaypointClient::new().share(address, &share).await.unwrap();
+        server_task.await.unwrap();
+    }
+
+    #[cfg(feature = "tokio")]
+    #[tokio::test]
+    async fn client_validates_before_using_transport() {
+        let invalid = WaypointShare::new("invalid", f64::NAN, 0.0);
+        let error = WaypointClient::new()
+            .share("127.0.0.1:9".parse().unwrap(), &invalid)
+            .await
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            WaypointClientError::Validation(WaypointValidationError::NonFinite("lat"))
+        ));
     }
 }

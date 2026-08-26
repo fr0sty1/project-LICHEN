@@ -2,6 +2,28 @@
 //!
 //! LOADng provides reactive peer-to-peer route discovery. Messages are ICMPv6
 //! type 158, with code selecting RREQ (0), RREP (1), RERR (2).
+//!
+//! # Handler-level validation (beyond codec parsing)
+//!
+//! Routers implementing LOADng MUST apply these checks in addition to codec
+//! validation:
+//!
+//! - **RREQ hop_limit rejection**: RREQs with `hop_limit > INITIAL_HOP_LIMIT`
+//!   must be handler-rejected with no state change. The cost derivation
+//!   `INITIAL_HOP_LIMIT - hop_limit` goes negative for expanding-ring values
+//!   5..15, so until messages carry traversed-hop data they must be dropped.
+//!   This is distinct from codec-level rejection of `hop_limit > MAX_HOP_LIMIT`.
+//!
+//! - **RREP proxy-hint downgrade**: RREPs with [`RREP_FLAG_PROXY`] set are
+//!   non-authoritative hints: their sequence claims are unverified and may only
+//!   bootstrap a route when no usable knowledge of the destination exists. They
+//!   must never displace or upgrade an existing route/gradient entry.
+//!
+//! - **RREP forwarding gates**: Before forwarding an RREP, routers must:
+//!   1. Check a seen-window to suppress duplicate/stale replays within the
+//!      suppression window (same originator+destination+seq or older seq).
+//!   2. Apply a freshness gate: only forward if the RREP carries information
+//!      at least as fresh as the local route cache (RFC 3561 section 6.2).
 
 use crate::addr::Ipv6Addr;
 use core::marker::PhantomData;
@@ -17,6 +39,15 @@ pub const MAX_HOP_LIMIT: u8 = 15;
 
 /// Expanding ring hop limits: [4, 8, 15].
 pub const EXPANDING_RING: [u8; 3] = [4, 8, 15];
+
+/// RREP flags bit 0: proxy/intermediate reply indicator.
+///
+/// Set by routers answering from a cached gradient instead of being the actual
+/// destination. Receivers MUST treat flagged replies as non-authoritative hints:
+/// unverified sequence claims that may bootstrap a route for a destination with
+/// no existing usable entry, but must never replace or upgrade existing knowledge.
+/// See module-level docs for handler requirements.
+pub const RREP_FLAG_PROXY: u8 = 0x01;
 
 /// LOADng ICMPv6 codes.
 #[repr(u8)]
@@ -394,6 +425,11 @@ impl Rreq {
 }
 
 /// Route Reply, unicast back along reverse path (spec 10.4).
+///
+/// The `flags` field bit 0 ([`RREP_FLAG_PROXY`]) distinguishes authoritative
+/// replies (from the actual destination, flags=0) from proxy/intermediate
+/// replies (from a router using a cached gradient, flags=0x01). Receivers must
+/// apply proxy-hint downgrade semantics; see module-level docs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Rrep {
     pub originator: Ipv6Addr,
@@ -440,12 +476,26 @@ impl Rrep {
         Ok(RREQ_RREP_LEN)
     }
 
-    /// Increment hop count.
-    pub fn with_incremented_hop_count(self) -> Self {
-        Self {
-            hop_count: self.hop_count.saturating_add(1),
-            ..self
+    /// Increment hop count. Returns None if would exceed MAX_HOP_LIMIT.
+    pub fn with_incremented_hop_count(self) -> Option<Self> {
+        if self.hop_count >= MAX_HOP_LIMIT {
+            None
+        } else {
+            Some(Self {
+                hop_count: self.hop_count + 1,
+                ..self
+            })
         }
+    }
+
+    /// Check if this is a proxy/intermediate reply (not from the actual destination).
+    ///
+    /// Proxy replies carry unverified sequence claims and must be treated as
+    /// non-authoritative hints: they may bootstrap a route when no usable
+    /// knowledge exists, but must never replace or upgrade existing entries.
+    #[inline]
+    pub const fn is_proxy(&self) -> bool {
+        self.flags & RREP_FLAG_PROXY != 0
     }
 }
 
@@ -921,5 +971,38 @@ mod tests {
                 to: RouteDiscoveryState::Searching,
             })
         );
+    }
+
+    #[test]
+    fn rrep_is_proxy_flag() {
+        // Authoritative reply (from actual destination): flags=0
+        let authoritative = Rrep {
+            originator: ll(2),
+            destination: ll(1),
+            seq_num: 100,
+            hop_count: 2,
+            flags: 0,
+        };
+        assert!(!authoritative.is_proxy());
+
+        // Proxy/intermediate reply (from cached gradient): flags=0x01
+        let proxy = Rrep {
+            originator: ll(2),
+            destination: ll(1),
+            seq_num: 100,
+            hop_count: 2,
+            flags: RREP_FLAG_PROXY,
+        };
+        assert!(proxy.is_proxy());
+
+        // Proxy flag with other bits set
+        let mixed_flags = Rrep {
+            originator: ll(2),
+            destination: ll(1),
+            seq_num: 100,
+            hop_count: 2,
+            flags: 0x81, // bit 0 and bit 7 set
+        };
+        assert!(mixed_flags.is_proxy());
     }
 }

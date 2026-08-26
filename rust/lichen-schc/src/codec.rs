@@ -384,7 +384,7 @@ fn has_oscore_option(coap: &[u8]) -> bool {
                 }
                 let ext = u16::from_be_bytes([coap[pos], coap[pos + 1]]);
                 pos += 2;
-                ext + 269
+                ext.saturating_add(269)
             }
             _ => return false, // 15 is reserved
         };
@@ -410,7 +410,7 @@ fn has_oscore_option(coap: &[u8]) -> bool {
             _ => return false,
         };
 
-        opt_num += delta;
+        opt_num = opt_num.saturating_add(delta);
         if opt_num == 9 {
             return true; // OSCORE option found
         }
@@ -496,6 +496,23 @@ fn icmpv6_checksum(src: &[u8], dst: &[u8], icmpv6_payload: &[u8]) -> u16 {
     let mut sum = pseudo_sum(src, dst, 58, length);
     sum = oc_add(sum, checksum_bytes(icmpv6_payload));
     ones_complement_sum(sum)
+}
+
+/// Verify ICMPv6 checksum by computing the one's complement sum over the full
+/// ICMPv6 data (including the existing checksum field). Returns true if valid.
+fn icmpv6_checksum_valid(src: &[u8], dst: &[u8], icmpv6: &[u8]) -> bool {
+    if icmpv6.len() < 4 {
+        return false;
+    }
+    let length = icmpv6.len() as u16;
+    let mut sum = pseudo_sum(src, dst, 58, length);
+    sum = oc_add(sum, checksum_bytes(icmpv6));
+    // Fold to 16 bits
+    while sum >> 16 != 0 {
+        sum = (sum & 0xFFFF) + (sum >> 16);
+    }
+    // If checksum is valid, the folded sum should be 0xFFFF
+    sum as u16 == 0xFFFF
 }
 
 /// Write a 40-byte IPv6 header into `out`.
@@ -978,6 +995,16 @@ fn decompress_icmpv6_echo(data: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     let icmp_id = r.read(16)? as u16;
     let icmp_seq = r.read(16)? as u16;
 
+    // SECURITY: Revalidate that the decompressed type matches the Rule 2 profile.
+    // Rule 2 compresses only ICMPv6 Echo Request (128) or Echo Reply (129).
+    // A crafted residue with a different type would produce a packet whose
+    // inner protocol contradicts the SCHC rule ID.
+    if icmp_type != 128 && icmp_type != 129 {
+        return Err(SchcError::NonCanonicalResidue(
+            "rule 2 residue contains non-Echo ICMPv6 type",
+        ));
+    }
+
     if !r.padding_is_zero() {
         return Err(SchcError::NonCanonicalResidue(
             "nonzero generic rule residue padding",
@@ -1103,6 +1130,16 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let kd_flags = r.read(8)? as u8;
     let seq = r.read(8)? as u8;
     let dodagid = r.read(128)?;
+
+    // SECURITY: Revalidate that the decompressed kd_flags matches the Rule 4 profile.
+    // Rule 4 compresses only DAO messages with the D flag set (DODAGID present).
+    // A crafted residue without the D flag would produce a no-DODAGID DAO under
+    // the with-DODAGID rule.
+    if kd_flags & 0x40 == 0 {
+        return Err(SchcError::NonCanonicalResidue(
+            "rule 4 residue lacks required D flag in kd_flags",
+        ));
+    }
 
     if !r.padding_is_zero() {
         return Err(SchcError::NonCanonicalResidue(
@@ -2005,7 +2042,13 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
             return enforce_encoded_profile_limit(n);
         }
     } else if nh == 58 && packet.len() >= 40 + 4 {
-        // ICMPv6
+        // ICMPv6 — verify checksum before selecting rules 2/3/4.
+        // Invalid checksums fall through to Rule 255, matching Python behavior.
+        let icmpv6 = &packet[40..];
+        if !icmpv6_checksum_valid(src, dst, icmpv6) {
+            return encode_rule255(packet, out, usize::MAX);
+        }
+
         let icmp_type = packet[40];
         let icmp_code = packet[41];
 

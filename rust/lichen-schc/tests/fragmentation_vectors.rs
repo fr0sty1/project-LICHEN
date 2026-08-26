@@ -5,14 +5,44 @@ mod support;
 use std::collections::BTreeSet;
 
 use lichen_schc::fragment::{
-    ack_request, compute_mic, receiver_abort, sender_abort, Ack, Fragment, FragmentReceiver,
-    ReceiverResponse, SenderStatus, INACTIVITY_TIMEOUT_S, MAX_ACK_REQUESTS, MAX_PACKET_SIZE,
-    RETRANSMISSION_TIMEOUT_S, TILE_SIZE,
+    ack_request, compute_mic, fragment_payload_capacity, receiver_abort, sender_abort,
+    tile_size_for_mtu, Ack, Fragment, FragmentError, FragmentReceiver, ReceiverResponse,
+    ReceiverResult, SenderStatus, TileSizeError, INACTIVITY_TIMEOUT_S, MAX_ACK_REQUESTS,
+    MAX_PACKET_SIZE, RETRANSMISSION_TIMEOUT_S, TILE_SIZE,
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 const VECTORS_JSON: &str = include_str!("../../../test/vectors/schc_fragmentation.json");
+const TILE_SIZING_JSON: &str = include_str!("../../../test/vectors/schc_tile_sizing.json");
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TileSizingDocument {
+    #[serde(rename = "$schema")]
+    schema: String,
+    format_version: u8,
+    description: String,
+    oracle: serde_json::Value,
+    vectors: Vec<TileSizingVector>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TileSizingVector {
+    name: String,
+    mtu_bytes: u64,
+    rule_id_bits: u64,
+    dtag_bits: u64,
+    window_bits: u64,
+    fcn_bits: u64,
+    rcs_bits: u64,
+    outcome: String,
+    regular_all0_capacity_bytes: Option<u64>,
+    all1_capacity_bytes: Option<u64>,
+    tile_size_bytes: Option<u64>,
+    expected_error: Option<String>,
+}
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -40,6 +70,9 @@ struct Vector {
     controls: Option<Controls>,
     attempts_before: Option<u8>,
     retransmission_timeout_s: Option<u32>,
+    timer_policy: Option<String>,
+    timer_start_s: Option<u32>,
+    timer_deadlines_s: Option<Vec<u32>>,
     max_ack_requests: Option<u32>,
     inactivity_timeout_s: Option<u32>,
     bitmap_one_means: Option<String>,
@@ -147,6 +180,61 @@ fn write_response(response: ReceiverResponse) -> Vec<u8> {
     let mut wire = [0u8; 16];
     let length = response.write_to(&mut wire).unwrap();
     wire[..length].to_vec()
+}
+
+#[test]
+fn shared_tile_sizing_vectors_drive_checked_production_math() {
+    let document: TileSizingDocument =
+        serde_json::from_str(TILE_SIZING_JSON).expect("invalid tile sizing vector JSON");
+    assert_eq!(document.schema, "./schema.json");
+    assert_eq!(document.format_version, 2);
+    assert!(!document.description.is_empty());
+    assert!(document.oracle.is_object());
+
+    for vector in document.vectors {
+        assert!(!vector.name.is_empty());
+        let regular = fragment_payload_capacity(
+            vector.mtu_bytes,
+            vector.rule_id_bits,
+            vector.dtag_bits,
+            vector.window_bits,
+            vector.fcn_bits,
+            0,
+        );
+        let all1 = fragment_payload_capacity(
+            vector.mtu_bytes,
+            vector.rule_id_bits,
+            vector.dtag_bits,
+            vector.window_bits,
+            vector.fcn_bits,
+            vector.rcs_bits,
+        );
+        let tile_size = tile_size_for_mtu(
+            vector.mtu_bytes,
+            vector.rule_id_bits,
+            vector.dtag_bits,
+            vector.window_bits,
+            vector.fcn_bits,
+            vector.rcs_bits,
+        );
+
+        if vector.outcome == "ok" {
+            assert_eq!(regular, Ok(vector.regular_all0_capacity_bytes.unwrap()));
+            assert_eq!(all1, Ok(vector.all1_capacity_bytes.unwrap()));
+            assert_eq!(tile_size, Ok(vector.tile_size_bytes.unwrap()));
+            if vector.name == "lichen_profile_mtu_185" {
+                assert_eq!(tile_size, Ok(TILE_SIZE as u64));
+            }
+        } else {
+            let expected = match vector.expected_error.as_deref() {
+                Some("invalid_mtu") => TileSizeError::InvalidMtu,
+                Some("arithmetic_overflow") => TileSizeError::ArithmeticOverflow,
+                Some("no_payload") => TileSizeError::NoPayload,
+                other => panic!("unknown tile sizing error {other:?}"),
+            };
+            assert_eq!(tile_size, Err(expected), "{}", vector.name);
+        }
+    }
 }
 
 #[test]
@@ -277,6 +365,68 @@ fn exercise_transfer(vector: &Vector) {
             expand(loss.next_sender_message.as_ref().unwrap())
         );
     }
+
+    if vector.category == "window_transition" {
+        let first_wire = expand(&vector.fragments.first().unwrap().wire);
+        let final_wire = expand(&vector.fragments.last().unwrap().wire);
+        let mut storage = vec![0u8; packet.len()];
+        let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+
+        assert_eq!(receiver.receive_bytes(&first_wire).unwrap().response, None);
+        assert_eq!(receiver.receive_bytes(&first_wire).unwrap().response, None);
+        let early_final = receiver.receive_bytes(&final_wire).unwrap();
+        assert_eq!(early_final.packet_len, None);
+        let Some(ReceiverResponse::Ack(early_ack)) = early_final.response else {
+            panic!("{}: early All-1 did not produce an ACK", vector.name);
+        };
+        assert_eq!(early_ack.window, 0);
+        assert!(!early_ack.complete);
+
+        for expected in vector.fragments[1..vector.fragments.len() - 1].iter().rev() {
+            assert_eq!(
+                receiver
+                    .receive_bytes(&expand(&expected.wire))
+                    .unwrap()
+                    .response,
+                None
+            );
+        }
+        let completed = receiver.receive_bytes(&expand(&loss.ack_req)).unwrap();
+        assert_eq!(completed.packet_len, Some(packet.len()));
+        assert_eq!(completed.mic_ok, Some(true));
+        assert_eq!(receiver.packet(), Some(packet.as_slice()));
+
+        let mut first_payload = [0u8; TILE_SIZE];
+        let first = Fragment::from_bytes(&first_wire, &mut first_payload).unwrap();
+        let mut conflict_payload = first.payload.to_vec();
+        conflict_payload[0] ^= 0xff;
+        let conflicting = Fragment {
+            payload: &conflict_payload,
+            ..first
+        };
+        let mut conflict_storage = vec![0u8; packet.len()];
+        let mut conflict_receiver = FragmentReceiver::new(&mut conflict_storage).unwrap();
+        assert_eq!(conflict_receiver.receive(&first).response, None);
+        let conflict = conflict_receiver.receive(&conflicting);
+        assert!(conflict.aborted);
+        assert_eq!(conflict_receiver.packet(), None);
+
+        let mut bounded_storage = vec![0u8; packet.len() - 1];
+        let mut bounded = FragmentReceiver::new(&mut bounded_storage).unwrap();
+        assert_eq!(bounded.receive_bytes(&final_wire).unwrap().packet_len, None);
+        let mut bounded_result = ReceiverResult::default();
+        for expected in vector.fragments[..vector.fragments.len() - 1].iter().rev() {
+            bounded_result = bounded.receive_bytes(&expand(&expected.wire)).unwrap();
+            if bounded_result.aborted {
+                break;
+            }
+        }
+        if !bounded_result.aborted {
+            bounded_result = bounded.receive_bytes(&expand(&loss.ack_req)).unwrap();
+        }
+        assert!(bounded_result.aborted);
+        assert_eq!(bounded.packet(), None);
+    }
 }
 
 fn exercise_controls(controls: &Controls) {
@@ -307,6 +457,12 @@ fn exercise_retry(vector: &Vector) {
         assert_eq!(
             vector.retransmission_timeout_s,
             Some(RETRANSMISSION_TIMEOUT_S)
+        );
+        assert_eq!(vector.timer_policy.as_deref(), Some("fixed"));
+        assert_eq!(vector.timer_start_s, Some(0));
+        assert_eq!(
+            vector.timer_deadlines_s.as_deref(),
+            Some(&[10, 20, 30, 40][..])
         );
         assert_eq!(vector.max_ack_requests, Some(MAX_ACK_REQUESTS));
         assert_eq!(vector.inactivity_timeout_s, Some(INACTIVITY_TIMEOUT_S));
@@ -395,6 +551,30 @@ fn exercise_malformed(vector: &Vector) {
         .as_ref()
         .is_some_and(|error| !error.is_empty()));
     let wire = expand(vector.wire.as_ref().unwrap());
+    let mut storage = [0u8; MAX_PACKET_SIZE];
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+    match vector.name.as_str() {
+        name if name.starts_with("unsupported_rule_") => {
+            assert_eq!(
+                receiver.receive_bytes(&wire),
+                Err(FragmentError::UnsupportedRule)
+            );
+        }
+        "unassigned_bitmap_bit" => {
+            assert_eq!(
+                receiver.receive_bytes(&wire),
+                Err(FragmentError::MalformedAck)
+            );
+        }
+        _ => {
+            let result = receiver.receive_bytes(&wire).unwrap();
+            assert!(result.aborted);
+            assert_eq!(
+                result.response,
+                Some(ReceiverResponse::ReceiverAbort { rule_id: 0x78 })
+            );
+        }
+    }
     match vector.name.as_str() {
         "ack_success_extra_octet" | "malformed_control" => {
             assert!(Ack::from_bytes(&wire).is_err());

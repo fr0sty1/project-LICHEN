@@ -69,10 +69,11 @@ impl NodeId {
 /// Derive the IID (Interface Identifier) from an Ed25519 public key for the
 /// LICHEN native 0200::/8 primary address.
 ///
-/// MUST use SHA-512, not SHA-256 — this matches Yggdrasil's `AddrForKey`
-/// derivation from yggdrasil-go (`src/address/address.go`) within the exact
-/// LICHEN 0200::/8 profile:
-///   SHA-512(pubkey)[0:8], then clear the U/L bit per RFC 4291 §2.5.1.
+/// LICHEN native profile inspired by Yggdrasil 0200::/8 range; NOT
+/// wire-compatible with upstream AddrForKey (which bit-packs the pubkey
+/// without hashing). See test/vectors/yggdrasil_address.json for divergence.
+///
+/// Algorithm: SHA-512(pubkey)[0:8], then clear the U/L bit per RFC 4291 S2.5.1.
 ///
 /// The full Yggdrasil address is:
 ///   addr[0] = 0x02
@@ -92,8 +93,11 @@ pub fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
 
 /// Derive the full 16-byte LICHEN native 0200::/8 address from an Ed25519 pubkey.
 ///
-/// Implements the exact `AddrForKey` algorithm from yggdrasil-go
-/// (`src/address/address.go`), matching the official Yggdrasil daemon bit-for-bit:
+/// LICHEN native profile inspired by Yggdrasil 0200::/8 range; NOT
+/// wire-compatible with upstream AddrForKey (which bit-packs the pubkey
+/// without hashing). See test/vectors/yggdrasil_address.json for divergence.
+///
+/// Algorithm:
 ///
 ///   1. Compute `h = SHA-512(pubkey)`
 ///   2. `addr = [0x02] || h[0:7] || h[0:8]`

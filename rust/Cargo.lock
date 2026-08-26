@@ -1886,6 +1886,7 @@ dependencies = [
  "lichen-sim",
  "schnorr48",
  "serde",
+ "serde_json",
  "sha2 0.10.9",
  "tokio",
  "tokio-serial",
@@ -1926,6 +1927,7 @@ dependencies = [
  "kiss-framing",
  "lichen-link",
  "log",
+ "serde_json",
 ]
 
 [[package]]
@@ -1994,6 +1996,7 @@ dependencies = [
  "schnorr48",
  "serde",
  "serde_json",
+ "subtle",
 ]
 
 [[package]]
@@ -2033,6 +2036,8 @@ dependencies = [
  "lichen-core",
  "log",
  "senml-cbor",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

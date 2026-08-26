@@ -379,23 +379,44 @@ async fn gateway_dio_carries_root_metadata() {
     let identity = Identity::from_seed(seed);
     let gw_addr = gw_native(&identity);
 
-    let mut gw = test_gateway();
-    let mut peer = MeshPeer::new(5);
-    peer.bootstrap(&mut gw, 0).await;
-    let mut ingress = send_dis(&mut gw, &mut peer, 1).await;
-    assert_eq!(ingress.rpl_event(), RplEvent::DisReceived);
+    let vectors: serde_json::Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test/vectors/gateway_reachability.json"
+    )))
+    .expect("gateway reachability vectors parse");
 
-    let dio_reply = ingress.take_mesh_reply().unwrap();
-    let ipv6 = decode_signed_reply(&mut peer, &dio_reply);
+    for (index, case) in vectors["cases"].as_array().unwrap().iter().enumerate() {
+        let reachable = case["ygg_reachable"].as_bool().unwrap();
+        let expected_grounded = case["expected_grounded"].as_bool().unwrap();
+        let expected_g_mop_prf = case["expected_g_mop_prf"].as_u64().unwrap() as u8;
+        let name = case["name"].as_str().unwrap();
+        let mut gw = test_gateway();
+        let _ = gw.set_ygg_reachable(reachable);
+        let mut peer = MeshPeer::new(5 + index as u8);
+        peer.bootstrap(&mut gw, 0).await;
+        let mut ingress = send_dis(&mut gw, &mut peer, 1).await;
+        assert_eq!(ingress.rpl_event(), RplEvent::DisReceived, "{name}");
 
-    let dio_bytes = &ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..];
-    let dio = lichen_rpl::message::Dio::from_bytes(dio_bytes).expect("parse DIO base");
+        let dio_reply = ingress.take_mesh_reply().unwrap();
+        let ipv6 = decode_signed_reply(&mut peer, &dio_reply);
+        let dio_bytes = &ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..];
+        let dio = lichen_rpl::message::Dio::from_bytes(dio_bytes).expect("parse DIO base");
 
-    assert!(dio.grounded, "root DIO must be grounded (G=1)");
-    assert_eq!(dio.mode_of_operation, 1, "mode must be Non-Storing (MOP=1)");
-    assert_eq!(dio.rpl_instance_id, RPL_INSTANCE_ID);
-    // dodag_id should match the gateway's root address
-    assert_eq!(&dio.dodag_id, &gw_addr, "DODAG ID must equal root address");
+        assert_eq!(dio.grounded, expected_grounded, "{name}");
+        assert_eq!(dio_bytes[4], expected_g_mop_prf, "{name}");
+        assert_eq!(dio.mode_of_operation, 1, "{name}: Non-Storing MOP");
+        assert_eq!(dio.rpl_instance_id, RPL_INSTANCE_ID, "{name}");
+        assert_eq!(&dio.dodag_id, &gw_addr, "{name}: DODAG ID");
+        for option in
+            lichen_rpl::message::OptionIter::new(lichen_rpl::message::Dio::options_tail(dio_bytes))
+        {
+            assert_ne!(
+                option.expect("valid DIO option").opt_type,
+                lichen_rpl::message::OPT_PREFIX_INFO,
+                "{name}: single-primary profile must not advertise a prefix"
+            );
+        }
+    }
 }
 
 /// ── Test 5: Gateway drops non-RPL ICMPv6 gracefully ─────────────────────────

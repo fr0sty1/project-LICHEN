@@ -169,6 +169,8 @@ pub mod next_header {
 
 /// ICMPv6 message types.
 pub mod icmpv6_type {
+    pub const DESTINATION_UNREACHABLE: u8 = 1;
+    pub const PACKET_TOO_BIG: u8 = 2;
     pub const ECHO_REQUEST: u8 = 128;
     pub const ECHO_REPLY: u8 = 129;
     pub const NEIGHBOR_SOLICITATION: u8 = 135;
@@ -596,6 +598,150 @@ impl Icmpv6Echo {
             id: ((buf[0] as u16) << 8) | (buf[1] as u16),
             seq: ((buf[2] as u16) << 8) | (buf[3] as u16),
         })
+    }
+}
+
+/// Codes carried by ICMPv6 Destination Unreachable messages (RFC 4443 Section 3.1).
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DestinationUnreachableCode {
+    /// No route to the destination.
+    NoRoute = 0,
+    /// Communication with the destination is administratively prohibited.
+    AdministrativelyProhibited = 1,
+    /// The destination is beyond the scope of the source address.
+    BeyondScope = 2,
+    /// The destination address is unreachable.
+    AddressUnreachable = 3,
+    /// The destination port is unreachable.
+    PortUnreachable = 4,
+}
+
+impl DestinationUnreachableCode {
+    /// Decode an assigned RFC 4443 Destination Unreachable code.
+    pub const fn from_u8(value: u8) -> Option<Self> {
+        match value {
+            0 => Some(Self::NoRoute),
+            1 => Some(Self::AdministrativelyProhibited),
+            2 => Some(Self::BeyondScope),
+            3 => Some(Self::AddressUnreachable),
+            4 => Some(Self::PortUnreachable),
+            _ => None,
+        }
+    }
+}
+
+/// ICMPv6 Destination Unreachable message (RFC 4443 Section 3.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DestinationUnreachable {
+    /// Reason the invoking packet could not be delivered.
+    pub code: DestinationUnreachableCode,
+}
+
+impl DestinationUnreachable {
+    /// Build a Destination Unreachable message, including as much of
+    /// `invoking_packet` as fits within the IPv6 minimum MTU.
+    pub fn build(
+        &self,
+        src: &Addr,
+        dst: &Addr,
+        invoking_packet: &[u8],
+    ) -> Vec<u8, MAX_ICMPV6_ERROR_LEN> {
+        let quote_len = invoking_packet.len().min(MAX_INVOKING_PACKET);
+        let mut pkt = Vec::new();
+
+        pkt.push(icmpv6_type::DESTINATION_UNREACHABLE)
+            .expect("capacity pre-checked");
+        pkt.push(self.code as u8).expect("capacity pre-checked");
+        pkt.extend_from_slice(&[0, 0])
+            .expect("capacity pre-checked"); // checksum placeholder
+        pkt.extend_from_slice(&[0; 4])
+            .expect("capacity pre-checked"); // unused field
+        pkt.extend_from_slice(&invoking_packet[..quote_len])
+            .expect("capacity pre-checked");
+
+        let checksum =
+            icmpv6_checksum(src, dst, &pkt).expect("bounded Destination Unreachable message");
+        pkt[2..4].copy_from_slice(&checksum.to_be_bytes());
+
+        pkt
+    }
+
+    /// Parse the Destination Unreachable body after the common
+    /// type/code/checksum header.
+    ///
+    /// The four-byte unused field is ignored as required by RFC 4443. The
+    /// caller supplies a code already decoded with
+    /// [`DestinationUnreachableCode::from_u8`].
+    pub fn from_bytes(
+        code: DestinationUnreachableCode,
+        buf: &[u8],
+    ) -> Result<(Self, &[u8]), Ipv6Error> {
+        if buf.len() < 4 {
+            return Err(TooShort::new(4, buf.len()).into());
+        }
+
+        Ok((Self { code }, &buf[4..]))
+    }
+}
+
+/// ICMPv6 Packet Too Big message (RFC 4443 Section 3.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PacketTooBig {
+    /// MTU of the next-hop link that could not carry the invoking packet.
+    pub mtu: u32,
+}
+
+/// Maximum number of bytes from the invoking packet carried in an ICMPv6 error.
+///
+/// An ICMPv6 error sent in a minimum-size IPv6 packet has 1,240 payload bytes:
+/// eight bytes for the error header and up to 1,232 bytes for the packet quote.
+pub const MAX_INVOKING_PACKET: usize = 1232;
+
+/// Maximum encoded size of an ICMPv6 error message, excluding the IPv6 header.
+pub const MAX_ICMPV6_ERROR_LEN: usize = ICMPV6_HEADER_LEN + 4 + MAX_INVOKING_PACKET;
+
+impl PacketTooBig {
+    /// Build a Packet Too Big message, including as much of `invoking_packet`
+    /// as fits within the IPv6 minimum MTU.
+    ///
+    /// RFC 4443 requires code zero and a 32-bit MTU immediately after the
+    /// common ICMPv6 header. Packet quotes longer than [`MAX_INVOKING_PACKET`]
+    /// are truncated rather than rejecting the error message.
+    pub fn build(
+        &self,
+        src: &Addr,
+        dst: &Addr,
+        invoking_packet: &[u8],
+    ) -> Vec<u8, MAX_ICMPV6_ERROR_LEN> {
+        let quote_len = invoking_packet.len().min(MAX_INVOKING_PACKET);
+        let mut pkt = Vec::new();
+
+        pkt.push(icmpv6_type::PACKET_TOO_BIG)
+            .expect("capacity pre-checked");
+        pkt.push(0).expect("capacity pre-checked"); // code
+        pkt.extend_from_slice(&[0, 0])
+            .expect("capacity pre-checked"); // checksum placeholder
+        pkt.extend_from_slice(&self.mtu.to_be_bytes())
+            .expect("capacity pre-checked");
+        pkt.extend_from_slice(&invoking_packet[..quote_len])
+            .expect("capacity pre-checked");
+
+        let checksum = icmpv6_checksum(src, dst, &pkt).expect("bounded Packet Too Big message");
+        pkt[2..4].copy_from_slice(&checksum.to_be_bytes());
+
+        pkt
+    }
+
+    /// Parse the Packet Too Big body after the common type/code/checksum
+    /// header, returning the advertised MTU and quoted invoking packet.
+    pub fn from_bytes(buf: &[u8]) -> Result<(Self, &[u8]), Ipv6Error> {
+        if buf.len() < 4 {
+            return Err(TooShort::new(4, buf.len()).into());
+        }
+
+        let mtu = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]);
+        Ok((Self { mtu }, &buf[4..]))
     }
 }
 
@@ -1109,6 +1255,143 @@ mod tests {
         let result = echo.build_request(&src, &dst, &max_data);
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 128);
+    }
+
+    #[test]
+    fn test_destination_unreachable_matches_shared_vectors() {
+        let src = Addr(hex!("0200514acffcfa9dea90556802586d37"));
+        let dst = Addr(hex!("0200389e777ace07c7d6ca08166ecd20"));
+        let invoking_packet = hex!(
+            "60000000001911400200389e777ace07c7d6ca08166ecd20
+             0200514acffcfa9dea90556802586d371633163300193098
+             7061796c6f616420666f72206572726f72"
+        );
+        let no_route_expected = hex!(
+            "0100ca500000000060000000001911400200389e777ace07
+             c7d6ca08166ecd200200514acffcfa9dea90556802586d37
+             16331633001930987061796c6f616420666f72206572726f72"
+        );
+        let port_expected = hex!(
+            "0104ca4c0000000060000000001911400200389e777ace07
+             c7d6ca08166ecd200200514acffcfa9dea90556802586d37
+             16331633001930987061796c6f616420666f72206572726f72"
+        );
+
+        for (code, expected) in [
+            (DestinationUnreachableCode::NoRoute, no_route_expected),
+            (DestinationUnreachableCode::PortUnreachable, port_expected),
+        ] {
+            let message = DestinationUnreachable { code }.build(&src, &dst, &invoking_packet);
+            assert_eq!(message.as_slice(), expected);
+            assert!(verify_icmpv6_checksum(&src, &dst, &message));
+
+            let parsed_code = DestinationUnreachableCode::from_u8(message[1]).unwrap();
+            let (parsed, quote) =
+                DestinationUnreachable::from_bytes(parsed_code, &message[ICMPV6_HEADER_LEN..])
+                    .unwrap();
+            assert_eq!(parsed.code, code);
+            assert_eq!(quote, invoking_packet);
+        }
+    }
+
+    #[test]
+    fn test_destination_unreachable_code_assignments() {
+        assert_eq!(
+            DestinationUnreachableCode::from_u8(0),
+            Some(DestinationUnreachableCode::NoRoute)
+        );
+        assert_eq!(
+            DestinationUnreachableCode::from_u8(1),
+            Some(DestinationUnreachableCode::AdministrativelyProhibited)
+        );
+        assert_eq!(
+            DestinationUnreachableCode::from_u8(2),
+            Some(DestinationUnreachableCode::BeyondScope)
+        );
+        assert_eq!(
+            DestinationUnreachableCode::from_u8(3),
+            Some(DestinationUnreachableCode::AddressUnreachable)
+        );
+        assert_eq!(
+            DestinationUnreachableCode::from_u8(4),
+            Some(DestinationUnreachableCode::PortUnreachable)
+        );
+        assert_eq!(DestinationUnreachableCode::from_u8(5), None);
+    }
+
+    #[test]
+    fn test_destination_unreachable_truncates_quote_to_minimum_mtu() {
+        let src = Addr::LOOPBACK;
+        let dst = Addr(hex!("00000000000000000000000000000002"));
+        let invoking_packet = [0x5au8; MAX_INVOKING_PACKET + 1];
+
+        let message = DestinationUnreachable {
+            code: DestinationUnreachableCode::NoRoute,
+        }
+        .build(&src, &dst, &invoking_packet);
+        assert_eq!(message.len(), MAX_ICMPV6_ERROR_LEN);
+        assert!(verify_icmpv6_checksum(&src, &dst, &message));
+
+        let (_, quote) = DestinationUnreachable::from_bytes(
+            DestinationUnreachableCode::NoRoute,
+            &message[ICMPV6_HEADER_LEN..],
+        )
+        .unwrap();
+        assert_eq!(quote, &invoking_packet[..MAX_INVOKING_PACKET]);
+    }
+
+    #[test]
+    fn test_destination_unreachable_rejects_truncated_body() {
+        let err =
+            DestinationUnreachable::from_bytes(DestinationUnreachableCode::NoRoute, &[0, 0, 0])
+                .unwrap_err();
+        assert_eq!(err, Ipv6Error::TooShort(TooShort::new(4, 3)));
+    }
+
+    #[test]
+    fn test_packet_too_big_matches_shared_vector() {
+        let src = Addr(hex!("0200514acffcfa9dea90556802586d37"));
+        let dst = Addr(hex!("0200389e777ace07c7d6ca08166ecd20"));
+        let invoking_packet = hex!(
+            "60000000001911400200389e777ace07c7d6ca08166ecd20
+             0200514acffcfa9dea90556802586d371633163300193098
+             7061796c6f616420666f72206572726f72"
+        );
+        let expected = hex!(
+            "0200c4500000050060000000001911400200389e777ace07
+             c7d6ca08166ecd200200514acffcfa9dea90556802586d37
+             16331633001930987061796c6f616420666f72206572726f72"
+        );
+
+        let message = PacketTooBig { mtu: 1280 }.build(&src, &dst, &invoking_packet);
+        assert_eq!(message.as_slice(), expected);
+        assert!(verify_icmpv6_checksum(&src, &dst, &message));
+
+        let (parsed, quote) = PacketTooBig::from_bytes(&message[ICMPV6_HEADER_LEN..]).unwrap();
+        assert_eq!(parsed.mtu, 1280);
+        assert_eq!(quote, invoking_packet);
+    }
+
+    #[test]
+    fn test_packet_too_big_truncates_quote_to_minimum_mtu() {
+        let src = Addr::LOOPBACK;
+        let dst = Addr(hex!("00000000000000000000000000000002"));
+        let invoking_packet = [0x5au8; MAX_INVOKING_PACKET + 1];
+
+        let message = PacketTooBig { mtu: 1280 }.build(&src, &dst, &invoking_packet);
+        assert_eq!(message.len(), MAX_ICMPV6_ERROR_LEN);
+        assert_eq!(message[0], icmpv6_type::PACKET_TOO_BIG);
+        assert_eq!(message[1], 0);
+        assert!(verify_icmpv6_checksum(&src, &dst, &message));
+
+        let (_, quote) = PacketTooBig::from_bytes(&message[ICMPV6_HEADER_LEN..]).unwrap();
+        assert_eq!(quote, &invoking_packet[..MAX_INVOKING_PACKET]);
+    }
+
+    #[test]
+    fn test_packet_too_big_rejects_truncated_body() {
+        let err = PacketTooBig::from_bytes(&[0, 0, 5]).unwrap_err();
+        assert_eq!(err, Ipv6Error::TooShort(TooShort::new(4, 3)));
     }
 
     #[test]

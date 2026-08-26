@@ -647,6 +647,12 @@ impl RplNode {
         self.router.build_dio(out)
     }
 
+    /// Update whether this root can reach the identity-preserving global path.
+    #[must_use]
+    pub fn set_ygg_reachable(&mut self, reachable: bool) -> bool {
+        self.router.set_ygg_reachable(reachable)
+    }
+
     /// Build one signed logical DAO after durably reserving its origin sequence.
     /// Retain the returned bytes unchanged for retransmission.
     pub(crate) fn build_signed_dao<S: NonVolatile>(

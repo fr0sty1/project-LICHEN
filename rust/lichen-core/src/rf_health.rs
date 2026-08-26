@@ -8,6 +8,8 @@
 //! load_factor. Saturating counters, Q16.16 fixed point. no_std compatible,
 //! #![forbid(unsafe_code)]. Removed dead RSSI stats and dropped counter.
 
+use crate::constants::{CSMA_BACKOFF_MAX, CSMA_RETRY_LIMIT};
+
 const FP_SCALE: u32 = 1 << 16;
 const EMA_ALPHA_SHIFT: u32 = 2;
 const DENSITY_CRITICAL: u8 = 20;
@@ -18,6 +20,97 @@ const SNR_POOR: i8 = 0;
 const SNR_GOOD: i8 = 8;
 const LOAD_HIGH: u32 = FP_SCALE * 4 / 5;
 const LOAD_REBALANCE: u32 = FP_SCALE * 2 / 5;
+
+/// Outcome of applying one clear-channel-assessment indication.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CcaResult {
+    TxSuccess,
+    CadBusy,
+    RetryExhausted,
+}
+
+impl CcaResult {
+    /// Whether this outcome permits an immediate transmission.
+    #[inline]
+    pub const fn tx_allowed(self) -> bool {
+        matches!(self, Self::TxSuccess)
+    }
+}
+
+/// Bounded CSMA contention state used after a CCP-15 CAD result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CcaState {
+    backoff_exp: u8,
+    retries: u8,
+}
+
+impl CcaState {
+    /// Construct a state representable by the CSMA machine.
+    pub const fn new(backoff_exp: u8, retries: u8) -> Option<Self> {
+        if backoff_exp > CSMA_BACKOFF_MAX || retries > CSMA_RETRY_LIMIT + 1 {
+            return None;
+        }
+        Some(Self {
+            backoff_exp,
+            retries,
+        })
+    }
+
+    /// Current bounded backoff exponent.
+    pub const fn backoff_exp(&self) -> u8 {
+        self.backoff_exp
+    }
+
+    /// Number of busy-CAD retries observed in this contention cycle.
+    pub const fn retries(&self) -> u8 {
+        self.retries
+    }
+
+    /// Apply a CAD result, resetting on clear and failing closed after retries.
+    pub fn on_cad_result(&mut self, channel_busy: bool) -> CcaResult {
+        if !channel_busy {
+            self.backoff_exp = 0;
+            self.retries = 0;
+            return CcaResult::TxSuccess;
+        }
+        if self.retries > CSMA_RETRY_LIMIT {
+            return CcaResult::RetryExhausted;
+        }
+        self.retries += 1;
+        if self.retries > CSMA_RETRY_LIMIT {
+            return CcaResult::RetryExhausted;
+        }
+        self.backoff_exp = self.backoff_exp.saturating_add(1).min(CSMA_BACKOFF_MAX);
+        CcaResult::CadBusy
+    }
+}
+
+/// Compute `busy_percent + packet_error_rate * 100` in exact tenths.
+///
+/// `packet_error_permille` is the packet error rate scaled by 1000, so it is
+/// already expressed in tenths of a percentage point.
+pub const fn interference_score_tenths(
+    busy_percent: u8,
+    packet_error_permille: u16,
+) -> Option<u16> {
+    if busy_percent > 100 || packet_error_permille > 1000 {
+        return None;
+    }
+    Some(busy_percent as u16 * 10 + packet_error_permille)
+}
+
+/// Select a CCP-15 data channel, or CH0 when density exceeds eight peers.
+pub fn select_channel(eui64: &[u8; 8], epoch: u32, density: u8, n_channels: u8) -> u8 {
+    if density > 8 {
+        return 0;
+    }
+    let mut data = [0u8; 12];
+    data[..8].copy_from_slice(eui64);
+    data[8..].copy_from_slice(&epoch.to_le_bytes());
+    let hash = crate::lichen_hash_32(&data);
+    let modulus = n_channels.max(3);
+    1 + (hash % u32::from(modulus)) as u8
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RfHealthMetrics {
@@ -612,37 +705,6 @@ mod tests {
             assert!(allowed);
             let _ = m.should_rebalance();
             let _ = m.packet_loss_rate_fp();
-        }
-    }
-
-    #[test]
-    fn ccp15_vectors_match() {
-        let content = include_str!("../../../test/vectors/ccp15.json");
-        let doc: Value = serde_json::from_str(content).unwrap();
-        let vectors = doc.get("vectors").and_then(|v| v.as_array()).unwrap();
-        for v in vectors {
-            let sf = v.get("sf").and_then(|x| x.as_u64()).unwrap_or(10) as u8;
-            let ema = v.get("ema").and_then(|x| x.as_f64()).unwrap_or(0.0);
-            let load_factor = v.get("load_factor").and_then(|x| x.as_f64()).unwrap_or(0.0);
-            let load_fp = ((load_factor * FP_SCALE as f64) as u32).min(FP_SCALE);
-            // Skip interference_score check for density vectors (use different schema)
-            if let Some(exp_score) = v.get("interference_score").and_then(|x| x.as_f64()) {
-                let sf_norm = sf as f64 / 12.0;
-                let score = 0.5 * ema + 0.3 * load_factor + 0.2 * (1.0 - sf_norm);
-                let diff = (score - exp_score).abs();
-                assert!(
-                    diff < 0.001,
-                    "interference score mismatch for {}: {} vs {}",
-                    v.get("name").and_then(|x| x.as_str()).unwrap_or("?"),
-                    score,
-                    exp_score
-                );
-            }
-            let mut m = RfHealthMetrics::new();
-            m.record_rx(5);
-            m.record_load_factor(load_fp);
-            let _ = m.adaptive_sf();
-            let _ = m.should_rebalance();
         }
     }
 

@@ -2,8 +2,8 @@
 //!
 //! The HybridRouter decides how to forward each packet based on destination address:
 //! 1. Link-local (fe80::/10): Direct neighbor delivery
-//! 2. Mesh-local (02xx/Yggdrasil, ULA, or mesh GUA): Gradient lookup -> LOADng discovery
-//! 3. External: Forward to RPL parent toward border router
+//! 2. Native 0200::/8: local gradient/LOADng first, then Yggdrasil via RPL
+//! 3. Other addresses: Forward to the RPL parent toward the border router
 //!
 //! Each protocol has its own state machine; the HybridRouter orchestrates them
 //! based on address classification and route availability.
@@ -25,7 +25,7 @@ use lichen_core::loadng::{Idle, RouteDiscovery, Rreq, Searching};
 pub enum AddressClass {
     /// fe80::/10 - direct neighbor, one hop away.
     LinkLocal,
-    /// Yggdrasil 02xx::/7, ULA (fd00::/8), or configured mesh GUA - peer in mesh.
+    /// Native 0200::/8 (plus legacy configured mesh prefixes) - peer in mesh.
     MeshLocal,
     /// Other GUA or unknown - route via border router.
     External,
@@ -186,6 +186,8 @@ pub struct HybridRouter {
     active_discoveries: Vec<ActiveDiscovery>,
     /// Next LOADng sequence number.
     loadng_seq: u16,
+    /// Whether local reactive discovery is available for a missing gradient.
+    loadng_enabled: bool,
     /// This node's geographic coordinates (for GPSR).
     node_coords: Option<GeoCoords>,
     /// Neighbor coordinates (link-local -> coords).
@@ -206,6 +208,7 @@ impl HybridRouter {
             max_pending_per_dest: 3,
             active_discoveries: Vec::new(),
             loadng_seq: 0,
+            loadng_enabled: true,
             node_coords: None,
             neighbor_coords: std::collections::HashMap::new(),
         }
@@ -219,7 +222,8 @@ impl HybridRouter {
             return AddressClass::LinkLocal;
         }
 
-        // Yggdrasil: 02xx::/7
+        // Native identity address: exactly 0200::/8.  03xx is not part of
+        // the profile and must not be admitted as a local-mesh destination.
         if addr[0] == 0x02 {
             return AddressClass::MeshLocal;
         }
@@ -261,7 +265,7 @@ impl HybridRouter {
         }
     }
 
-    /// Route to a mesh-local address (Yggdrasil 02xx, ULA, or mesh GUA).
+    /// Route to a native or legacy mesh-local address.
     fn route_mesh_local(&self, dst: &[u8; 16], now_ms: u32) -> RouteResult {
         // Check gradient table for existing route
         if let Some(entry) = self.gradient_table.lookup(dst, now_ms) {
@@ -274,8 +278,19 @@ impl HybridRouter {
             return RouteResult::forward(next_hop);
         }
 
-        // Queue for LOADng discovery
-        RouteResult::queue()
+        if self.loadng_enabled {
+            return RouteResult::queue();
+        }
+
+        // Local paths are always preferred for native addresses.  When local
+        // discovery is unavailable/exhausted, use the identity-preserving
+        // Yggdrasil path by forwarding up the RPL DODAG.  Legacy configured
+        // prefixes have no implicit Yggdrasil fallback.
+        if dst[0] == 0x02 {
+            return self.route_external();
+        }
+
+        RouteResult::drop()
     }
 
     /// Route to an external address (via RPL border router).
@@ -521,6 +536,14 @@ impl HybridRouter {
         self.rpl_parent = parent;
     }
 
+    /// Enable or disable local LOADng discovery.
+    ///
+    /// Disabling it makes a native 0200::/8 destination with no live gradient
+    /// fall through to the Yggdrasil/RPL path instead of being queued.
+    pub fn set_loadng_enabled(&mut self, enabled: bool) {
+        self.loadng_enabled = enabled;
+    }
+
     /// Set this node's geographic coordinates.
     pub fn set_node_coords(&mut self, coords: GeoCoords) {
         self.node_coords = Some(coords);
@@ -590,7 +613,40 @@ fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
+    use serde::Deserialize;
+    use std::net::Ipv6Addr;
     use std::vec;
+
+    #[derive(Deserialize)]
+    struct RouteSelectionDocument {
+        next_hops: RouteSelectionNextHops,
+        cases: std::vec::Vec<RouteSelectionCase>,
+    }
+
+    #[derive(Deserialize)]
+    struct RouteSelectionNextHops {
+        gradient: std::string::String,
+        rpl_parent: std::string::String,
+    }
+
+    #[derive(Deserialize)]
+    struct RouteSelectionCase {
+        name: std::string::String,
+        destination: std::string::String,
+        local_route: bool,
+        local_discovery: bool,
+        rpl_parent: bool,
+        expected_class: std::string::String,
+        expected_decision: std::string::String,
+        expected_next_hop: Option<std::string::String>,
+    }
+
+    fn parse_ipv6(value: &str) -> [u8; 16] {
+        value
+            .parse::<Ipv6Addr>()
+            .expect("valid vector IPv6")
+            .octets()
+    }
 
     fn link_local(iid: u8) -> [u8; 16] {
         let mut addr = [0u8; 16];
@@ -697,6 +753,63 @@ mod tests {
         let ygg = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5];
         let result = router.route(&ygg, 1000);
         assert_eq!(result.decision, RouteDecision::Queue);
+    }
+
+    #[test]
+    fn route_selection_matches_shared_vectors() {
+        let document: RouteSelectionDocument = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test/vectors/route_selection.json"
+        )))
+        .expect("route-selection vectors parse");
+        let gradient_next_hop = parse_ipv6(&document.next_hops.gradient);
+        let rpl_parent = parse_ipv6(&document.next_hops.rpl_parent);
+
+        for case in document.cases {
+            let destination = parse_ipv6(&case.destination);
+            let mut router = HybridRouter::new(parse_ipv6("0200::1"));
+            router.set_loadng_enabled(case.local_discovery);
+            if case.rpl_parent {
+                router.set_rpl_state(true, Some(rpl_parent));
+            }
+            if case.local_route {
+                router.gradient_table.update(
+                    GradientEntry {
+                        destination,
+                        next_hop: gradient_next_hop,
+                        hop_count: 1,
+                        seq_num: 1,
+                        source: GradientSource::Announce,
+                        expires_ms: 10_000,
+                        coords: None,
+                    },
+                    0,
+                );
+            }
+
+            let address_class = router.classify_address(&destination);
+            let result = router.route(&destination, 0);
+            let actual_class = match address_class {
+                AddressClass::LinkLocal => "link_local",
+                AddressClass::MeshLocal => "mesh_local",
+                AddressClass::External => "external",
+            };
+            let actual_decision = match result.decision {
+                RouteDecision::Forward => "forward",
+                RouteDecision::Queue => "queue",
+                RouteDecision::Drop => "drop",
+                RouteDecision::DeliverLocal => "deliver_local",
+            };
+            let expected_next_hop = case.expected_next_hop.as_deref().map(parse_ipv6);
+
+            assert_eq!(actual_class, case.expected_class, "{} class", case.name);
+            assert_eq!(
+                actual_decision, case.expected_decision,
+                "{} decision",
+                case.name
+            );
+            assert_eq!(result.next_hop, expected_next_hop, "{} next hop", case.name);
+        }
     }
 
     #[test]

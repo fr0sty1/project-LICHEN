@@ -54,6 +54,9 @@ enum Command {
     /// List known neighbors and their link quality (uses /status/neighbors).
     Neighbors,
 
+    /// List installed routes (uses /status/routes).
+    Routes,
+
     /// Send a text message to a node.
     Send {
         /// Destination node IPv6 address, or "all" for broadcast.
@@ -154,6 +157,7 @@ async fn main() {
     let result = match cli.command {
         Command::Status => commands::status(cli.node, &fmt).await,
         Command::Neighbors => commands::neighbors(cli.node, &fmt).await,
+        Command::Routes => commands::routes(cli.node, &fmt).await,
         Command::Send { to, message } => commands::send(cli.node, &to, &message, &fmt).await,
         Command::Inbox => commands::inbox(cli.node, &fmt).await,
         Command::Sent => commands::sent(cli.node, &fmt).await,

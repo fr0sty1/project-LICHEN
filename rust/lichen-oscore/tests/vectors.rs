@@ -151,7 +151,7 @@ fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
     let len = bytes.len();
     bytes
         .try_into()
-        .expect(&format!("hex_to_array: expected {} bytes, got {}", N, len))
+        .unwrap_or_else(|_| panic!("hex_to_array: expected {} bytes, got {}", N, len))
 }
 
 #[test]
@@ -278,6 +278,185 @@ fn test_response_protection_vectors() {
             ciphertext.as_slice(),
             hex_to_bytes(expected.ciphertext.as_ref().unwrap()),
             "ciphertext mismatch for {}",
+            v.name
+        );
+    }
+}
+
+/// Encrypt-side coverage for request vectors with an ID Context, which the
+/// loop in `test_request_protection_vectors` skips.
+#[test]
+fn test_request_protection_with_id_context_vectors() {
+    let vectors = load_vectors();
+
+    for v in vectors
+        .vectors
+        .iter()
+        .filter(|v| v.vector_type == "request_protection" && v.id_context.is_some())
+    {
+        let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
+        let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
+        let id_context = hex_to_bytes(v.id_context.as_ref().unwrap());
+        let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
+        let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
+
+        let mut store = TestStore::existing(v.sender_seq.unwrap_or(0).into());
+        let mut ctx = Context::new(
+            &master_secret,
+            master_salt.as_deref(),
+            Some(&id_context),
+            &sender_id,
+            &recipient_id,
+        )
+        .unwrap_or_else(|_| panic!("Failed to create context for {}", v.name))
+        .restore_existing(&mut store)
+        .unwrap_or_else(|_| panic!("Failed to restore context for {}", v.name));
+
+        let pt = v.plaintext.as_ref().unwrap();
+        let expected = v.expected.as_ref().unwrap();
+        let (ciphertext, oscore_opt) = ctx
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(
+                pt.code,
+                &hex_to_bytes(&pt.options),
+                &hex_to_bytes(&pt.payload),
+            )
+            .unwrap_or_else(|_| panic!("protect_request failed for {}", v.name));
+
+        assert_eq!(
+            oscore_opt.as_slice(),
+            hex_to_bytes(expected.oscore_option.as_ref().unwrap()),
+            "OSCORE option mismatch for {}",
+            v.name
+        );
+        assert_eq!(
+            ciphertext.as_slice(),
+            hex_to_bytes(expected.ciphertext.as_ref().unwrap()),
+            "ciphertext mismatch for {}",
+            v.name
+        );
+    }
+}
+
+/// Decrypt-side validation of RFC 8613 Appendix C request vectors (C.4-C.6):
+/// the canonical ciphertext and OSCORE option are fed to `unprotect_request`
+/// on a receiver-role context and must yield exactly the vector plaintext.
+/// This exercises decrypt with the RFC 8613 Section 5.4 AAD independently of
+/// the encrypt path.
+#[test]
+fn test_request_unprotection_vectors() {
+    let vectors = load_vectors();
+
+    for v in vectors
+        .vectors
+        .iter()
+        .filter(|v| v.vector_type == "request_protection")
+    {
+        let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
+        let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
+        let id_context = v.id_context.as_ref().map(|s| hex_to_bytes(s));
+        let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
+        let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
+
+        // Receiver view of the same security material: roles are swapped so
+        // that the client's sender key becomes our recipient key.
+        let mut store = TestStore::fresh();
+        let mut ctx = Context::new(
+            &master_secret,
+            master_salt.as_deref(),
+            id_context.as_deref(),
+            &recipient_id,
+            &sender_id,
+        )
+        .unwrap_or_else(|_| panic!("Failed to create context for {}", v.name))
+        .register_fresh(&mut store)
+        .unwrap_or_else(|_| panic!("Failed to register context for {}", v.name));
+
+        let pt = v.plaintext.as_ref().unwrap();
+        let expected = v.expected.as_ref().unwrap();
+        let (code, options, payload) = ctx
+            .unprotect_request(
+                &hex_to_bytes(expected.oscore_option.as_ref().unwrap()),
+                &hex_to_bytes(expected.ciphertext.as_ref().unwrap()),
+            )
+            .unwrap_or_else(|e| panic!("unprotect_request failed for {}: {:?}", v.name, e));
+
+        assert_eq!(code, pt.code, "code mismatch for {}", v.name);
+        assert_eq!(
+            options.as_slice(),
+            hex_to_bytes(&pt.options),
+            "options mismatch for {}",
+            v.name
+        );
+        assert_eq!(
+            payload.as_slice(),
+            hex_to_bytes(&pt.payload),
+            "payload mismatch for {}",
+            v.name
+        );
+    }
+}
+
+/// Decrypt-side validation of RFC 8613 Appendix C response vectors (C.7-C.8):
+/// the canonical ciphertext and OSCORE option are authenticated and decrypted
+/// via `begin_unprotect_response` + `commit` on a client-role context and must
+/// yield exactly the vector plaintext, covering both the no-PIV (C.7) and
+/// fresh-PIV (C.8) AAD forms.
+#[test]
+fn test_response_unprotection_vectors() {
+    let vectors = load_vectors();
+
+    for v in vectors
+        .vectors
+        .iter()
+        .filter(|v| v.vector_type == "response_protection")
+    {
+        let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
+        let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
+        let id_context = v.id_context.as_ref().map(|s| hex_to_bytes(s));
+        // The protecting party (responder) owns vector sender_id; we take the
+        // requester role, whose sender id is vector recipient_id.
+        let responder_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
+        let requester_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
+        let request_piv = hex_to_bytes(v.request_piv.as_ref().unwrap());
+
+        let mut store = TestStore::fresh();
+        let mut ctx = Context::new(
+            &master_secret,
+            master_salt.as_deref(),
+            id_context.as_deref(),
+            &requester_id,
+            &responder_id,
+        )
+        .unwrap_or_else(|_| panic!("Failed to create context for {}", v.name))
+        .register_fresh(&mut store)
+        .unwrap_or_else(|_| panic!("Failed to register context for {}", v.name));
+
+        let pt = v.plaintext.as_ref().unwrap();
+        let expected = v.expected.as_ref().unwrap();
+        let pending = ctx
+            .begin_unprotect_response(
+                &hex_to_bytes(expected.oscore_option.as_ref().unwrap()),
+                &hex_to_bytes(expected.ciphertext.as_ref().unwrap()),
+                &request_piv,
+            )
+            .unwrap_or_else(|e| panic!("begin_unprotect_response failed for {}: {:?}", v.name, e));
+        let (code, options, payload) = pending
+            .commit()
+            .unwrap_or_else(|e| panic!("commit failed for {}: {:?}", v.name, e));
+
+        assert_eq!(code, pt.code, "code mismatch for {}", v.name);
+        assert_eq!(
+            options.as_slice(),
+            hex_to_bytes(&pt.options),
+            "options mismatch for {}",
+            v.name
+        );
+        assert_eq!(
+            payload.as_slice(),
+            hex_to_bytes(&pt.payload),
+            "payload mismatch for {}",
             v.name
         );
     }

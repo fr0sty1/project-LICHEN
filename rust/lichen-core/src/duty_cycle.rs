@@ -47,6 +47,79 @@ pub const DEFAULT_DUTY_PERMILLE: u16 = 10;
 pub const REGION_EU: u8 = 0;
 pub const REGION_US: u8 = 1;
 pub const REGION_AS: u8 = 2;
+/// EU868 regulatory duty-cycle ceiling: 1% per rolling hour.
+pub const EU868_DUTY_PERMILLE: u16 = 10;
+/// US915 has no rolling duty-cycle ceiling; 100% keeps airtime accounting active.
+pub const US915_DUTY_PERMILLE: u16 = 1000;
+/// FCC Part 15.247 FHSS maximum dwell time on one hopping channel.
+pub const US915_FCC_MAX_DWELL_MS: u32 = 400;
+
+/// Regional regulatory profile applied by [`DutyCycleTracker`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DutyCycleRegion {
+    /// ETSI EU868: 1% duty cycle per sub-band.
+    Eu868,
+    /// FCC US915 FHSS: no rolling duty limit, but at most 400 ms dwell time.
+    Us915,
+}
+
+impl DutyCycleRegion {
+    /// Return the default regulatory limits for this region.
+    pub const fn limit(self) -> RegionalDutyCycleLimit {
+        match self {
+            Self::Eu868 => RegionalDutyCycleLimit::EU868,
+            Self::Us915 => RegionalDutyCycleLimit::US915,
+        }
+    }
+}
+
+/// Configurable rolling duty-cycle and per-transmission dwell-time limits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RegionalDutyCycleLimit {
+    duty_permille: u16,
+    max_dwell_time_ms: Option<u32>,
+}
+
+impl RegionalDutyCycleLimit {
+    /// Default EU868 regulatory profile.
+    pub const EU868: Self = Self {
+        duty_permille: EU868_DUTY_PERMILLE,
+        max_dwell_time_ms: None,
+    };
+
+    /// Default US915 FCC FHSS regulatory profile.
+    pub const US915: Self = Self {
+        duty_permille: US915_DUTY_PERMILLE,
+        max_dwell_time_ms: Some(US915_FCC_MAX_DWELL_MS),
+    };
+
+    /// Build a custom regional profile.
+    ///
+    /// Returns `None` when the rolling limit is outside 1..=1000 permille or
+    /// when a configured dwell-time limit is zero.
+    pub const fn from_parts(duty_permille: u16, max_dwell_time_ms: Option<u32>) -> Option<Self> {
+        if duty_permille == 0 || duty_permille > 1000 {
+            return None;
+        }
+        if matches!(max_dwell_time_ms, Some(0)) {
+            return None;
+        }
+        Some(Self {
+            duty_permille,
+            max_dwell_time_ms,
+        })
+    }
+
+    /// Rolling duty-cycle ceiling in permille (`10` = 1%).
+    pub const fn duty_permille(self) -> u16 {
+        self.duty_permille
+    }
+
+    /// Per-transmission dwell-time ceiling, when the region imposes one.
+    pub const fn max_dwell_time_ms(self) -> Option<u32> {
+        self.max_dwell_time_ms
+    }
+}
 
 // Congestion thresholds in permille (spec 07 section 10.2.3)
 const THRESHOLD_ELEVATED: u16 = 500; // 50%
@@ -220,21 +293,27 @@ pub const fn check_congestion_allows(level: CongestionLevel, priority: TxPriorit
 }
 
 pub fn adaptive_duty_permille(density: u8, region: u8) -> u16 {
-    let base = match region {
-        REGION_EU => 10,
-        REGION_US => 1000,
-        _ => DEFAULT_DUTY_PERMILLE,
-    };
+    // CCP-13 defines region 0 as strict and region 1 as lenient. Unknown
+    // values deliberately fail closed to the stricter region-0 budget.
+    let strict_region = region != REGION_US;
     if density > 8 {
-        if base > 1 {
-            base / 2
+        if strict_region {
+            5
         } else {
-            1
+            10
         }
     } else if density < 3 {
-        (base * 2).min(1000)
+        if strict_region {
+            20
+        } else {
+            50
+        }
     } else {
-        base
+        if strict_region {
+            10
+        } else {
+            20
+        }
     }
 }
 
@@ -270,6 +349,8 @@ pub struct DutyCycleTracker<const N: usize> {
     records: Deque<TxRecord, N>,
     /// Duty cycle limit in permille (1% = 10, 0.1% = 1).
     duty_permille: u16,
+    /// Optional per-transmission regional dwell-time ceiling.
+    max_dwell_time_ms: Option<u32>,
 }
 
 impl<const N: usize> Default for DutyCycleTracker<N> {
@@ -284,6 +365,7 @@ impl<const N: usize> DutyCycleTracker<N> {
         Self {
             records: Deque::new(),
             duty_permille: DEFAULT_DUTY_PERMILLE,
+            max_dwell_time_ms: None,
         }
     }
 
@@ -305,11 +387,50 @@ impl<const N: usize> DutyCycleTracker<N> {
         Self {
             records: Deque::new(),
             duty_permille,
+            max_dwell_time_ms: None,
+        }
+    }
+
+    /// Create a tracker using the default regulatory profile for `region`.
+    pub const fn with_region(region: DutyCycleRegion) -> Self {
+        Self::with_regional_limit(region.limit())
+    }
+
+    /// Create a tracker using an explicitly configured regional profile.
+    pub const fn with_regional_limit(limit: RegionalDutyCycleLimit) -> Self {
+        Self {
+            records: Deque::new(),
+            duty_permille: limit.duty_permille,
+            max_dwell_time_ms: limit.max_dwell_time_ms,
+        }
+    }
+
+    /// Replace the active regulatory profile while retaining airtime history.
+    pub fn configure_region(&mut self, region: DutyCycleRegion) {
+        self.configure_regional_limit(region.limit());
+    }
+
+    /// Replace the active limits while retaining airtime history.
+    pub fn configure_regional_limit(&mut self, limit: RegionalDutyCycleLimit) {
+        self.duty_permille = limit.duty_permille;
+        self.max_dwell_time_ms = limit.max_dwell_time_ms;
+    }
+
+    /// Return the currently enforced regional limits.
+    pub const fn regional_limit(&self) -> RegionalDutyCycleLimit {
+        RegionalDutyCycleLimit {
+            duty_permille: self.duty_permille,
+            max_dwell_time_ms: self.max_dwell_time_ms,
         }
     }
 
     pub fn set_from_density(&mut self, density: u8, region: u8) {
         self.duty_permille = adaptive_duty_permille(density, region);
+        self.max_dwell_time_ms = if region == REGION_US {
+            Some(US915_FCC_MAX_DWELL_MS)
+        } else {
+            None
+        };
     }
 
     /// Record a transmission.
@@ -444,6 +565,13 @@ impl<const N: usize> DutyCycleTracker<N> {
     pub fn next_tx_available_ms(&mut self, now_ms: u64, duration_ms: u32) -> u64 {
         self.evict_stale(now_ms);
 
+        if self
+            .max_dwell_time_ms
+            .is_some_and(|max_dwell_ms| duration_ms > max_dwell_ms)
+        {
+            return u64::MAX;
+        }
+
         let max_tx = self.max_tx_ms();
         let used = self.total_tx_in_window(now_ms);
 
@@ -483,7 +611,20 @@ impl<const N: usize> DutyCycleTracker<N> {
     /// - `now_ms`: Current timestamp in milliseconds.
     /// - `duration_ms`: Desired transmission duration.
     pub fn can_transmit(&mut self, now_ms: u64, duration_ms: u32) -> bool {
-        self.remaining_ms(now_ms) >= duration_ms
+        let within_dwell_limit = match self.max_dwell_time_ms {
+            Some(max_dwell_ms) => duration_ms <= max_dwell_ms,
+            None => true,
+        };
+        within_dwell_limit && self.remaining_ms(now_ms) >= duration_ms
+    }
+
+    /// Record a transmission only when the active regional profile permits it.
+    ///
+    /// Returns `false` without changing accounting state when the proposed
+    /// transmission exceeds either the rolling budget or dwell-time ceiling,
+    /// or when the record buffer is full.
+    pub fn try_record_tx(&mut self, timestamp_ms: u64, duration_ms: u32) -> bool {
+        self.can_transmit(timestamp_ms, duration_ms) && self.record_tx(timestamp_ms, duration_ms)
     }
 
     /// Remove records that are entirely outside the rolling window.
@@ -780,8 +921,71 @@ mod tests {
         assert_eq!(adaptive_duty_permille(0, REGION_EU), 20);
         assert_eq!(adaptive_duty_permille(10, REGION_EU), 5);
         assert_eq!(adaptive_duty_permille(5, REGION_EU), 10);
-        assert_eq!(adaptive_duty_permille(10, REGION_US), 500);
+        assert_eq!(adaptive_duty_permille(0, REGION_US), 50);
+        assert_eq!(adaptive_duty_permille(5, REGION_US), 20);
+        assert_eq!(adaptive_duty_permille(10, REGION_US), 10);
         assert_eq!(adaptive_duty_permille(10, 255), 5);
+    }
+
+    #[test]
+    fn regional_profiles_have_normative_limits() {
+        let eu = DutyCycleRegion::Eu868.limit();
+        assert_eq!(eu.duty_permille(), EU868_DUTY_PERMILLE);
+        assert_eq!(eu.max_dwell_time_ms(), None);
+
+        let us = DutyCycleRegion::Us915.limit();
+        assert_eq!(us.duty_permille(), US915_DUTY_PERMILLE);
+        assert_eq!(us.max_dwell_time_ms(), Some(US915_FCC_MAX_DWELL_MS));
+    }
+
+    #[test]
+    fn regional_profile_validation_rejects_invalid_limits() {
+        assert_eq!(RegionalDutyCycleLimit::from_parts(0, None), None);
+        assert_eq!(RegionalDutyCycleLimit::from_parts(1001, None), None);
+        assert_eq!(RegionalDutyCycleLimit::from_parts(10, Some(0)), None);
+        assert!(RegionalDutyCycleLimit::from_parts(25, Some(250)).is_some());
+    }
+
+    #[test]
+    fn eu868_enforces_one_percent_rolling_budget() {
+        let mut tracker: DutyCycleTracker<4> =
+            DutyCycleTracker::with_region(DutyCycleRegion::Eu868);
+        assert_eq!(tracker.max_tx_ms(), 36_000);
+        assert!(tracker.try_record_tx(0, 36_000));
+        assert!(!tracker.try_record_tx(0, 1));
+        assert_eq!(tracker.record_count(), 1);
+    }
+
+    #[test]
+    fn us915_enforces_fcc_dwell_time_without_rolling_limit() {
+        let mut tracker: DutyCycleTracker<4> =
+            DutyCycleTracker::with_region(DutyCycleRegion::Us915);
+        assert_eq!(tracker.max_tx_ms(), WINDOW_MS as u32);
+        assert!(tracker.can_transmit(0, US915_FCC_MAX_DWELL_MS));
+        assert!(!tracker.can_transmit(0, US915_FCC_MAX_DWELL_MS + 1));
+        assert_eq!(
+            tracker.next_tx_available_ms(0, US915_FCC_MAX_DWELL_MS + 1),
+            u64::MAX
+        );
+        assert!(!tracker.try_record_tx(0, US915_FCC_MAX_DWELL_MS + 1));
+        assert_eq!(tracker.record_count(), 0);
+        assert!(tracker.try_record_tx(0, US915_FCC_MAX_DWELL_MS));
+    }
+
+    #[test]
+    fn regional_limits_can_be_reconfigured_without_losing_history() {
+        let mut tracker: DutyCycleTracker<4> =
+            DutyCycleTracker::with_region(DutyCycleRegion::Us915);
+        assert!(tracker.try_record_tx(0, 400));
+
+        let custom = RegionalDutyCycleLimit::from_parts(25, Some(250))
+            .expect("valid custom regional profile");
+        tracker.configure_regional_limit(custom);
+
+        assert_eq!(tracker.regional_limit(), custom);
+        assert_eq!(tracker.record_count(), 1);
+        assert_eq!(tracker.remaining_ms(0), 89_600);
+        assert!(!tracker.can_transmit(0, 251));
     }
 
     // --- CongestionLevel tests (spec 07 section 10.2.3) ---

@@ -39,6 +39,10 @@ name = "fragmentation_vectors"
 required-features = ["std", "raw-fragment-codec"]
 
 [[test]]
+name = "reassembly_state_machine"
+required-features = ["std", "raw-fragment-codec"]
+
+[[test]]
 name = "rule_versioning_vectors"
 required-features = ["std", "raw-fragment-codec"]
 

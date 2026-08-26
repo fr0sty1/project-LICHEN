@@ -144,6 +144,9 @@ pub struct GradientTable {
 #[cfg(feature = "std")]
 impl GradientTable {
     /// Create a new gradient table with the given capacity.
+    ///
+    /// A zero-capacity table is valid, remains allocation-free, and rejects
+    /// every [`Self::update`] by returning `false`.
     pub fn new(max_entries: usize) -> Self {
         Self {
             entries: std::vec::Vec::with_capacity(max_entries),
@@ -168,6 +171,10 @@ impl GradientTable {
     /// Insert or update a gradient entry.
     /// Returns true if the table was modified.
     pub fn update(&mut self, entry: GradientEntry, now_ms: u32) -> bool {
+        if self.max_entries == 0 {
+            return false;
+        }
+
         // Find existing entry for this destination
         if let Some(idx) = self
             .entries
@@ -281,6 +288,50 @@ mod tests {
     fn lookup_returns_none_for_missing() {
         let table = GradientTable::new(10);
         assert!(table.lookup(&link_local(1), 1000).is_none());
+    }
+
+    #[test]
+    fn zero_capacity_rejects_updates_without_allocating() {
+        let mut table = GradientTable::new(0);
+        let destination = link_local(1);
+        let iid = destination[8..].try_into().unwrap();
+
+        assert_eq!(table.entries.capacity(), 0);
+        assert!(!table.update(make_entry(1, 2, 3, 100, GradientSource::Announce), 1000));
+        assert!(!table.update(make_entry(1, 3, 1, 101, GradientSource::Rpl), 1000));
+        assert!(table.is_empty());
+        assert_eq!(table.len(), 0);
+        assert_eq!(table.iter().count(), 0);
+        assert!(table.lookup(&destination, 1000).is_none());
+        assert!(table.lookup_by_iid(&iid, 1000).is_none());
+
+        table.remove(&destination);
+        let removed = table.remove_via(&link_local(2));
+        assert!(removed.is_empty());
+        assert_eq!(removed.capacity(), 0);
+        assert_eq!(table.expire_old(1000), 0);
+        assert_eq!(table.entries.capacity(), 0);
+    }
+
+    #[test]
+    fn single_entry_capacity_supports_update_and_eviction() {
+        let mut table = GradientTable::new(1);
+
+        assert!(table.update(make_entry(1, 2, 3, 100, GradientSource::Announce), 1000));
+        assert!(table.update(make_entry(1, 3, 2, 101, GradientSource::Rpl), 1000));
+        assert_eq!(table.len(), 1);
+        assert_eq!(
+            table.lookup(&link_local(1), 1000).unwrap().next_hop,
+            link_local(3)
+        );
+
+        assert!(table.update(make_entry(2, 4, 1, 1, GradientSource::Announce), 1000));
+        assert_eq!(table.len(), 1);
+        assert!(table.lookup(&link_local(1), 1000).is_none());
+        assert!(table.lookup(&link_local(2), 1000).is_some());
+
+        table.remove(&link_local(2));
+        assert!(table.is_empty());
     }
 
     #[test]

@@ -55,9 +55,14 @@ fn lollipop_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
     let a_linear = a < 128;
     let b_linear = b < 128;
     if a_linear == b_linear {
-        let diff = a.abs_diff(b);
-        if diff <= 16 {
-            Some(a.cmp(&b))
+        // Serial arithmetic with mod-128 window per RFC 6550 Section 7.2.
+        // Matches rust/lichen-rpl routing.rs seq_is_newer formulation.
+        let diff_a_minus_b = a.wrapping_sub(b) & 0x7F;
+        let diff_b_minus_a = b.wrapping_sub(a) & 0x7F;
+        if (1..=16).contains(&diff_a_minus_b) {
+            Some(core::cmp::Ordering::Greater)
+        } else if (1..=16).contains(&diff_b_minus_a) {
+            Some(core::cmp::Ordering::Less)
         } else {
             None
         }
@@ -1081,6 +1086,8 @@ mod tests {
     fn version_lollipop_semantics() {
         use core::cmp::Ordering::{Equal, Greater, Less};
 
+        // Serial-arithmetic lollipop (mod-128 same-region, RFC 6550 Section 7.2).
+        // Same-region pairs now use directional wrap: (a-b)&0x7F in 1..=16 means a newer.
         let cases = [
             (0, 0, Some(Equal)),
             (128, 128, Some(Equal)),
@@ -1088,9 +1095,9 @@ mod tests {
             (17, 0, None),
             (0, 16, Some(Less)),
             (0, 17, None),
-            (0, 127, None),
-            (127, 0, None),
-            (120, 5, None),
+            (0, 127, Some(Greater)), // (0-127)&0x7F = 1, in 1..=16
+            (127, 0, Some(Less)),    // (127-0)&0x7F = 127, reverse diff 1 in 1..=16
+            (120, 5, Some(Less)),    // (120-5)&0x7F = 115; (5-120)&0x7F = 13, in 1..=16
             (255, 239, Some(Greater)),
             (255, 238, None),
             (5, 250, Some(Greater)),
@@ -1104,10 +1111,13 @@ mod tests {
     }
 
     #[test]
-    fn dodag_version_accepts_only_observed_adjacent_circular_wrap() {
+    fn dodag_version_serial_arithmetic_lollipop() {
+        // Serial arithmetic: 0 is 1 step newer than 127 (mod-128 wrap).
         assert!(version_is_newer(0, 127));
         assert!(!version_is_newer(127, 0));
-        assert!(!version_is_newer(5, 120));
+        // 5 is 13 steps newer than 120 ((5-120)&0x7F = 13, in 1..=16).
+        assert!(version_is_newer(5, 120));
+        assert!(!version_is_newer(120, 5));
     }
 
     #[test]

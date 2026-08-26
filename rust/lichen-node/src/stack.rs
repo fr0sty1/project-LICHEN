@@ -21,7 +21,7 @@ use lichen_link::{
     link_layer::LinkRxError,
 };
 #[cfg(feature = "std")]
-use lichen_rpl::routing::SourceRoutingHeader;
+use lichen_rpl::routing::{SourceRoutingHeader, MAX_ROUTE_HOPS};
 use lichen_schc::codec;
 
 use crate::forward_buffer::{ForwardBuffer, ForwardError};
@@ -760,11 +760,69 @@ pub fn add_rpl_source_route(
     route: &[[u8; 16]],
     out: &mut [u8],
 ) -> Result<usize, TxError> {
-    let remaining = route.len().checked_sub(1).ok_or(TxError::NoRoute)?;
-    // Hdr Ext Len = routing_len / 8 - 1 = 2 * remaining; must fit in u8
-    if remaining == 0 || remaining > 127 {
+    if ipv6.len() < IPV6_HEADER_LEN || ipv6[0] >> 4 != 6 {
         return Err(TxError::NoRoute);
     }
+    let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
+    if IPV6_HEADER_LEN.checked_add(payload_len) != Some(ipv6.len()) {
+        return Err(TxError::NoRoute);
+    }
+
+    let remaining = route.len().checked_sub(1).ok_or(TxError::NoRoute)?;
+    if route.len() > MAX_ROUTE_HOPS {
+        return Err(TxError::NoRoute);
+    }
+    let source: [u8; 16] = ipv6[8..24].try_into().unwrap();
+    let destination: [u8; 16] = ipv6[24..40].try_into().unwrap();
+    if route.last() != Some(&destination)
+        || source[0] == 0xff
+        || route.iter().any(|address| address[0] == 0xff)
+        || route.contains(&source)
+        || route
+            .iter()
+            .enumerate()
+            .any(|(index, address)| route[..index].contains(address))
+        || remaining >= usize::from(ipv6[7])
+    {
+        return Err(TxError::NoRoute);
+    }
+
+    if remaining == 0 {
+        if out.len() < ipv6.len() {
+            return Err(TxError::BufferTooSmall);
+        }
+        out[..ipv6.len()].copy_from_slice(ipv6);
+        return Ok(ipv6.len());
+    }
+
+    // RFC 8200 requires Hop-by-Hop Options to remain immediately after the
+    // IPv6 header. Insert the SRH after that header when present, otherwise at
+    // the start of the extension chain. Reject an existing Routing header.
+    let mut next_header = ipv6[6];
+    let mut offset = IPV6_HEADER_LEN;
+    let mut insertion_offset = IPV6_HEADER_LEN;
+    let mut previous_next_header_offset = 6usize;
+    let mut first_extension = true;
+    while matches!(next_header, 0 | 43 | 60) {
+        if next_header == 43 || offset.checked_add(2).is_none_or(|end| end > ipv6.len()) {
+            return Err(TxError::NoRoute);
+        }
+        let extension_len = (usize::from(ipv6[offset + 1]) + 1)
+            .checked_mul(8)
+            .ok_or(TxError::NoRoute)?;
+        let extension_end = offset
+            .checked_add(extension_len)
+            .filter(|end| *end <= ipv6.len())
+            .ok_or(TxError::NoRoute)?;
+        if first_extension && next_header == 0 {
+            insertion_offset = extension_end;
+            previous_next_header_offset = offset;
+        }
+        next_header = ipv6[offset];
+        offset = extension_end;
+        first_extension = false;
+    }
+
     let routing_len = 8usize
         .checked_add(remaining.checked_mul(16).ok_or(TxError::BufferTooSmall)?)
         .ok_or(TxError::BufferTooSmall)?;
@@ -772,40 +830,26 @@ pub fn add_rpl_source_route(
         .len()
         .checked_add(routing_len)
         .ok_or(TxError::BufferTooSmall)?;
-    if ipv6.len() < IPV6_HEADER_LEN || total_len > out.len() {
+    if total_len > out.len() {
         return Err(TxError::BufferTooSmall);
     }
-    let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
     let routed_payload_len = payload_len
         .checked_add(routing_len)
         .and_then(|len| u16::try_from(len).ok())
         .ok_or(TxError::BufferTooSmall)?;
 
-    out[..IPV6_HEADER_LEN].copy_from_slice(&ipv6[..IPV6_HEADER_LEN]);
+    out[..insertion_offset].copy_from_slice(&ipv6[..insertion_offset]);
     out[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
-    let transport = out[6];
-    out[6] = 43;
+    let following_header = out[previous_next_header_offset];
+    out[previous_next_header_offset] = 43;
     out[24..40].copy_from_slice(&route[0]);
-    out[40] = transport;
-    out[41] = (routing_len / 8 - 1) as u8;
-    #[cfg(feature = "std")]
-    {
-        let srh = SourceRoutingHeader::from_route(route).map_err(|_| TxError::NoRoute)?;
-        let _ = srh
-            .write_to(&mut out[42..])
-            .map_err(|_| TxError::BufferTooSmall)?;
-    }
-    #[cfg(not(feature = "std"))]
-    {
-        out[42] = 3;
-        out[43] = remaining as u8;
-        out[44..48].fill(0);
-        for (index, address) in route[1..].iter().enumerate() {
-            let start = 48 + index * 16;
-            out[start..start + 16].copy_from_slice(address);
-        }
-    }
-    out[IPV6_HEADER_LEN + routing_len..total_len].copy_from_slice(&ipv6[IPV6_HEADER_LEN..]);
+    out[insertion_offset] = following_header;
+    out[insertion_offset + 1] = (routing_len / 8 - 1) as u8;
+    let srh = SourceRoutingHeader::from_route(route).map_err(|_| TxError::NoRoute)?;
+    let _ = srh
+        .write_to(&mut out[insertion_offset + 2..insertion_offset + routing_len])
+        .map_err(|_| TxError::BufferTooSmall)?;
+    out[insertion_offset + routing_len..total_len].copy_from_slice(&ipv6[insertion_offset..]);
     Ok(total_len)
 }
 

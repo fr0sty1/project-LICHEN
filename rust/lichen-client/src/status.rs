@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: The contributors to the LICHEN project
 
-//! Node status and neighbor domain types with CBOR wire codecs.
+//! Node status, neighbor, and routing-table domain types with CBOR wire codecs.
 //!
 //! Wire contract (firmware `lichen/subsys/lichen/coap/coap_status.c`,
 //! `lichen_coap_encode_status_cbor` / `lichen_coap_encode_neighbors_cbor`):
@@ -10,6 +10,8 @@
 //!   time{...}, dodag{...}, radio{...}}`.
 //! - `GET /status/neighbors` : `{neighbors: [{addr, rssi_dbm, snr_db, etx,
 //!   last_seen_s, trust}]}`.
+//! - `GET /status/routes` : `{routes: [{prefix, via, metric, lifetime_s}],
+//!   default_route}`.
 //!
 //! Several radio/link metrics are transported as integers scaled by 10
 //! (`duty_cycle_pct`, `snr_db`, `etx`); the accessor methods return the real
@@ -138,6 +140,36 @@ pub struct Neighbors {
 
 impl Neighbors {
     /// Decode a `GET /status/neighbors` CBOR response.
+    pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
+        ciborium::from_reader(bytes).map_err(|e| Error::Decode(e.to_string()))
+    }
+}
+
+/// One entry in the `GET /status/routes` routing table.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Route {
+    /// Destination IPv6 prefix in CIDR notation.
+    pub prefix: String,
+    /// Link-local IPv6 address of the next hop.
+    pub via: String,
+    /// Route metric reported by the node.
+    pub metric: u64,
+    /// Remaining route lifetime in seconds.
+    pub lifetime_s: u64,
+}
+
+/// The `GET /status/routes` response envelope.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Routes {
+    /// Installed routes, in the order reported by the node.
+    pub routes: Vec<Route>,
+    /// Default next hop, or `None` when the node has no default route.
+    #[serde(default)]
+    pub default_route: Option<String>,
+}
+
+impl Routes {
+    /// Decode a `GET /status/routes` CBOR response.
     pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
         ciborium::from_reader(bytes).map_err(|e| Error::Decode(e.to_string()))
     }
@@ -340,6 +372,30 @@ mod tests {
         let wire = Value::Map(vec![(txt("neighbors"), Value::Array(vec![]))]);
         let ns = Neighbors::from_cbor(&encode(&wire)).unwrap();
         assert!(ns.neighbors.is_empty());
+    }
+
+    /// Decode every canonical `/status/routes` vector and compare it with the
+    /// independently represented JSON input document.
+    #[test]
+    fn routes_decode_canonical_vectors() {
+        let vectors: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../test/vectors/lci_routing_table.json"
+        )))
+        .unwrap();
+
+        for vector in vectors["vectors"].as_array().unwrap() {
+            let encoded = hex::decode(vector["encoded_hex"].as_str().unwrap()).unwrap();
+            let routes = Routes::from_cbor(&encoded).unwrap();
+            let expected: Routes = serde_json::from_value(vector["input"].clone()).unwrap();
+            assert_eq!(routes, expected, "vector {}", vector["name"]);
+        }
+    }
+
+    #[test]
+    fn routes_rejects_non_envelope_payload() {
+        let wire = Value::Array(vec![]);
+        assert!(Routes::from_cbor(&encode(&wire)).is_err());
     }
 
     /// Oracle: a CBOR map built with the firmware's exact `/status/queues`

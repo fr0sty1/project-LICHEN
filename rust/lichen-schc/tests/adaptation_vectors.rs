@@ -7,10 +7,10 @@
 use std::fs;
 use std::path::Path;
 
-use lichen_schc::fragment::{canonical_fragmentation_rule, FragmentError};
+use lichen_schc::fragment::{canonical_fragmentation_rule, Ack, FragmentError, WINDOW_SIZE};
 use serde::Deserialize;
 
-#[cfg(feature = "raw-fragment-codec")]
+#[cfg(all(feature = "raw-fragment-codec", feature = "test-utils"))]
 use lichen_schc::fragment::{Fragment, ReceiverResponse, TILE_SIZE};
 
 #[cfg(all(feature = "raw-fragment-codec", feature = "test-utils"))]
@@ -50,6 +50,18 @@ struct AdaptationVector {
     window: Option<u8>,
     #[serde(default)]
     c_bit: Option<u8>,
+    #[serde(default)]
+    assigned_fcns: Option<Vec<u8>>,
+    #[serde(default)]
+    received_bitmap_bits: Option<String>,
+    #[serde(default)]
+    unassigned_zero_bits: Option<usize>,
+    #[serde(default)]
+    final_all_1_received: Option<bool>,
+    #[serde(default)]
+    received_bitmap_prefix_bits: Option<String>,
+    #[serde(default)]
+    trailing_received_bits: Option<usize>,
     #[serde(default)]
     version: Option<u8>,
     #[serde(default)]
@@ -1164,7 +1176,8 @@ fn test_schc_adaptation_vectors() {
             }
 
             "ack_bitmap" => {
-                // ACK bitmap format tests
+                // Drive the production ACK parser and serializer against the
+                // shared cross-implementation bitmap vectors.
                 let wire = hex_decode(vector.wire.as_deref().unwrap_or(""));
                 let rule_id = vector.rule_id.unwrap_or(0);
                 let c_bit = vector.c_bit.unwrap_or(0);
@@ -1182,21 +1195,92 @@ fn test_schc_adaptation_vectors() {
                     ));
                 }
 
-                let parsed_c = (wire[1] >> 6) & 1;
-                let parsed_window = wire[1] >> 7;
-                if parsed_window != window {
-                    failures.push(format!(
-                        "{}: ACK window mismatch: expected {}, got {}",
-                        name, window, parsed_window
-                    ));
-                }
-                if parsed_c != c_bit {
-                    failures.push(format!(
-                        "{}: C bit mismatch: expected {}, got {}",
-                        name, c_bit, parsed_c
-                    ));
-                } else {
-                    println!("Vector '{}' (ACK bitmap): C={} OK", name, c_bit);
+                let assigned = vector.assigned_fcns.as_ref().map(|fcns| {
+                    fcns.iter().fold(0u64, |mask, &fcn| {
+                        mask | if fcn == 63 { 1 } else { 1u64 << fcn }
+                    })
+                });
+                match Ack::from_bytes_for(&wire, assigned) {
+                    Ok(ack) => {
+                        if ack.rule_id != rule_id {
+                            failures.push(format!(
+                                "{}: decoded rule ID mismatch: expected {}, got {}",
+                                name, rule_id, ack.rule_id
+                            ));
+                        }
+                        if ack.window != window {
+                            failures.push(format!(
+                                "{}: ACK window mismatch: expected {}, got {}",
+                                name, window, ack.window
+                            ));
+                        }
+                        if u8::from(ack.complete) != c_bit {
+                            failures.push(format!(
+                                "{}: C bit mismatch: expected {}, got {}",
+                                name,
+                                c_bit,
+                                u8::from(ack.complete)
+                            ));
+                        }
+                        if !ack.complete {
+                            let expected_bits =
+                                if let Some(prefix) = vector.received_bitmap_bits.as_deref() {
+                                    let mut bits = prefix.to_owned();
+                                    bits.extend(core::iter::repeat_n(
+                                        '0',
+                                        vector.unassigned_zero_bits.unwrap_or(0),
+                                    ));
+                                    bits.push(if vector.final_all_1_received.unwrap_or(false) {
+                                        '1'
+                                    } else {
+                                        '0'
+                                    });
+                                    bits
+                                } else {
+                                    let mut bits = vector
+                                        .received_bitmap_prefix_bits
+                                        .as_deref()
+                                        .unwrap_or("")
+                                        .to_owned();
+                                    bits.extend(core::iter::repeat_n(
+                                        '1',
+                                        vector.trailing_received_bits.unwrap_or(0),
+                                    ));
+                                    bits
+                                };
+                            if expected_bits.len() != WINDOW_SIZE
+                                || expected_bits.bytes().any(|bit| !matches!(bit, b'0' | b'1'))
+                            {
+                                failures.push(format!(
+                                    "{}: vector does not declare an exact {}-bit bitmap",
+                                    name, WINDOW_SIZE
+                                ));
+                            } else {
+                                let expected_bitmap = expected_bits
+                                    .bytes()
+                                    .fold(0u64, |bits, bit| (bits << 1) | u64::from(bit == b'1'));
+                                if ack.bitmap != expected_bitmap {
+                                    failures.push(format!(
+                                        "{}: decoded bitmap does not match declared bitmap semantics",
+                                        name
+                                    ));
+                                }
+                            }
+                        }
+                        let mut encoded = [0u8; 10];
+                        match ack.write_to(&mut encoded) {
+                            Ok(length) if encoded[..length] == wire => {
+                                println!("Vector '{}' (ACK bitmap): C={} OK", name, c_bit);
+                            }
+                            Ok(_) => failures.push(format!(
+                                "{}: ACK did not serialize to its canonical vector bytes",
+                                name
+                            )),
+                            Err(error) => failures
+                                .push(format!("{}: ACK serialization failed: {}", name, error)),
+                        }
+                    }
+                    Err(error) => failures.push(format!("{}: ACK parse failed: {}", name, error)),
                 }
             }
 

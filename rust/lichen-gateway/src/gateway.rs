@@ -824,6 +824,15 @@ impl Gateway {
         )
     }
 
+    /// Set whether this gateway currently has an active Yggdrasil/upstream path.
+    ///
+    /// This controls the standard RPL Grounded bit in every subsequently built
+    /// DIO; no 0200::/8 Prefix Information option is emitted.
+    #[must_use]
+    pub fn set_ygg_reachable(&mut self, reachable: bool) -> bool {
+        self.rpl_stack.set_ygg_reachable(reachable)
+    }
+
     /// Open or provision a production gateway using durable RPL state.
     ///
     /// `persistence.provision` is an idempotent provision-or-resume mode: the

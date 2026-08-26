@@ -6,8 +6,9 @@
 mod support;
 
 use lichen_schc::fragment::{
-    receiver_abort, Ack, Fragment, FragmentReceiver, ReceiverResponse, SenderOutput, SenderStatus,
-    MAX_ACK_REQUESTS, MAX_PACKET_SIZE, TILE_SIZE,
+    receiver_abort, sender_abort, Ack, Fragment, FragmentError, FragmentReceiver, ReceiverResponse,
+    SenderOutput, SenderStatus, BITMAP_MASK, MAX_ACK_REQUESTS, MAX_PACKET_SIZE, TILE_SIZE,
+    WINDOW_SIZE,
 };
 
 #[test]
@@ -147,6 +148,88 @@ fn malformed_codec_inputs_are_rejected() {
 }
 
 #[test]
+fn ack_bitmap_compression_round_trips_every_trailing_one_boundary() {
+    for window in 0..=1 {
+        for trailing in 0..=WINDOW_SIZE {
+            let bitmap = if trailing == WINDOW_SIZE {
+                BITMAP_MASK
+            } else {
+                BITMAP_MASK & !(1u64 << trailing)
+            };
+            let ack = Ack::new(0x78, window, bitmap, false);
+            let mut wire = [0u8; 10];
+            let length = ack.write_to(&mut wire).unwrap();
+            let retained_bits = WINDOW_SIZE - trailing;
+            let expected_length = 1 + (2 + retained_bits).div_ceil(8);
+            assert_eq!(length, expected_length);
+            assert_eq!(wire[1] >> 7, window);
+            assert_eq!(Ack::from_bytes(&wire[..length]), Ok(ack));
+        }
+    }
+
+    for window in 0..=1 {
+        let all_zero = Ack::new(0x78, window, 0, false);
+        let mut wire = [0u8; 10];
+        let length = all_zero.write_to(&mut wire).unwrap();
+        assert_eq!(length, 10);
+        assert_eq!(wire[1], window << 7);
+        assert!(wire[2..length].iter().all(|byte| *byte == 0));
+        assert_eq!(Ack::from_bytes(&wire[..length]), Ok(all_zero));
+
+        let all_one = Ack::new(0x78, window, BITMAP_MASK, false);
+        let length = all_one.write_to(&mut wire).unwrap();
+        assert_eq!(&wire[..length], &[0x78, (window << 7) | 0x3f]);
+        assert_eq!(Ack::from_bytes(&wire[..length]), Ok(all_one));
+
+        let complete = Ack::new(0x78, window, 0, true);
+        let length = complete.write_to(&mut wire).unwrap();
+        assert_eq!(&wire[..length], &[0x78, (window << 7) | 0x40]);
+        assert_eq!(Ack::from_bytes(&wire[..length]), Ok(complete));
+    }
+}
+
+#[test]
+fn ack_parser_rejects_invalid_sizes_and_sender_matches_rule_and_window() {
+    assert!(matches!(
+        Ack::from_bytes(&[0x78]),
+        Err(FragmentError::TooShort(_))
+    ));
+    assert_eq!(
+        Ack::from_bytes(&[0x78, 0x40, 0]),
+        Err(FragmentError::MalformedAck)
+    );
+    assert_eq!(
+        Ack::from_bytes(&[0x78, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+        Err(FragmentError::MalformedAck)
+    );
+    assert_eq!(
+        Ack::from_bytes(&[0x78, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
+        Err(FragmentError::NonCanonicalAck)
+    );
+    assert_eq!(
+        Ack::from_bytes(&[0x78, 0x35, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x80,]),
+        Err(FragmentError::NonCanonicalAck)
+    );
+
+    let packet = vec![0u8; TILE_SIZE * 63 + 1];
+    let mut sender = support::fragment_sender(&packet, 0x78, packet.len()).unwrap();
+    sender.start().unwrap();
+    assert_eq!(
+        sender.handle_ack(Ack::new(0x79, 1, 0, true)),
+        SenderOutput::None
+    );
+    assert_eq!(
+        sender.handle_ack(Ack::new(0x78, 0, 0, true)),
+        SenderOutput::None
+    );
+    assert_eq!(sender.status(), SenderStatus::Active);
+    assert_eq!(
+        sender.handle_ack(Ack::new(0x78, 1, 0, true)),
+        SenderOutput::Success
+    );
+}
+
+#[test]
 fn sender_output_retries_after_small_buffer() {
     let packet = [0xa5; TILE_SIZE + 1];
     let mut wire = [0u8; TILE_SIZE + 2];
@@ -195,6 +278,69 @@ fn terminal_sender_invalidates_queued_output() {
         sender.write_next(&mut output, &mut [0u8; 193]).unwrap(),
         None
     );
+}
+
+#[test]
+fn receiver_routes_abort_by_role_and_preserves_reassembly() {
+    let packet = [0xa5; TILE_SIZE + 1];
+    let sender = support::fragment_sender(&packet, 0x78, MAX_PACKET_SIZE).unwrap();
+    let fragments: Vec<_> = sender.iter().collect();
+    let mut storage = [0u8; MAX_PACKET_SIZE];
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+    assert_eq!(receiver.receive(&fragments[0]).response, None);
+
+    let mut wire = [0u8; 10];
+    let length = receiver_abort(0x78).write_to(&mut wire).unwrap();
+    assert_eq!(
+        receiver.receive_bytes(&wire[..length]),
+        Err(FragmentError::MalformedAck)
+    );
+    let length = Ack::new(0x78, 0, 0, true).write_to(&mut wire).unwrap();
+    assert_eq!(
+        receiver.receive_bytes(&wire[..length]),
+        Err(FragmentError::MalformedAck)
+    );
+    assert_eq!(
+        receiver.receive(&fragments[1]).packet_len,
+        Some(packet.len())
+    );
+    assert_eq!(receiver.packet(), Some(packet.as_slice()));
+
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+    assert_eq!(receiver.receive(&fragments[0]).response, None);
+    let length = sender_abort(0x78).write_to(&mut wire).unwrap();
+    let result = receiver.receive_bytes(&wire[..length]).unwrap();
+    assert!(result.aborted);
+    assert_eq!(result.response, None);
+    assert!(receiver.is_done());
+    assert_eq!(receiver.packet(), None);
+}
+
+#[test]
+fn malformed_abort_variants_fail_closed_and_release_state() {
+    for wire in [
+        &[0x78, 0xfe, 0x00][..],
+        &[0x78, 0xff, 0x00][..],
+        &[0x78, 0xff, 0xff, 0x00][..],
+    ] {
+        let packet = [0xa5; TILE_SIZE + 1];
+        let sender = support::fragment_sender(&packet, 0x78, MAX_PACKET_SIZE).unwrap();
+        let mut storage = [0u8; MAX_PACKET_SIZE];
+        let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+        assert_eq!(
+            receiver.receive(&sender.get_fragment(0).unwrap()).response,
+            None
+        );
+
+        let result = receiver.receive_bytes(wire).unwrap();
+        assert!(result.aborted);
+        assert_eq!(
+            result.response,
+            Some(ReceiverResponse::ReceiverAbort { rule_id: 0x78 })
+        );
+        assert!(receiver.is_done());
+        assert_eq!(receiver.packet(), None);
+    }
 }
 
 #[test]

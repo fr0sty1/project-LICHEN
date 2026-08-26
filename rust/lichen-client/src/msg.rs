@@ -9,6 +9,8 @@
 //!   (`to` and `body` required; unknown keys ignored by the firmware).
 //! - `POST /msg/sent` response : `{id, to, body, timestamp, status}`.
 //! - `GET  /msg/inbox` response: `{messages: [{id, from, body, received}]}`.
+//! - `POST /msg/ack` request   : `{id, status, ts}` where `status` is one of
+//!   `delivered`, `read`, or `failed`.
 
 use serde::{Deserialize, Serialize};
 
@@ -106,6 +108,74 @@ impl Sent {
     /// Decode a `GET /msg/sent` CBOR response.
     pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
         ciborium::from_reader(bytes).map_err(|e| Error::Decode(e.to_string()))
+    }
+}
+
+/// Delivery receipt states accepted by `POST /msg/ack`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReceiptStatus {
+    /// The original message reached its recipient.
+    Delivered,
+    /// The recipient displayed or otherwise marked the message as read.
+    Read,
+    /// Delivery of the original message failed.
+    Failed,
+}
+
+impl ReceiptStatus {
+    /// Return the status text used on the CBOR wire.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Delivered => "delivered",
+            Self::Read => "read",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+impl core::fmt::Display for ReceiptStatus {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+/// A delivery, read, or failure receipt sent to `POST /msg/ack`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeliveryReceipt {
+    /// Identifier of the original message.
+    #[serde(rename = "id")]
+    pub message_id: u64,
+    /// Current delivery state.
+    pub status: ReceiptStatus,
+    /// Receipt creation time in Unix seconds; zero means time is unknown.
+    pub ts: u64,
+}
+
+impl DeliveryReceipt {
+    /// Construct a receipt for an original message.
+    pub const fn new(message_id: u64, status: ReceiptStatus, ts: u64) -> Self {
+        Self {
+            message_id,
+            status,
+            ts,
+        }
+    }
+
+    /// Encode the receipt as the CBOR body expected by `POST /msg/ack`.
+    pub fn to_cbor(&self) -> Result<Vec<u8>, Error> {
+        let mut buf = Vec::new();
+        ciborium::into_writer(self, &mut buf).map_err(|error| Error::Encode(error.to_string()))?;
+        Ok(buf)
+    }
+
+    /// Decode and validate a `POST /msg/ack` CBOR body.
+    ///
+    /// Missing fields, non-unsigned integer identifiers or timestamps, and
+    /// status strings outside the three values defined by the specification
+    /// are rejected during deserialization.
+    pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
+        ciborium::from_reader(bytes).map_err(|error| Error::Decode(error.to_string()))
     }
 }
 
@@ -256,5 +326,35 @@ mod tests {
                 status: "delivered".into(),
             }]
         );
+    }
+
+    #[test]
+    fn receipt_status_wire_names() {
+        assert_eq!(ReceiptStatus::Delivered.as_str(), "delivered");
+        assert_eq!(ReceiptStatus::Read.as_str(), "read");
+        assert_eq!(ReceiptStatus::Failed.as_str(), "failed");
+    }
+
+    #[test]
+    fn receipt_round_trip() {
+        let receipt = DeliveryReceipt::new(12_345, ReceiptStatus::Read, 1_716_742_901);
+        let encoded = receipt.to_cbor().unwrap();
+        assert_eq!(DeliveryReceipt::from_cbor(&encoded).unwrap(), receipt);
+    }
+
+    #[test]
+    fn receipt_rejects_unknown_status() {
+        let wire = Value::Map(vec![
+            (Value::Text("id".into()), Value::Integer(12_345u64.into())),
+            (Value::Text("status".into()), Value::Text("unknown".into())),
+            (
+                Value::Text("ts".into()),
+                Value::Integer(1_716_742_900u64.into()),
+            ),
+        ]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&wire, &mut bytes).unwrap();
+
+        assert!(DeliveryReceipt::from_cbor(&bytes).is_err());
     }
 }
