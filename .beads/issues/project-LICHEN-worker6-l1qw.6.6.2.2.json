@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.6.2.2",
   "title": "Rust: TOFU key pinning on first contact",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:45.052974Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:45.052974Z",
+  "updated_at": "2026-08-26T02:32:00.370954Z",
+  "started_at": "2026-08-26T02:30:42.912227Z",
+  "closed_at": "2026-08-26T02:32:00.370954Z",
+  "close_reason": "Already implemented: lichen-link tofu_first_contact pins when SHA-512 IID matches; mismatch is RejectDerivationMismatch (trust.rs + gcp3 vectors).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.6.2.2",

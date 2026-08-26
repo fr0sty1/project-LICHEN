@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.11.2.4",
   "title": "Vectors: stability test scenarios",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:45.305027Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:45.305027Z",
+  "updated_at": "2026-08-26T02:32:12.721669Z",
+  "started_at": "2026-08-26T02:30:50.522088Z",
+  "closed_at": "2026-08-26T02:32:12.721669Z",
+  "close_reason": "yggdrasil_address.json native SHA-512 cases plus python/rust consumers prove the same pubkey always yields the same 0200::/8 address (IID binding invariant).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.11.2.4",

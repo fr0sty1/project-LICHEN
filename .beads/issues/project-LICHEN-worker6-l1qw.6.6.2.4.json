@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.6.2.4",
   "title": "Python: Key mismatch rejection + alert",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:47.642784Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:47.642784Z",
+  "updated_at": "2026-08-26T02:32:06.908472Z",
+  "started_at": "2026-08-26T02:30:44.488807Z",
+  "closed_at": "2026-08-26T02:32:06.908472Z",
+  "close_reason": "Already implemented: link_layer.py compares pinned key to signer and rejects mismatch; SOS/LCI key tests cover tofu mismatch paths.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.6.2.4",
