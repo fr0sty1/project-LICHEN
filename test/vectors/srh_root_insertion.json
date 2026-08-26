@@ -1,0 +1,136 @@
+{
+  "$schema": "./srh_root_insertion.schema.json",
+  "format_version": 2,
+  "name": "srh_root_insertion",
+  "description": "Independent RFC 6554 root-generation vectors for strict path validation and byte-exact SRH insertion.",
+  "spec": "RFC 6554 Sections 3 and 4.1; RFC 8200 Section 4.1; LICHEN spec/05-routing.md Sections 8.5 and 8.9",
+  "cases": [
+    {
+      "name": "three_hop_plain",
+      "description": "Root-originated packet is routed through two relays to its original destination.",
+      "packet": "6000000000043a40020000000000000000000000000000010200000000000000000000000000000d80000000",
+      "route": [
+        "0200000000000000000000000000000a",
+        "0200000000000000000000000000000b",
+        "0200000000000000000000000000000d"
+      ],
+      "expected": {
+        "accepted": true,
+        "packet": "60000000002c2b40020000000000000000000000000000010200000000000000000000000000000a3a040302000000000200000000000000000000000000000b0200000000000000000000000000000d80000000",
+        "first_hop": "0200000000000000000000000000000a"
+      }
+    },
+    {
+      "name": "single_hop_unchanged",
+      "description": "A directly connected destination needs no Routing header.",
+      "packet": "6000000000043a40020000000000000000000000000000010200000000000000000000000000000d80000000",
+      "route": ["0200000000000000000000000000000d"],
+      "expected": {
+        "accepted": true,
+        "packet": "6000000000043a40020000000000000000000000000000010200000000000000000000000000000d80000000",
+        "first_hop": "0200000000000000000000000000000d"
+      }
+    },
+    {
+      "name": "hop_by_hop_stays_first",
+      "description": "The SRH is inserted after an existing Hop-by-Hop Options header.",
+      "packet": "60000000000c0040020000000000000000000000000000010200000000000000000000000000000d3a0000000000000080000000",
+      "route": [
+        "0200000000000000000000000000000a",
+        "0200000000000000000000000000000b",
+        "0200000000000000000000000000000d"
+      ],
+      "expected": {
+        "accepted": true,
+        "packet": "6000000000340040020000000000000000000000000000010200000000000000000000000000000a2b000000000000003a040302000000000200000000000000000000000000000b0200000000000000000000000000000d80000000",
+        "first_hop": "0200000000000000000000000000000a"
+      }
+    },
+    {
+      "name": "reject_empty_path",
+      "description": "A source route must identify at least the direct destination.",
+      "packet": "6000000000043a40020000000000000000000000000000010200000000000000000000000000000d80000000",
+      "route": [],
+      "expected": {"accepted": false, "reason": "empty_path"}
+    },
+    {
+      "name": "reject_destination_mismatch",
+      "description": "The last route entry must equal the packet's original destination.",
+      "packet": "6000000000043a40020000000000000000000000000000010200000000000000000000000000000d80000000",
+      "route": [
+        "0200000000000000000000000000000a",
+        "0200000000000000000000000000000b"
+      ],
+      "expected": {"accepted": false, "reason": "destination_mismatch"}
+    },
+    {
+      "name": "reject_duplicate_address",
+      "description": "RFC 6554 strict source routes cannot visit an address twice.",
+      "packet": "6000000000043a40020000000000000000000000000000010200000000000000000000000000000d80000000",
+      "route": [
+        "0200000000000000000000000000000a",
+        "0200000000000000000000000000000a",
+        "0200000000000000000000000000000d"
+      ],
+      "expected": {"accepted": false, "reason": "duplicate_address"}
+    },
+    {
+      "name": "reject_source_in_path",
+      "description": "The encapsulating source address cannot appear in the SRH path.",
+      "packet": "6000000000043a40020000000000000000000000000000010200000000000000000000000000000d80000000",
+      "route": [
+        "02000000000000000000000000000001",
+        "0200000000000000000000000000000d"
+      ],
+      "expected": {"accepted": false, "reason": "source_in_path"}
+    },
+    {
+      "name": "reject_multicast_address",
+      "description": "RFC 6554 forbids multicast in both the SRH and its IPv6 destination.",
+      "packet": "6000000000043a40020000000000000000000000000000010200000000000000000000000000000d80000000",
+      "route": [
+        "ff020000000000000000000000000001",
+        "0200000000000000000000000000000d"
+      ],
+      "expected": {"accepted": false, "reason": "multicast_address"}
+    },
+    {
+      "name": "reject_insufficient_hop_limit",
+      "description": "Initial Segments Left must be strictly less than Hop Limit.",
+      "packet": "6000000000043a02020000000000000000000000000000010200000000000000000000000000000d80000000",
+      "route": [
+        "0200000000000000000000000000000a",
+        "0200000000000000000000000000000b",
+        "0200000000000000000000000000000d"
+      ],
+      "expected": {"accepted": false, "reason": "hop_limit"}
+    },
+    {
+      "name": "reject_nine_hops",
+      "description": "The LICHEN profile limits a complete route to eight hops.",
+      "packet": "6000000000043a40020000000000000000000000000000010200000000000000000000000000000d80000000",
+      "route": [
+        "0200000000000000000000000000000a",
+        "0200000000000000000000000000000b",
+        "0200000000000000000000000000000c",
+        "0200000000000000000000000000000e",
+        "0200000000000000000000000000000f",
+        "02000000000000000000000000000010",
+        "02000000000000000000000000000011",
+        "02000000000000000000000000000012",
+        "0200000000000000000000000000000d"
+      ],
+      "expected": {"accepted": false, "reason": "too_many_hops"}
+    },
+    {
+      "name": "reject_existing_routing_header",
+      "description": "Root insertion must not create multiple IPv6 Routing headers.",
+      "packet": "60000000002c2b40020000000000000000000000000000010200000000000000000000000000000a3a040302000000000200000000000000000000000000000b0200000000000000000000000000000d80000000",
+      "route": [
+        "0200000000000000000000000000000b",
+        "0200000000000000000000000000000a"
+      ],
+      "expected": {"accepted": false, "reason": "existing_routing_header"}
+    }
+  ]
+}

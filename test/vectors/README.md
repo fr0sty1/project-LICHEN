@@ -74,6 +74,7 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | `rpl_multi_instance.json` | Multi-instance RPL coordination (GCP-5) |
 | `rpl_route_state.json` | Post-provenance DAO route-state transitions from fixed option bytes |
 | `source_route_hop_limit.json` | RFC 6554 source-route Segment Left/hop-limit validation |
+| `srh_root_insertion.json` | RFC 6554 root insertion, strict-route rejection, and Hop-by-Hop ordering |
 
 ### Coordinated Capacity (CCP / TDMA)
 

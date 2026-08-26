@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LICHEN RFC 6554 root SRH insertion vectors",
+  "type": "object",
+  "required": ["$schema", "format_version", "name", "description", "spec", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {"const": "./srh_root_insertion.schema.json"},
+    "format_version": {"const": 2},
+    "name": {"const": "srh_root_insertion"},
+    "description": {"type": "string", "minLength": 1},
+    "spec": {"type": "string", "minLength": 1},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/case"}
+    }
+  },
+  "definitions": {
+    "address": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "packet": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{2})+$"
+    },
+    "case": {
+      "type": "object",
+      "required": ["name", "description", "packet", "route", "expected"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string", "minLength": 1},
+        "packet": {"$ref": "#/definitions/packet"},
+        "route": {
+          "type": "array",
+          "maxItems": 9,
+          "items": {"$ref": "#/definitions/address"}
+        },
+        "expected": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["accepted", "packet", "first_hop"],
+              "additionalProperties": false,
+              "properties": {
+                "accepted": {"const": true},
+                "packet": {"$ref": "#/definitions/packet"},
+                "first_hop": {"$ref": "#/definitions/address"}
+              }
+            },
+            {
+              "type": "object",
+              "required": ["accepted", "reason"],
+              "additionalProperties": false,
+              "properties": {
+                "accepted": {"const": false},
+                "reason": {
+                  "enum": [
+                    "empty_path",
+                    "destination_mismatch",
+                    "duplicate_address",
+                    "source_in_path",
+                    "multicast_address",
+                    "hop_limit",
+                    "too_many_hops",
+                    "existing_routing_header"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
