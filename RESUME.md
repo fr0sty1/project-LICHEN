@@ -15,6 +15,14 @@ Range Testing epic (l1qw.10.20) complete except Zephyr/review-blocked children:
   (pytest consumers); 9 triage child beads filed for orphans needing features
   first. a0gf (CCP-15) shipped interference_score oracle; backoff_jitter_ms
   column flagged HUMAN (no derivable oracle — see a0gf comment).
+- Follow-on feature-build children CLOSED with standalone oracle modules:
+  wr0b tx_queue.py (47 tests, reserve=peek+mark reconciles cross-file
+  conflict; ForwardingBuffer/Router/icmpv6 remainder split to z3k8),
+  walc coap/access.py LCI authz matrix (32 tests), xt5y rpl/evidence.py
+  B2.5 gate (16 tests), heog broadcast_limit.py budgets+windows+idle expiry
+  (22 tests; yellow-zone RNG semantics flagged HUMAN on heog — the vector
+  file contradicts itself: count=100 'probabilistic' vs count=199 'relay').
+  171-test combined sweep green.
 
 ## CURRENT PROJECT PHASE
 
