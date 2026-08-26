@@ -9,6 +9,9 @@
   "created_at": "2026-08-26T00:12:51.671544Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-08-26T00:12:51.671544Z",
+  "labels": [
+    "human"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-heog",

@@ -1,0 +1,7 @@
+{
+  "id": "1787707147993291000-1",
+  "issue_id": "project-LICHEN-worker6-heog",
+  "author": "Mark Atwood",
+  "text": "HUMAN DECISION NEEDED: yellow_zone_probabilistic vector (HL1, count=100 -\u003e 'probabilistic') contradicts budget_hl1_accept_within (count=199 -\u003e 'relay') under any deterministic rule of count alone, and the file carries no RNG field. Options: (a) intended semantics is a keep-probability function of usage ratio with seeded rng per vector — provide formula+seeds; (b) 199-\u003erelay is the error and yellow zone spans [budget/2, budget); (c) drop the yellow vector. Implemented meanwhile: broadcast_limit.py with tiered budgets (200/100/30/10), inclusive accept at budget boundary, hard drop beyond, per-sender independence, hourly rolling window, 2h idle expiry. 22 tests pass; yellow case skipped pending decision.",
+  "created_at": "2026-08-26T01:19:07.993291Z"
+}
