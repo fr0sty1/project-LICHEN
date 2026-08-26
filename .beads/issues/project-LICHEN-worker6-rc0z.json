@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-rc0z",
   "title": "Implement position privacy auth modes and consume position_privacy_auth.json",
   "description": "test/vectors/position_privacy_auth.json (public/group/private modes per spec 18.1) unconsumed; no mode-based auth found in python/src/lichen/coap/resources/position.py. Implement modes + pytest consumer.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T00:11:00.949051Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T00:11:00.949051Z",
+  "updated_at": "2026-08-26T01:42:40.24308Z",
+  "closed_at": "2026-08-26T01:42:40.24308Z",
+  "close_reason": "Position privacy auth oracle shipped: lichen/coap/position_privacy.py (PositionPrivacyMode + PositionPrivacyPolicy). Semantics per vectors: public accepts any reader; group requires OSCORE (4.01 without) and group context/membership (4.03 for authenticated non-members); private requires pairwise OSCORE from the exact allowed peer (4.01/4.03 otherwise); mode changes take effect immediately; beacons include position only in public mode. 12 pytest cases consume every vector incl. mode-switch-immediacy and beacon-inclusion table. Standalone decision module - wiring into the live position resources deferred to the senml/resources lane owner (files under active edit).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-rc0z",

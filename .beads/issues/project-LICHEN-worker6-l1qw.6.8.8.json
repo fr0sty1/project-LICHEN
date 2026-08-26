@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.8",
   "title": "Cross-validate: EDHOC handshake interop",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:52.175858Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:52.175858Z",
+  "updated_at": "2026-08-26T01:40:45.027725Z",
+  "started_at": "2026-08-26T01:40:45.027725Z",
+  "lease_expires_at": "2026-08-26T01:45:45.027725Z",
+  "heartbeat_at": "2026-08-26T01:40:45.027725Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.8",

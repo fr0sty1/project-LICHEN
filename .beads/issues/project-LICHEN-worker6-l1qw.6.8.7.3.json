@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.8.7.3",
   "title": "Zephyr: SUITES_I array parsing",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "claude-wave",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:48.84098Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:48.84098Z",
+  "updated_at": "2026-08-26T01:42:25.490315Z",
+  "started_at": "2026-08-26T01:40:54.078849Z",
+  "closed_at": "2026-08-26T01:42:25.490315Z",
+  "close_reason": "Fixed by wave-fix: Added RFC 9528 Section 3.3.2 compliant SUITES_I parsing that handles both single integer and array formats",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.8.7.3",

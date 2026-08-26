@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.1.4",
   "title": "Origin epoch + seq_num handling (24-bit serial)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:54.567171Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:54.567171Z",
+  "updated_at": "2026-08-26T01:42:39.782834Z",
+  "started_at": "2026-08-26T01:41:10.487693Z",
+  "closed_at": "2026-08-26T01:42:39.782834Z",
+  "close_reason": "logical_counter(epoch, seqnum)=(epoch\u003c\u003c16)|seqnum in lichen-link seqnum.rs; epoch_rollover.json counter fields consumed. Announce seq remains 16-bit per spec 9.2; 24-bit serial is the link-layer tuple.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.1.4",
