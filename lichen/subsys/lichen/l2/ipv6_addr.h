@@ -102,6 +102,44 @@ struct in6_addr {
 #define LICHEN_IPV6_ADDR_STR_LEN 40
 
 /**
+ * @brief LICHEN CRC32 initial value for short address derivation (spec 12.3)
+ *
+ * Low 32 bits of ASCII "LICHEN" (0x4C 0x49 0x43 0x48 0x45 0x4E) = 0x4348454E.
+ * This is intentionally different from the FNV-1a hash used for channel,
+ * slot, and spreading-factor selection.
+ */
+#define LICHEN_CRC32_INITIAL 0x4348454Eu
+
+/**
+ * @brief Derive 16-bit short address from EUI-64 (spec 12.3)
+ *
+ * Uses CRC32-IEEE/ISO-HDLC with LICHEN_CRC32_INITIAL as the initial value.
+ * Returns the low 16 bits of the CRC32 result. Reserved-address handling
+ * belongs to Duplicate Address Detection (DAD), which can retry with a seed.
+ *
+ * SECURITY: eui64 MUST be exactly 8 bytes. No bounds checking at runtime.
+ *
+ * @param eui64 Input EUI-64 (8 bytes)
+ * @return 16-bit short address (low 16 bits of CRC32)
+ */
+uint16_t lichen_derive_short_addr(const uint8_t *eui64);
+
+/**
+ * @brief Derive 16-bit short address with DAD retry seed (spec 12.3)
+ *
+ * Mixes the seed into the EUI-64 before CRC32 derivation. The seed bytes
+ * (little-endian) are XORed into EUI-64 bytes 4 through 7 before applying
+ * the same CRC32 derivation as lichen_derive_short_addr().
+ *
+ * SECURITY: eui64 MUST be exactly 8 bytes. No bounds checking at runtime.
+ *
+ * @param eui64 Input EUI-64 (8 bytes)
+ * @param seed DAD retry seed (0 = no mixing, same as derive_short_addr)
+ * @return 16-bit short address
+ */
+uint16_t lichen_derive_short_addr_with_seed(const uint8_t *eui64, uint32_t seed);
+
+/**
  * @brief Derive IID from EUI-64 by flipping U/L bit
  *
  * Per spec 6.2: IID = EUI-64 XOR 0x0200000000000000

@@ -327,4 +327,75 @@ config LICHEN_COAP_SLOT_COORD_LOG_LEVEL
 	help
 	  Log level for slot coordination: 0=off, 1=error, 2=warning, 3=info, 4=debug
 
+config LICHEN_COAP_HANDOFF
+	bool "Enable Node Handoff (GCP-7)"
+	depends on LICHEN_COAP_SERVER
+	depends on LICHEN_OSCORE
+	default n
+	help
+	  Enable GCP-7 Node Handoff protocol per spec/08-gateway-coordination.md
+	  Section 7. Provides node ownership transfer between gateways when nodes
+	  move between coverage areas.
+
+	  State transferred includes sequence numbers, OSCORE security contexts,
+	  freshness state, and parent list.
+
+	  SECURITY: Handoff messages MUST be authenticated via OSCORE. Unauthenticated
+	  handoff requests enable node hijacking attacks. Sequence numbers are
+	  incremented on acceptance to prevent replay of in-flight messages.
+
+config LICHEN_COAP_HANDOFF_RESOURCE
+	bool "Enable Node Handoff CoAP resource"
+	depends on LICHEN_COAP_HANDOFF
+	default y
+	help
+	  Expose CoAP resource for node handoff: /.well-known/lichen-gw/handoff.
+	  Disable to use handoff protocol internally without exposing CoAP endpoint.
+
+config LICHEN_COAP_HANDOFF_MAX_NODES
+	int "Maximum nodes in handoff registry"
+	depends on LICHEN_COAP_HANDOFF
+	default 32
+	range 4 128
+	help
+	  Maximum number of nodes tracked in the gateway's node registry for
+	  handoff protocol. Each entry requires approximately 200 bytes of RAM.
+
+config LICHEN_COAP_HANDOFF_LOG_LEVEL
+	int "Node handoff log level"
+	depends on LICHEN_COAP_HANDOFF
+	default 3
+	range 0 4
+	help
+	  Log level for node handoff: 0=off, 1=error, 2=warning, 3=info, 4=debug
+
+config LICHEN_SOS_ALERT
+	bool "SOS alert CBOR encoding (spec 18.4.2)"
+	default y
+	help
+	  Enable SOS alert CBOR encoding and decoding per spec section 18.4.2.
+	  Provides data types and codec for the SOS alert payload:
+	  - type: sos, medical, security, fire, cancel
+	  - node: originating node IID (IPv6 hex)
+	  - ts: Unix timestamp
+	  - lat/lon: optional position
+	  - msg: optional message
+	  - seq: sequence number for updates
+
+config LICHEN_SOS_RESOURCE
+	bool "SOS resource state machine (spec 18.4)"
+	default y if LICHEN_SOS_ALERT
+	help
+	  Enable SOS resource state machine for /sos CoAP endpoint per spec 18.4.
+	  Provides state tracking for emergency beacon lifecycle:
+	  - IDLE: No active emergency
+	  - ACTIVE: SOS triggered, awaiting acknowledgment
+	  - ACKNOWLEDGED: SOS acknowledged by coordinator
+	  - CANCELLED: SOS cancelled by originator
+
+	  The state machine enforces security invariants:
+	  - Only originator can cancel their own SOS
+	  - Sequence numbers must strictly advance (replay protection)
+	  - Originator data is securely zeroed on reset
+
 endif # LICHEN_COAP

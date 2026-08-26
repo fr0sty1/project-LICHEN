@@ -85,6 +85,8 @@ menuconfig LICHEN_BLE_TRANSPORT
 	# The transport tracks pairing via the security_changed callback and
 	# its REQUIRE_SECURE policy needs LE pairing support to mean anything.
 	select BT_SMP
+	# LCI spec 17.6.1 requires LE Secure Connections; reject legacy pairing.
+	select BT_SMP_SC_ONLY
 	help
 	  Enable BLE transport bindings for the Local Client Interface (LCI).
 	  This allows phones and laptops to communicate with the mesh node

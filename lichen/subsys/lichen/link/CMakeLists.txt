@@ -30,6 +30,22 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_TDMA
   tdma.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_LICHEN_CCP_TIME_SYNC
+  time_sync.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_SYNC_HOP
+  sync_hop.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_SOS_RATELIMIT
+  sos_ratelimit.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_SCHNORR
+  sos_origin.c
+)
+
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Include L2 headers for EUI-64 derivation and shared utilities

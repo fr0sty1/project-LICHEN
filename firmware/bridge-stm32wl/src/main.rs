@@ -153,7 +153,8 @@ async fn main(_spawner: Spawner) {
     let rf_switch_tx = Some(p.PC4);
 
     // Create interface variant with interrupt binding
-    let iv = Stm32wlInterfaceVariant::new(Irqs, rf_switch_rx, rf_switch_tx, RfSwitchMode::HighPower);
+    let iv =
+        Stm32wlInterfaceVariant::new(Irqs, rf_switch_rx, rf_switch_tx, RfSwitchMode::HighPower);
 
     // Configure the Sx126x radio
     let radio_config = sx126x::Config {
@@ -219,11 +220,11 @@ async fn main(_spawner: Spawner) {
 
     // Create RX packet parameters
     let rx_pkt_params = match lora.create_rx_packet_params(
-        8,                        // preamble_length
-        false,                    // implicit_header
-        MAX_PAYLOAD_LEN as u8,    // max_payload_length
-        true,                     // crc_on
-        false,                    // iq_inverted
+        8,                     // preamble_length
+        false,                 // implicit_header
+        MAX_PAYLOAD_LEN as u8, // max_payload_length
+        true,                  // crc_on
+        false,                 // iq_inverted
         &mdltn_params,
     ) {
         Ok(params) => params,
@@ -258,12 +259,7 @@ async fn main(_spawner: Spawner) {
 
     loop {
         // Wait for either: TX packet to send, or RX packet received
-        match select(
-            tx_receiver.receive(),
-            lora.rx(&rx_pkt_params, &mut rx_buf),
-        )
-        .await
-        {
+        match select(tx_receiver.receive(), lora.rx(&rx_pkt_params, &mut rx_buf)).await {
             Either::First(tx_pkt) => {
                 // TX packet available - transmit it
                 debug!("TX {} bytes", tx_pkt.len);
@@ -271,10 +267,10 @@ async fn main(_spawner: Spawner) {
 
                 // Create TX packet params (payload_length set to 0 initially, prepare_for_tx sets it)
                 let mut tx_pkt_params = match lora.create_tx_packet_params(
-                    8,      // preamble_length
-                    false,  // implicit_header
-                    true,   // crc_on
-                    false,  // iq_inverted
+                    8,     // preamble_length
+                    false, // implicit_header
+                    true,  // crc_on
+                    false, // iq_inverted
                     &mdltn_params,
                 ) {
                     Ok(params) => params,

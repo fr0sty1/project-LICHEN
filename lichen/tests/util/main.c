@@ -104,10 +104,10 @@ ZTEST(lichen_util, test_iid_to_human_address_matches_node_address_vectors)
 	int ret = lichen_iid_to_human_address(NULL, buf, sizeof(buf));
 	zassert_equal(ret, -EINVAL, "NULL iid should return -EINVAL");
 
-	ret = lichen_iid_to_human_address(vectors[0].iid, NULL, sizeof(buf));
+	ret = lichen_iid_to_human_address(shared_vectors[0].iid, NULL, sizeof(buf));
 	zassert_equal(ret, -EINVAL, "NULL buf should return -EINVAL");
 
-	ret = lichen_iid_to_human_address(vectors[0].iid, buf, 10);
+	ret = lichen_iid_to_human_address(shared_vectors[0].iid, buf, 10);
 	zassert_equal(ret, -EINVAL, "small buffer should return -EINVAL");
 }
 
@@ -119,6 +119,155 @@ ZTEST(lichen_util, test_lichen_hash_32)
 	zassert_equal(lichen_hash_32(NULL, 0), 0x811c9dc5u, "");
 	zassert_equal(lichen_hash_32(test_data, 4), 0xafd071e5u, "");
 	zassert_equal(lichen_hash_32(zeros, 32), 0x0b2ae445u, "");
+}
+
+/**
+ * @brief Helper: compute slot_for per ccp_sfn_wrap_slot_hash.json spec
+ *
+ * Formula: ((hash_32(eui64) + (sfn & 0xFFFFFFFF)) & 0xFFFFFFFF) % num_slots
+ */
+static uint8_t slot_for(const uint8_t eui64[8], uint32_t sfn, uint8_t num_slots)
+{
+	if (num_slots == 0) {
+		num_slots = 8;
+	}
+	uint32_t hash = lichen_hash_32(eui64, 8);
+	uint32_t sum = hash + sfn; /* wraps at 32-bit */
+	return (uint8_t)(sum % num_slots);
+}
+
+ZTEST(lichen_util, test_slot_for_vectors)
+{
+	/*
+	 * Test vectors from ccp_sfn_wrap_slot_hash.json
+	 * These validate the TDMA slot selection algorithm:
+	 * slot = (FNV-1a32(eui64) + sfn) % num_slots
+	 */
+	static const uint8_t eui64_ref[] = {
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+	};
+
+	/* hash_32_reference: FNV-1a32 of eui64 = 0x2804678d */
+	uint32_t hash = lichen_hash_32(eui64_ref, 8);
+	zassert_equal(hash, 0x2804678du,
+		      "hash_32(0102030405060708) = 0x2804678d");
+
+	/* slot_for_sfn_zero: (0x2804678d + 0) % 16 = 13 */
+	zassert_equal(slot_for(eui64_ref, 0, 16), 13,
+		      "slot_for(sfn=0, num_slots=16) = 13");
+
+	/* slot_for_sfn_one: (0x2804678d + 1) % 16 = 14 */
+	zassert_equal(slot_for(eui64_ref, 1, 16), 14,
+		      "slot_for(sfn=1, num_slots=16) = 14");
+
+	/* slot_for_sfn_max: ((0x2804678d + 0xFFFFFFFF) & 0xFFFFFFFF) % 16 = 12 */
+	zassert_equal(slot_for(eui64_ref, 0xFFFFFFFFu, 16), 12,
+		      "slot_for(sfn=0xFFFFFFFF, num_slots=16) = 12");
+
+	/* slot_for_sfn_after_wrap: (0x2804678d + 2) % 16 = 15 */
+	zassert_equal(slot_for(eui64_ref, 2, 16), 15,
+		      "slot_for(sfn=2, num_slots=16) = 15");
+
+	/* slot_for_different_num_slots_8: (0x2804678d + 0) % 8 = 5 */
+	zassert_equal(slot_for(eui64_ref, 0, 8), 5,
+		      "slot_for(sfn=0, num_slots=8) = 5");
+
+	/* slot_for_different_num_slots_32: (0x2804678d + 0) % 32 = 13 */
+	zassert_equal(slot_for(eui64_ref, 0, 32), 13,
+		      "slot_for(sfn=0, num_slots=32) = 13");
+
+	/* slot_for_wrapping_sum_before_non_power_of_two_modulus */
+	zassert_equal(slot_for(eui64_ref, 0xFFFFFFFFu, 3), 2,
+		      "slot_for(sfn=0xFFFFFFFF, num_slots=3) = 2");
+}
+
+ZTEST(lichen_util, test_slot_for_edge_cases)
+{
+	/* slot_for_zeros_eui: hash_32(0000...) = 0x9be17165 */
+	static const uint8_t eui64_zeros[] = {
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+	};
+	uint32_t hash_zeros = lichen_hash_32(eui64_zeros, 8);
+	zassert_equal(hash_zeros, 0x9be17165u,
+		      "hash_32(0000000000000000) = 0x9be17165");
+	zassert_equal(slot_for(eui64_zeros, 0, 16), 5,
+		      "slot_for(zeros, sfn=0, num_slots=16) = 5");
+
+	/* slot_for_ones_eui: hash_32(ffff...) = 0x6cae0a5d */
+	static const uint8_t eui64_ones[] = {
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+	};
+	uint32_t hash_ones = lichen_hash_32(eui64_ones, 8);
+	zassert_equal(hash_ones, 0x6cae0a5du,
+		      "hash_32(ffffffffffffffff) = 0x6cae0a5d");
+	zassert_equal(slot_for(eui64_ones, 0, 16), 13,
+		      "slot_for(ones, sfn=0, num_slots=16) = 13");
+}
+
+ZTEST(lichen_util, test_slot_for_wrap_sequence)
+{
+	/*
+	 * full_wrap_sequence from ccp_sfn_wrap_slot_hash.json
+	 * Validates continuous slot rotation across SFN wrap boundary.
+	 */
+	static const uint8_t eui64_ref[] = {
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+	};
+	static const struct {
+		uint32_t sfn;
+		uint8_t expected_slot;
+	} sequence[] = {
+		{ 0xFFFFFFFDu, 10 },
+		{ 0xFFFFFFFEu, 11 },
+		{ 0xFFFFFFFFu, 12 },
+		{ 0x00000000u, 13 },
+		{ 0x00000001u, 14 },
+		{ 0x00000002u, 15 },
+		{ 0x00000003u, 0 },
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(sequence); i++) {
+		uint8_t slot = slot_for(eui64_ref, sequence[i].sfn, 16);
+		zassert_equal(slot, sequence[i].expected_slot,
+			      "wrap sequence[%zu] sfn=0x%08x: expected %u, got %u",
+			      i, sequence[i].sfn, sequence[i].expected_slot, slot);
+	}
+}
+
+ZTEST(lichen_util, test_sfn_delta_vectors)
+{
+	/*
+	 * sfn_delta test vectors from ccp_sfn_wrap_slot_hash.json
+	 * Formula: sfn_delta(curr, last) = (curr - last) & 0xFFFFFFFF
+	 */
+
+	/* sfn_delta_wrap_minimal: 0 - 0xFFFFFFFF = 1 */
+	uint32_t delta = 0u - 0xFFFFFFFFu;
+	zassert_equal(delta, 1u, "sfn_delta(0, 0xFFFFFFFF) = 1");
+
+	/* sfn_delta_wrap_multi: 2 - 0xFFFFFFFF = 3 */
+	delta = 2u - 0xFFFFFFFFu;
+	zassert_equal(delta, 3u, "sfn_delta(2, 0xFFFFFFFF) = 3");
+
+	/* sfn_delta_wrap_near: 5 - 0xFFFFFFFE = 7 */
+	delta = 5u - 0xFFFFFFFEu;
+	zassert_equal(delta, 7u, "sfn_delta(5, 0xFFFFFFFE) = 7");
+
+	/* sfn_delta_no_wrap: 100 - 50 = 50 */
+	delta = 100u - 50u;
+	zassert_equal(delta, 50u, "sfn_delta(100, 50) = 50");
+
+	/* sfn_delta_zero: 12345 - 12345 = 0 */
+	delta = 12345u - 12345u;
+	zassert_equal(delta, 0u, "sfn_delta(12345, 12345) = 0");
+
+	/* sfn_delta_large_forward: 0x80000000 - 0 = 0x80000000 */
+	delta = 0x80000000u - 0u;
+	zassert_equal(delta, 0x80000000u, "sfn_delta(0x80000000, 0) = 0x80000000");
+
+	/* sfn_delta_apparent_backward: 10 - 100 wraps to 0xFFFFFFA6 */
+	delta = 10u - 100u;
+	zassert_equal(delta, 0xFFFFFFA6u, "sfn_delta(10, 100) = 0xFFFFFFA6");
 }
 
 ZTEST(lichen_util, test_hash_32_sfn_wrap)

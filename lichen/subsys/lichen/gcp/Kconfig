@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+# Gateway Coordination Protocol (GCP) Kconfig
+
+menuconfig LICHEN_GCP
+	bool "LICHEN Gateway Coordination Protocol (GCP)"
+	help
+	  Enable multi-gateway coordination per spec/08-gateway-coordination.md.
+	  Provides slot coordination, node handoff, and federation support.
+
+if LICHEN_GCP
+
+config LICHEN_GCP_TRUST
+	bool "GCP-3 Trust Models"
+	default y
+	depends on LICHEN_CRYPTO_MONOCYPHER
+	depends on LICHEN_LINK_SCHNORR
+	help
+	  Enable dual-mode federation trust models:
+	  - Closed federation: PSK-based OSCORE
+	  - Open federation: Ed25519 + Schnorr-48 + TOFU
+
+	  Required for multi-operator community meshes and
+	  enterprise deployments with managed key distribution.
+
+config LICHEN_GCP_LOG_LEVEL
+	int "GCP logging level"
+	default 3
+	range 0 4
+	help
+	  Set the logging level for GCP module:
+	  0 = OFF, 1 = ERR, 2 = WRN, 3 = INF, 4 = DBG
+
+endif # LICHEN_GCP

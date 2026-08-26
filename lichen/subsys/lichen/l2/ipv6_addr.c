@@ -33,6 +33,56 @@ static const uint8_t link_local_prefix[8] = {
     0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+/**
+ * @brief Compute CRC32-IEEE/ISO-HDLC with caller-provided initial value.
+ *
+ * Matches binascii.crc32(data, initial): the register is complemented
+ * before and after processing, and each input octet is processed
+ * least-significant bit first with reflected polynomial 0xedb88320.
+ */
+static uint32_t crc32_ieee(const uint8_t *data, size_t len, uint32_t initial)
+{
+    uint32_t crc = initial ^ 0xFFFFFFFFu;
+
+    for (size_t i = 0; i < len; i++) {
+        crc ^= (uint32_t)data[i];
+        for (int bit = 0; bit < 8; bit++) {
+            uint32_t mask = 0u - (crc & 1u);
+            crc = (crc >> 1) ^ (0xedb88320u & mask);
+        }
+    }
+
+    return crc ^ 0xFFFFFFFFu;
+}
+
+uint16_t lichen_derive_short_addr(const uint8_t *eui64)
+{
+    if (eui64 == NULL) {
+        return 0;
+    }
+    return (uint16_t)crc32_ieee(eui64, 8, LICHEN_CRC32_INITIAL);
+}
+
+uint16_t lichen_derive_short_addr_with_seed(const uint8_t *eui64, uint32_t seed)
+{
+    uint8_t mixed[8];
+
+    if (eui64 == NULL) {
+        return 0;
+    }
+
+    /* Copy EUI-64 and XOR seed (little-endian) into bytes 4-7 */
+    for (int i = 0; i < 8; i++) {
+        mixed[i] = eui64[i];
+    }
+    mixed[4] ^= (uint8_t)(seed & 0xFF);
+    mixed[5] ^= (uint8_t)((seed >> 8) & 0xFF);
+    mixed[6] ^= (uint8_t)((seed >> 16) & 0xFF);
+    mixed[7] ^= (uint8_t)((seed >> 24) & 0xFF);
+
+    return lichen_derive_short_addr(mixed);
+}
+
 bool lichen_is_mesh_addr(const struct in6_addr *addr)
 {
     if (addr == NULL) {

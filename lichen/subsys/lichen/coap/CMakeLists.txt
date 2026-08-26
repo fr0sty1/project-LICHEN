@@ -59,6 +59,18 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_SLOT_COORD
   coap_slot_coord.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_HANDOFF
+  coap_handoff.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_SOS_ALERT
+  sos_alert.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_SOS_RESOURCE
+  sos_resource.c
+)
+
 if(CONFIG_LICHEN_COAP_LOCATION OR CONFIG_LICHEN_COAP_METRICS)
   zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../l2)
 endif()

@@ -203,6 +203,28 @@ config LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS
 	  CSMA/CA: pick uniform random in [min_ms, max_ms). Default 1000 ms
 	  avoids collision storms when many nodes join simultaneously.
 
+config LICHEN_SYNC_HOP
+	bool "GNSS-synchronized frequency hopping (CCP-12)"
+	depends on LICHEN_LINK
+	depends on LICHEN_TDMA
+	default y
+	help
+	  Enable GNSS-synchronized frequency hopping per spec 09-packets-timing.md
+	  14.7-14.8 and 02a-coordinated-capacity.md. All nodes derive the same
+	  channel from the superframe number (SFN) using a deterministic hash.
+	  Includes ASN/SFN derivation from Unix UTC microseconds with edge-case
+	  handling for pre-epoch times and zero durations.
+
+config LICHEN_SYNC_HOP_SUPERFRAME_MS
+	int "Superframe duration (ms)"
+	depends on LICHEN_SYNC_HOP
+	default 2000
+	range 100 60000
+	help
+	  Duration of one superframe in milliseconds for SFN derivation.
+	  Default 2000 ms (2 seconds) per spec. All nodes in a DODAG must
+	  use the same value for synchronized hopping.
+
 config LICHEN_MULTI_CHANNEL_ENABLED
 	bool "Multi-channel TX/RX coordination (CCP-9/12)"
 	depends on LICHEN_LINK
@@ -244,5 +266,18 @@ config LICHEN_BLACKLIST_DURATION_MS
 	  is excluded from select_channel() and hash-based hopping.
 	  Longer durations reduce retransmissions in congested
 	  environments. See spec/02a-coordinated-capacity.md §2a.3.
+
+config LICHEN_SOS_RATELIMIT
+	bool "SOS alert rate limiting"
+	default y
+	help
+	  Enable per-source rate limiting for SOS emergency alerts per
+	  spec 18.4.3. Enforces 10-minute cooldown between alerts and
+	  maximum 3 alerts per hour per source. Uses monotonic uptime
+	  (k_uptime_get) to avoid wall-clock drift/jump issues.
+
+	  SECURITY: Rate limiting prevents SOS flooding attacks where a
+	  compromised or malicious node attempts to exhaust resources or
+	  trigger false emergency responses by spamming SOS alerts.
 
 endif # LICHEN_LINK
