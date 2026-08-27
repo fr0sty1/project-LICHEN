@@ -1,0 +1,7 @@
+{
+  "id": "1787869354420889000-1",
+  "issue_id": "project-LICHEN-worker6-dhx8",
+  "author": "Mark Atwood",
+  "text": "RFC 6550 section 7.2 contradicts the issue premise: 128..255 is linear, 0..127 circular, and both same-region cases with absolute difference \u003e16 are incomparable. Began correcting the actual modulo-before-magnitude bug across DODAG Python/Rust/C while preserving the explicit DODAG 127-\u003e0 caller policy, but an external shared-worktree worker then overwrote python/src/lichen/rpl/dodag.py with the reversed premise implementation. Stopped to avoid collision. Partial RFC-correct changes/tests remain in Rust/C and focused test files; Python focused gate currently has 5 expected collision-caused failures.",
+  "created_at": "2026-08-27T22:22:34.420889Z"
+}

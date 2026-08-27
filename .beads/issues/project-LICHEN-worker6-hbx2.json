@@ -10,7 +10,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-08-26T21:02:12.744482Z",
   "labels": [
-    "codereview"
+    "codereview",
+    "human"
   ],
   "dependencies": [
     {
