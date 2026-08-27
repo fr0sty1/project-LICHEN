@@ -3,6 +3,35 @@
 
 # LICHEN Zephyr module CMake extension
 
+include(CheckCCompilerFlag)
+
+# GCC 12 (Zephyr SDK 0.16.8) implements C23 under its draft spelling,
+# -std=c2x.  Newer compilers accept the final -std=c23 spelling.  Probe both
+# rather than keying this to a vendor/version pair, and fail configuration if
+# neither is available: silently compiling LICHEN as Zephyr's C99 default
+# would disable language-level checks used by the module.
+check_c_compiler_flag("-std=c23" LICHEN_COMPILER_SUPPORTS_STD_C23)
+if(LICHEN_COMPILER_SUPPORTS_STD_C23)
+  set(LICHEN_C_DIALECT c23)
+  set(LICHEN_C_DIALECT_FLAG -std=c23)
+else()
+  check_c_compiler_flag("-std=c2x" LICHEN_COMPILER_SUPPORTS_STD_C2X)
+  if(NOT LICHEN_COMPILER_SUPPORTS_STD_C2X)
+    message(FATAL_ERROR
+      "LICHEN requires a C23 compiler (-std=c23 or -std=c2x)")
+  endif()
+  set(LICHEN_C_DIALECT c2x)
+  set(LICHEN_C_DIALECT_FLAG -std=c2x)
+endif()
+message(STATUS "LICHEN: using ${LICHEN_C_DIALECT_FLAG}")
+
+# Zephyr v3.7 appends its Kconfig-selected C dialect after module target
+# options, so a target-local -std option is silently overridden by the
+# default -std=c99.  Its documented global CSTD hook is evaluated after all
+# modules and therefore makes the probed dialect authoritative.  Warning and
+# hardening flags below remain scoped to LICHEN targets.
+set_property(GLOBAL PROPERTY CSTD "${LICHEN_C_DIALECT}")
+
 # -----------------------------------------------------------------------------
 # Compiler hardening flags for LICHEN C code
 #
@@ -11,9 +40,6 @@
 # -Wconversion-clean (e.g. sys/util.h bcd2bin), breaking every board target.
 # -----------------------------------------------------------------------------
 set(LICHEN_HARDENING_FLAGS
-  # C23 standard — enables [[nodiscard]], [[maybe_unused]], nullptr, constexpr
-  -std=c23
-
   # Basic warnings as errors
   -Wall
   -Wextra
@@ -45,8 +71,11 @@ set(LICHEN_HARDENING_FLAGS
   # Implicit float promotion (catches float→double on soft-float MCUs)
   -Wdouble-promotion
 
-  # Stack usage limit (2KB per function — catches runaway VLAs/alloca)
-  -Wstack-usage=2048
+  # Stack usage limit (2KB per function — catches runaway VLAs/alloca).
+  # 64-bit host builds (native_sim/native/64) widen pointers/handles, so
+  # vendored crypto (monocypher blake2s) legitimately exceeds the 32-bit
+  # budget; relax to 4KB there only.
+  -Wstack-usage=$<IF:$<BOOL:${CONFIG_64BIT}>,4096,2048>
 
   # Strict aliasing violations
   -Wstrict-aliasing=2
@@ -108,6 +137,10 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     message(STATUS "LICHEN: Clang ${CMAKE_C_COMPILER_VERSION} detected - enabling CFI hardening")
   endif()
 endif()
+
+# Public module headers (for example <lichen/lichen_log.h>) are shared by
+# multiple subsystems and drivers, so expose them before creating targets.
+zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/../include)
 
 add_subdirectory(../drivers drivers)
 add_subdirectory(../lib lib)

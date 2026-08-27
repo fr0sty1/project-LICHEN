@@ -14,7 +14,6 @@
 #include <lichen/l2_payload.h>
 #include <lichen/schc.h>
 #include <lichen/schnorr48.h>
-#include <lichen/tx_queue.h>
 #include <string.h>
 
 /* Error codes */
@@ -31,7 +30,6 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	uint8_t signature[SCHNORR48_SIG_LEN];
 	int compressed_len;
 	size_t l2_payload_len;
-	size_t payload_len;
 	uint8_t addr_mode;
 	uint8_t dst_addr[8];
 	uint8_t dst_addr_len;
@@ -40,7 +38,6 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	size_t off;
 	size_t frame_body_len;
 	uint8_t mic_len;
-	bool signing_enabled;
 	int ret;
 
 	if (ctx == NULL || ipv6_pkt == NULL || out_frame == NULL || out_len == NULL) {
@@ -49,6 +46,14 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 
 	if (!ctx->has_key) {
 		return -ENOKEY;
+	}
+
+	/* Link-layer symmetric encryption has no coordinated design yet
+	 * (bead 2auf.21): E=1 frames are rejected on every boundary. A
+	 * context with a loaded legacy link key must not silently fall
+	 * back to unsigned transmission. */
+	if (ctx->has_link_key) {
+		return -EPROTONOSUPPORT;
 	}
 
 #if defined(CONFIG_LICHEN_TDMA)
@@ -192,29 +197,9 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 
 	*out_len = off;
 
-	/*
-	 * Push the completed frame to the TX queue for ordered, priority-aware
-	 * transmission. If the queue is full and cannot preempt, return ENOBUFS
-	 * to signal backpressure (per spec/appendix-bufferbloat.md §4).
-	 *
-	 * Priority assignment:
-	 * - Frames with an explicit destination (non-NULL dst_eui64) are treated
-	 *   as unicast and default to TX_PRIORITY_URGENT.
-	 * - Broadcast frames default to TX_PRIORITY_BULK.
-	 * Callers that need routing or ACK priority should use
-	 * tx_queue_push() directly or add a priority parameter.
-	 */
-	{
-		uint8_t q_priority = (dst_eui64 != NULL)
-				     ? TX_PRIORITY_URGENT : TX_PRIORITY_BULK;
-		int q_ret = tx_queue_push_default_deadline(&ctx->tx_queue,
-							   out_frame, off,
-							   q_priority);
-		if (q_ret < 0) {
-			ret = q_ret;
-			goto cleanup;
-		}
-	}
+	/* Frame construction has no transport side effects.  The radio L2 owns
+	 * the single bounded TX queue and copies this frame before returning, so
+	 * callers can safely reuse their output buffer after transport accepts it. */
 	ret = 0;
 
 cleanup:
@@ -326,16 +311,7 @@ int lichen_link_relay_raw(struct lichen_link_ctx *ctx,
 
 	*out_len = off;
 
-	/* Push to TX queue as urgent (SOS relay is high priority) */
-	{
-		int q_ret = tx_queue_push_default_deadline(&ctx->tx_queue,
-							   out_frame, off,
-							   TX_PRIORITY_URGENT);
-		if (q_ret < 0) {
-			ret = q_ret;
-			goto relay_cleanup;
-		}
-	}
+	/* As with lichen_link_tx(), the caller owns transport submission. */
 	ret = 0;
 
 relay_cleanup:

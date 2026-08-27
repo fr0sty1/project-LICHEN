@@ -10,7 +10,6 @@
 #include <lichen/link.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
-#include <lichen/tx_queue.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -181,7 +180,7 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	}
 #endif
 
-	tx_queue_init(&ctx->tx_queue);
+	lichen_csma_init(&ctx->csma);
 
 	memcpy(ctx->eui64, eui64, LICHEN_EUI64_LEN);
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
@@ -412,39 +411,27 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 	allocated_epoch = ctx->epoch;
 	allocated_seq = ctx->tx_seq;
 
-#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
-	/* Commit the next live epoch before returning the final tuple from this
-	 * epoch. A reset at any later instruction can only skip tuples, not reuse
-	 * an epoch with sequence zero. */
-	if (ctx->tx_seq == UINT16_MAX && ctx->epoch != UINT8_MAX &&
-	    lichen_link_epoch_persist((uint8_t)(ctx->epoch + 1U)) != 0) {
-		(void)seq_unlock(ctx);
-		return -EIO;
-	}
-#endif
-
-	ctx->tx_seq++;
-
-	/*
-	 * If tx_seq wrapped to 0, increment epoch to avoid tuple reuse.
-	 * Receivers key replay state on (epoch, seqnum), so reusing the
-	 * same (epoch, seqnum) pair would break security guarantees.
-	 */
-	if (ctx->tx_seq == 0) {
-		uint8_t old_epoch = ctx->epoch;
-		ctx->epoch++;
-		if (ctx->epoch == 0) {
-			/*
-			 * SECURITY: epoch wrapped from 255 to 0 - nonce space
-			 * exhausted after 256 * 65536 = 16M frames. Block all
-			 * further TX until key rotation clears the flag.
-			 */
+	if (ctx->tx_seq == UINT16_MAX) {
+		if (ctx->epoch == UINT8_MAX) {
+			/* Allocate the terminal tuple, then freeze at 0xFFFFFF. */
 			ctx->nonce_exhausted = true;
-			LOG_WRN("nonce exhausted after 16M frames, TX blocked until key rotation\n");
+			LOG_WRN("nonce exhausted at epoch 255, TX blocked until key rotation\n");
 		} else {
-			LOG_WRN("tx_seq wrapped - epoch incremented to %u (was %u)\n",
-				ctx->epoch, old_epoch);
+			uint8_t next_epoch = (uint8_t)(ctx->epoch + 1U);
+#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
+			/* Durable state must advance before the live tuple state does. */
+			int persist_rc = lichen_link_epoch_persist(next_epoch);
+			if (persist_rc != 0) {
+				(void)seq_unlock(ctx);
+				return persist_rc;
+			}
+#endif
+			ctx->epoch = next_epoch;
+			ctx->tx_seq = 0U;
+			LOG_WRN("tx_seq wrapped - epoch incremented to %u\n", ctx->epoch);
 		}
+	} else {
+		ctx->tx_seq++;
 	}
 
 	*epoch = allocated_epoch;
@@ -586,6 +573,7 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 		return;
 	}
 
+	lichen_csma_cancel(&ctx->csma);
 	int locked = seq_lock(ctx);
 
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
@@ -680,16 +668,6 @@ int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
 }
 #endif
 
-uint32_t lichen_hash_32(const uint8_t *data, size_t len)
-{
-	uint32_t hash = 0x811c9dc5u;
-	for (size_t i = 0; i < len; i++) {
-		hash ^= (uint32_t)data[i];
-		hash = hash * 0x01000193u;
-	}
-	return hash;
-}
-
 #ifdef CONFIG_LICHEN_LINK_COORDINATION
 int lichen_coordination_negotiate(struct lichen_link_ctx *ctx)
 {
@@ -702,5 +680,3 @@ int lichen_coordination_negotiate(struct lichen_link_ctx *ctx)
 	return LICHEN_COORD_HASH_BASED;
 }
 #endif /* CONFIG_LICHEN_LINK_COORDINATION */
-
-

@@ -212,9 +212,9 @@ struct lichen_frame {
 	uint16_t seqnum;         /**< Sequence number (replay protection) */
 	uint8_t dst_addr[8];     /**< Destination address (0-8 bytes) */
 	uint8_t dst_addr_len;    /**< Destination address length */
-	uint8_t signer_iid[8];   /**< Signer IID (not carried on the wire; reserved) */
-	uint8_t signer_iid_len;  /**< Always 0; no SIID field in current profile */
-	bool signer_iid_present; /**< Always false; LLSec bit 7 is reserved */
+	uint8_t signer_iid[8];   /**< Signer EUI-64 from the wire SIID field */
+	uint8_t signer_iid_len;  /**< 8 when the SI bit is set, else 0 */
+	bool signer_iid_present; /**< LLSec bit 7; MUST equal signature_present */
 	const uint8_t *_Nullable payload;  /**< Inner payload */
 	size_t payload_len;      /**< Inner payload length */
 	size_t inner_payload_len; /**< Same as payload_len; signature is in MIC */
@@ -408,6 +408,8 @@ struct lichen_link_rx_payload_info {
  *         -EALREADY: replay detected
  *         -ENOMEM: output buffer too small
  */
+struct lichen_replay_table;
+
 int lichen_link_rx_payload(struct lichen_link_rx_ctx *_Nonnull ctx,
 			   struct lichen_replay_table *_Nullable replay,
 			   const uint8_t *_Nonnull frame, size_t frame_len,

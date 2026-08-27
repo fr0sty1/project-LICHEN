@@ -604,21 +604,25 @@ ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 
 ZTEST(link_crypto, test_lichen_pubkey_to_human_address_matches_node_address_vectors)
 {
-	static const uint8_t pk0[32] = {0};
+	/* Literals from test/vectors/node_address.json (shared cross-impl
+	 * oracle; identical values asserted by the Rust node_address_vectors
+	 * suite). Uniform-byte pubkeys cover the derivation, not specific
+	 * curves. */
+	static const uint8_t pk0[32] = {0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U};
+	static const uint8_t pk1[32] = {0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U, 0x01U};
+	static const uint8_t pk2[32] = {0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U, 0x02U};
 	char buf[16];
 	int ret = lichen_pubkey_to_human_address(pk0, buf, sizeof(buf));
 	zassert_equal(ret, 0, "human addr pk0 failed: %d", ret);
-	zassert_equal(strcmp(buf, "68T3-TNQW-65FBQ"), 0, "pk0 human address mismatch");
+	zassert_equal(strcmp(buf, "50HN-DR7D-TGE46"), 0, "pk0 human address mismatch");
 
-	static const uint8_t pk1[32] = {1};
 	ret = lichen_pubkey_to_human_address(pk1, buf, sizeof(buf));
 	zassert_equal(ret, 0, "human addr pk1 failed: %d", ret);
-	zassert_equal(strcmp(buf, "71KB-EGGH-C81ZV"), 0, "pk1 human address mismatch");
+	zassert_equal(strcmp(buf, "5ST3-EZDT-ZMKHC"), 0, "pk1 human address mismatch");
 
-	static const uint8_t pk4[32] = {4};
-	ret = lichen_pubkey_to_human_address(pk4, buf, sizeof(buf));
-	zassert_equal(ret, 0, "human addr pk4 failed: %d", ret);
-	zassert_equal(strcmp(buf, "9TKX-PHWZ-1VB42"), 0, "pk4 human address mismatch");
+	ret = lichen_pubkey_to_human_address(pk2, buf, sizeof(buf));
+	zassert_equal(ret, 0, "human addr pk2 failed: %d", ret);
+	zassert_equal(strcmp(buf, "AGF3-2DF4-W734C"), 0, "pk2 human address mismatch");
 
 	ret = lichen_pubkey_to_human_address(NULL, buf, sizeof(buf));
 	zassert_equal(ret, -EINVAL, "NULL pubkey should return -EINVAL");
