@@ -73,6 +73,9 @@ set(LICHEN_HARDENING_FLAGS
   # Pointer safety
   -Wnull-dereference
   -Wcast-align
+  # Upstream HAL/kernel headers (nrfx nrf_common.h, zephyr kernel.h) trip
+  # this on real-target cross builds; keep the diagnostic, drop the fatal.
+  -Wno-error=cast-align
 
   # Implicit float promotion (catches float→double on soft-float MCUs)
   -Wdouble-promotion
@@ -102,6 +105,9 @@ set(LICHEN_HARDENING_FLAGS
   # Duplicate conditions in if-else chains
   -Wduplicated-cond
   -Wduplicated-branches
+  # Zephyr cbprintf internals have identical branches by design; keep the
+  # diagnostic, drop the fatal (same rationale as -Wno-error=cast-align).
+  -Wno-error=duplicated-branches
 
   # Switch/enum exhaustiveness
   -Wswitch-enum
