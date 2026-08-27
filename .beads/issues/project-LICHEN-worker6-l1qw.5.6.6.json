@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.6",
   "title": "8.5 Source Routing Header (Downward)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:38.547816Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:38.547816Z",
+  "updated_at": "2026-08-27T21:28:39.130479Z",
+  "closed_at": "2026-08-27T21:28:39.130479Z",
+  "close_reason": "All six SRH implementation/processing/vector children are closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.6",

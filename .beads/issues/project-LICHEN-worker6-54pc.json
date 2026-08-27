@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-54pc",
   "title": "[review] adaptation_vectors.rs: Silent skip when rule_version vector lac",
   "description": "The rule_version category uses if let Some(wire_hex), which silently skips any vector where wire is None. A missing wire field in a rule_version test vector would not be caught. Add an else branch that pushes a failure message.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-15T18:43:11.408495Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-15T18:43:11.408495Z",
+  "updated_at": "2026-08-27T20:56:39.467272Z",
+  "closed_at": "2026-08-27T20:56:39.467272Z",
+  "close_reason": "Closed",
   "labels": [
     "review"
   ]

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-5mg7",
+  "title": "P2: CoAP proxy overly broad exception handling",
+  "description": "File: python/src/lichen/coap/resources/proxy.py (lines 99-100)\n\nAll exceptions are caught and converted to BAD_GATEWAY (5.02), but some exceptions indicate client errors:\n- UnresolvableAddress from aiocoap for malformed URIs should be BAD_REQUEST (4.00)\n- Timeout errors could be GATEWAY_TIMEOUT (5.04) for better diagnostics\n\nImpact: Incorrect status codes returned; harder to debug client issues.\n\nFix: Catch specific exception types and return appropriate CoAP status codes.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:52:58.681201Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:52:58.681201Z",
+  "labels": [
+    "codereview",
+    "bug",
+    "P2"
+  ]
+}

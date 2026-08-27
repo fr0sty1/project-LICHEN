@@ -1,0 +1,7 @@
+{
+  "id": "1787865552647752000-1",
+  "issue_id": "project-LICHEN-2auf.21",
+  "author": "Mark Atwood",
+  "text": "Post-close gap found by real native_sim run on AWS workstation: lichen_link_tx had NO has_link_key -\u003e -EPROTONOSUPPORT reject branch (RX side rejected, TX silently sent unsigned). Restored in lichen_link_tx.c; link_crypto 17/17 PASS. Bead closure now genuinely complete.",
+  "created_at": "2026-08-27T21:19:12.647752Z"
+}

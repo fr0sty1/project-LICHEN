@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-1pf8",
+  "title": "node.py: non-ANNOUNCE routing messages delivered to application callback",
+  "description": "Lines 867-871 deliver any non-SCHC, non-fragment payload to the application callback, including ROUTING messages that are not ANNOUNCE type. If other routing protocol types exist (or are added), they would be incorrectly passed to the application layer instead of being handled by the node or dropped.\n\nLocation: python/src/lichen/node.py:867-871\nCode:\n  if kind != L2PayloadKind.SCHC and not is_fragment:\n      if self._on_receive:\n          self._on_receive(payload, rx.sender)\n      return\n\nThe ANNOUNCE handling at lines 860-863 returns early, but other ROUTING subtypes fall through to this callback delivery.\n\nPotential impact: Protocol-internal messages exposed to application; malformed routing messages not dropped.\n\nSeverity: P2 - defense in depth / protocol isolation",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:54:04.91389Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:54:04.91389Z",
+  "labels": [
+    "codereview",
+    "p2",
+    "python"
+  ]
+}

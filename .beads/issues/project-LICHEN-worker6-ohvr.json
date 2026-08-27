@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-ohvr",
+  "title": "schc_adaptation.json expected_counts undeclared in envelope: family doc still fails whole-document validation",
+  "description": "This round added top-level expected_counts to schc_adaptation.json but the schema envelope oneOf[0] has additionalProperties:false without that property - root oneOf fails ('expected_counts was unexpected'). test_vector_file_schema parametrized list omits this file so CI masks it. Declare expected_counts (typed object) and add the file to the document gate.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:43:25.422109Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:53:02.197609Z",
+  "started_at": "2026-08-27T21:44:40.814478Z",
+  "closed_at": "2026-08-27T21:53:02.197609Z",
+  "close_reason": "Declared expected_counts in schema.json envelope oneOf[0] (typed object, minProperties:1, additionalProperties:integer\u003e=0, mirroring the epoch_persistence typed-object house pattern; schc_adaptation_vector definition + anyOf ref already existed, so only the envelope property was missing). Added schc_adaptation.json plus the four other q3yh families missing from the gate (rule_versioning, replay_window, authenticated_schc_dio, link-addressing; link-edge-fuzz was already listed) to python/tests/test_vectors.py::test_vector_file_schema. Verified: Draft7Validator whole-doc VALID for schc_adaptation.json; gate 19 passed (18 files + schema_is_closed); ruff clean.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ohvr",
+      "depends_on_id": "project-LICHEN-worker6-q3yh",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T21:43:26.02679Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

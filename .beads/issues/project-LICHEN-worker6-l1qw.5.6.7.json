@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.7",
   "title": "RPL Options (TLV)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:41.061019Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:41.061019Z",
+  "updated_at": "2026-08-27T20:32:47.83542Z",
+  "closed_at": "2026-08-27T20:32:47.83542Z",
+  "close_reason": "All four RPL option implementation/vector children are closed with Python/Rust/Zephyr parity",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.7",

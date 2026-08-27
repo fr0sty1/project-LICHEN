@@ -1,15 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.7.1.3",
   "title": "Zephyr: OSCORE context from master secret",
-  "notes": "Already implemented",
-  "status": "open",
+  "notes": "Implemented and audited RFC 8613 context derivation/lifecycle. Existing coverage includes Appendix C.1/C.2 creation, C.4/C.5/C.7 end-to-end known-answer ciphertext/option vectors (which exercise sender/recipient keys and common IV), client/server roundtrips, bounded static allocation, init/slot/free/wipe, sequence persistence, ID validation, and replay lifecycle. Fixed the remaining edge: reject master_salt==NULL with nonzero master_salt_len, with focused ZTEST. Validation: oscore test TU compiled for nRF52840; oscore_ctx.c compiled successfully with the Attic SDK after downgrading documented Zephyr-4.1-header-only -Werror diagnostics to warnings; git diff --check passed. A pinned v3.7 native_sim attempt reached Zephyr 3.7 but configuration is globally blocked before this module by the unrelated LICHEN_COAP_KEYS\u003c-\u003eZCBOR Kconfig dependency loop in coap/Kconfig. No SCHC or dirty sibling OSCORE packet files touched.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:49.119222Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T19:09:55.022317Z",
+  "updated_at": "2026-08-27T20:37:07.906844Z",
   "started_at": "2026-08-26T19:09:14.063964Z",
+  "closed_at": "2026-08-27T20:37:07.906844Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.1.3",

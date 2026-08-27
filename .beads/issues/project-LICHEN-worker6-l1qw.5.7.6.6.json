@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.6.6",
   "title": "Vectors: TOFU edge cases",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:47:23.730833Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:47:23.730833Z",
+  "updated_at": "2026-08-27T22:17:00.612317Z",
+  "started_at": "2026-08-27T22:04:42.819799Z",
+  "closed_at": "2026-08-27T22:17:00.612317Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.6.6",

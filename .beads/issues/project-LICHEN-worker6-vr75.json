@@ -3,13 +3,15 @@
   "title": "msg POST ignores Content-Format",
   "description": "File: python/src/lichen/coap/resources/messaging.py\n\nRobustness: MessagesResource.render_post and MessageReceiptsResource.render_post decode request.payload as CBOR with no check of request.opt.content_format. Spec 18.1.2 / 18.1.3 examples and resource advertisements use Content-Format 60 (application/cbor). Sibling PresenceResource.render_put rejects a present non-CBOR Content-Format with 4.00.\n\nImpact: a client that sends CF=0 (text/plain) or SenML 112 with CBOR-looking bytes is accepted and mutates inbox/sent/receipts. Wrong-format payloads that happen to be valid CBOR maps are stored as messages.\n\nNot covered by l9dn (field types inside a CBOR map).",
   "acceptance_criteria": "POST /msg/inbox, POST /msg/sent, POST /messages, and POST /msg/ack with a present Content-Format other than 60 return 4.00 and do not mutate inbox, sent, receipts, or _next_id. Missing Content-Format MAY still be accepted as CBOR (RFC 7252 default) or rejected; pick one and test it. PresenceResource CF check is the local pattern.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T18:16:15.825645Z",
   "created_by": "grok",
-  "updated_at": "2026-08-26T18:16:15.825645Z",
+  "updated_at": "2026-08-27T19:25:32.34093Z",
+  "closed_at": "2026-08-27T19:25:32.34093Z",
+  "close_reason": "Closed",
   "labels": [
     "review"
   ],

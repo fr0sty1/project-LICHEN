@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.4",
   "title": "9.3 Announce Relay",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:24.585986Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:24.585986Z",
+  "updated_at": "2026-08-27T22:04:21.542199Z",
+  "closed_at": "2026-08-27T22:04:21.542199Z",
+  "close_reason": "All four Announce Relay implementation/vector children are closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.4",

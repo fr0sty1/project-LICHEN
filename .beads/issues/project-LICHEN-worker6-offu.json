@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-offu",
+  "title": "Zephyr v3.7: use GCC-12-compatible C23 mode for LICHEN module",
+  "description": "Pinned Zephyr v3.7 RAK4631 production builds use Zephyr SDK 0.16.8 GCC 12.2.0. lichen/zephyr/CMakeLists.txt unconditionally adds -std=c23, which GCC 12 rejects as an unrecognized option (it supports the draft spelling -std=c2x). This blocks all LICHEN SCHC objects after puck main.c compiles. Implement a portable C23/draft-standard selection without weakening warnings or host-test semantics. Acceptance: pristine pinned-v3.7 RAK4631 puck build passes the SCHC compilation stage with SDK 0.16.8; newer compilers retain C23 mode; host C tests remain green.",
+  "notes": "Implemented portable C dialect detection in lichen/zephyr/CMakeLists.txt: probe final -std=c23 spelling first, fall back only to supported -std=c2x, fatal configure if neither exists. Zephyr v3.7 appends its configured C99 dialect after module target options, so the selected dialect is applied through its late global CSTD hook; LICHEN hardening warnings remain target-scoped. Pinned SDK 0.16.8 GCC 12.2 evidence: c23 probe FAILED, c2x probe SUCCESS, status reports LICHEN: using -std=c2x, and actual SCHC compile command ends in -std=c2x (not c99). The original unrecognized-option failure is gone; bitstream.c compiled. Host AppleClang/CMake configuration succeeded and bitstream.c compiled. Both builds next stop at an unrelated pre-existing duplicate SCHC_BITMAP_MASK in schc.c/header; filed project-LICHEN-worker6-ebv7 and linked it to production blocker project-LICHEN-worker6-1obz. Pinned full build also exposes independent existing hardening/header failures after this point, outside this dialect bead. Isolation verify and git diff --check passed; workstation synced twice.\nApproved workstation stop completed and confirmed stopped with Project=LICHEN tag.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T18:29:10.745822Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T18:39:09.887544Z",
+  "started_at": "2026-08-27T18:31:14.865522Z",
+  "closed_at": "2026-08-27T18:38:19.149Z",
+  "close_reason": "Portable C23/c2x detection implemented; pinned GCC 12 uses authoritative -std=c2x and advances past the unsupported-option failure. Next SCHC blocker filed as project-LICHEN-worker6-ebv7."
+}

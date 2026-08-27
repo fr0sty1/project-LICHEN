@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-hp28",
+  "title": "dodag.py: select_parent() is public but requires external lock",
+  "description": "**File:** python/src/lichen/rpl/dodag.py line 702\n\n**Severity:** P2 (thread safety contract)\n\n**Summary:** select_parent() is a public method (no underscore prefix) that modifies critical state (preferred_parent, rank, role, _lowest_rank, gateway_centric, grounded) without acquiring self._lock. It is designed to be called only from locked contexts (_process_dio_unlocked, remove_parent), but nothing prevents external callers from invoking it directly without holding the lock.\n\n**Failure scenario:** An external caller (e.g., a higher-level component or test) calls select_parent() without holding self._lock while another thread is in process_dio(). Concurrent modification of self.parents, self.rank, etc. causes data races. While Python GIL prevents memory corruption, it does not prevent inconsistent state (e.g., rank updated but preferred_parent still points to old parent).\n\n**Recommendation:** Either rename to _select_parent() to signal it is internal, or have it acquire self._lock internally (requires changing callers to not double-lock, since _lock is an RLock this would be safe).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T20:56:09.419993Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:42:54.51375Z",
+  "closed_at": "2026-08-27T21:42:54.51375Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview",
+    "thread-safety"
+  ]
+}

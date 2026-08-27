@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-47mi",
+  "title": "CSTD global-property hook inert on Zephyr 4.1.0; c23 is not a compile-features id",
+  "description": "lichen zephyr CMake sets GLOBAL PROPERTY CSTD with no reader in zephyr 4.1.0 (dialect comes from CONFIG_STD_*); only the v3.7.x line reads it; also 'c23' is not a valid compile-features id (c2x/gnu2x). Guard with version check or document v3.7-pin-only.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:43:29.103489Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:13:10.065656Z",
+  "started_at": "2026-08-27T21:44:17.160879Z",
+  "closed_at": "2026-08-27T22:13:10.065656Z",
+  "close_reason": "lichen/zephyr/CMakeLists.txt: set_property(GLOBAL PROPERTY CSTD c2x) unconditionally, dead LICHEN_C_DIALECT variable removed, probe kept as configure-time C23 guard with honest comment: v3.7.0 (west.yml pin) reads the property at zephyr/CMakeLists.txt:1000-1010 (verified on AWS v3.7.0 tree: value feeds ${compile_features_${CSTD}} and -std=${CSTD}; only c90/c99/c11/c17/c2x spellings valid, 'c23' would break SDK GCC12); Zephyr 4.1.0 has no reader (grep verified) so inert there. Verified: v3.7.0 build compiles LICHEN TUs with -std=c2x (visible on gcc command lines in b64_linkcrypto), configure prints 'LICHEN: using -std=c2x', link_crypto 18/18 PASS.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-47mi",
+      "depends_on_id": "project-LICHEN-worker6-smro",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T21:43:29.659243Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

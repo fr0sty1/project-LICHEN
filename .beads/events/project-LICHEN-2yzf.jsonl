@@ -1,0 +1,1 @@
+{"id":"01a044a7-0517-7eb5-bd51-bd1cc6a62426","issue_id":"project-LICHEN-2yzf","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fix already in place at messages.py:86-87. Verified by tests (55 passed) and manual validation.","created_at":"2026-08-27T19:16:31.639965Z"}

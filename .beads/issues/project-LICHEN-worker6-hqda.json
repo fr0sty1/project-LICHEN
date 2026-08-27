@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-worker6-hqda",
+  "title": "link_layer: ReceiveError.REPLAY returned for TOFU pin capacity exhaustion",
+  "description": "At line 1665-1666 in link_layer.py, when TOFU pin capacity is exhausted (all existing pins have active generation leases), the code returns ReceiveError.REPLAY. This is semantically incorrect - the frame is not being replayed; the counter is fresh. The actual failure is resource exhaustion.\n\nImpact:\n- Monitoring confusion: Security monitoring watching for replay attacks gets false positives\n- Debugging difficulty: Operators troubleshooting capacity issues see misleading error codes\n- Protocol confusion: Upper layers may respond to REPLAY differently than capacity errors\n\nSecurity Note: Security behavior is correct (fail closed). This is a semantic/operational issue, not a vulnerability.\n\nSuggested Fix: Either add ReceiveError.CAPACITY_EXHAUSTED variant, or document that REPLAY can mean 'cannot safely admit peer' in addition to 'counter replay'.\n\nLocation: python/src/lichen/link/link_layer.py:1665-1666",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:05:11.405067Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:25:22.467063Z",
+  "closed_at": "2026-08-27T19:25:22.467063Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug",
+    "p2",
+    "link-layer",
+    "codereview"
+  ]
+}

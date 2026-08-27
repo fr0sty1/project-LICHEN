@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-t17p",
+  "title": "Out-of-bounds access in adaptation_vectors.rs fragmentation_direction",
+  "description": "Line 722 accesses wire[1] but the bounds check at line 708 only verifies wire is non-empty (len \u003e= 1). A test vector with a 1-byte wire field would panic. Fix: add length check before accessing wire[1] or strengthen the empty check to require len \u003e= 2.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T20:52:50.70475Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T20:52:50.70475Z",
+  "labels": [
+    "rust",
+    "test"
+  ]
+}

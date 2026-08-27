@@ -2,6 +2,12 @@
   "$schema": "./schema.json",
   "format_version": 2,
   "description": "SCHC adaptation layer test vectors covering unknown rule IDs, Rule 255 uncompressed fallback, port boundary compression, and compressed size validation per spec/03-adaptation.md and spec/appendix-schc.md.",
+  "expected_counts": {
+    "p0": 23,
+    "endpoint_direction": 6,
+    "rule7_address_policy": 14,
+    "duplicate_idempotence": 1
+  },
   "vectors": [
     {
       "name": "unknown_rule_id_0xfe_rejection",

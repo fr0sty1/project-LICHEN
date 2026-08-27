@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-4pqr",
+  "title": "messaging canned catalog entries bypass byte cap at construction; exact 1024/1025 boundary untested",
+  "description": "_normalize_canned_catalog validates id/text types but not MESSAGES_MAX_BODY_SIZE on entry text - oversized catalog entry is accepted then permanently unpostable (runtime 4.00 per POST). Add constructor-time byte validation (fail fast) + exact-boundary tests: canned text exactly 1024 bytes -\u003e CREATED, 1025 -\u003e 4.00.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:43:32.246962Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:53:05.376821Z",
+  "started_at": "2026-08-27T21:44:42.904989Z",
+  "closed_at": "2026-08-27T21:53:05.376821Z",
+  "close_reason": "_normalize_canned_catalog now enforces MESSAGES_MAX_BODY_SIZE on entry text at construction, raising ValueError('canned message text must be at most 1024 bytes') mirroring the existing malformed-catalog ValueError conventions; oversized entries can no longer be accepted-then-unpostable. Tests in TestMessageBodySizeCap: exact 1024-byte canned text posts CREATED; 1025-byte entry rejected at construction (ValueError); multibyte 1200-byte entry rejected at construction; runtime post-expansion 4.00 guard retained and now tested as defense-in-depth with injected 1025-byte text (no mutation). Updated two tests that encoded the old accept-at-contract (canned_expansion_over_cap -\u003e construction rejection / injected-guard runtime 4.00; canned_multibyte_over_byte_cap -\u003e construction rejection). Verified: pytest tests/coap/test_messages_resource.py 158 passed; full tests/coap/ 1787 passed 1 skipped 3 xfailed; ruff clean on touched files.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-4pqr",
+      "depends_on_id": "project-LICHEN-worker6-zffp",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T21:43:32.705069Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

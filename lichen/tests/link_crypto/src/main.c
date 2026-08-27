@@ -634,5 +634,114 @@ ZTEST(link_crypto, test_lichen_pubkey_to_human_address_matches_node_address_vect
 	zassert_equal(ret, -EINVAL, "small buffer should return -EINVAL");
 }
 
+ZTEST(link_crypto, test_rx_fallback_eui64_is_canonical_key_derived)
+{
+	/* Independent oracle (python hashlib + RFC 8032 Ed25519):
+	 *   seed   = SHA-512(test_seed || fb_eui)[0:32]
+	 *   fb_pk  = Ed25519 public key of seed
+	 *   fb_wire = SHA-512(fb_pk)[0:8] with the U/L bit (0x02) set
+	 * fb_wire is the canonical key-derived wire EUI-64 that the rx
+	 * fallback MUST report (test/vectors/link-addressing.json scheme,
+	 * key_derived_extended_eui64). */
+	static const uint8_t fb_eui[LICHEN_EUI64_LEN] = {
+		0x7a, 0x7f, 0xf0, 0x9d, 0xc8, 0x6c, 0x2c, 0x10
+	};
+	static const uint8_t fb_pk[LICHEN_PK_LEN] = {
+		0x89, 0x45, 0xac, 0x71, 0x84, 0xa2, 0xa2, 0x6a,
+		0x67, 0x73, 0x7b, 0x4b, 0x85, 0xd5, 0xcc, 0x06,
+		0xcd, 0xf0, 0xdd, 0x5c, 0x2d, 0xf8, 0x43, 0x7e,
+		0xd9, 0xe8, 0x3d, 0xa1, 0x2f, 0xcc, 0x12, 0x50
+	};
+	static const uint8_t fb_wire[LICHEN_EUI64_LEN] = {
+		0xae, 0xa6, 0xd0, 0xf1, 0x94, 0x38, 0x44, 0xbb
+	};
+	/* test/vectors/link-addressing.json key_derived_extended_eui64:
+	 * canonical C derivation must match the cross-impl vector. */
+	static const uint8_t vec_pk[32] = {
+		0x29, 0xac, 0xba, 0xe1, 0x41, 0xbc, 0xca, 0xf0,
+		0xb6, 0x19, 0xc8, 0xe9, 0x61, 0xf5, 0x99, 0x29,
+		0xc8, 0xf3, 0x4e, 0x8c, 0xde, 0x0c, 0xcf, 0xf3,
+		0x8e, 0xc7, 0x6e, 0xf9, 0x81, 0x59, 0x6f, 0xd0
+	};
+	static const uint8_t vec_iid[LICHEN_EUI64_LEN] = {
+		0x3c, 0x8d, 0x1d, 0x92, 0x94, 0x60, 0xb4, 0x21
+	};
+	static const uint8_t payload[] = { 0x15, 0x01, 0x02 };
+	uint8_t dst[LICHEN_EUI64_LEN];
+	uint8_t seed[LICHEN_SEED_LEN];
+	uint8_t wire[160];
+	uint8_t out[64];
+	uint8_t iid[LICHEN_EUI64_LEN];
+	struct lichen_link_ctx tx;
+	struct lichen_link_rx_ctx rx;
+	struct lichen_frame f;
+	struct lichen_link_rx_payload_info info;
+	size_t frame_len;
+	size_t out_len = sizeof(out);
+	int ret;
+
+	/* Canonical pubkey->IID derivation matches the pinned vector. */
+	ret = lichen_pubkey_to_iid(vec_pk, iid);
+	zassert_equal(ret, 0, "pubkey_to_iid failed: %d", ret);
+	zassert_mem_equal(iid, vec_iid, sizeof(vec_iid),
+			  "canonical IID does not match link-addressing.json");
+
+	/* Signer keypair: RFC 8032 oracle above pins the derived pubkey. */
+	ret = lichen_link_derive_seed(test_seed, fb_eui, seed);
+	zassert_equal(ret, 0, "derive seed failed: %d", ret);
+	ret = lichen_link_init(&tx, fb_eui);
+	zassert_equal(ret, 0, "link init failed: %d", ret);
+	ret = lichen_link_load_key(&tx, seed);
+	zassert_equal(ret, 0, "load key failed: %d", ret);
+	zassert_mem_equal(tx.ed25519_pk, fb_pk, sizeof(fb_pk),
+			  "derived pubkey does not match Ed25519 oracle");
+
+	/* Build a signed EXTENDED frame; receiver has NO provisioned
+	 * peer_eui64, so rx must fall back to the canonical derivation. */
+	memset(&f, 0, sizeof(f));
+	memcpy(dst, vec_iid, sizeof(dst));
+	dst[0] |= 0x02; /* wire form of the vector IID as destination */
+	f.addr_mode = LICHEN_ADDR_EUI64;
+	f.dst_addr_len = sizeof(dst);
+	memcpy(f.dst_addr, dst, sizeof(dst));
+	f.epoch = 1U;
+	f.seqnum = 42U;
+	f.payload = payload;
+	f.payload_len = sizeof(payload);
+	f.signature_present = true;
+	f.signer_iid_present = true;
+	f.signer_iid_len = LICHEN_EUI64_LEN;
+	memcpy(f.signer_iid, fb_wire, sizeof(fb_wire));
+	f.mic_length = LICHEN_MIC_32;
+	f.mic_len = LICHEN_SIG_LEN;
+
+	ret = lichen_frame_write(&f, wire, sizeof(wire));
+	zassert_true(ret > 0, "frame pre-write failed: %d", ret);
+	ret = schnorr48_sign_frame(wire[0], wire[1], f.epoch, f.seqnum,
+				   f.dst_addr, f.dst_addr_len,
+				   NULL, 0U,
+				   payload, sizeof(payload),
+				   tx.ed25519_sk, tx.ed25519_pk, f.mic);
+	zassert_equal(ret, 0, "sign failed: %d", ret);
+	ret = lichen_frame_write(&f, wire, sizeof(wire));
+	zassert_true(ret > 0, "frame write failed: %d", ret);
+	frame_len = (size_t)ret;
+
+	memset(&rx, 0, sizeof(rx));
+	rx.peer_pubkey = fb_pk; /* peer_eui64 left NULL: exercises fallback */
+	ret = lichen_link_rx_payload(&rx, NULL, wire, frame_len,
+				     out, &out_len, &info);
+	zassert_equal(ret, 0, "rx_payload failed: %d", ret);
+	zassert_mem_equal(info.src_eui64, fb_wire, sizeof(fb_wire),
+			  "fallback src_eui64 is not the canonical "
+			  "key-derived EUI-64");
+	zassert_equal(info.addr_mode, LICHEN_ADDR_EUI64);
+	zassert_equal(info.epoch, 1U);
+	zassert_equal(info.seqnum, 42U);
+	zassert_true(info.signature_present);
+
+	lichen_link_cleanup(&tx);
+}
+
 ZTEST_SUITE(link_crypto, NULL, NULL, link_crypto_before, link_crypto_after,
 	    NULL);

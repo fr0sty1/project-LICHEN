@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-4brs",
+  "title": "test_loadng_discovery_vector missing negative validation for cache mutations",
+  "description": "In test_loadng_discovery_vector (lines 3087-3094), the cache mutation validation has an else branch that does nothing:\n\n```python\nif exp.get(\"cache_added\"):\n    ce = exp[\"cache_entry\"]\n    entry = cache.lookup(IPv6Address(ce[\"destination\"]), now_ms)\n    assert entry is not None, f\"{name}: expected cache entry\"\n    assert str(entry.next_hop) == ce[\"next_hop\"]\n    assert entry.hop_count == ce[\"hop_count\"]\nelse:\n    # If the vector didn't add originator to cache, verify it's not there\n    # (unless it was pre-populated)\n    pass\n```\n\nThe comment describes what SHOULD be done (verify the entry is NOT in cache) but the code does pass (nothing). This means if the implementation incorrectly adds spurious cache entries, the test would not catch it.\n\n**Impact**: False negatives - tests could pass when the implementation has incorrect cache mutation behavior.\n\n**File**: python/tests/test_vectors.py:3087-3094",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:03:59.23253Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:14:01.803428Z",
+  "closed_at": "2026-08-27T19:14:01.803428Z",
+  "close_reason": "Implemented negative validation for cache mutations in test_loadng_discovery_vector. When cache_added is False, the test now verifies the RREQ originator is NOT in the cache (unless pre-populated).",
+  "labels": [
+    "correctness",
+    "test-coverage"
+  ]
+}

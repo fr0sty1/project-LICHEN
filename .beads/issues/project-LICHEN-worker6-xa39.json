@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-xa39",
+  "title": "Fix 11 pre-existing link test failures (TOFU capacity + security persistence)",
+  "description": "On the current dirty tree (uncommitted python/src wave), these fail: tests/link/test_link_rx.py::TestLinkLayerRoundTrip::test_tofu_capacity_with_all_pins_leased_rejects_atomically (3 params); tests/link/test_link_security_persistence.py: test_restored_transmit_counter_cannot_be_reset (DID NOT RAISE RuntimeError), test_persistence_fault_terminally_disables_link_and_drops_queue (4 params), test_receive_anchor_failure_returns_no_receipt_and_disables_sessions, test_corrupt_restarted_t0_tombstone_fails_closed, test_persistence_failure_revokes_cached_policy_capabilities. Likely root cause in the same uncommitted wave that moved PEER_DB_MAX_SIZE. Discovered during project-LICHEN-2auf.35.2 verification (frame-focused suites pass: 135 passed).",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:34:56.584322Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:34:56.584322Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xa39",
+      "depends_on_id": "project-LICHEN-2auf.35.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T19:34:57.186001Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

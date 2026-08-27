@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-8lbq",
+  "title": "node.py: fragment detection uses hardcoded rule IDs instead of RULE_IDS constant",
+  "description": "Line 865 uses hardcoded values (0x78, 0x79) for fragment detection instead of the imported RULE_IDS constant from lichen.schc.fragment. If RULE_IDS changes, this code would silently become inconsistent.\n\nLocation: python/src/lichen/node.py:865\nCurrent: is_fragment = bool(payload) and payload[0] in (0x78, 0x79)\nFix: is_fragment = bool(payload) and payload[0] in RULE_IDS\n\nSeverity: P2 - maintenance/correctness risk",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:53:54.204589Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:53:54.204589Z",
+  "labels": [
+    "codereview",
+    "p2",
+    "python"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.6.6.2.9",
+  "title": "Zephyr: wire TOFU mismatch audit callback to authenticated operator alert sink",
+  "description": "Bind lichen_key_store_set_mismatch_alert_cb to a platform/operator-facing authenticated audit transport once the currently owned CoAP/Kconfig integration is available. Serialize the bounded mismatch event without leaking private material; preserve sequence, peer IID, pinned/presented public keys, attempt count, and delivery status. The sink must durably accept or return a negative errno so the store can retry, and must not re-enter key-store APIs.",
+  "acceptance_criteria": "Platform initialization registers an authenticated operator/audit sink without weakening mismatch rejection; one accepted event is emitted per novel mismatch, replay amplification remains suppressed, failed delivery is retried, and integration tests cover unavailable transport, recovery, serialization bounds, authentication/authorization, and reboot lifecycle.",
+  "notes": "Implemented a clean authenticated operator alert sink in new coap_keys_alert source/header and existing clean CMake wiring. Mismatch audit records serialize to an exact 136-byte versioned envelope carrying sequence, timestamps, attempt count, prior delivery status, IID, pinned public key, and presented public key; keyed BLAKE2b authenticates the complete domain-separated payload. Initialization rejects absent/all-zero keys and registers the store callback; transport callbacks must durably accept or return negative errno. Backpressure/error propagates into existing pending audit state, explicit retry redelivers it, positive transport results fail closed, and accepted identical sequences remain replay-suppressed. Deinit detaches and wipes key/payload state. Decoder verifies exact bounds/version/flags/tag and semantic ranges atomically. Focused tests compile for nRF52840 and cover durable key-store non-mutation, payload fields, tampering/wrong authorization key/truncated-or-oversized frames, EAGAIN recovery, replay suppression, invalid registration, and reboot restore/rebind. Alert and test translation units compile with no leaf-local warnings; git diff --check passes. Dirty status/client/Kconfig files were untouched.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T20:54:21.79537Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:10:35.788844Z",
+  "started_at": "2026-08-27T21:06:50.007395Z",
+  "closed_at": "2026-08-27T21:10:35.788844Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.6.2.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.6.2",
+      "type": "parent-child",
+      "created_at": "2026-08-27T20:54:22.307921Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.6.6.2.9",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.6.6.2.6",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T20:54:22.729005Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

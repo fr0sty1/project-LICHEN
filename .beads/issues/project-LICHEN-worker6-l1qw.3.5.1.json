@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.5.1",
   "title": "Rule 1: IPv6/UDP Full",
   "description": "SCHC Rule 1 for full IPv6/UDP header compression",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:41:17.762126Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:41:17.762126Z",
+  "updated_at": "2026-08-27T19:52:35.650202Z",
+  "closed_at": "2026-08-27T19:52:35.650202Z",
+  "close_reason": "All seven Rule 1 implementation and vector children are closed; current-spec cross-implementation acceptance is complete",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.5.1",

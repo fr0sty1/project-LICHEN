@@ -5,7 +5,10 @@
 
 menuconfig LICHEN_RPL
 	bool "LICHEN RPL routing"
-	depends on LICHEN
+	depends on LICHEN && NETWORKING && NET_IPV6
+	# NET_IPV6_NBR_CACHE and NET_ROUTE are only defined under
+	# NETWORKING -> NET_IPV6 (subsys/net/ip/Kconfig.ipv6), so the selects
+	# below are only valid with those dependencies met.
 	select NET_IPV6_NBR_CACHE
 	select NET_ROUTE
 	help

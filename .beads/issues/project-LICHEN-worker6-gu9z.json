@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-gu9z",
+  "title": "RST rate-limit tracking eviction uses insertion order not staleness",
+  "description": "In channel.py lines 331-337 (_check_rst_rate), when _rst_rate_tracking reaches MAX_RST_PEERS (4096), the code evicts the oldest entry by insertion order rather than by timestamp staleness.\n\nAttack scenario:\n1. Attacker sends forged RSTs from 4096 spoofed source addresses to fill tracking dict\n2. Legitimate peer A is now the 'oldest' entry by insertion\n3. Attacker sends more RSTs from new addresses, evicting A\n4. Attacker can now send RSTs from A's address at full rate (20/10s) since A has no tracking entry\n5. Repeat to bypass per-peer rate limit for targeted peers\n\nThe global rate limit (200 RSTs/window) mitigates but doesn't prevent targeted abuse.\n\nSuggested fix: When evicting, prefer entries whose timestamps are all older than window_start (fully stale entries), or use LRU by last timestamp rather than insertion order.\n\nFile: src/lichen/coap/secure/channel.py\nLines: 331-337",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:34:09.708308Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:41:50.723906Z",
+  "closed_at": "2026-08-27T19:41:50.723906Z",
+  "close_reason": "Closed",
+  "labels": [
+    "security",
+    "rate-limiting"
+  ]
+}

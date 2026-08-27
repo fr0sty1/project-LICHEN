@@ -1,1 +1,2 @@
 {"id":"019f975e-0a02-7bb0-818b-08c93696c9ea","issue_id":"project-LICHEN-worker6-l1qw.5.6.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:42:30.402767Z"}
+{"id":"01a04540-2d39-78e1-bf35-4cdd0a1d5142","issue_id":"project-LICHEN-worker6-l1qw.5.6.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All five DIS codec/solicitation/vector children are closed with authenticated bounded handling","created_at":"2026-08-27T22:03:48.921582Z"}

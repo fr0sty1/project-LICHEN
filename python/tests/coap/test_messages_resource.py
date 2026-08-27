@@ -1593,12 +1593,200 @@ class TestMessageBodySizeCap:
             await client.shutdown()
             await server.shutdown()
 
+    async def test_canned_text_exactly_at_byte_cap_posts_created(self) -> None:
+        """Exact 1024-byte canned text is constructible and posts CREATED."""
+        text = "y" * MESSAGES_MAX_BODY_SIZE
+        assert len(text.encode("utf-8")) == MESSAGES_MAX_BODY_SIZE
+        msgs = MessagesResource(canned_messages=[{"id": 0, "text": text}])
+        resp = await msgs.render_post(_admin_post(cbor2.dumps({"canned": 0})))
+        assert resp.code == aiocoap.CREATED
+        assert msgs.inbox()[0]["body"] == text
+        assert msgs.sent_messages()[0]["body"] == text
+
+    def test_canned_entry_one_byte_over_cap_rejected_at_construction(self) -> None:
+        """Oversized catalog entries fail fast instead of being unpostable."""
+        text = "y" * (MESSAGES_MAX_BODY_SIZE + 1)
+        with pytest.raises(ValueError, match="at most"):
+            MessagesResource(canned_messages=[{"id": 0, "text": text}])
+
     async def test_canned_expansion_over_cap_returns_bad_request_without_mutation(self) -> None:
-        catalog = [{"id": 0, "text": "y" * (MESSAGES_MAX_BODY_SIZE + 10)}]
-        msgs = MessagesResource(canned_messages=catalog)
-        request = Message(code=POST, payload=cbor2.dumps({"canned": 0}))
+        """Defense-in-depth: the post-expansion byte check still rejects 1025."""
+        msgs = MessagesResource()
+        # The constructor now guarantees catalog texts fit the cap; inject
+        # directly to verify the runtime guard stays fail-closed if that
+        # invariant is ever violated.
+        msgs._canned_text[9] = "y" * (MESSAGES_MAX_BODY_SIZE + 1)
+        resp = await msgs.render_post(_admin_post(cbor2.dumps({"canned": 9})))
+        assert resp.code == aiocoap.BAD_REQUEST
+        assert msgs.inbox() == []
+        assert msgs.sent_messages() == []
+
+    async def test_multibyte_body_under_byte_cap_accepted(self) -> None:
+        emoji = "\U0001f600"  # 4 UTF-8 bytes, 1 character
+        body = emoji * 253  # 253 chars, 1012 bytes
+        assert len(body) == 253
+        assert len(body.encode("utf-8")) == 1012 <= MESSAGES_MAX_BODY_SIZE
+        payload = cbor2.dumps({"body": body})
+        assert len(payload) <= MESSAGES_MAX_BODY_SIZE
+        client, server, msgs = await _setup()
+        try:
+            resp = await client.request(
+                Message(code=POST, uri="coap://srv/msg/inbox", payload=payload)
+            ).response
+            assert resp.code == aiocoap.CREATED
+            assert msgs.inbox()[0]["body"] == body
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    def test_canned_multibyte_over_byte_cap_rejected_at_construction(self) -> None:
+        cjk = "\u4e00"  # 3 UTF-8 bytes, 1 character
+        text = cjk * 400  # 400 chars (passes the old char count) but 1200 bytes
+        assert len(text) <= MESSAGES_MAX_BODY_SIZE
+        assert len(text.encode("utf-8")) > MESSAGES_MAX_BODY_SIZE
+        with pytest.raises(ValueError, match="at most"):
+            MessagesResource(canned_messages=[{"id": 0, "text": text}])
+
+    async def test_text_field_byte_cap_parity(self) -> None:
+        emoji = "\U0001f600"
+        text = emoji * 253  # 253 chars, 1012 bytes
+        assert len(text.encode("utf-8")) <= MESSAGES_MAX_BODY_SIZE
+        msgs = MessagesResource()
+        request = Message(code=POST, payload=cbor2.dumps({"text": text}))
         request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        resp = await msgs.render_post(request)
+        assert resp.code == aiocoap.CREATED
+        assert msgs.inbox()[0]["body"] == text
+
+        # Over-cap text cannot reach the expanded-body check: the raw
+        # pre-decode gate bounds decoded field bytes, so 4.13 wins.
+        over = "\u4e00" * 400  # 1200 bytes
+        assert len(over.encode("utf-8")) > MESSAGES_MAX_BODY_SIZE
+        payload = cbor2.dumps({"text": over})
+        assert len(payload) > MESSAGES_MAX_BODY_SIZE
+        msgs = MessagesResource()
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        resp = await msgs.render_post(request)
+        assert resp.code == aiocoap.REQUEST_ENTITY_TOO_LARGE
+        assert msgs.inbox() == []
+        assert msgs.sent_messages() == []
+
+
+# ---------------------------------------------------------------------------
+# Content-Format Validation (Spec 18.1.2 / 18.1.3)
+# ---------------------------------------------------------------------------
+
+
+class TestContentFormatValidation:
+    """Verify POST endpoints reject non-CBOR Content-Format per spec."""
+
+    async def test_inbox_post_rejects_wrong_content_format(self) -> None:
+        """POST /msg/inbox with Content-Format != 60 returns 4.00 without mutation."""
+        msgs = MessagesResource()
+        payload = cbor2.dumps({"body": "test"})
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        # text/plain (0) is not CBOR
+        request.opt.content_format = 0
         resp = await msgs.render_post(request)
         assert resp.code == aiocoap.BAD_REQUEST
         assert msgs.inbox() == []
         assert msgs.sent_messages() == []
+        assert msgs._next_id == 1
+
+    async def test_inbox_post_rejects_senml_cbor_content_format(self) -> None:
+        """POST /msg/inbox with Content-Format 112 (SenML+CBOR) returns 4.00."""
+        msgs = MessagesResource()
+        payload = cbor2.dumps({"body": "test"})
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        request.opt.content_format = 112  # application/senml+cbor
+        resp = await msgs.render_post(request)
+        assert resp.code == aiocoap.BAD_REQUEST
+        assert msgs.inbox() == []
+        assert msgs._next_id == 1
+
+    async def test_inbox_post_accepts_missing_content_format(self) -> None:
+        """POST /msg/inbox with no Content-Format is accepted as CBOR per RFC 7252."""
+        msgs = MessagesResource()
+        payload = cbor2.dumps({"body": "test"})
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        # No content_format set (None)
+        assert request.opt.content_format is None
+        resp = await msgs.render_post(request)
+        assert resp.code == aiocoap.CREATED
+        assert len(msgs.inbox()) == 1
+
+    async def test_inbox_post_accepts_explicit_cbor_content_format(self) -> None:
+        """POST /msg/inbox with Content-Format 60 (application/cbor) is accepted."""
+        msgs = MessagesResource()
+        payload = cbor2.dumps({"body": "test"})
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        request.opt.content_format = 60  # application/cbor
+        resp = await msgs.render_post(request)
+        assert resp.code == aiocoap.CREATED
+        assert len(msgs.inbox()) == 1
+
+    async def test_sent_post_rejects_wrong_content_format(self) -> None:
+        """POST /msg/sent with Content-Format != 60 returns 4.00 without mutation."""
+        msgs = MessagesResource()
+        sent_resource = SentMessagesResource(msgs)
+        payload = cbor2.dumps({"body": "test"})
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        request.opt.content_format = 0  # text/plain
+        resp = await sent_resource.render_post(request)
+        assert resp.code == aiocoap.BAD_REQUEST
+        assert msgs.sent_messages() == []
+        assert msgs._next_id == 1
+
+    async def test_sent_post_accepts_missing_content_format(self) -> None:
+        """POST /msg/sent with no Content-Format is accepted as CBOR."""
+        msgs = MessagesResource()
+        sent_resource = SentMessagesResource(msgs)
+        payload = cbor2.dumps({"body": "test"})
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        assert request.opt.content_format is None
+        resp = await sent_resource.render_post(request)
+        assert resp.code == aiocoap.CREATED
+
+    async def test_ack_post_rejects_wrong_content_format(self) -> None:
+        """POST /msg/ack with Content-Format != 60 returns 4.00 without mutation."""
+        receipts = MessageReceiptsResource()
+        payload = cbor2.dumps({"id": 1, "status": "delivered", "ts": 1700000000})
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        request.opt.content_format = 0  # text/plain
+        resp = await receipts.render_post(request)
+        assert resp.code == aiocoap.BAD_REQUEST
+        assert receipts.receipts() == []
+
+    async def test_ack_post_accepts_missing_content_format(self) -> None:
+        """POST /msg/ack with no Content-Format is accepted as CBOR."""
+        receipts = MessageReceiptsResource()
+        payload = cbor2.dumps({"id": 1, "status": "delivered", "ts": 1700000000})
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        assert request.opt.content_format is None
+        resp = await receipts.render_post(request)
+        assert resp.code == aiocoap.CHANGED
+        assert len(receipts.receipts()) == 1
+
+    async def test_legacy_messages_alias_inherits_content_format_check(self) -> None:
+        """POST /messages with wrong Content-Format returns 4.00 via delegation."""
+        from lichen.coap.resources.messaging import LegacyMessagesAliasResource
+
+        msgs = MessagesResource()
+        alias = LegacyMessagesAliasResource(msgs)
+        payload = cbor2.dumps({"body": "test"})
+        request = Message(code=POST, payload=payload)
+        request.remote = SimpleNamespace(hostinfo=_LCI_PEER_AUTHORITY)
+        request.opt.content_format = 0  # text/plain
+        resp = await alias.render_post(request)
+        assert resp.code == aiocoap.BAD_REQUEST
+        assert msgs.inbox() == []
+        assert msgs._next_id == 1

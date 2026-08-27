@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.11",
   "title": "Link Layer Integration",
   "description": "LinkLayer RX/TX pipeline, memory budget, buffer pool",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:40:56.110661Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:40:56.110661Z",
+  "updated_at": "2026-08-27T20:10:26.435303Z",
+  "closed_at": "2026-08-27T20:10:26.435303Z",
+  "close_reason": "All five Link Layer Integration children are closed; RX/TX pipeline, static pool, and constrained-target memory gates pass",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.11",

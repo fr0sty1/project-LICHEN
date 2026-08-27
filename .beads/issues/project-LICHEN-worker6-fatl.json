@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-fatl",
+  "title": "node.py: assert for runtime None check bypassed by -O flag",
+  "description": "Line 407 uses assert to check that persistence_revision_anchor is not None when persist_path is set. This assert can be skipped with Python's -O flag, potentially causing a None to be passed to AnnounceStatePersistence.\n\nLocation: python/src/lichen/node.py:407\nIssue: assert self.persistence_revision_anchor is not None\n\nThe API contract (if persist_path is set, persistence_revision_anchor must also be set) is not enforced by explicit validation in __post_init__, only by this assert.\n\nFix: Replace with explicit ValueError check like:\n  if self.persistence_revision_anchor is None:\n      raise ValueError('persistence_revision_anchor required when persist_path is set')\n\nSeverity: P2 - potential None dereference in production with -O",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:53:59.211577Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:53:59.211577Z",
+  "labels": [
+    "codereview",
+    "p2",
+    "python"
+  ]
+}

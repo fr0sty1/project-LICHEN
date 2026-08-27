@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-0ef3",
+  "title": "tests/app_identity links fail under LICHEN_IPV6=n on pubkey_to_iid/ygg_addr",
+  "description": "Pre-existing breakage (not introduced by 84dfe84451), found while verifying project-LICHEN-worker6-6fg3 on AWS waves-base (native_sim/native/64, CONFIG_LICHEN_IPV6=n CONFIG_LICHEN_LINK=y): tests/app_identity/src/main.c:69,162 calls lichen_key_pubkey_to_iid (defined only in coap/coap_keys_format.c:267, built only under CONFIG_LICHEN_COAP_KEYS) and subsys/lichen/app_identity/app_identity.c:47,125,251 calls lichen_identity_ygg_addr_from_ed25519 (defined only in l2/ipv6_addr.c:378, built only under CONFIG_LICHEN_IPV6). GNU ld therefore rejects zephyr.exe on those two symbols even after the lichen_hash_32 fix lands. Options: move pubkey_to_iid/ygg_addr derivations into an always-built TU, or make the test enable the subsystems it exercises (contradicts its IPV6=n purpose), or stub at the test boundary. The lichen_hash_32 symbol itself is resolved by worker6-6fg3 (absent from the final link error list).",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T22:05:15.005626Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:19:53.629022Z",
+  "started_at": "2026-08-27T22:19:53.629022Z",
+  "lease_expires_at": "2026-08-27T22:24:53.629022Z",
+  "heartbeat_at": "2026-08-27T22:19:53.629022Z"
+}

@@ -1,3 +1,4 @@
 {"id":"01a00e0e-b220-7c35-8976-d42a06437e98","issue_id":"project-LICHEN-worker6-kmku","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T04:50:39.2648Z"}
 {"id":"01a00e0e-b22a-7cf8-8736-e57b6b75b891","issue_id":"project-LICHEN-worker6-kmku","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T04:50:39.27485Z"}
 {"id":"01a00e0e-b22f-75a5-9951-805f5dd31f29","issue_id":"project-LICHEN-worker6-kmku","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T04:50:39.27937Z"}
+{"id":"01a04495-4cee-7d56-9986-dfaf2de2ad32","issue_id":"project-LICHEN-worker6-kmku","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed oracle_provenance to say 'return (12, false)' matching spec pseudocode, and updated sf_adjustment_reason to accurately describe the behavior","created_at":"2026-08-27T18:57:10.382874Z"}

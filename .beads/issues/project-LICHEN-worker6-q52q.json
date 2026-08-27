@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-q52q",
+  "title": "dodag.py: code duplication between _would_accept_dio_with_snapshot and _would_accept_dio_unlocked",
+  "description": "**File:** python/src/lichen/rpl/dodag.py\n\n**Severity:** P2 (maintenance risk)\n\n**Summary:** Lines 196-264 (_would_accept_dio_with_snapshot) and lines 464-524 (_would_accept_dio_unlocked) contain nearly identical logic (~70 lines). They evaluate the same acceptance criteria but one uses a snapshot object and one uses self.*.\n\n**Failure scenario:** If one function is updated (e.g., to fix a bug or add a new check) without updating the other, the authenticated DIO path and unauthenticated DIO path will have divergent acceptance criteria.\n\n**Recommendation:** Extract the shared logic into a single function that takes the relevant values as parameters, eliminating duplication.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T20:56:00.659962Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:42:16.577569Z",
+  "closed_at": "2026-08-27T21:42:16.577569Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview",
+    "maintainability"
+  ]
+}

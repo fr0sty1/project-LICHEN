@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-co6g",
+  "title": "prepare_candidate: StopIteration propagates with unhelpful error if SCHC version option missing",
+  "description": "Location: python/src/lichen/rpl/dodag.py lines 585-588, prepare_candidate closure\n\nIssue: The code uses next() with a generator expression to find the SCHC Rule Version option. If no matching option exists, bare StopIteration is raised with no helpful error message.\n\nCode:\n    version_option = next(\n        option for option in detached.options if option.type == SCHC_RULE_VERSION_TYPE\n    )\n\nThe comment claims cardinality is enforced by transact_authenticated_schc_dio before calling prepare_candidate, but defensive programming should handle the case explicitly with a clearer error.\n\nFix: Use next() with a default or wrap in try/except:\n    version_option = next(\n        (option for option in detached.options if option.type == SCHC_RULE_VERSION_TYPE),\n        None\n    )\n    if version_option is None:\n        raise ValueError(\"missing required SCHC Rule Version option\")",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T22:14:43.297936Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:14:43.297936Z",
+  "labels": [
+    "codereview",
+    "rpl",
+    "robustness"
+  ]
+}

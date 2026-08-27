@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-86tl",
+  "title": "test_ipv6_malformed_vector missing else clause for unknown expect_error values",
+  "description": "In python/tests/test_vectors.py lines 664-682, test_ipv6_malformed_vector handles specific expect_error values (packet_version, icmpv6_too_short, invalid_checksum, bad_type, bad_udp_length, invalid_source) but has no else clause or final assertion.\n\nIf a new expect_error value is added to ipv6_malformed.json vectors, the test would silently pass without exercising any code path.\n\nFix: Add an else clause with pytest.fail() or assert False to catch unhandled expect_error values.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:19:45.057235Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:19:45.057235Z"
+}

@@ -209,6 +209,10 @@ def _normalize_canned_catalog(
             raise ValueError("canned message id must be a uint")
         if not isinstance(text, str):
             raise ValueError("canned message text must be a string")
+        if len(text.encode("utf-8")) > MESSAGES_MAX_BODY_SIZE:
+            raise ValueError(
+                f"canned message text must be at most {MESSAGES_MAX_BODY_SIZE} bytes"
+            )
         if canned_id in seen:
             raise ValueError("canned message ids must be unique")
         seen.add(canned_id)
@@ -363,9 +367,10 @@ class MessagesResource(resource.ObservableResource):
             return Message(code=aiocoap.BAD_REQUEST)
         if "ack" in body and not isinstance(body["ack"], bool):
             return Message(code=aiocoap.BAD_REQUEST)
-        if "priority" in body:
-            if type(body["priority"]) is not int or body["priority"] not in (0, 1, 2):
-                return Message(code=aiocoap.BAD_REQUEST)
+        if "priority" in body and (
+            type(body["priority"]) is not int or body["priority"] not in (0, 1, 2)
+        ):
+            return Message(code=aiocoap.BAD_REQUEST)
         if "ts" in body and not _is_u64(body["ts"]):
             return Message(code=aiocoap.BAD_REQUEST)
         if "ttl" in body and not _is_u64(body["ttl"]):
@@ -373,7 +378,19 @@ class MessagesResource(resource.ObservableResource):
         if "reply_to" in body and not _is_u64(body["reply_to"]):
             return Message(code=aiocoap.BAD_REQUEST)
         # Filter to spec 18.1.1 keys only; drop client-supplied 'read' and other non-spec keys.
-        allowed_keys = {"from", "to", "body", "text", "ts", "ack", "priority", "reply_to", "ttl", "canned", "id"}
+        allowed_keys = {
+            "from",
+            "to",
+            "body",
+            "text",
+            "ts",
+            "ack",
+            "priority",
+            "reply_to",
+            "ttl",
+            "canned",
+            "id",
+        }
         body = {k: v for k, v in body.items() if k in allowed_keys}
         candidate_next_id = self._next_id
         if "id" not in body:
@@ -385,8 +402,10 @@ class MessagesResource(resource.ObservableResource):
             candidate_next_id = max(candidate_next_id, body["id"] + 1)
         if "body" not in body and "text" in body:
             body["body"] = body["text"]
-        if len(body["body"]) > MESSAGES_MAX_BODY_SIZE:
-            return Message(code=aiocoap.BAD_REQUEST)
+        # MESSAGES_MAX_BODY_SIZE is in bytes; str length counts characters.
+        for field in ("body", "text"):
+            if field in body and len(body[field].encode("utf-8")) > MESSAGES_MAX_BODY_SIZE:
+                return Message(code=aiocoap.BAD_REQUEST)
 
         msg_id = str(body["id"])
         self._sent[msg_id] = copy.deepcopy(body)
@@ -408,6 +427,10 @@ class MessagesResource(resource.ObservableResource):
         # lichen_coap_is_local_admin, else 4.01 (coap_server.c).
         if not _request_is_oscore_or_admin(request):
             return Message(code=UNAUTHORIZED)
+        # Spec 18.1.2: Content-Format 60 (application/cbor). Missing CF is
+        # accepted as CBOR per RFC 7252 default; other CF values are rejected.
+        if request.opt.content_format is not None and request.opt.content_format != CBOR:
+            return Message(code=BAD_REQUEST)
         result = self._accept_outbound(request)
         if isinstance(result, Message):
             return result
@@ -456,6 +479,10 @@ class SentMessagesResource(resource.Resource):
         # lichen_msg_sent_post / lichen_msg_send contract).
         if not _peer_is_local_admin(getattr(request, "remote", None)):
             return Message(code=UNAUTHORIZED)
+        # Spec 18.1.2: Content-Format 60 (application/cbor). Missing CF is
+        # accepted as CBOR per RFC 7252 default; other CF values are rejected.
+        if request.opt.content_format is not None and request.opt.content_format != CBOR:
+            return Message(code=BAD_REQUEST)
         result = self._messages._accept_outbound(request)
         if isinstance(result, Message):
             return result
@@ -528,6 +555,10 @@ class MessageReceiptsResource(resource.Resource):
         # lichen_msg_ack_post: oscore.is_protected || is_local_admin, else 4.01.
         if not _request_is_oscore_or_admin(request):
             return Message(code=UNAUTHORIZED)
+        # Spec 18.1.3: Content-Format 60 (application/cbor). Missing CF is
+        # accepted as CBOR per RFC 7252 default; other CF values are rejected.
+        if request.opt.content_format is not None and request.opt.content_format != CBOR:
+            return Message(code=BAD_REQUEST)
         if not request.payload:
             return Message(code=BAD_REQUEST)
         try:

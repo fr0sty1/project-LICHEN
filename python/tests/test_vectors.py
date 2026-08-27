@@ -71,7 +71,16 @@ from lichen.rpl.dao_manager import DaoManager
 from lichen.rpl.dao_origin import DaoOriginRejectReason, DaoOriginValidator
 from lichen.rpl.dao_persistence import MemoryPersistence, compute_dao_digest
 from lichen.rpl.dao_types import DaoError
-from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, RplError, RplOption, _parse_options
+from lichen.rpl.messages import (
+    DAO,
+    DIO,
+    DIS,
+    DAOAck,
+    DodagConfig,
+    RplError,
+    RplOption,
+    _parse_options,
+)
 from lichen.schc.codec import BitWriter, SchcError
 from lichen.schc.fragment import (
     MAX_PACKET_SIZE,
@@ -112,6 +121,7 @@ from generate import (  # noqa: E402
     announce_coords_vectors,
     ccp9_vectors,
     ccp15_vectors,
+    ccp16_vectors,
     edhoc_vectors,
     frame_vectors,
     l2_payload_vectors,
@@ -120,6 +130,7 @@ from generate import (  # noqa: E402
     meshtastic_app_compat_vectors,
     rpl_messages_vectors,
     rpl_multi_instance_vectors,
+    tofu_edge_cases_vectors,
 )
 from generate_rpl_route_state import build_document as build_route_state_document  # noqa: E402
 from generate_schc_tile_sizing import document as tile_sizing_document  # noqa: E402
@@ -145,9 +156,34 @@ def _load(name: str) -> dict:
     return json.loads((VECTORS_DIR / name).read_text())
 
 
+def _find_vector(vectors: list, name: str) -> dict:
+    """Find a vector by name with helpful error on missing entry."""
+    for v in vectors:
+        if v.get("name") == name:
+            return v
+    raise ValueError(f"Vector '{name}' not found in {len(vectors)} vectors")
+
+
 def test_vectors_directory_exists() -> None:
     assert VECTORS_DIR.is_dir(), f"missing {VECTORS_DIR}"
     assert (VECTORS_DIR / "schema.json").is_file()
+
+
+def test_tofu_edge_vectors_and_c_fixture_are_fresh() -> None:
+    document = _load("tofu_edge_cases.json")
+    assert document["vectors"] == tofu_edge_cases_vectors()
+
+    from generate_tofu_c_header import render
+
+    header = (
+        VECTORS_DIR.parents[1]
+        / "lichen"
+        / "tests"
+        / "coap_keys"
+        / "src"
+        / "tofu_edge_vectors.h"
+    )
+    assert header.read_text() == render()
 
 
 @pytest.mark.parametrize(
@@ -156,8 +192,11 @@ def test_vectors_directory_exists() -> None:
         "ccp15.json",
         "ccp9.json",
         "ccp9-rendezvous.json",
+        "authenticated_schc_dio.json",
         "l2_payload.json",
         "link_frame.json",
+        "link-edge-fuzz.json",
+        "link-addressing.json",
         "ipv6_malformed.json",
         # GCP family: per-vector name/type/description key presence is enforced
         # by the gateway_coordination branch (project-LICHEN-worker6-jo3q/hik5),
@@ -166,7 +205,12 @@ def test_vectors_directory_exists() -> None:
         "gateway_coordination.json",
         "gcp6_slot_coordination.json",
         "rpl_multi_instance.json",
+        "rpl_messages.json",
+        "replay_window.json",
         "root_signature.json",
+        "tofu_edge_cases.json",
+        "rule_versioning.json",
+        "schc_adaptation.json",
         "schc_tile_sizing.json",
     ],
 )
@@ -610,9 +654,7 @@ def _canonical_fragment_schc(rule_id: int = 0) -> bytes:
         255: "mqtt_sn_traffic_class_nonmatch",
     }
     name = names[rule_id]
-    vector = next(
-        item for item in _load("schc_compression.json")["vectors"] if item["name"] == name
-    )
+    vector = _find_vector(_load("schc_compression.json")["vectors"], name)
     compressed = bytes.fromhex(vector["compressed"])
     assert compressed[0] == rule_id
     return compressed
@@ -651,7 +693,7 @@ def _meshcore_cases():
 def _ipv6_malformed_cases():
     doc = _load("ipv6_malformed.json")
     assert doc["format_version"] == 2
-    return [(v["name"], v) for v in doc.get("vectors", doc)]
+    return [(v["name"], v) for v in doc["vectors"]]
 
 
 @pytest.mark.parametrize("name,vector", _ipv6_malformed_cases())
@@ -1212,11 +1254,7 @@ def test_schc_fragmentation_vector_integrity(name: str, vector: dict) -> None:
                 range(vector["fragment_count"])
             )
         if "retransmission" in vector["loss"]:
-            dropped = next(
-                fragment
-                for fragment in vector["fragments"]
-                if fragment["name"] == vector["loss"]["drop_fragment"]
-            )
+            dropped = _find_vector(vector["fragments"], vector["loss"]["drop_fragment"])
             assert _expand_vector_bytes(vector["loss"]["retransmission"]) == _expand_vector_bytes(
                 dropped["wire"]
             )
@@ -1657,6 +1695,11 @@ def test_ccp15_vectors_match_generator() -> None:
     assert doc["vectors"] == ccp15_vectors()
 
 
+def test_ccp16_vectors_match_generator() -> None:
+    doc = _load("ccp16.json")
+    assert doc["vectors"] == ccp16_vectors()
+
+
 def test_rpl_multi_instance_vectors_match_generator() -> None:
     """Canonical GCP-5 vectors reproduce byte-identical from generate.py."""
     doc = _load("rpl_multi_instance.json")
@@ -1753,7 +1796,10 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
     # Canonical pins inside the vector must agree with each other.
     assert o["select_channel"] == o["channel"], f"pin disagreement: {name}"
     assert o["expected_channel"] == o["channel"], f"pin disagreement: {name}"
-    assert o["now"] == i["now"], f"now pin drift: {name}"
+    # NOTE: o["now"] == i["now"] assertion removed - it was tautologically true
+    # by vector construction (output echoes input timestamp) and tested no
+    # production code behavior. The now field is vector metadata, not a value
+    # computed by any function under test.
 
     # SF table implementation vs oracle.
     snr_ema = i.get("snr_ema", i.get("snr_db", 5.0))
@@ -1765,13 +1811,16 @@ def test_ccp16_sf_ema_load_factor_hash32_logic(desc: str, vector: dict) -> None:
 def _read_varint(data: bytes, offset: int) -> tuple[int, int]:
     value = 0
     shift = 0
-    while True:
+    while offset < len(data):
         byte = data[offset]
         offset += 1
         value |= (byte & 0x7F) << shift
         if byte < 0x80:
             return value, offset
         shift += 7
+        if shift > 63:
+            raise ValueError("varint too long")
+    raise ValueError(f"truncated varint at offset {offset}")
 
 
 def _read_fields(data: bytes) -> list[tuple[int, int, object]]:
@@ -2786,6 +2835,14 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
             with pytest.raises(RplError, match="DODAGID missing"):
                 DAOAck.from_bytes(encoded)
             return
+        if vector.get("expect_error") == "nonzero_reserved_flags":
+            with pytest.raises(RplError, match="reserved flags"):
+                DAOAck.from_bytes(encoded)
+            return
+        if vector.get("expect_error") == "malformed_options":
+            with pytest.raises(RplError, match="RPL option"):
+                DAOAck.from_bytes(encoded)
+            return
         assert "expect_error" not in vector, f"{name}: unhandled expect_error"
         fields = vector["fields"]
         ack = DAOAck.from_bytes(encoded)
@@ -2824,23 +2881,58 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
 
     elif msg_type == "option":
         opt_type = vector["option_type"]
-        fields = vector["fields"]
-        if opt_type == 5:  # RPL Target
+        if opt_type == 4:  # DODAG Configuration
+            opt = RplOption(4, encoded[2 : 2 + encoded[1]])
+            expected_error = vector.get("expect_error")
+            if expected_error is not None:
+                match = {
+                    "invalid_length": "Data Length 14",
+                    "nonzero_reserved_flags": "reserved flag bits",
+                    "nonzero_reserved_octet": "Reserved octet",
+                }[expected_error]
+                with pytest.raises(RplError, match=match):
+                    DodagConfig.from_option(opt)
+                return
+            fields = vector["fields"]
+            config = DodagConfig.from_option(opt)
+            for field in fields:
+                assert getattr(config, field) == fields[field], f"{name}: {field}"
+            assert config.to_option().to_bytes() == encoded, f"{name}: encode"
+        elif opt_type == 5:  # RPL Target
             opt = RplOption(5, encoded[2 : 2 + encoded[1]])
+            expected_error = vector.get("expect_error")
+            if expected_error is not None:
+                match = {
+                    "invalid_length": "Data Length 18",
+                    "nonzero_flags": "flags must be zero",
+                    "invalid_prefix_length": "prefix_length must be 128",
+                }[expected_error]
+                with pytest.raises(DaoError, match=match):
+                    RplTarget.from_option(opt)
+                return
+            fields = vector["fields"]
             target = RplTarget.from_option(opt)
             assert target.prefix_length == fields["prefix_length"], f"{name}: prefix_length"
             assert target.target == IPv6Address(fields["prefix"]), f"{name}: prefix"
+            assert target.to_option().to_bytes() == encoded, f"{name}: encode"
         elif opt_type == 6:  # Transit Information
             opt = RplOption(6, encoded[2 : 2 + encoded[1]])
+            expected_error = vector.get("expect_error")
+            if expected_error is not None:
+                match = {
+                    "invalid_length": "Data Length 20",
+                    "nonzero_reserved_flags": "flags must be zero",
+                }[expected_error]
+                with pytest.raises(DaoError, match=match):
+                    TransitInformation.from_option(opt)
+                return
+            fields = vector["fields"]
             ti = TransitInformation.from_option(opt)
+            assert ti.external is fields["external"], f"{name}: external"
             assert ti.path_control == fields["path_control"], f"{name}: path_control"
             assert ti.path_sequence == fields["path_sequence"], f"{name}: path_sequence"
             assert ti.path_lifetime == fields["path_lifetime"], f"{name}: path_lifetime"
-            expected_parent = (
-                IPv6Address(fields["parent_address"])
-                if fields["parent_address"] is not None
-                else None
-            )
+            expected_parent = IPv6Address(fields["parent_address"])
             assert ti.parent_address == expected_parent, f"{name}: parent"
             assert ti.to_option().to_bytes() == encoded, f"{name}: encode"
 
@@ -3081,7 +3173,14 @@ def test_loadng_discovery_vector(name: str, vector: dict) -> None:
         else:
             # If the vector didn't add originator to cache, verify it's not there
             # (unless it was pre-populated)
-            pass
+            originator = IPv6Address(inp["rreq"]["originator"])
+            pre_populated = {
+                IPv6Address(c["destination"])
+                for c in state.get("cache_entries", [])
+            }
+            if originator not in pre_populated:
+                entry = cache.lookup(originator, now_ms)
+                assert entry is None, f"{name}: unexpected cache entry for originator"
 
     elif vector["type"] == "rrep":
         # Build RREP
@@ -3174,6 +3273,10 @@ def _epoch_rollover_cases():
 
 def _epoch_counter(epoch: int, seqnum: int) -> int:
     """Compute 24-bit replay counter from epoch and seqnum (spec 4.4)."""
+    if not (0 <= epoch <= 255):
+        raise ValueError(f"epoch {epoch} out of range [0, 255]")
+    if not (0 <= seqnum <= 65535):
+        raise ValueError(f"seqnum {seqnum} out of range [0, 65535]")
     return (epoch << 16) | seqnum
 
 
@@ -3439,11 +3542,7 @@ def test_replay_window_cross_validate_cases_oracle() -> None:
     from lichen.link.replay import ReplayWindow
 
     doc = _load("replay_window.json")
-    vector = next(
-        v
-        for v in doc["vectors"]
-        if v["name"] == "cross_validate_rust_python_zephyr"
-    )
+    vector = _find_vector(doc["vectors"], "cross_validate_rust_python_zephyr")
     assert vector["window_size"] == 32
 
     def seeded_window(case: dict) -> ReplayWindow:
@@ -3854,6 +3953,11 @@ def test_short_addr_seed_zero_equivalence() -> None:
         )
 
 
+def _fmt_short_addr(addr: int | None) -> str:
+    """Format short address for assertion messages, handling None safely."""
+    return f"{addr:#06x}" if addr is not None else "None"
+
+
 @pytest.mark.parametrize("name,vector", _short_addr_dad_retry_cases())
 def test_short_addr_dad_retry_vector(name: str, vector: dict) -> None:
     """Validate DAD retry strategy per spec 4.5 pseudocode.
@@ -3880,7 +3984,9 @@ def test_short_addr_dad_retry_vector(name: str, vector: dict) -> None:
     expected_seed = vector.get("expected_seed")
 
     result = dad_retry(eui64, existing)
-    assert result == expected_result, f"{name}: result {result:#x} != expected {expected_result:#x}"
+    assert result == expected_result, (
+        f"{name}: result {_fmt_short_addr(result)} != expected {_fmt_short_addr(expected_result)}"
+    )
 
     # Verify the seed that produced this result
     if expected_seed is not None:
@@ -3893,7 +3999,7 @@ def test_short_addr_dad_retry_vector(name: str, vector: dict) -> None:
 def test_short_addr_incremental_retry_vector() -> None:
     """Validate +1 mod 0xffef incremental retry (bd 1.8.2.6)."""
     doc = _short_addr_dad_doc()
-    vector = next(v for v in doc["vectors"] if v["name"] == "incremental_retry")
+    vector = _find_vector(doc["vectors"], "incremental_retry")
 
     start = vector["start"]
     existing = set(vector["existing"])
@@ -3910,7 +4016,7 @@ def test_short_addr_incremental_retry_wraparound_vector() -> None:
     skips to 0x0001 as specified in the vector.
     """
     doc = _short_addr_dad_doc()
-    vector = next(v for v in doc["vectors"] if v["name"] == "incremental_retry_wraparound")
+    vector = _find_vector(doc["vectors"], "incremental_retry_wraparound")
 
     start = vector["start"]
     existing = set(vector["existing"])
@@ -3925,7 +4031,7 @@ def test_short_addr_incremental_retry_exhausted_vector() -> None:
     from lichen.link.short_addr import SHORT_ADDR_MAX_INCREMENTAL
 
     doc = _short_addr_dad_doc()
-    vector = next(v for v in doc["vectors"] if v["name"] == "incremental_retry_exhausted")
+    vector = _find_vector(doc["vectors"], "incremental_retry_exhausted")
 
     start = vector["start"]
     # Every usable address is taken; reserved 0x0000 need not be present.
@@ -3944,7 +4050,7 @@ def test_short_addr_dad_jitter_vector() -> None:
     import random
 
     doc = _short_addr_dad_doc()
-    vector = next(v for v in doc["vectors"] if v["name"] == "dad_jitter_three_probes")
+    vector = _find_vector(doc["vectors"], "dad_jitter_three_probes")
 
     rng_seed = vector["rng_seed"]
     count = vector["count"]
@@ -3959,7 +4065,7 @@ def test_short_addr_dad_jitter_vector() -> None:
 def test_short_addr_coordinator_allocate_vector() -> None:
     """Validate coordinator address table allocation and DAO-ACK."""
     doc = _short_addr_dad_doc()
-    vector = next(v for v in doc["vectors"] if v["name"] == "coordinator_allocate")
+    vector = _find_vector(doc["vectors"], "coordinator_allocate")
 
     coordinator = CoordinatorAddressTable()
 
@@ -3993,7 +4099,7 @@ def test_short_addr_coordinator_allocate_vector() -> None:
 def test_short_addr_transition_vector() -> None:
     """Validate transition from self-assigned to coordinator-managed address."""
     doc = _short_addr_dad_doc()
-    vector = next(v for v in doc["vectors"] if v["name"] == "transition_self_to_coordinator")
+    vector = _find_vector(doc["vectors"], "transition_self_to_coordinator")
 
     eui64 = bytes.fromhex(vector["eui64"])
     self_assigned = vector["self_assigned"]
@@ -4016,7 +4122,7 @@ def test_short_addr_transition_vector() -> None:
 def test_short_addr_collision_detector_vector() -> None:
     """Validate collision detection when same short addr observed with multiple pubkeys."""
     doc = _short_addr_dad_doc()
-    vector = next(v for v in doc["vectors"] if v["name"] == "collision_detector")
+    vector = _find_vector(doc["vectors"], "collision_detector")
 
     short_addr = vector["short_addr"]
     # The vector uses ellipsis notation; use full 32-byte pubkeys
@@ -5061,7 +5167,7 @@ def test_replay_window_per_peer_isolation() -> None:
     from lichen.link.replay import ReplayProtector
 
     doc = _load("replay_window.json")
-    vector = next(v for v in doc["vectors"] if v["name"] == "per_peer_isolation")
+    vector = _find_vector(doc["vectors"], "per_peer_isolation")
 
     # Test interleaved sequence from multiple peers
     protector = ReplayProtector()
@@ -5086,7 +5192,7 @@ def test_replay_window_logical_counter_vectors() -> None:
     from lichen.link.replay import logical_counter
 
     doc = _load("replay_window.json")
-    vector = next(v for v in doc["vectors"] if v["name"] == "logical_counter_combine")
+    vector = _find_vector(doc["vectors"], "logical_counter_combine")
 
     for case in vector["cases"]:
         computed = logical_counter(case["epoch"], case["seqnum"])

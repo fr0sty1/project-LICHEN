@@ -2,14 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.1.5.4.4",
   "title": "Bit 7 / bit 5 parity validation",
   "description": "Validate bit 7 and bit 5 parity per spec",
-  "notes": "2026-08-25 S/SI parity blocker: Python frame tests pass (135 passed, 10 skipped) and Rust frame tests pass (16), including canonical bytes for every mode, S/SI together on signed frames, neither on unsigned, S-only/SI-only rejection, reserved MIC selector rejection, encryption precedence, truncation, and signed max payload. Read-only C matrix using current lichen_frame_parse/write: neither/0x00 accepts+roundtrips (correct); S-only/0x20 accepts+roundtrips (incorrect); SI-only/0x80 rejects -EINVAL; canonical S+SI/0xA0 rejects -EINVAL (incorrect). Root cause: lichen/subsys/lichen/link/frame.c:19/76-85 declares bit 7 reserved rather than SI and frame.c:139-142/183-190 forbids signer/never sets SI. C TX also emits S-only at lichen_link_tx.c:117 and :257. Existing C ctest passes because its signed positives deliberately use stale 0x20/0x21 bytes. C is read-only this phase, so this bead cannot close until C makes bit7=SI, requires exact S==SI parity, parses/writes 8 signer bytes when set, emits 0xA0|mode from TX, and consumes the canonical malformed/vector cases.\n2026-08-26 read-only re-audit: blocker persists exactly. Normative spec/02-physical-link.md §4.2 defines bit7=SI and requires S==SI, with exactly 8 signer EUI-64 bytes when signed. Canonical test/vectors/link_frame_signed_modes.json uses 0xA0|mode (examples llsec 0xA6/0xA3/0xA0/0xA5/0xA2/0xA7). Zephyr C still defines bit7 as LLSEC_RESERVED in lichen/subsys/lichen/link/frame.c:19, rejects it at :76-80, accepts S-only at :83, forbids signer fields on write at :139-142, and emits only bit5 at :183-190. Both production TX paths still construct (mode|0x20) and pass NULL signer at lichen_link_tx.c:113-148 and :256-282. Thus canonical S+SI frames are rejected while noncanonical S-only frames are produced; current C tests are stale/self-consistent. Exact cross-implementation gates were not rerun because current source is conclusively incompatible and C/Zephyr edits are excluded. Leave open/unclaimed until C parses/writes 8 SI bytes, enforces exact S/SI parity, emits 0xA0|mode, and consumes the canonical positive/malformed matrix. No files modified.",
+  "notes": "2026-08-25 S/SI parity blocker: Python frame tests pass (135 passed, 10 skipped) and Rust frame tests pass (16), including canonical bytes for every mode, S/SI together on signed frames, neither on unsigned, S-only/SI-only rejection, reserved MIC selector rejection, encryption precedence, truncation, and signed max payload. Read-only C matrix using current lichen_frame_parse/write: neither/0x00 accepts+roundtrips (correct); S-only/0x20 accepts+roundtrips (incorrect); SI-only/0x80 rejects -EINVAL; canonical S+SI/0xA0 rejects -EINVAL (incorrect). Root cause: lichen/subsys/lichen/link/frame.c:19/76-85 declares bit 7 reserved rather than SI and frame.c:139-142/183-190 forbids signer/never sets SI. C TX also emits S-only at lichen_link_tx.c:117 and :257. Existing C ctest passes because its signed positives deliberately use stale 0x20/0x21 bytes. C is read-only this phase, so this bead cannot close until C makes bit7=SI, requires exact S==SI parity, parses/writes 8 signer bytes when set, emits 0xA0|mode from TX, and consumes the canonical malformed/vector cases.\n2026-08-26 read-only re-audit: blocker persists exactly. Normative spec/02-physical-link.md §4.2 defines bit7=SI and requires S==SI, with exactly 8 signer EUI-64 bytes when signed. Canonical test/vectors/link_frame_signed_modes.json uses 0xA0|mode (examples llsec 0xA6/0xA3/0xA0/0xA5/0xA2/0xA7). Zephyr C still defines bit7 as LLSEC_RESERVED in lichen/subsys/lichen/link/frame.c:19, rejects it at :76-80, accepts S-only at :83, forbids signer fields on write at :139-142, and emits only bit5 at :183-190. Both production TX paths still construct (mode|0x20) and pass NULL signer at lichen_link_tx.c:113-148 and :256-282. Thus canonical S+SI frames are rejected while noncanonical S-only frames are produced; current C tests are stale/self-consistent. Exact cross-implementation gates were not rerun because current source is conclusively incompatible and C/Zephyr edits are excluded. Leave open/unclaimed until C parses/writes 8 SI bytes, enforces exact S/SI parity, emits 0xA0|mode, and consumes the canonical positive/malformed matrix. No files modified.\n2026-08-27 parity revalidation: controlling spec/02-physical-link.md §4.2 defines bit7=SI, bit5=S, requires exact S==SI parity, and carries exactly 8 signer EUI-64 bytes (not the stale 10-byte wording). Rust shared-vector consumer passed 4/4 including link_frame_signed_modes.json. Python frame suite reached 103 passed/10 skipped with only 2 fixture setup errors caused by an unrelated live ImportError (SchcSessionManager missing from dirty python/src/lichen/schc/fragment.py); its pure parser/vector cases passed. Zephyr remains conclusively non-parity: frame.c defines bit7 reserved, rejects canonical 0xA0|mode, accepts S-only, carries no signer bytes, and lichen_link_tx.c emits 0x20|mode with NULL signer. Relevant C frame files/tests are actively dirty and were kept read-only. Added blocking dependency on project-LICHEN-worker6-l1qw.1.5.4.3; its implementation must follow the current 8-byte EUI-64 spec despite stale 10-byte description, update both parser/writer and TX, enforce S==SI, and consume canonical positive/malformed vectors.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:28.82365Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T16:38:29.802356Z",
+  "updated_at": "2026-08-27T18:02:13.345203Z",
   "started_at": "2026-08-26T04:45:48.220243Z",
   "dependencies": [
     {
@@ -17,6 +17,14 @@
       "depends_on_id": "project-LICHEN-worker6-l1qw.1.5.4",
       "type": "parent-child",
       "created_at": "2026-07-25T03:42:29.559822Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.5.4.4",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.5.4.3",
+      "type": "blocks",
+      "created_at": "2026-08-27T18:02:12.182871Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

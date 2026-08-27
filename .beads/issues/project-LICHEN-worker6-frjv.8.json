@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-frjv.8",
   "title": "dio.rank \u003e= INFINITE_RANK could be == for clarity",
   "description": "File: python/src/lichen/rpl/dodag.py, Line 201. Rank is 16-bit (0-65535), so dio.rank \u003e= INFINITE_RANK is equivalent to dio.rank == INFINITE_RANK. Using == would be clearer since rank cannot exceed INFINITE_RANK by definition. Minor readability issue.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T18:44:51.556798Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T18:44:51.556798Z",
+  "updated_at": "2026-08-27T19:27:35.587633Z",
+  "closed_at": "2026-08-27T19:27:35.587633Z",
+  "close_reason": "Closed",
   "labels": [
     "readability",
     "review"

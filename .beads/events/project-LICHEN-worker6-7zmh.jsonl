@@ -1,2 +1,3 @@
 {"id":"01a006bc-3abb-794e-bdee-a3aa48400bf1","issue_id":"project-LICHEN-worker6-7zmh","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-15T18:43:14.23561Z"}
 {"id":"01a006bc-3ac4-7121-bf8a-afca17a21f3b","issue_id":"project-LICHEN-worker6-7zmh","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-15T18:43:14.244074Z"}
+{"id":"01a044de-68e4-7207-81ab-6fc06706c051","issue_id":"project-LICHEN-worker6-7zmh","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Added expected_counts metadata to schc_adaptation.json and updated Rust test to derive thresholds from it, eliminating hardcoded magic numbers","created_at":"2026-08-27T20:17:01.668134Z"}

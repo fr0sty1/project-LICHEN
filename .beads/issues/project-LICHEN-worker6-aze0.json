@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-aze0",
+  "title": "max_tx_ms missing duty_permille validation",
+  "description": "File: python/src/lichen/timing/duty_cycle.py\nLine: 72-82\n\nBug: The function accepts duty_permille without validation. Negative values produce negative transmit times, which are nonsensical.\n\nImpact: Silent incorrect calculation. A caller passing duty_permille=-10 would receive max_tx_ms=-36000, which would fail unpredictably in downstream code expecting positive milliseconds.\n\nFix: Add validation:\n  if duty_permille \u003c 0:\n      raise ValueError(\"duty_permille must be non-negative\")",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T22:10:51.73128Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:10:51.73128Z",
+  "labels": [
+    "codereview",
+    "correctness"
+  ]
+}

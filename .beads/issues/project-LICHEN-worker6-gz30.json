@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-gz30",
+  "title": "Align Zephyr SCHC fragmentation constants with canonical 179-byte profile",
+  "description": "The canonical format-v2 SCHC vectors and spec require TILE_SIZE=179 and a 126-tile ceiling of 22,554 bytes, but lichen/subsys/schc/include/schc/schc.h currently defines SCHC_FRAGMENT_TILE_SIZE=187 and SCHC_FRAGMENT_MAX_PACKET_SIZE=23,562. Reconcile implementation, buffer sizing, fragmentation/reassembly semantics, and tests with the canonical profile. Acceptance: cross-implementation v2 vectors pass at 1,281/22,554/22,555 boundaries under host and pinned Zephyr.",
+  "notes": "Reconciled public fragmentation profile constants: TILE_SIZE=179, MAX_PACKET_SIZE derived as 126*179=22,554, MAX_MESSAGE_SIZE derived as tile+6=185. Added focused capacity assertion that the canonical 22,555-byte rejection leaves fragmenter state byte-for-byte unchanged. Host AppleClang C2x -Wall -Wextra -Werror -pedantic ASan/UBSan bounds harness passed: compile-time 179/126/22,554/185 checks, 22,555 returns SCHC_ERR_BUFFER_TOO_SMALL atomically, 22,554 initializes to 126 fragments, and 1,281 initializes to 8. Generator 12/12 tests, ruff, bitstream strict compile, and git diff --check pass. Pinned runtime not run: approved workstation was already running under another agent ownership; per orchestrator instruction it was neither accessed nor stopped. Claim released pending pinned schc_generic runtime; once this passes, project-LICHEN-worker6-7dyd should be unblocked.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T18:49:45.124651Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T18:59:16.519191Z",
+  "started_at": "2026-08-27T18:57:23.753302Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-gz30",
+      "depends_on_id": "project-LICHEN-worker6-1mb9",
+      "type": "relates-to",
+      "created_at": "2026-08-27T18:50:01.214435Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -80,7 +80,8 @@ static int compress_global_coap_v3(const uint8_t *packet, size_t pkt_len,
 	    rule_id != SCHC_RULE_GLOBAL_OSCORE) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
-	if (pkt_len < IPV6_HDR_LEN + UDP_HDR_LEN + SCHC_COAP_FIXED_LEN) {
+	if (pkt_len < IPV6_HDR_LEN + UDP_HDR_LEN + SCHC_COAP_FIXED_LEN ||
+	    ipv6_next_header(packet) != IPV6_NH_UDP) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 	const uint8_t *src = ipv6_src(packet);
@@ -150,7 +151,8 @@ static int compress_link_local_coap_v3(const uint8_t *packet, size_t pkt_len,
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 
-	if (pkt_len < IPV6_HDR_LEN + UDP_HDR_LEN + SCHC_COAP_FIXED_LEN) {
+	if (pkt_len < IPV6_HDR_LEN + UDP_HDR_LEN + SCHC_COAP_FIXED_LEN ||
+	    ipv6_next_header(packet) != IPV6_NH_UDP) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 	const uint8_t *src = ipv6_src(packet);

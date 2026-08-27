@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-og8v",
   "title": "test_presence_cache: no test for invalid addr in record()",
   "description": "Test file has test_record_rejects_unknown_status for invalid status values, but no equivalent test for invalid addresses (None, empty string, non-string types). The record() method should reject invalid addresses via PresenceCacheEntry validation, but this is not tested. File: python/tests/coap/test_presence_cache.py",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-27T16:07:26.61181Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-27T16:07:26.61181Z"
+  "updated_at": "2026-08-27T20:24:54.159814Z",
+  "closed_at": "2026-08-27T20:24:54.159814Z",
+  "close_reason": "Closed"
 }

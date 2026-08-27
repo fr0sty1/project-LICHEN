@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-e0e9",
+  "title": "dodag.py: duplicate SCHC version option validation",
+  "description": "**File:** python/src/lichen/rpl/dodag.py lines 625-631, python/src/lichen/link/link_layer.py lines 939-945\n\n**Severity:** P2 (maintenance risk)\n\n**Summary:** The SCHC Rule Version option cardinality check (exactly one option required) is performed identically in both transact_authenticated_schc_dio (link_layer.py:939-945) and prepare_candidate (dodag.py:625-631).\n\n**Failure scenario:** If the validation logic needs updating (e.g., different error message, different cardinality requirement), it must be updated in both places. Forgetting one leads to inconsistent error handling.\n\n**Recommendation:** Remove the redundant check from dodag.py since transact_authenticated_schc_dio already validates this before calling prepare_candidate.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T20:56:01.260353Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:03:46.42162Z",
+  "closed_at": "2026-08-27T22:03:46.42162Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview",
+    "maintainability"
+  ]
+}

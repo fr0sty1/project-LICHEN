@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-gjdf",
+  "title": "CON cache forced eviction wastes OSCORE sequence numbers",
+  "description": "In channel.py lines 1179-1208 (_stage_con), when _protected_cons reaches MAX_PROTECTED_CONS (4096) and all entries have active correlation state, the code force-evicts the oldest entry anyway (lines 1200-1204).\n\nThis causes legitimate CON retransmissions to be re-protected with new OSCORE sequence numbers instead of reusing the cached protected message, wasting limited sender sequence space.\n\nFailure scenario: Under sustained load with many concurrent CON exchanges:\n1. _protected_cons fills to 4096 entries, all with active correlations\n2. New CON message triggers eviction of an active entry\n3. When that evicted CON retransmits, it cannot find cached protected bytes\n4. Re-protection consumes a new sequence number\n5. With enough retransmits under pressure, sequence space depletes faster than necessary\n\nImpact: Premature sequence exhaustion requires context re-establishment via EDHOC.\n\nSuggested fix: Increase MAX_PROTECTED_CONS or implement smarter eviction (e.g., prefer evicting entries closest to exchange timeout).\n\nFile: src/lichen/coap/secure/channel.py\nLines: 1179-1208",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:33:58.247804Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:59:38.769458Z",
+  "closed_at": "2026-08-27T19:59:38.769458Z",
+  "close_reason": "Closed",
+  "labels": [
+    "coap",
+    "performance"
+  ]
+}

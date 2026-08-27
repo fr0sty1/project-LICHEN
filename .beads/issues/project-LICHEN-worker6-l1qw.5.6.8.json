@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.8",
   "title": "Trickle Timer",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:44.727339Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:44.727339Z",
+  "updated_at": "2026-08-27T21:28:41.399311Z",
+  "closed_at": "2026-08-27T21:28:41.399311Z",
+  "close_reason": "All six Trickle implementation/behavior/vector children are closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.8",

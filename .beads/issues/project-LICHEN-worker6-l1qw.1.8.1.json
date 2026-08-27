@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.8.1",
   "title": "Coordinator-Managed Assignment",
   "description": "Address assignment via DAO-ACK",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:49.752233Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:49.752233Z",
+  "updated_at": "2026-08-27T21:28:27.90784Z",
+  "closed_at": "2026-08-27T21:28:27.90784Z",
+  "close_reason": "All five short-address assignment implementation/table/vector children are closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.8.1",

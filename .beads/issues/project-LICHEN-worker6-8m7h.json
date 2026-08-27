@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-8m7h",
+  "title": "pubkey_to_iid host test dir untracked and unwired to CI",
+  "description": "lichen/tests/pubkey_to_iid/ (main.c, CMakeLists.txt, compat.h) holding the ipv6_addr.h cascade + to_str truncation coverage is entirely UNTRACKED - the 1www.61/1www.1 regression tests would never land or run. git add the dir; wire into .github/workflows/ci.yml alongside schnorr48 (ci.yml:134-140 pattern).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:43:31.202445Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:53:03.796543Z",
+  "started_at": "2026-08-27T21:44:41.875465Z",
+  "closed_at": "2026-08-27T21:53:03.796543Z",
+  "close_reason": "git add'ed lichen/tests/pubkey_to_iid/ (CMakeLists.txt, compat.h, main.c staged; build/ excluded by .gitignore) and wired the dir into .github/workflows/ci.yml c-standalone-tests next to the schnorr48 block (cmake build + ctest step, then direct binary run, mirroring :134-140 pattern). Verified test builds and passes on this host (cmake + ctest 1/1 passed, 0.25s); workflow YAML parses via yaml.safe_load (actionlint not installed).",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-8m7h",
+      "depends_on_id": "project-LICHEN-1www.61",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T21:43:31.67098Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

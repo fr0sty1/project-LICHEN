@@ -1,13 +1,19 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.7.7",
   "title": "Vectors: ID Context handling",
-  "status": "open",
-  "priority": 2,
+  "description": "Implement and cross-validate OSCORE ID Context handling, including a bounded public Zephyr context-creation/configuration API that derives sender/recipient keys and Common IV with id_context, emits/parses KID Context, and consumes RFC 8613 Appendix C.3/C.6 from test/vectors/oscore.json across C/Python/Rust.",
+  "notes": "Implemented bounded public oscore_ctx_create_with_id_context() with NULL=absent vs non-NULL+zero=present-empty semantics; ID Context now participates in RFC8613 HKDF info for sender/recipient keys and Common IV, is emitted in request KID Context, and is bound exactly during request unprotect. Added exact Appendix C.3/C.6 protect+unprotect vectors plus NULL/oversize/present-empty/fail-before-output tests. Validation 2026-08-27: Zephyr 4.1 qemu_x86 OSCORE suite PROJECT EXECUTION SUCCESSFUL, 38/38 (oscore_ctx 17, oscore_vectors 7, rfc8613_vectors 14); Python uv pytest tests/crypto/test_oscore_vectors.py -q: 38 passed; Rust cargo test -p lichen-oscore --test vectors with isolated CARGO_TARGET_DIR: 13 passed; incremental Zephyr rebuild and git diff --check passed.",
+  "status": "closed",
+  "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:39.18745Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:39.18745Z",
+  "updated_at": "2026-08-27T21:38:33.595904Z",
+  "started_at": "2026-08-27T21:29:51.780669Z",
+  "closed_at": "2026-08-27T21:38:33.595904Z",
+  "close_reason": "Implemented and cross-validated RFC 8613 ID Context derivation and KID Context handling",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.7",

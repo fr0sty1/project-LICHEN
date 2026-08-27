@@ -1,1 +1,2 @@
 {"id":"019f975e-33ae-7ccd-ab6c-cc5bc0330d71","issue_id":"project-LICHEN-worker6-l1qw.5.6.7","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:42:41.070839Z"}
+{"id":"01a044ec-d8ed-7d9c-b048-3cb30c837e83","issue_id":"project-LICHEN-worker6-l1qw.5.6.7","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All four RPL option implementation/vector children are closed with Python/Rust/Zephyr parity","created_at":"2026-08-27T20:32:47.853893Z"}

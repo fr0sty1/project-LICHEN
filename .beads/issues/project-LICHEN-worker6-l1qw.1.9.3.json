@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.9.3",
   "title": "Verification",
   "description": "Schnorr-48 verification with defense-in-depth",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:02.072449Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:02.072449Z",
+  "updated_at": "2026-08-27T21:21:40.06706Z",
+  "closed_at": "2026-08-27T21:21:40.06706Z",
+  "close_reason": "All six verification/defense/vector children are closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.9.3",

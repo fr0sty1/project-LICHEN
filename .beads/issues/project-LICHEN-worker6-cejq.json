@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-cejq",
+  "title": "test_rpl_messages_vector missing else clause for unknown msg_type values",
+  "description": "In python/tests/test_vectors.py lines 2669-2879, test_rpl_messages_vector handles specific msg_type values (malformed, dio, dao, dao_ack, dis, option, dio_with_options, dao_with_options, option_chain) but has no else clause or final assertion.\n\nIf a new msg_type value is added to rpl_messages.json vectors, the test would silently pass without exercising any code path.\n\nFix: Add an else clause with pytest.fail() or assert False to catch unhandled msg_type values.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:19:51.400132Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:19:51.400132Z"
+}

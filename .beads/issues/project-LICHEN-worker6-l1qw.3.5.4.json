@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.5.4",
   "title": "Rule 4: CoAP",
   "description": "SCHC Rule 4 for CoAP header compression",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:41:21.597934Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:41:21.597934Z",
+  "updated_at": "2026-08-27T19:52:52.856753Z",
+  "closed_at": "2026-08-27T19:52:52.856753Z",
+  "close_reason": "All seven Rule 4 implementation and vector children are closed; current-spec cross-implementation acceptance is complete",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.5.4",

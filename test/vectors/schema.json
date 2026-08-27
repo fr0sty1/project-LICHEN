@@ -16,9 +16,31 @@
         "vector_type": {"type": "string", "enum": ["rpl_route_state", "dao_origin_signature"]},
         "oracle": {"type": "object"},
         "oracle_provenance": {"type": "object"},
+        "provenance": {"type": "object", "additionalProperties": {"type": "string"}},
+        "semantics": {"type": "object", "additionalProperties": {"type": "string"}},
+        "admission_policy_vectors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/admission_policy_vector"}
+        },
+        "security_domain_vectors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/replay_security_domain_vector"}
+        },
+        "window_size": {"type": "integer", "minimum": 1},
+        "ordering": {"type": "string"},
+        "logical_counter_formula": {"type": "string"},
+        "spec_reference": {"type": "string"},
+        "epoch_persistence": {"type": "object", "additionalProperties": {"type": "string"}},
         "sequence_relations": {"type": "array"},
         "tx_sequence_transitions": {"type": "array"},
         "route_hop_boundaries": {"type": "array"},
+        "expected_counts": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        },
         "vectors": {
           "type": "array",
           "minItems": 1,
@@ -47,7 +69,12 @@
               {"$ref": "#/definitions/ccp_load_balancing_vector"},
               {"$ref": "#/definitions/ipv6_malformed_vector"},
               {"$ref": "#/definitions/schc_adaptation_vector"},
+              {"$ref": "#/definitions/rule_versioning_vector"},
+              {"$ref": "#/definitions/replay_window_vector"},
+              {"$ref": "#/definitions/authenticated_schc_dio_vector"},
+              {"$ref": "#/definitions/link_addressing_vector"},
               {"$ref": "#/definitions/gcp_vector"},
+              {"$ref": "#/definitions/tofu_edge_case_vector"},
               {"$ref": "#/definitions/root_signature_vector"},
               {"$ref": "#/definitions/rangetest_vector"}
             ]
@@ -80,6 +107,10 @@
           "then": {
             "required": ["oracle", "sequence_relations"]
           }
+        },
+        {
+          "if": {"required": ["semantics"]},
+          "then": {"required": ["provenance"]}
         }
       ]
     },
@@ -109,7 +140,12 @@
           {"$ref": "#/definitions/schnorr48_vector"},
           {"$ref": "#/definitions/hash_32_vector"},
           {"$ref": "#/definitions/ccp_load_balancing_vector"},
+          {"$ref": "#/definitions/rule_versioning_vector"},
+          {"$ref": "#/definitions/replay_window_vector"},
+          {"$ref": "#/definitions/authenticated_schc_dio_vector"},
+          {"$ref": "#/definitions/link_addressing_vector"},
           {"$ref": "#/definitions/gcp_vector"},
+          {"$ref": "#/definitions/tofu_edge_case_vector"},
           {"$ref": "#/definitions/root_signature_vector"}
         ]
       },
@@ -277,6 +313,40 @@
         "description": {"type": "string", "minLength": 1}
       }
     },
+    "tofu_edge_case_vector": {
+      "type": "object",
+      "required": ["name", "category", "description", "initial_state", "operation", "pubkey_hex", "iid_hex", "repetitions", "concurrent_observers", "persistence", "expected"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "category": {"type": "string", "enum": ["contact", "identity_binding", "malformed", "persistence", "concurrency", "replay"]},
+        "description": {"type": "string", "minLength": 1},
+        "initial_state": {"type": "string", "enum": ["empty", "alice_pinned"]},
+        "operation": {"type": "string", "enum": ["observe", "reboot"]},
+        "pubkey_hex": {"$ref": "#/definitions/hex"},
+        "iid_hex": {"$ref": "#/definitions/hex"},
+        "repetitions": {"type": "integer", "minimum": 1, "maximum": 8},
+        "concurrent_observers": {"type": "integer", "minimum": 1, "maximum": 8},
+        "persistence": {"type": "string", "enum": ["ok", "fail"]},
+        "snapshot_generation": {"type": "integer", "minimum": 0},
+        "minimum_generation": {"type": "integer", "minimum": 0},
+        "expected": {
+          "type": "object",
+          "required": ["result", "entry_count", "state_unchanged"],
+          "additionalProperties": false,
+          "properties": {
+            "result": {"type": "string", "enum": ["pin_and_accept", "accept_known", "reject_identity_conflict", "reject_malformed", "reject_persistence", "restore", "reject_rollback", "single_pin"]},
+            "entry_count": {"type": "integer", "minimum": 0, "maximum": 64},
+            "state_unchanged": {"type": "boolean"},
+            "durable_commits": {"type": "integer", "minimum": 0, "maximum": 8}
+          }
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"operation": {"const": "reboot"}}}, "then": {"required": ["snapshot_generation", "minimum_generation"]}},
+        {"if": {"properties": {"persistence": {"const": "fail"}}}, "then": {"properties": {"expected": {"properties": {"result": {"const": "reject_persistence"}}}}}}
+      ]
+    },
     "compact_cot_document": {
       "allOf": [
         {"$ref": "#/definitions/document_base"},
@@ -440,7 +510,7 @@
             "rule_79": {"$ref": "#/definitions/fragmentation_controls"}
           }
         },
-        "attempts_before": {"type": "integer", "const": 4},
+        "attempts_before": {"type": "integer", "enum": [2, 4]},
         "retransmission_timeout_s": {"type": "integer", "const": 10},
         "timer_policy": {"type": "string", "const": "fixed"},
         "timer_start_s": {"type": "integer", "const": 0},
@@ -462,7 +532,10 @@
         {"if": {"properties": {"category": {"const": "controls"}}}, "then": {"required": ["controls"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["expect_status"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
         {"if": {"properties": {"category": {"const": "retry_exhaustion"}}}, "then": {"required": ["rule_id", "attempts_before", "expected_message", "expect_status"], "not": {"anyOf": [{"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
         {"if": {"properties": {"category": {"const": "capacity"}}}, "then": {"required": ["packet", "packet_length", "packet_sha256", "fragment_count", "expect_status"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["wire"]}, {"required": ["assigned_fcns"]}, {"required": ["expect_error"]}]}}},
-        {"if": {"properties": {"category": {"const": "malformed"}}}, "then": {"required": ["wire", "expect_error"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["expect_status"]}]}}}
+        {"if": {"properties": {"category": {"const": "malformed"}}}, "then": {"required": ["wire", "expect_error"], "not": {"anyOf": [{"required": ["rule_id"]}, {"required": ["packet"]}, {"required": ["packet_length"]}, {"required": ["packet_sha256"]}, {"required": ["rcs"]}, {"required": ["fragment_count"]}, {"required": ["fragments"]}, {"required": ["loss"]}, {"required": ["controls"]}, {"required": ["attempts_before"]}, {"required": ["trigger"]}, {"required": ["expected_message"]}, {"required": ["expect_status"]}]}}},
+        {"if": {"required": ["trigger_event"]}, "then": {"required": ["attempts_before", "expected_message", "expect_status", "retransmission_timeout_s", "timer_policy", "timer_start_s", "timer_deadlines_s", "max_ack_requests", "inactivity_timeout_s", "bitmap_one_means", "pre_exhaustion_message"], "not": {"required": ["trigger"]}}},
+        {"if": {"required": ["trigger"]}, "then": {"required": ["attempts_before", "expected_message", "expect_status"], "not": {"anyOf": [{"required": ["trigger_event"]}, {"required": ["retransmission_timeout_s"]}, {"required": ["timer_policy"]}, {"required": ["timer_start_s"]}, {"required": ["timer_deadlines_s"]}, {"required": ["max_ack_requests"]}, {"required": ["inactivity_timeout_s"]}, {"required": ["bitmap_one_means"]}, {"required": ["pre_exhaustion_message"]}]}}},
+        {"if": {"properties": {"attempts_before": {"const": 2}}, "required": ["attempts_before"]}, "then": {"required": ["trigger"]}}
       ]
     },
     "schc_tile_sizing_vector": {
@@ -544,7 +617,8 @@
             "mic_length": {"type": "integer", "minimum": 0, "maximum": 1},
             "signature_present": {"type": "boolean"},
             "encrypted": {"type": "boolean"},
-            "signer_eui64": {"$ref": "#/definitions/hex"}
+            "signer_eui64": {"$ref": "#/definitions/hex"},
+            "signer_eui64_present": {"type": "boolean"}
           }
         },
         "encoded": {"$ref": "#/definitions/hex",
@@ -1822,10 +1896,11 @@
     "schc_adaptation_vector": {
       "type": "object",
       "required": ["name", "category", "provenance"],
-      "additionalProperties": true,
+      "additionalProperties": false,
+      "description": "SCHC adaptation-layer vector. Strict: every field must be declared here; per-category branches pin rule7_address_policy, fragmentation_endpoint_direction, and single_active key sets (project-LICHEN-worker6-q3yh).",
       "properties": {
         "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
-        "category": {"type": "string", "enum": ["rejection", "uncompressed", "port_boundary", "fragmentation_direction", "compressed_size", "padding", "single_active", "rule_version", "ack_bitmap"]},
+        "category": {"type": "string", "enum": ["rejection", "uncompressed", "port_boundary", "fragmentation_direction", "fragmentation_endpoint_direction", "rule7_address_policy", "compressed_size", "padding", "single_active", "rule_version", "ack_bitmap"]},
         "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
         "description": {"type": "string"},
         "provenance": {"type": "string", "minLength": 1},
@@ -1836,7 +1911,7 @@
         "rule_id": {"type": "integer", "minimum": 0, "maximum": 255},
         "expect_error": {"type": "string"},
         "expect_rule_id": {"type": "integer", "minimum": 0, "maximum": 255},
-        "message_type": {"type": "string"},
+        "message_type": {"type": "string", "enum": ["data", "ack", "ack_req", "ack_success", "sender_abort", "receiver_abort"]},
         "window": {"type": "integer", "minimum": 0, "maximum": 1},
         "c_bit": {"type": "integer", "minimum": 0, "maximum": 1},
         "direction": {"type": "string"},
@@ -1849,9 +1924,7 @@
         "matches_rule_7": {"type": "boolean"},
         "residue_bit_length": {"type": "integer", "minimum": 0},
         "residue_byte_length": {"type": "integer", "minimum": 0},
-        "expected_compressed_size_approx": {"type": "integer", "minimum": 0},
         "fields": {"type": "object"},
-        "fields_note": {"type": "string"},
         "residue_bits": {"type": "integer", "minimum": 0},
         "padding_bits": {"type": "integer", "minimum": 0},
         "total_bits": {"type": "integer", "minimum": 0},
@@ -1859,6 +1932,9 @@
         "t_value": {"type": "integer", "minimum": 0, "maximum": 3},
         "scenario": {"type": "string"},
         "expect_reassembly_reset": {"type": "boolean"},
+        "expect_duplicate_discarded": {"type": "boolean"},
+        "expect_tile_state_mutation": {"type": "boolean"},
+        "expect_high_water_counter_advanced": {"type": "boolean"},
         "option_type": {"type": "integer", "minimum": 0, "maximum": 255},
         "option_length": {"type": "integer", "minimum": 0, "maximum": 255},
         "version": {"type": "integer", "minimum": 0, "maximum": 255},
@@ -1866,8 +1942,429 @@
         "remote_version": {"type": "integer", "minimum": 0, "maximum": 255},
         "bitmap": {"type": ["string", "null"]},
         "bitmap_description": {"type": "string"},
-        "assigned_fcns": {"type": "array", "items": {"type": "integer"}}
+        "assigned_fcns": {"type": "array", "items": {"type": "integer"}},
+        "source_ipv6": {"type": "string"},
+        "destination_ipv6": {"type": "string"},
+        "expect_valid": {"type": "boolean"},
+        "source_encoding": {"type": "string", "enum": ["full", "link_local_iid"]},
+        "destination_encoding": {"type": "string", "enum": ["full", "link_local_iid"]},
+        "local_public_key_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "peer_public_key_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "local_endpoint": {"type": "string", "enum": ["A", "B"]},
+        "data_sender_endpoint": {"type": "string", "enum": ["A", "B"]},
+        "message_origin": {"type": "string", "enum": ["local", "peer"]},
+        "expect_accept": {"type": "boolean"},
+        "expect_state_mutation": {"type": "boolean"},
+        "final_all_1_received": {"type": "boolean"},
+        "received_bitmap_bits": {"type": ["integer", "string", "null"], "minLength": 1, "minimum": 0},
+        "received_bitmap_prefix_bits": {"type": ["integer", "string", "null"], "minLength": 1, "minimum": 0},
+        "trailing_received_bits": {"type": ["integer", "null"], "minimum": 0},
+        "unassigned_zero_bits": {"type": "integer", "minimum": 0}
+      },
+      "allOf": [
+        {"if": {"properties": {"category": {"const": "rule7_address_policy"}}}, "then": {"required": ["source_ipv6", "destination_ipv6", "expect_valid"]}},
+        {"if": {"properties": {"category": {"const": "fragmentation_endpoint_direction"}}}, "then": {"required": ["local_public_key_hex", "peer_public_key_hex", "message_origin", "message_type", "rule_id", "expect_accept", "expect_state_mutation"]}},
+        {"if": {"properties": {"category": {"const": "single_active"}}}, "then": {"required": ["rule_id", "t_value", "scenario", "expect_reassembly_reset", "expect_duplicate_discarded", "expect_tile_state_mutation", "expect_high_water_counter_advanced"]}}
+      ]
+    },
+    "rule_versioning_vector": {
+      "type": "object",
+      "required": ["name", "category", "description", "priority", "provenance"],
+      "additionalProperties": false,
+      "description": "SCHC rule-versioning vector (rule_versioning.json); strict registry branch pins the Rule Set Version 3 descriptor-registry fingerprint key set (project-LICHEN-worker6-q3yh).",
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "category": {"type": "string", "enum": ["rule_version", "uncompressed", "rejection", "registry"]},
+        "description": {"type": "string", "minLength": 1},
+        "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+        "provenance": {"type": "string", "minLength": 1},
+        "wire": {"$ref": "#/definitions/hex"},
+        "packet": {"$ref": "#/definitions/hex"},
+        "compressed": {"$ref": "#/definitions/hex"},
+        "rule_id": {"type": "integer", "minimum": 0, "maximum": 255},
+        "expect_rule_id": {"type": "integer", "minimum": 0, "maximum": 255},
+        "expect_error": {"type": "string"},
+        "invalid_field": {"type": "string"},
+        "scenario": {"type": "string"},
+        "scope": {"type": "string"},
+        "option_type": {"type": "integer", "minimum": 0, "maximum": 255},
+        "option_length": {"type": "integer", "minimum": 0, "maximum": 255},
+        "version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "local_version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "remote_version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "dio_version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "expect_compatible": {"type": "boolean"},
+        "expect_join": {"type": "boolean"},
+        "expect_length": {"type": "integer", "minimum": 0},
+        "expect_type": {"type": "integer", "minimum": 0},
+        "action": {"type": "string"},
+        "source": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "sources": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+        "failure_threshold": {"type": "integer", "minimum": 0},
+        "failure_tracker_capacity": {"type": "integer", "minimum": 1},
+        "capacity_policy": {"type": "string"},
+        "expected_notifications": {"type": "array", "items": {"type": "boolean"}},
+        "expected_results": {"type": "array", "items": {"type": "string"}},
+        "can_send": {"type": "boolean"},
+        "packet_requires_fragmentation": {"type": "boolean"},
+        "packet_size": {"type": "integer", "minimum": 1},
+        "can_fragment": {"type": "boolean"},
+        "single_frame_limit": {"type": "integer", "minimum": 1},
+        "use_rule_255": {"type": "boolean"},
+        "authenticated_peer_registry": {"type": "boolean"},
+        "packet_fits_single_frame": {"type": "boolean"},
+        "compressed_overhead": {"type": "integer", "minimum": 0},
+        "compressed_size": {"type": "integer", "minimum": 1},
+        "l2_payload_limit": {"type": "integer", "minimum": 1},
+        "max_single_frame_packet": {"type": "integer", "minimum": 1},
+        "schc_packet_limit": {"type": "integer", "minimum": 1},
+        "registry_version": {"type": "integer", "minimum": 0},
+        "rule_ids": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 255}},
+        "descriptor_hash_algorithm": {"type": "string"},
+        "descriptor_hash": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "get_present": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 255}},
+        "get_absent": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 255}},
+        "specialized_wire_rule_ids": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 255}},
+        "descriptor_helper_ids": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 255}},
+        "generic_decode_rejects": {"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 255}},
+        "default_selection": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["fields_from_rule", "selected_rule"],
+            "additionalProperties": false,
+            "properties": {
+              "fields_from_rule": {"type": "integer", "minimum": 0, "maximum": 255},
+              "selected_rule": {"type": "integer", "minimum": 0, "maximum": 255}
+            }
+          }
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"category": {"const": "registry"}}, "required": ["category"]}, "then": {"required": ["registry_version", "rule_ids", "descriptor_hash_algorithm", "descriptor_hash", "get_present", "get_absent", "specialized_wire_rule_ids", "descriptor_helper_ids", "generic_decode_rejects", "default_selection"]}},
+        {"if": {"properties": {"category": {"const": "rejection"}}, "required": ["category"]}, "then": {"anyOf": [{"required": ["wire", "expect_error"]}, {"required": ["scenario", "invalid_field"]}]}},
+        {"if": {"properties": {"category": {"const": "uncompressed"}}, "required": ["category"]}, "then": {"anyOf": [{"required": ["packet", "compressed", "compressed_size"]}, {"required": ["rule_id", "max_single_frame_packet", "compressed_overhead", "schc_packet_limit", "l2_payload_limit"]}, {"required": ["rule_id", "packet_size", "single_frame_limit", "can_fragment"]}, {"required": ["scenario", "local_version", "remote_version", "scope", "authenticated_peer_registry", "packet_fits_single_frame", "use_rule_255"]}]}}
+      ]
+    },
+    "admission_policy_vector": {
+      "type": "object",
+      "required": ["name", "description", "provenance"],
+      "additionalProperties": false,
+      "description": "Rule-version admission policy vector (rule_versioning.json admission_policy_vectors); two coherent shapes discriminated by DODAG-join scope vs DIO emitter_role (project-LICHEN-worker6-q3yh).",
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string", "minLength": 1},
+        "provenance": {"type": "string", "minLength": 1},
+        "scope": {"type": "string"},
+        "local_version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "remote_version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "authenticated_peer_registry": {"type": "boolean"},
+        "packet_fits_single_frame": {"type": "boolean"},
+        "use_rule_255": {"type": "boolean"},
+        "expect_join": {"type": "boolean"},
+        "expect_delivery": {"type": "boolean"},
+        "emitter_role": {"type": "string"},
+        "parent_selectable": {"type": "boolean"},
+        "authenticated": {"type": "boolean"},
+        "root_originated_version": {"type": "integer", "minimum": 0, "maximum": 255},
+        "advertised_version": {"type": ["integer", "null"], "minimum": 0, "maximum": 255},
+        "expect_parent_candidate": {"type": "boolean"},
+        "expect_error": {"type": "string"}
+      },
+      "allOf": [
+        {"if": {"required": ["scope"]}, "then": {"required": ["local_version", "remote_version", "expect_join", "expect_delivery"]}},
+        {"if": {"required": ["emitter_role"]}, "then": {"required": ["parent_selectable", "authenticated", "root_originated_version", "advertised_version", "expect_parent_candidate"]}}
+      ]
+    },
+    "replay_step": {
+      "type": "object",
+      "required": ["epoch", "seqnum", "accept"],
+      "additionalProperties": false,
+      "properties": {
+        "epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "seqnum": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "accept": {"type": "boolean"},
+        "reason": {"type": "string"},
+        "offset": {"type": "integer", "minimum": 0},
+        "terminal": {"type": "boolean"},
+        "comment": {"type": "string"},
+        "sender": {"type": "string"}
       }
+    },
+    "replay_frame_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "seqnum": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "last_epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "last_seqnum": {"type": "integer", "minimum": 0, "maximum": 65535}
+      }
+    },
+    "replay_case": {
+      "type": "object",
+      "required": ["epoch", "seqnum"],
+      "additionalProperties": false,
+      "properties": {
+        "epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "seqnum": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "counter": {"type": "integer", "minimum": 0, "maximum": 16777215},
+        "hex": {"type": "string", "pattern": "^[0-9a-f]{6}$"},
+        "greater_than": {"$ref": "#/definitions/replay_frame_ref"},
+        "highest": {"type": "integer"},
+        "highest_seq": {"type": "integer", "minimum": 0},
+        "bitmap": {"type": "integer", "minimum": 0},
+        "last_epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "last_seq": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "accept": {"type": "boolean"},
+        "terminal": {"type": "boolean"}
+      }
+    },
+    "replay_epoch_recovery_case": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "persists": {"type": "boolean"},
+        "read_failure": {"type": "boolean"},
+        "epoch_init": {
+          "type": "object",
+          "required": ["min", "max"],
+          "additionalProperties": false,
+          "properties": {
+            "min": {"type": "integer", "minimum": 0, "maximum": 255},
+            "max": {"type": "integer", "minimum": 0, "maximum": 255}
+          }
+        },
+        "uniform": {"type": "boolean"},
+        "receiver_last_epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "sender_random_epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "accept": {"type": "boolean"},
+        "reason": {"type": "string"}
+      }
+    },
+    "replay_signer_key": {
+      "type": "object",
+      "required": ["signer_public_key_hex", "key_generation"],
+      "additionalProperties": false,
+      "properties": {
+        "signer_public_key_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "key_generation": {"type": "integer", "minimum": 0}
+      }
+    },
+    "replay_security_domain_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "action": {"type": "string", "enum": ["retire_generation"]},
+        "signer_public_key_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "key_generation": {"type": "integer", "minimum": 0},
+        "counter": {"type": "integer", "minimum": 0, "maximum": 16777215},
+        "authenticated": {"type": "boolean"},
+        "generation_active": {"type": "boolean"},
+        "expect_accept": {"type": "boolean"},
+        "expect_state_mutation": {"type": "boolean"},
+        "expect_delivery": {"type": "boolean"},
+        "reason": {"type": "string"}
+      }
+    },
+    "replay_security_domain_vector": {
+      "type": "object",
+      "required": ["name", "description", "provenance"],
+      "additionalProperties": false,
+      "description": "Replay security-domain vector (replay_window.json security_domain_vectors): the replay domain is (full signer public key, trust generation), never a truncated IID (project-LICHEN-worker6-q3yh).",
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string", "minLength": 1},
+        "provenance": {"type": "string", "minLength": 1},
+        "replay_key": {"$ref": "#/definitions/replay_signer_key"},
+        "shared_lookup_iid_hex": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "events": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/replay_security_domain_event"}},
+        "durable_trust_generation": {"type": "integer", "minimum": 0},
+        "restored_record": {
+          "type": "object",
+          "required": ["signer_public_key_hex", "key_generation", "highest_counter", "bitmap"],
+          "additionalProperties": false,
+          "properties": {
+            "signer_public_key_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "key_generation": {"type": "integer", "minimum": 0},
+            "highest_counter": {"type": "integer", "minimum": 0, "maximum": 16777215},
+            "bitmap": {"type": "integer", "minimum": 0}
+          }
+        },
+        "expected": {
+          "type": "object",
+          "required": ["restore", "fail_closed", "expect_state_mutation", "expect_delivery", "requires_rekey_or_authenticated_recovery"],
+          "additionalProperties": false,
+          "properties": {
+            "restore": {"type": "string", "enum": ["reject"]},
+            "fail_closed": {"type": "boolean"},
+            "expect_state_mutation": {"type": "boolean"},
+            "expect_delivery": {"type": "boolean"},
+            "requires_rekey_or_authenticated_recovery": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "replay_window_vector": {
+      "type": "object",
+      "required": ["name", "description"],
+      "additionalProperties": false,
+      "description": "Replay-window vector (replay_window.json); scenario-specific tables (sequence, cases, persistence, epoch recovery) are typed per field (project-LICHEN-worker6-q3yh).",
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string"},
+        "sequence": {"type": "array", "items": {"$ref": "#/definitions/replay_step"}},
+        "cases": {"type": "array", "items": {"$ref": "#/definitions/replay_case"}},
+        "received": {"$ref": "#/definitions/replay_frame_ref"},
+        "receiver_state": {"$ref": "#/definitions/replay_frame_ref"},
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "accept": {"type": "boolean"},
+            "reason": {"type": "string"},
+            "offset": {"type": "integer", "minimum": 0},
+            "window_size": {"type": "integer", "minimum": 1}
+          }
+        },
+        "peers": {
+          "type": "object",
+          "additionalProperties": {"type": "array", "items": {"$ref": "#/definitions/replay_step"}}
+        },
+        "persisted": {
+          "type": "object",
+          "required": ["last_epoch", "last_seqnum", "resume"],
+          "additionalProperties": false,
+          "properties": {
+            "last_epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+            "last_seqnum": {"type": "integer", "minimum": 0, "maximum": 65535},
+            "resume": {
+              "type": "object",
+              "required": ["epoch", "seqnum", "accept"],
+              "additionalProperties": false,
+              "properties": {
+                "epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+                "seqnum": {"type": "integer", "minimum": 0, "maximum": 65535},
+                "accept": {"type": "boolean"}
+              }
+            }
+          }
+        },
+        "no_persist": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "random_epoch_range": {
+              "type": "object",
+              "required": ["min", "max"],
+              "additionalProperties": false,
+              "properties": {
+                "min": {"type": "integer", "minimum": 0, "maximum": 255},
+                "max": {"type": "integer", "minimum": 0, "maximum": 255}
+              }
+            },
+            "examples": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["epoch", "seqnum", "valid_init"],
+                "additionalProperties": false,
+                "properties": {
+                  "epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+                  "seqnum": {"type": "integer", "minimum": 0, "maximum": 65535},
+                  "valid_init": {"type": "boolean"}
+                }
+              }
+            }
+          }
+        },
+        "flash_failure": {"type": "object", "additionalProperties": {"type": "string"}},
+        "scenario": {"type": "string"},
+        "vectors": {"type": "array", "items": {"$ref": "#/definitions/replay_epoch_recovery_case"}},
+        "implementations": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "window_size": {"type": "integer", "const": 32},
+        "comment": {"type": "string"},
+        "final_bitmap": {"type": "string"}
+      }
+    },
+    "authenticated_schc_dio_vector": {
+      "type": "object",
+      "required": ["name", "description", "sender_seed_hex", "sender_pubkey_hex", "receiver_seed_hex", "receiver_pubkey_hex", "wire_hex", "epoch", "seqnum", "rpl_instance_id", "dodag_id_hex", "mop", "rank", "trusted_role", "expected_rpl_instance_id", "expected_dodag_id_hex", "expected_mop", "expected_role", "source_ipv6", "source_iid_hex", "destination_ipv6", "option_bytes_hex", "dio_hex", "ipv6_hex", "link_payload_hex", "expected"],
+      "additionalProperties": false,
+      "description": "Signed DIO admission vector (authenticated_schc_dio.json); document-level provenance/semantics are pinned by the envelope semantics->provenance conditional (project-LICHEN-worker6-q3yh).",
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string"},
+        "sender_seed_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "sender_pubkey_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "receiver_seed_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "receiver_pubkey_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "wire_hex": {"$ref": "#/definitions/hex"},
+        "epoch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "seqnum": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "rpl_instance_id": {"type": "integer", "minimum": 0, "maximum": 255},
+        "dodag_id_hex": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "mop": {"type": "integer", "minimum": 0, "maximum": 7},
+        "rank": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "trusted_role": {"type": "string", "enum": ["peer", "root"]},
+        "expected_rpl_instance_id": {"type": "integer", "minimum": 0, "maximum": 255},
+        "expected_dodag_id_hex": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "expected_mop": {"type": "integer", "minimum": 0, "maximum": 7},
+        "expected_role": {"type": "string", "enum": ["peer", "root"]},
+        "source_ipv6": {"type": "string"},
+        "source_iid_hex": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "destination_ipv6": {"type": "string"},
+        "option_bytes_hex": {"$ref": "#/definitions/hex"},
+        "dio_hex": {"$ref": "#/definitions/hex"},
+        "ipv6_hex": {"$ref": "#/definitions/hex"},
+        "link_payload_hex": {"$ref": "#/definitions/hex"},
+        "expected": {
+          "type": "object",
+          "required": ["admitted", "compatible", "error"],
+          "additionalProperties": false,
+          "properties": {
+            "admitted": {"type": "boolean"},
+            "compatible": {"type": ["boolean", "null"]},
+            "error": {
+              "enum": [null, "dodag_scope_mismatch", "duplicate_rule_version", "incompatible_rule_version", "malformed_rule_version_length_0", "malformed_rule_version_length_2", "missing_rule_version", "role_scope_mismatch", "root_key_dodag_mismatch", "source_signer_mismatch"]
+            }
+          }
+        }
+      }
+    },
+    "link_addressing_vector": {
+      "type": "object",
+      "required": ["name", "description", "addr_mode", "addr_mode_name", "dst_addr", "dst_len", "payload", "encoded", "expected_destination", "is_broadcast"],
+      "additionalProperties": false,
+      "description": "Link-layer addressing-mode vector (link-addressing.json); presence conditionals pin extended_eui64 (peer_eui64, key_derived_iid, must_not_use_key_derived_iid) and key_derived_extended_eui64 (sender_pubkey_hex, key_derived_iid, wire_eui64_hex) field sets (project-LICHEN-worker6-q3yh).",
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+        "description": {"type": "string"},
+        "addr_mode": {"type": "integer", "minimum": 0, "maximum": 3},
+        "addr_mode_name": {"type": "string", "enum": ["NONE", "SHORT", "EXTENDED", "ELIDED"]},
+        "dst_addr": {"$ref": "#/definitions/hex"},
+        "dst_len": {"type": "integer", "minimum": 0, "maximum": 8},
+        "payload": {"$ref": "#/definitions/hex"},
+        "encoded": {"$ref": "#/definitions/hex"},
+        "expected_destination": {"type": ["string", "null"]},
+        "expected_error": {"type": "string"},
+        "is_broadcast": {"type": "boolean"},
+        "is_reserved": {"type": "boolean"},
+        "peer_eui64": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "key_derived_iid": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "must_not_use_key_derived_iid": {"type": "boolean"},
+        "sender_pubkey_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "wire_eui64_hex": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "derived_from": {"type": ["string", "null"]},
+        "llsec": {"type": "integer", "minimum": 0, "maximum": 3},
+        "llsec_hex": {"$ref": "#/definitions/hex"}
+      },
+      "allOf": [
+        {"if": {"required": ["is_reserved"]}, "then": {"required": ["expected_error"]}},
+        {"if": {"required": ["peer_eui64"]}, "then": {"required": ["key_derived_iid", "must_not_use_key_derived_iid"]}},
+        {"if": {"required": ["sender_pubkey_hex"]}, "then": {"required": ["key_derived_iid", "wire_eui64_hex"]}},
+        {"if": {"required": ["llsec"]}, "then": {"required": ["llsec_hex"]}}
+      ]
     }
   }
 }

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-esp1",
   "title": "python/src/lichen/loadng/messages.py: Signature length not validated during serialization",
   "description": "Lines 81, 124, 162: The to_bytes() methods serialize self.signature directly without validating length (must be 0 or 48). from_bytes() correctly validates, but a local caller can construct messages with invalid signature lengths that serialize successfully but would be rejected by receivers. Minor issue since receivers validate correctly.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T05:25:10.394504Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T05:25:10.394504Z",
+  "updated_at": "2026-08-27T19:06:05.541333Z",
+  "closed_at": "2026-08-27T19:06:05.541333Z",
+  "close_reason": "Closed",
   "labels": [
     "bug",
     "codereview"

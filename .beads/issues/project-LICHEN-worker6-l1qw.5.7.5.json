@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.7.5",
   "title": "9.4 Announce Scheduler",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:26.533251Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:26.533251Z",
+  "updated_at": "2026-08-27T22:04:24.343247Z",
+  "closed_at": "2026-08-27T22:04:24.343247Z",
+  "close_reason": "All five Announce Scheduler implementation/interval/jitter children are closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.7.5",

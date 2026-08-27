@@ -1,1 +1,2 @@
 {"id":"019f975c-99b4-741a-86d8-f54c1c74e0d1","issue_id":"project-LICHEN-worker6-l1qw.1.11","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:40:56.116269Z"}
+{"id":"01a044d8-612a-7493-80d2-cb2375821ade","issue_id":"project-LICHEN-worker6-l1qw.1.11","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All five Link Layer Integration children are closed; RX/TX pipeline, static pool, and constrained-target memory gates pass","created_at":"2026-08-27T20:10:26.474301Z"}

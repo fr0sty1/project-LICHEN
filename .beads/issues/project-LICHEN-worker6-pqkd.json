@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-pqkd",
+  "title": "tests/app_identity main.c includes lichen/coap_keys.h with no include path",
+  "description": "lichen/tests/app_identity/src/main.c:13 includes \u003clichen/coap_keys.h\u003e, but the test enables no LICHEN_COAP* Kconfig and its CMakeLists adds no coap include dir (only the coap subsystem's CMakeLists zephyr_include_directories exposes it). Found while verifying project-LICHEN-worker6-6fg3 on the AWS waves-base baseline: native_sim/native/64 build dies at compile with 'lichen/coap_keys.h: No such file or directory', so the image never reaches the link stage. main.c does not call any coap_keys_* function (include is vestigial) — remove the include or add CONFIG_LICHEN_COAP_KEYS + the include dir. meshcore_gateway_adapter and meshtastic_ble main.c files are unaffected.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T22:01:58.529768Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:01:58.529768Z"
+}

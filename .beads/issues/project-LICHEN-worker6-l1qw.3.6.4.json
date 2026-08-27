@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.6.4",
   "title": "Timeouts and errors",
   "description": "Retransmission timers, inactivity timeouts, and abort handling",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:41:36.452767Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:41:36.452767Z",
+  "updated_at": "2026-08-27T21:18:33.604608Z",
+  "closed_at": "2026-08-27T21:18:33.604608Z",
+  "close_reason": "All five timeout/error/retry/abort/vector children are closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.6.4",

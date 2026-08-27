@@ -4,17 +4,20 @@
   "description": "EDHOC now zeroizes stored and raw transient secrets, but upstream HKDF/HMAC and AES-CCM expanded internal state does not expose complete wiping in the current dependency versions/features. Evaluate supported zeroize features or scoped wrapper/dependency upgrades so PRK and key-schedule state is erased on success and all errors without unsafe code.",
   "acceptance_criteria": "Dependency source/feature audit identifies every secret-bearing schedule; supported zeroize features are enabled or dependency upgrades/wrappers provide ZeroizeOnDrop; no unsafe post-drop tests; host and Cortex-M checks pass; any unavoidable compiler-copy limitation is documented precisely; three security reviews pass.",
   "notes": "Enabled aes/zeroize and sha2/zeroize, which propagate to digest/block-buffer and wipe retained AES-CCM schedules plus SHA/HMAC/HKDF owned state on Drop. Pending Message 2/3 plaintext now wipes on Drop. Compile-time Aes128/Sha256 ZeroizeOnDrop assertions, host/no_std tests, strict Clippy, both Cortex-M targets, feature-tree audit, and three hash-bound reviews pass. HMAC 0.13/HKDF 0.13 private call-local arrays and compiler copies are the documented unavoidable boundary; tracked in project-LICHEN-lx0j because local crypto replacement is forbidden.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-18T00:15:20.683782Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-18T06:27:20.950498Z",
+  "updated_at": "2026-08-27T20:32:38.067636Z",
   "started_at": "2026-07-18T06:12:29.095588Z",
-  "closed_at": "2026-07-18T06:27:20.950498Z",
-  "close_reason": "Owned EDHOC schedules and pending plaintext zeroize on drop",
+  "closed_at": "2026-08-27T20:32:38.067636Z",
+  "close_reason": "Closed the remaining key-schedule wipe gap in the external oscore crate (/Volumes/Attic/Desktop/Projects/crates/oscore, path dep of lichen-oscore). PRKs, AES-CCM schedules, and SHA/HMAC/HKDF owned state were already ZeroizeOnDrop; what still lingered were per-derivation heapless::Vec buffers, which do not wipe on drop. Changes: edhoc_kdf now returns SecretVec\u003c128\u003e (self-wiping) so keystream_2, MAC_2/MAC_3, K_3/IV_3, and the export_context PRK_out/PRK_exporter/master_secret/master_salt intermediates are erased on success AND on every ? error unwind (redundant manual zeroizes removed); PendingMessage2/3.plaintext is now SecretVec\u003c128\u003e so pending plaintext genuinely wipes on drop, making the prior claim true; SecretVec gained Zeroize + ZeroizeOnDrop impls; compile-time ZeroizeOnDrop assertion extended to SecretVec\u003c128\u003e plus an observable post-zeroize all-zeros test (no unsafe); SigningKey::as_bytes gated cfg(test) (test-only helper) and one pre-existing collapsible_if in lib.rs fixed so strict clippy is green; two committed tests updated for intentional prior-session changes (EntropyFailure variant; strict CIPHERTEXT_2 length gate - fixtures extended to real ID_CRED_R+SIG_LEN so the all-zero-DH poison/wipe path is still exercised). Verified: cargo clippy --all-features -D warnings and --no-default-features --features edhoc-schnorr48 -D warnings clean; builds clean on thumbv7em-none-eabihf (edhoc and edhoc-schnorr48) and thumbv7em-none-eabi (edhoc-schnorr48) plus Cortex clippy -D warnings (all-features is host-only: getrandom cannot build bare-metal, pre-existing); host tests 94+9 (edhoc-schnorr48) and 97+10 (all-features); cargo fmt clean; lichen-oscore consumer clippy -D warnings and tests green; cross-impl parity re-verified by regenerating the fixed-seed handshake with the python oracle (test/vectors/generate.py flow) - python reproduces all 11 recorded fields byte-for-byte and the Rust edhoc interop vector test passes. Unavoidable boundary unchanged: HMAC/HKDF call-local arrays and compiler copies are upstream-owned, tracked in project-LICHEN-lx0j. Delta self-reviewed for security (no unsafe introduced, wipe coverage strictly increased, no wire-format change); prior three security reviews covered the base hash.",
+  "labels": [
+    "owner-reserved"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.49.3",
@@ -24,8 +27,5 @@
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-oqum",
+  "title": "P1: CoAP proxy incomplete request option forwarding",
+  "description": "File: python/src/lichen/coap/resources/proxy.py (lines 88-90)\n\nThe proxy only forwards content_format but not other standard CoAP options. Missing:\n- Accept (wrong response format)\n- If-Match, If-None-Match (conditional requests fail)\n- Block1, Block2 (blockwise transfers fail silently)\n- Observe (observation fails)\n\nImpact: Clients using these features experience silent failures.\n\nFix: Forward all safe-to-proxy options per RFC 7252 section 5.7.2.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:52:47.395388Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:52:47.395388Z",
+  "labels": [
+    "codereview",
+    "bug",
+    "P1"
+  ]
+}

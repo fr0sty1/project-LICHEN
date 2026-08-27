@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-sot8",
+  "title": "Stale grounded status after parent switch in DODAG",
+  "description": "In dodag.py, ParentCandidate stores gateway_centric but not grounded. When select_parent() switches to a new preferred parent (due to hysteresis being overcome or old parent being pruned/removed), self.gateway_centric is updated from best.gateway_centric (line 730), but self.grounded retains the previous parent's value. The node continues advertising the wrong Grounded bit in DIOs until it receives a new DIO from the current parent.\n\nLocation: python/src/lichen/rpl/dodag.py:730\n\nFix: add grounded field to ParentCandidate, pass dio.grounded when creating candidates (line 450), and update self.grounded = best.grounded in select_parent() after line 730.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:58:44.451837Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T20:24:44.995396Z",
+  "closed_at": "2026-08-27T20:24:44.995396Z",
+  "close_reason": "Closed"
+}

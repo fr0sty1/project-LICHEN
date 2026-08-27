@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-i8m1",
   "title": "Race condition in _join_key: membership updates without lock",
   "description": "groups_collection.py lines 716-729: _join_key modifies members and admins lists without holding _mutation_lock. Can race with rekey() which rebuilds these lists under the lock at lines 355-401. Result: legitimate member additions can be lost during concurrent rekey, causing authentication failures for newly joined members.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-27T16:43:42.006278Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-27T16:43:42.006278Z"
+  "updated_at": "2026-08-27T19:11:13.331952Z",
+  "started_at": "2026-08-27T18:58:23.351489Z",
+  "closed_at": "2026-08-27T19:11:13.331952Z",
+  "close_reason": "_join_key wraps invitation check + roster append + burn marker in self.collection._mutation_lock and consumes via the unlocked helper (threading.Lock is non-reentrant: public consume_invitation inside the span would deadlock). Cross-thread rekey-vs-join test proves the membership append is never lost. tests/coap 1752 passed; ruff clean."
 }

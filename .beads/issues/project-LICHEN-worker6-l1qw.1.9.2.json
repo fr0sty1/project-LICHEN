@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.9.2",
   "title": "Signing",
   "description": "Deterministic Schnorr-48 signing",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:59.813343Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:59.813343Z",
+  "updated_at": "2026-08-27T21:21:38.519614Z",
+  "closed_at": "2026-08-27T21:21:38.519614Z",
+  "close_reason": "All five deterministic signing implementation/frame/vector children are closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.9.2",

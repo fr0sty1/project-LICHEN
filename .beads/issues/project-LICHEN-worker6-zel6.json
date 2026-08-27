@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-zel6",
+  "title": "P2: test_density_8_or_below_uses_hash has off-by-one permissive upper bound",
+  "description": "**File:** python/tests/test_channel_plan.py\n**Line:** 229\n\n**Bug:** The assertion `assert ch \u003c= EU868.num_channels` is too permissive. For EU868 (8 channels), valid channel indices from the hash formula `1 + (h % (n_channels - 1))` are [1, 7], but the test allows up to 8.\n\n**Impact:** If the implementation had an off-by-one bug that returned 8, this test would pass, but later code calling `frequency(8)` would raise ValueError (valid indices are 0-7).\n\n**Fix:** Change to `assert ch \u003c EU868.num_channels` or `assert ch \u003c= EU868.num_channels - 1`\n\n**Severity:** P2 - test weakness that could mask an implementation bug\n\nTags: codereview, test, P2",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:19:44.415485Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:19:44.415485Z"
+}

@@ -1,1 +1,2 @@
 {"id":"019f975d-314d-7b27-9b18-01c6b39e0e03","issue_id":"project-LICHEN-worker6-l1qw.3.6.3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:41:34.925731Z"}
+{"id":"01a04516-b7d0-778d-ae87-c4626ea3ced2","issue_id":"project-LICHEN-worker6-l1qw.3.6.3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All five ACK implementation/bitmap/vector children are closed","created_at":"2026-08-27T21:18:31.888497Z"}

@@ -1,1 +1,2 @@
 {"id":"019f975d-ff50-7ce0-ba92-e664761a4d5f","issue_id":"project-LICHEN-worker6-l1qw.5.6.2","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:42:27.664845Z"}
+{"id":"01a04533-2716-7119-a0df-e6ea93098ba5","issue_id":"project-LICHEN-worker6-l1qw.5.6.2","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All seven DIO codec/receive/vector children are closed with atomic authenticated state handling","created_at":"2026-08-27T21:49:35.382072Z"}

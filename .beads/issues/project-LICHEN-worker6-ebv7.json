@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-worker6-ebv7",
+  "title": "Remove duplicate SCHC_BITMAP_MASK definition from SCHC implementation",
+  "description": "Both lichen/subsys/schc/include/schc/schc.h and lichen/subsys/schc/schc.c define SCHC_BITMAP_MASK. Strict host and pinned Zephyr v3.7 RAK4631 builds use -Werror and fail schc.c with macro redefined. Keep one canonical definition with identical 63-bit semantics and preserve all fragmentation tests/vectors. Acceptance: focused host lichen/tests/schc passes and the pinned RAK4631 build compiles schc.c without macro-redefinition diagnostics.",
+  "notes": "Removed the private schc.c duplicate, leaving the public schc.h definition as the single authority: ((UINT64_C(1) \u003c\u003c 63U) - 1U), which shifts a 64-bit unsigned value by 63 and avoids width/UB ambiguity. Local AppleClang -std=c23 strict object compile passed and repository search finds exactly one definition. The existing standalone host test now compiles generic schc.c but has an unrelated stale link source list; filed related project-LICHEN-worker6-h45a. Pinned Zephyr v3.7 RAK4631 targeted schc.c object compiled successfully under GCC 12 with -std=c2x and full hardening, and isolation verify passed. Pinned schc_generic configuration succeeded but canonical vector generation rejects current format_version 2 due stale version-1 gate; filed related project-LICHEN-worker6-1mb9. sync twice completed.\nApproved workstation stop completed and confirmed stopped with Project=LICHEN tag.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T18:37:53.584875Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T18:43:00.119913Z",
+  "started_at": "2026-08-27T18:39:39.658484Z",
+  "closed_at": "2026-08-27T18:41:39.995193Z",
+  "close_reason": "Single authoritative 63-bit-safe bitmap mask retained in public header; strict host object and pinned RAK4631 schc.c compilation pass. Follow-up test-harness drift filed separately.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ebv7",
+      "depends_on_id": "project-LICHEN-worker6-1mb9",
+      "type": "relates-to",
+      "created_at": "2026-08-27T18:41:35.502584Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-ebv7",
+      "depends_on_id": "project-LICHEN-worker6-h45a",
+      "type": "relates-to",
+      "created_at": "2026-08-27T18:41:37.324322Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

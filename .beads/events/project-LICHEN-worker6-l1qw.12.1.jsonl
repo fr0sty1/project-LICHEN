@@ -1,1 +1,2 @@
 {"id":"019f975d-668b-7222-8b4c-9771eb8e5b50","issue_id":"project-LICHEN-worker6-l1qw.12.1","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:41:48.55514Z"}
+{"id":"01a0452a-2232-7704-b462-76d6297cf381","issue_id":"project-LICHEN-worker6-l1qw.12.1","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All five OSCORE encrypt/decrypt/vector/ciphertext-parity children are closed, including RFC8613 ID Context","created_at":"2026-08-27T21:39:44.306461Z"}

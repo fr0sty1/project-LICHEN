@@ -2,13 +2,14 @@
   "id": "project-LICHEN-worker6-l1qw.9.11.3",
   "title": "Large payload fragmentation (Block1/Block2)",
   "description": "Acceptance: Block1/Block2 transfers work",
+  "notes": "Promoted from P2 because it directly blocks P1 project-LICHEN-worker6-l1qw.12.2.2. Blockwise orchestration must protect/unprotect each block independently; current relevant CoAP security files are actively claimed elsewhere.",
   "status": "open",
-  "priority": 2,
+  "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:49:35.658307Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:49:35.658307Z",
+  "updated_at": "2026-08-27T21:43:20.728761Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.11.3",

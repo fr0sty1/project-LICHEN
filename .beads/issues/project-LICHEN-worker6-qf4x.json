@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-qf4x",
   "title": "test_vectors.py: Incorrect fallback produces confusing error on malformed test data",
   "description": "Line 183: `doc.get(\"vectors\", doc)` falls back to iterating over the dict itself if \"vectors\" key is missing. This causes `v[\"name\"]` to raise `TypeError: string indices must be integers` because `v` becomes a dict key string (e.g., \"format_version\"), not a vector dict. Should use direct access `doc[\"vectors\"]` like other similar functions (lines 128, 135, 153, etc.) for a clear `KeyError` on malformed files.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T15:38:47.55977Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T15:38:47.55977Z",
+  "updated_at": "2026-08-27T18:59:23.619257Z",
+  "closed_at": "2026-08-27T18:59:23.619257Z",
+  "close_reason": "Closed",
   "labels": [
     "bug",
     "codereview"

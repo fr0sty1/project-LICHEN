@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-oz41",
+  "title": "SecureDatagramChannel.send_message silently drops messages on admission key mismatch",
+  "description": "In channel.py lines 1056-1063, when send_message() detects that a message was admitted for peer A but is being sent to peer B, it finishes the operation for peer A and returns without sending the message. No exception is raised and no warning is logged.\n\nFailure scenario: If aiocoap or application code accidentally reuses a Message object for a different destination after admission, the second send is silently dropped with no indication.\n\nSuggested fix: Log a warning before returning, e.g., logger.warning('message admitted for %s but sent to %s; dropping', admission_key, key)\n\nFile: src/lichen/coap/secure/channel.py\nLine: 1056-1063",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:33:45.828803Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:41:28.680959Z",
+  "closed_at": "2026-08-27T19:41:28.680959Z",
+  "close_reason": "Closed",
+  "labels": [
+    "coap",
+    "security"
+  ]
+}

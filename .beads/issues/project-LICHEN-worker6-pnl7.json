@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-worker6-pnl7",
+  "title": "dodag.py: Race condition in authenticated DIO - prepare_candidate reads state without lock",
+  "description": "Location: python/src/lichen/rpl/dodag.py lines 480-545\n\nIn _process_authenticated_dio_evidence_unlocked, the prepare_candidate closure reads DODAG state without holding self._lock:\n- Lines 502-507 read self.rpl_instance_id and self.dodag_id\n- Line 529 calls _would_accept_dio_unlocked which reads: role, node_address, rpl_instance_id, dodag_id, version, rank, _lowest_rank, min_hop_rank_increase, max_rank_increase\n\nThe transaction protocol calls prepare without the lock (for I/O validation) then commit with consumer_lock=self._lock. However, between these phases:\n- Another thread could call process_dio and change version/rank/_lowest_rank via _adopt_version\n- The state read in prepare becomes stale by commit time\n- TOCTOU: decision made on old state, committed to new state\n\nImpact:\n- Incorrect accept: prepare sees old version, accepts; commit runs on new version with incompatible state\n- Incorrect reject: prepare sees transient state that would fail checks, but final state would pass\n- Inconsistent state: prepare reads torn data if another thread is mid-_adopt_version\n\nFix: Either acquire lock around the state reads in prepare_candidate, or snapshot all needed fields atomically before calling transact_authenticated_schc_dio.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:33:20.116294Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:44:31.711866Z",
+  "closed_at": "2026-08-27T19:44:31.711866Z",
+  "close_reason": "Fixed by adding _DodagSnapshot frozen dataclass to capture DODAG state atomically under the lock before the prepare/commit transaction. Added _would_accept_dio_with_snapshot helper function that uses the snapshot instead of self. Updated _process_authenticated_dio_evidence_unlocked to snapshot state under lock before calling transact_authenticated_schc_dio, and modified prepare_candidate closure to use the snapshot.",
+  "labels": [
+    "bug",
+    "thread-safety",
+    "rpl",
+    "dodag",
+    "codereview"
+  ]
+}

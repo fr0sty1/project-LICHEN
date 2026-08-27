@@ -6,7 +6,10 @@
 zephyr_library()
 
 zephyr_library_sources(
+  csma.c
+  frame_pool.c
   frame.c
+  hash32.c
   lichen_link_rx.c
   lichen_link_tx.c
   link_ctx.c
@@ -31,6 +34,8 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_TDMA
 )
 
 zephyr_library_sources_ifdef(CONFIG_LICHEN_CCP_TIME_SYNC
+  drift_bound.c
+  pps.c
   time_sync.c
 )
 

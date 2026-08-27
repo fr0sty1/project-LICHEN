@@ -2,19 +2,29 @@
   "id": "project-LICHEN-worker6-l1qw.9.6.1.6",
   "title": "Zephyr: USB CDC-ACM binding",
   "description": "Acceptance: SLIP over USB CDC-ACM works",
+  "notes": "Implemented USB CDC-ACM binding work in the shared tree: optional USB stack bring-up guarded by a compile-time CDC chosen-node assertion; fail-closed device/callback errors; DTR-gated TX with line-control error propagation; timed DTR session tracking that discards ring/partial frame state across disconnect/reconnect; bounded existing SLIP buffers retained; RAK4631 puck wiring moved from Zephyr built-in SLIP to chosen lichen,slip-uart while T1000-E native/console and SMP dual-CDC assignments were untouched. Added focused mocked DTR/error/reconnect tests. Pinned Zephyr v3.7 isolated worktree /mnt/lichen-zephyr/work/project-LICHEN-validate-usb-slip-20260827: native_sim/native/64 build and runtime passed 20/20. Production rak4631 build command stopped before Kconfig because mandatory SOURCE_DATE_EPOCH/LICHEN_RELEASE_EPOCH_UNIX was not supplied. Parent instructed return immediately without another test, so production USB conditional remains uncompiled and bead stays open. git diff --check passed; sync twice; approved workstation stopped and confirmed.\nContinuation production validation: approved personal account 210337117346 and Project=LICHEN workstation i-0d14dd9fb53dae004 were verified. In retained isolated pinned-v3.7 worktree, exported SOURCE_DATE_EPOCH=1784949448 from clean base commit a72dbaf7b77de7aeed94599229f1d9a732d42e56 and ran pristine rak4631 puck build. Kconfig/devicetree generation passed; generated .config has CONFIG_LICHEN_SLIP_TRANSPORT=y, CONFIG_SLIP_TRANSPORT_USB_CDC_ACM=y, CONFIG_UART_LINE_CTRL=y, CONFIG_USB_DEVICE_STACK=y, CONFIG_USB_CDC_ACM=y, with built-in CONFIG_SLIP unset. Generated DTS binds lichen,slip-uart to cdc_acm_uart0 while zephyr,uart-mcumgr remains uart1. The production ARM object slip_transport.c.obj compiled successfully. All four T1000-E puck/gateway conf/overlay files remained byte-for-byte unchanged. Isolation verify passed. The complete puck image did not pass: unrelated existing lichen/apps/puck/src/main.c fails before link with implicit lichen_coap_server_init, implicit COAP_STAT_INC, and undeclared sent at approximately line 508. Per close-on-pass instruction, release open pending that external production build blocker. Prior focused pinned native_sim runtime remains 20/20 PASS. git diff --check passed. sync; sync completed; workstation stopped and confirmed Project=LICHEN.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:58.352473Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:58.352473Z",
+  "updated_at": "2026-08-27T18:20:09.085982Z",
+  "started_at": "2026-08-27T18:09:13.703172Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.6.1.6",
       "depends_on_id": "project-LICHEN-worker6-l1qw.9.6.1",
       "type": "parent-child",
       "created_at": "2026-07-25T03:42:59.476553Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.9.6.1.6",
+      "depends_on_id": "project-LICHEN-worker6-1obz",
+      "type": "blocks",
+      "created_at": "2026-08-27T18:20:40.22109Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

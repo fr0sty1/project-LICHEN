@@ -1,15 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.6.5",
   "title": "SRH processing at intermediate nodes",
-  "notes": "BLOCKED 2026-08-26 after read-only parity audit; no files modified. Python production routing.py is externally dirty/read-only and fails required policy: SourceRoutingHeader.from_ext_data accepts CmprE=1 (wire prefix 03 01 00 10 00 00), RoutingTable.add_route accepts cyclic duplicate-hop path [fd00::a, fd00::b, fd00::a, fd00::d], and _find_routing_header selects the first Routing header without rejecting duplicates. C lichen/subsys/lichen/rpl/rpl_srh.c provides encode/decode/check_nonstoring only; it has no intermediate transition that decrements Hop Limit, advances destination, and decrements Segments Left. Rust lichen-rpl/src/srh.rs likewise has codec + hop-limit predicate only. Implementing Rust alone would violate parity. Required convergence: fix/read-test Python compression/cycle/duplicate-header handling, add C intermediate processing or explicitly defer C under current phase, then implement Rust raw-packet intermediate transition with canonical cross-language vectors covering next-hop, Hop Limit, Segments Left, compression/padding, malformed/duplicate/loop, and 8-hop cap.",
-  "status": "open",
+  "notes": "BLOCKED 2026-08-26 after read-only parity audit; no files modified. Python production routing.py is externally dirty/read-only and fails required policy: SourceRoutingHeader.from_ext_data accepts CmprE=1 (wire prefix 03 01 00 10 00 00), RoutingTable.add_route accepts cyclic duplicate-hop path [fd00::a, fd00::b, fd00::a, fd00::d], and _find_routing_header selects the first Routing header without rejecting duplicates. C lichen/subsys/lichen/rpl/rpl_srh.c provides encode/decode/check_nonstoring only; it has no intermediate transition that decrements Hop Limit, advances destination, and decrements Segments Left. Rust lichen-rpl/src/srh.rs likewise has codec + hop-limit predicate only. Implementing Rust alone would violate parity. Required convergence: fix/read-test Python compression/cycle/duplicate-header handling, add C intermediate processing or explicitly defer C under current phase, then implement Rust raw-packet intermediate transition with canonical cross-language vectors covering next-hop, Hop Limit, Segments Left, compression/padding, malformed/duplicate/loop, and 8-hop cap.\nImplemented isolated Zephyr intermediate-node RFC 6554 forwarding in rpl_srh without touching route-table, DODAG, or network-stack files. New lichen_rpl_srh_advance validates the entire bounded route before mutation; rejects malformed counts, exhausted/insufficient Hop Limit, multicast source/destination/hops, source/current-destination entries, duplicates/loops, overlong routes, and NULL inputs; atomically extracts next hop, swaps current IPv6 Destination into the consumed SRH slot, decrements Segments Left and Hop Limit, and distinguishes local completion from forwarding. API contract documents RFC 8200 pseudo-header behavior: transport checksum remains based on final destination and is not changed by relays, so no dirty stack integration was needed. Validation: sanitizer-backed host C ctest 1/1 and direct 11/11; cppcheck and git diff --check clean; Rust two-relay destination-swap/restoration parity test passed (1/1).",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:36.75806Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T15:22:08.364173Z",
+  "updated_at": "2026-08-27T18:56:29.617044Z",
   "started_at": "2026-08-26T15:20:44.558092Z",
+  "closed_at": "2026-08-27T18:56:29.617044Z",
+  "close_reason": "Implemented and validated atomic intermediate-node RFC 6554 forwarding",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.6.5",

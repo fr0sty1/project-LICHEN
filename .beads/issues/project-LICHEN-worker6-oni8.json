@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-oni8",
+  "title": "Misleading comment about METHOD_CORR in test_edhoc.py",
+  "description": "File: python/tests/crypto/test_edhoc.py\nLine 392\n\nThe parametrized test vector comment says:\n  _sequence(4, 0, b\"x\" * 32, b\"\\x00\"),  # method_corr=4 -\u003e method=1 (unsupported)\n\nThis comment is misleading. RFC 9528 deprecated METHOD_CORR (which existed in earlier drafts). In RFC 9528, the first value is simply METHOD, which must be 0-3. A value of 4 is just an invalid METHOD value, not a METHOD_CORR encoding.\n\nThe test WORKS correctly (the implementation rejects METHOD=4), but the comment confuses readers about the EDHOC protocol and may lead to incorrect assumptions about message encoding.\n\nFix: Change comment to:\n  _sequence(4, 0, b\"x\" * 32, b\"\\x00\"),  # method=4 (invalid, valid range 0-3)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T20:21:14.370829Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T20:21:14.370829Z",
+  "labels": [
+    "codereview",
+    "documentation",
+    "test_edhoc.py"
+  ]
+}

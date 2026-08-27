@@ -138,6 +138,13 @@ jobs:
           cmake .. && make
       - name: Run schnorr48 test
         run: ./lichen/tests/schnorr48/build/schnorr48_test
+      - name: Build pubkey_to_iid standalone test (catches header/impl drift)
+        run: |
+          cd lichen/tests/pubkey_to_iid
+          mkdir -p build && cd build
+          cmake .. && ctest --output-on-failure
+      - name: Run pubkey_to_iid test
+        run: ./lichen/tests/pubkey_to_iid/build/pubkey_to_iid_test
 
   test-vectors:
     runs-on: ubuntu-latest

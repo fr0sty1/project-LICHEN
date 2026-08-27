@@ -1,3 +1,4 @@
 {"id":"01a00be4-0922-7ec5-af8d-f38057e0ab60","issue_id":"project-LICHEN-worker6-frjv.7","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:44:49.058968Z"}
 {"id":"01a00be4-092a-7497-b723-bf5ca4109206","issue_id":"project-LICHEN-worker6-frjv.7","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: error-handling","created_at":"2026-08-16T18:44:49.066301Z"}
 {"id":"01a00be4-092d-7036-8aab-e0cdddfebef1","issue_id":"project-LICHEN-worker6-frjv.7","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T18:44:49.069014Z"}
+{"id":"01a044b1-563a-7c7f-b679-08a6bbd80fcd","issue_id":"project-LICHEN-worker6-frjv.7","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Added debug logging when self-DIOs are dropped to help diagnose reflected frame issues","created_at":"2026-08-27T19:27:47.770819Z"}

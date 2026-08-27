@@ -212,14 +212,6 @@ impl AnnounceProcessor {
         )
     }
 
-    pub fn reset_seen(&mut self, iid: &[u8; 8]) {
-        self.seen.remove(iid);
-    }
-
-    pub fn unpin(&mut self, iid: &[u8; 8]) {
-        self.pinned_keys.remove(iid);
-    }
-
     pub fn pinned_pubkey_for(&self, iid: &[u8; 8]) -> Option<PublicKey> {
         let public_key = PublicKey::new(self.pinned_keys.get(iid)?.pubkey);
         (iid_from_pubkey(&public_key) == *iid).then_some(public_key)
@@ -651,31 +643,6 @@ mod tests {
         processor.pinned_keys.insert([0xff; 8], entry);
         assert!(processor.pinned_pubkey_for(&[0xff; 8]).is_none());
         assert!(processor.pinned_pubkeys_snapshot().is_none());
-    }
-
-    #[test]
-    fn reset_seen_allows_reaccept() {
-        let identity = make_identity(0x01);
-        let gradient_table = GradientTable::new(64);
-        let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
-
-        // Accept first announce
-        let mut buf = [0u8; 256];
-        let len = make_signed_announce(&identity, 100, 3, 0, &[], &mut buf);
-        let announce = Announce::from_bytes(&buf[..len]).unwrap();
-        let result = processor.process(&announce, link_local(0xAA), 1000);
-        assert!(result.accepted);
-
-        // Same seq_num rejected
-        let result = processor.process(&announce, link_local(0xAA), 2000);
-        assert!(!result.accepted);
-
-        // Reset seen
-        processor.reset_seen(&identity.iid);
-
-        // Now same seq_num is accepted again
-        let result = processor.process(&announce, link_local(0xAA), 3000);
-        assert!(result.accepted);
     }
 
     #[test]

@@ -1,17 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.5.2.3",
   "title": "Zephyr: Chat encode/decode",
-  "status": "in_progress",
+  "notes": "Implemented isolated Zephyr Compact CoT chat codec with independent Kconfig/CMake selection, preserving the PLI codec. Owned fixed-capacity message structure supports broadcast/team/direct destinations and 0..255 UTF-8 bytes without allocation; encoder returns the exact 3..274 byte size. Both directions are atomic and overlap-safe. Decoder rejects non-chat subtypes, destination types outside 0..2, team IDs outside 1..10, truncated headers/address/message, trailing bytes, and malformed RFC 3629 UTF-8 (overlongs, surrogates, out-of-range code points, bad/truncated continuations). Focused host C strict-warning/UBSan CTest passed 1/1 across all 9 positive canonical chat vectors, 7 negative vectors, max length, NULL, short-buffer, reserved, UTF-8, and overlap cases. cppcheck C11 and diff-check passed; PLI C regression 1/1; Python Compact CoT 87/87; Rust canonical vectors 4/4.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:57.107881Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-27T17:48:20.267768Z",
+  "updated_at": "2026-08-27T17:52:54.266848Z",
   "started_at": "2026-08-27T17:48:20.267768Z",
-  "lease_expires_at": "2026-08-27T17:53:20.267768Z",
-  "heartbeat_at": "2026-08-27T17:48:20.267768Z",
+  "closed_at": "2026-08-27T17:52:54.266848Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.5.2.3",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-7smm",
   "title": "Silent EU868 fallback for unknown plan IDs",
   "description": "get_plan() and get_plan_by_name() return EU868 for unknown plan IDs without warning. This hides configuration errors that could cause devices to operate on wrong frequencies.\n\nFile: python/src/lichen/channel_plan.py\nLine: 174",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T18:31:42.501267Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T18:31:42.501267Z",
+  "updated_at": "2026-08-27T19:15:26.672233Z",
+  "closed_at": "2026-08-27T19:15:26.672233Z",
+  "close_reason": "Verified fixed: get_plan() and get_plan_by_name() now raise UnknownPlanError for unknown plan IDs/names rather than silently falling back to EU868. All 69 channel plan tests pass.",
   "labels": [
     "code-review",
     "channel_plan"

@@ -1,3 +1,4 @@
 {"id":"01a00be4-12ec-7027-b042-0b896b9fb70f","issue_id":"project-LICHEN-worker6-frjv.8","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-16T18:44:51.564011Z"}
 {"id":"01a00be4-12f4-7883-9f35-4b4b2e0f0d8a","issue_id":"project-LICHEN-worker6-frjv.8","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: readability","created_at":"2026-08-16T18:44:51.572558Z"}
 {"id":"01a00be4-12f8-7392-90c8-d5aa5cbb6100","issue_id":"project-LICHEN-worker6-frjv.8","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-16T18:44:51.576234Z"}
+{"id":"01a044b1-26eb-73cc-aac4-8b2474f41ac5","issue_id":"project-LICHEN-worker6-frjv.8","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Closed","created_at":"2026-08-27T19:27:35.65925Z"}

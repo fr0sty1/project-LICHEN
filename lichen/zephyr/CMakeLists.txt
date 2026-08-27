@@ -12,7 +12,6 @@ include(CheckCCompilerFlag)
 # would disable language-level checks used by the module.
 check_c_compiler_flag("-std=c23" LICHEN_COMPILER_SUPPORTS_STD_C23)
 if(LICHEN_COMPILER_SUPPORTS_STD_C23)
-  set(LICHEN_C_DIALECT c23)
   set(LICHEN_C_DIALECT_FLAG -std=c23)
 else()
   check_c_compiler_flag("-std=c2x" LICHEN_COMPILER_SUPPORTS_STD_C2X)
@@ -20,17 +19,24 @@ else()
     message(FATAL_ERROR
       "LICHEN requires a C23 compiler (-std=c23 or -std=c2x)")
   endif()
-  set(LICHEN_C_DIALECT c2x)
   set(LICHEN_C_DIALECT_FLAG -std=c2x)
 endif()
 message(STATUS "LICHEN: using ${LICHEN_C_DIALECT_FLAG}")
 
-# Zephyr v3.7 appends its Kconfig-selected C dialect after module target
-# options, so a target-local -std option is silently overridden by the
-# default -std=c99.  Its documented global CSTD hook is evaluated after all
-# modules and therefore makes the probed dialect authoritative.  Warning and
-# hardening flags below remain scoped to LICHEN targets.
-set_property(GLOBAL PROPERTY CSTD "${LICHEN_C_DIALECT}")
+# Zephyr v3.7.x — the west.yml pin (lichen/west.yml revision v3.7.0) —
+# appends its Kconfig-selected C dialect after module target options, so a
+# target-local -std option is silently overridden by the default -std=c99.
+# Its deprecated global CSTD hook (read at the end of zephyr/CMakeLists.txt
+# in v3.7.0) is evaluated after all modules, making the value set here
+# authoritative on that tree.  Zephyr 4.1.0 has no reader for this property
+# (its dialect comes from CONFIG_STD_*), so this is inert there.
+# The value must use Zephyr's own std spelling: v3.7 feeds it to both
+# ${compile_features_${CSTD}} and -std=${CSTD}, and "c23" is neither a known
+# compile-features id nor accepted by the SDK's GCC 12 — only "c2x" is.
+# C23 semantics are unaffected (c2x is GCC 12's draft spelling of C23); the
+# probe above remains as a configure-time guard that the toolchain speaks
+# C23 under one of its two spellings.
+set_property(GLOBAL PROPERTY CSTD c2x)
 
 # -----------------------------------------------------------------------------
 # Compiler hardening flags for LICHEN C code
@@ -72,10 +78,13 @@ set(LICHEN_HARDENING_FLAGS
   -Wdouble-promotion
 
   # Stack usage limit (2KB per function — catches runaway VLAs/alloca).
-  # 64-bit host builds (native_sim/native/64) widen pointers/handles, so
-  # vendored crypto (monocypher blake2s) legitimately exceeds the 32-bit
-  # budget; relax to 4KB there only.
-  -Wstack-usage=$<IF:$<BOOL:${CONFIG_64BIT}>,4096,2048>
+  # Unconditional across word sizes: first-party code is held to 2048 even
+  # on 64-bit host builds (native_sim/native/64).  The only known offender
+  # is vendored Monocypher (crypto_argon2, monocypher.c:749 — 2464B on one
+  # 64-bit toolchain, 3424B on the AWS gcc11 build), which carries a
+  # per-file -Wno-error=stack-usage= exception in
+  # subsys/lichen/crypto/CMakeLists.txt that keeps the warning visible.
+  -Wstack-usage=2048
 
   # Strict aliasing violations
   -Wstrict-aliasing=2

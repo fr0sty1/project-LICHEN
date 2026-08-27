@@ -1,14 +1,19 @@
 {
   "id": "project-LICHEN-worker6-l1qw.3.5.6.5",
   "title": "Zephyr: Rule 6 compression",
-  "description": "Implement Rule 6 EDHOC compression in Zephyr C. Acceptance: compresses EDHOC headers, passes test vectors.",
-  "status": "open",
+  "description": "Implement current-spec Rule 6 global Yggdrasil IPv6 + UDP + OSCORE CoAP compression in Zephyr C. Acceptance: canonical selector/encoding, strict bounds and atomic failures, shared-vector cross-validation.",
+  "notes": "The original EDHOC description was stale: current spec draft, canonical schc_compression.json, Python, and Rust all define Rule 6 as global Yggdrasil OSCORE. Implemented Rule 6 by sharing the canonical v3 global CoAP encoder with Rule 1 while preserving distinct rule IDs and strict OSCORE selection. It emits the 286-bit/36-byte residue (hop, 120-bit address suffixes under exact 0x02/8 prefixes, 4-bit CoAP port suffixes, CoAP fixed fields), validates zero TC/flow, TKL/token availability, IPv6/UDP lengths, nonzero correct UDP checksum, caller capacity, and the 22,554-byte profile limit before the first output write. The shared RFC 8613 selector accepts only one valid OSCORE option; absent/malformed/duplicate options remain Rule 1, while valid OSCORE that misses Rule 6 address/port/fixed constraints cannot be mislabeled plaintext and falls back to Rule 255. Added isolated lichen/tests/schc_rule6_compress coverage for byte-exact canonical Python-oracle vector, independent extreme packing, valid and malformed OSCORE forms, Yggdrasil/port/TC constraints, checksum and output atomicity, and exact 22,554 acceptance / 22,555 rejection. Validation: strict host C build + UBSan ctest passed 1/1; Python test_rule6.py 18 passed; isolated Rust rule6_compression 7 passed; focused cppcheck and git diff --check clean.",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:57.869226Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:57.869226Z",
+  "updated_at": "2026-08-27T20:33:14.096452Z",
+  "started_at": "2026-08-27T20:29:50.927221Z",
+  "closed_at": "2026-08-27T20:33:14.096452Z",
+  "close_reason": "Current-spec global OSCORE Rule 6 compression implemented atomically and cross-validated against canonical C/Python/Rust vectors.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.5.6.5",

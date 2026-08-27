@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-sejt",
+  "title": "lichen_sha256: bad merge left 3-param decls vs 4-param impl/callers — bridge+module+tests do not compile",
+  "description": "Discovered while syntax-verifying project-LICHEN-1ojj.10/rwio.7 (wave W2-L2DRV, 2026-08-27).\n\nSibling commits b7c2ecb570 (q3iy.25: added 4th 'outlen' param) and 117fa9ec8c (0li1.75: per-stage error codes) were merged inconsistently. Merge resolution kept 117fa9ec8c's 3-param DECLARATION in both lichen_util.h copies while keeping b7c2ecb570's 4-param IMPLEMENTATION in both lichen_util.c copies and the 4-arg CALLERS. Result: hard compile errors (wrong arg count) in:\n\nIMPL (4-param, current):\n- firmware/bridge-zephyr/subsys/lichen/lichen_util.c:15-16\n- lichen/subsys/lichen/l2/lichen_util.c:15-16\n\nHEADERS (3-param, stale):\n- firmware/bridge-zephyr/subsys/lichen/lichen_util.h:69-70\n- lichen/subsys/lichen/l2/lichen_util.h:69-71\n\nCALLERS 4-arg (error: too many args vs header decl):\n- firmware/bridge-zephyr/subsys/lichen/lora_l2.c:326\n- firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:101\n- lichen/subsys/lichen/l2/lora_l2_identity.c:146\n\nCALLERS 3-arg (error: too few args vs 4-param impl):\n- lichen/subsys/lichen/link/lichen_link_rx.c:194\n- lichen/tests/util/main.c:29,39,47\n\nFix per b7c2ecb570 intent: make both headers 4-param 'int lichen_sha256(const uint8_t *input, size_t inlen, uint8_t *output, size_t outlen);' (keeping 117fa9ec8c's per-stage error doc lines), and update the 3-arg callers (lichen_link_rx.c + tests/util/main.c) to pass a 4th 'sizeof(hash)' arg. Verified repro: clang -fsyntax-only of firmware/bridge-zephyr/subsys/lichen/lora_l2.c errors at lora_l2.c:326 'too many arguments to function call, expected 3, have 4'.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:17:16.511902Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T20:51:20.594228Z",
+  "started_at": "2026-08-27T20:33:38.316074Z",
+  "closed_at": "2026-08-27T20:51:20.594228Z",
+  "close_reason": "Fixed: canonical 4-param lichen_sha256 in both headers, impl+callers reconciled, tests restored + green (62/62 asserts, ASan/UBSan), fsyntax-only clean on all touched files, vendored-copy note filed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sejt",
+      "depends_on_id": "project-LICHEN-q3iy.25",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T19:17:16.931249Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

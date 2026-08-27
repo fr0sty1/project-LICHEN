@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.3.7.6",
+  "title": "Implement authenticated bounded Zephyr SCHC session authority",
+  "description": "Zephyr has generic SCHC fragmenter/reassembler codecs and an authenticated raw link-payload API, but no production authority binding fragmentation state to the current authenticated peer. Implement the bounded Zephyr owner required by spec/03-adaptation.md section 5.6: install SCHC policy only from authenticated DIO evidence; key every sender/receiver/tombstone/admission floor by full local and remote signing identities, opaque current remote key generation (and local generation if replaceable), and canonical directional Rule ID; carry the authenticated unsigned 24-bit link counter into every transition; revalidate generation before every mutation/control response; invalidate state atomically on revoke/reinstall/rotation; derive 0x78/0x79 from lexicographic full keys and reject equal/mismatched directions; permit ACK/ACK-REQ/abort issuance only from authenticated state transitions; bound peers, active contexts, tombstones, and buffers without hot-path allocation. Expose the metadata/session API needed by Link/L2 without weakening existing replay/authentication.",
+  "acceptance_criteria": "Focused Zephyr/host tests cover authenticated DIO install/currentness, both canonical directions, mismatched/equal keys, same-key revoke/reinstall generation isolation, stale/fresh 24-bit counters including 0xffffff exhaustion, forged/unauthenticated controls, duplicate/conflicting tiles, allocation exhaustion without eviction, terminal tombstone/hold-down behavior, and atomic output/state on every error. Production Link/L2 consumers can use the API without caller-selected authority.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:07:54.854661Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:07:54.854661Z",
+  "labels": [
+    "zephyr",
+    "schc",
+    "link",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.7.6",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.7",
+      "type": "parent-child",
+      "created_at": "2026-08-27T21:07:55.331438Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.7.6",
+      "depends_on_id": "project-LICHEN-worker6-13kv",
+      "type": "blocks",
+      "created_at": "2026-08-27T21:07:55.735902Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.3.7.6",
+      "depends_on_id": "project-LICHEN-worker6-4wty",
+      "type": "blocks",
+      "created_at": "2026-08-27T21:07:56.15094Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

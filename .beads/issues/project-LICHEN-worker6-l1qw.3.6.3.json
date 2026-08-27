@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.3.6.3",
   "title": "ACK handling",
   "description": "ACK generation and processing for ACK-on-Error mode",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:41:34.91847Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:41:34.91847Z",
+  "updated_at": "2026-08-27T21:18:31.865103Z",
+  "closed_at": "2026-08-27T21:18:31.865103Z",
+  "close_reason": "All five ACK implementation/bitmap/vector children are closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.3.6.3",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-j97i",
   "title": "sim/scenario.py chaos wiring broken: sim.chaos does not exist and LossRule missing required node_id",
   "description": "Spotted during mypy-gate worker6-1nfe. src/lichen/sim/scenario.py _apply_chaos (lines 340-353): (1) calls self.sim.chaos.add_rule(rule) at :347 and :352, but Simulation (lichen/sim/simulation/base.py:342) only exposes property chaos_engine / _chaos_engine -\u003e AttributeError whenever a scenario has a chaos event; (2) LossRule(loss_probability=params.get(\"rate\",0.1)) at :346 omits required dataclass field node_id: str (lora_medium/chaos.py:241, package ships py.typed) -\u003e TypeError; (3) code never guards chaos_engine is None before adding rules. Both loss and partition branches are dead-on-arrival at runtime.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T20:20:05.440139Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T20:20:05.440139Z",
+  "updated_at": "2026-08-27T20:44:46.757999Z",
+  "closed_at": "2026-08-27T20:44:46.757999Z",
+  "close_reason": "Fixed _apply_chaos: (1) changed self.sim.chaos to self.sim.chaos_engine to match the actual property name; (2) added node_id parameter to LossRule constructor; (3) added guard for chaos_engine being None with helpful error message; (4) updated docstring example to show correct usage",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-j97i",

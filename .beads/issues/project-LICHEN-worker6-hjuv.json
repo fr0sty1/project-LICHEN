@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-hjuv",
+  "title": "CoAP v3 compression rules do not gate on NH==UDP (MQTT-SN rule does)",
+  "description": "compress_global_coap_v3/link_local_v3 validate 5680..5695 ports + UDP checksum but never check ipv6_next_header==IPV6_NH_UDP; compress_mqtt_sn does. TX-side misclassification needs crafted ports+checksum; decompress-side revalidation limits impact. Add NH==UDP to both v3 CoAP rule paths for consistency.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:43:30.218432Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:13:20.314101Z",
+  "started_at": "2026-08-27T21:44:18.374547Z",
+  "closed_at": "2026-08-27T22:13:20.314101Z",
+  "close_reason": "compress_global_coap_v3 and compress_link_local_coap_v3 in lichen/subsys/lichen/schc/schc_compress.c now gate ipv6_next_header(packet) != IPV6_NH_UDP -\u003e SCHC_ERR_NO_MATCHING_RULE, matching compress_mqtt_sn's pattern (:385). Verified: clang -fsyntax-only -Wall -Wextra clean; canonical CoAP vectors still accepted - schc_rule1_compress_test (global CoAP path) PASSED and schc_rule5_compress_test (link-local CoAP path) PASSED, run as host CMake ctest on the Mac (Apple clang 21, 100% tests passed); these host suites hardcode -std=c23 which the AWS gcc 11.5 cannot parse, so they are Mac-side by design. Link-side Zephyr builds of the same source pass on AWS (link_crypto build compiles the schc subsystem). Note: schc.c lichen_rule_compress_coap already gated NH at the rule-wrapper level; this fix closes the direct compress_coap entry point.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-hjuv",
+      "depends_on_id": "project-LICHEN-worker6-smro",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T21:43:30.67066Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

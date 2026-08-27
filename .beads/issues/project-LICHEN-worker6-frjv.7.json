@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-frjv.7",
   "title": "Silent self-DIO drop may mask bugs",
   "description": "File: python/src/lichen/rpl/dodag.py, Line 188-189. DIOs from self.node_address are silently dropped. While correct, this could mask bugs where a node receives its own reflected DIOs. Consider debug logging for this case in development builds.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T18:44:49.053464Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T18:44:49.053464Z",
+  "updated_at": "2026-08-27T19:27:47.729816Z",
+  "closed_at": "2026-08-27T19:27:47.729816Z",
+  "close_reason": "Added debug logging when self-DIOs are dropped to help diagnose reflected frame issues",
   "labels": [
     "error-handling",
     "review"

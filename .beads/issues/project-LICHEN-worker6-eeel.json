@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-eeel",
   "title": "[review] adaptation_vectors.rs: hex_decode panics on odd-length input",
   "description": "The hex_decode function slices s[i..i+2] without checking that s.len() is even. If a test vector contains an odd-length hex string (e.g., a typo like \"abc\" instead of \"ab\"), the final iteration will panic with index out of bounds rather than returning a clear error. Add a guard: if s.len() % 2 != 0 { panic!(\"odd-length hex string\") } or return Result.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-15T18:43:13.976182Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-15T18:43:13.976182Z",
+  "updated_at": "2026-08-27T19:05:56.378194Z",
+  "closed_at": "2026-08-27T19:05:56.378194Z",
+  "close_reason": "Closed",
   "labels": [
     "review"
   ]

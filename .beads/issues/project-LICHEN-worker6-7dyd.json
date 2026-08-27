@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-7dyd",
+  "title": "Align schc_generic test source with current fragmentation API",
+  "description": "After format-v2 vector generation succeeds, pinned Zephyr v3.7 native_sim compilation fails in lichen/tests/schc_generic/src/main.c assert_delivered(): it initializes removed schc_fragmenter_config fields (window_bits, fcn_bits, tile_size, mtu, direction, mode), references removed SCHC_FRAGMENT_UPLINK/NO_ACK enums, and passes an array pointer plus undeclared packet_len to schc_reassembler_packet. Update the focused test to the current API without reducing coverage. Acceptance: pinned schc_generic builds and runs all generated v2 scenarios.",
+  "notes": "Updated src/main.c assert_delivered() to current schc_reassembler_packet borrowed-view API and removed obsolete fragmenter config fields/enums/dead locals. git diff --check passed. Pinned Zephyr v3.7 native_sim/native/64 build completed 101/101, including app main.c and SCHC objects; isolation verify passed. Runtime executes 10 tests: 6 pass and four canonical fragmentation tests fail only at fragment count/wire length/receiver activation because production uses 187-byte tiles while format-v2 vectors require 179. Added blocking dependency on project-LICHEN-worker6-gz30. Remote sync twice completed; claim released pending that blocker.\nApproved workstation i-0d14dd9fb53dae004 reverified in account 210337117346 with Project=LICHEN tag and confirmed stopped after validation.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T18:49:44.529539Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T18:56:47.542995Z",
+  "started_at": "2026-08-27T18:52:35.171359Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-7dyd",
+      "depends_on_id": "project-LICHEN-worker6-1mb9",
+      "type": "relates-to",
+      "created_at": "2026-08-27T18:49:59.160438Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-7dyd",
+      "depends_on_id": "project-LICHEN-worker6-gz30",
+      "type": "blocks",
+      "created_at": "2026-08-27T18:55:52.02714Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

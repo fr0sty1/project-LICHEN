@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.4.2",
   "title": "Native Yggdrasil Address (0200::/8)",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:41:19.142436Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:41:19.142436Z",
+  "updated_at": "2026-08-27T19:00:10.941509Z",
+  "closed_at": "2026-08-27T19:00:10.941509Z",
+  "close_reason": "All address derivation and cross-validation child beads complete",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.4.2",

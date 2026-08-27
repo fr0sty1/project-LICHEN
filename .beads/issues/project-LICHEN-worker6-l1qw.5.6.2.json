@@ -1,13 +1,15 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.2",
   "title": "8.4 DIO Processing",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:27.65843Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:27.65843Z",
+  "updated_at": "2026-08-27T21:49:35.353271Z",
+  "closed_at": "2026-08-27T21:49:35.353271Z",
+  "close_reason": "All seven DIO codec/receive/vector children are closed with atomic authenticated state handling",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.2",

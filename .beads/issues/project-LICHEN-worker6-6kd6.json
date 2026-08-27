@@ -3,13 +3,15 @@
   "title": "PresenceCacheResource.record does not treat addr as IPv6",
   "description": "File: python/src/lichen/coap/resources/presence.py PresenceCacheResource.record / evict / snapshot\n\nSpec 18.5.2 cache entries use IPv6 addr (example 0200:...:1111). record() only validates via PresenceCacheEntry.from_mapping, and _require_addr accepts any non-empty string. The dict is keyed on that raw string.\n\nConsequences:\n- \"0200::1111\" and \"0200:0:0:0:0:0:0:1111\" (and case variants) are distinct peers; GET/Observe emit duplicates.\n- evict() must be called with the exact recorded spelling or it is a no-op.\n- Garbage or unbounded addr strings are stored and serialized to every observer.\n\nDistinct from k208 (entry count / TTL) and 7gk6 (decoder nodes-array size). Fix belongs at record(): parse as IPv6 and store one canonical form.",
   "acceptance_criteria": "record() rejects non-IPv6 addr. Equivalent IPv6 spellings occupy one cache slot and evict() hits that slot. Tests cover compressed vs expanded form.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T18:14:39.224059Z",
   "created_by": "grok",
-  "updated_at": "2026-08-26T18:14:39.224059Z",
+  "updated_at": "2026-08-27T19:25:30.580375Z",
+  "closed_at": "2026-08-27T19:25:30.580375Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-6kd6",

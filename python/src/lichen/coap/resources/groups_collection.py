@@ -425,28 +425,36 @@ class GroupsCollectionResource(resource.Resource):
     def group_key_for_epoch(
         self, group_id: str, epoch: int, *, now: int | None = None
     ) -> dict[str, Any] | None:
-        """Unprotect-capable key material for *epoch* during the rekey grace (18.8.2)."""
-        item = self.groups.get(group_id)
-        if item is None:
+        """Unprotect-capable key material for *epoch* during the rekey grace (18.8.2).
+
+        The grace prune writes ``retired_epochs`` back, so the read-and-prune
+        runs under ``_mutation_lock``: an unlocked prune could clobber retired
+        entries a locked rekey appended concurrently, losing grace-window
+        unprotect material. ``_mutation_lock`` is not reentrant -- callers
+        already inside a locked section must not invoke this method.
+        """
+        with self._mutation_lock:
+            item = self.groups.get(group_id)
+            if item is None:
+                return None
+            stamp = int(self._clock() if now is None else now)
+            current = {
+                "key_epoch": item.get("key_epoch"),
+                "master_secret": item.get("master_secret"),
+                "master_salt": item.get("master_salt"),
+                "key_id": item.get("key_id"),
+            }
+            if epoch == item.get("key_epoch"):
+                return current
+            for entry in self._live_retired(item, stamp, mutate=now is None):
+                if int(entry["key_epoch"]) == epoch:
+                    return {
+                        "key_epoch": entry["key_epoch"],
+                        "master_secret": entry["master_secret"],
+                        "master_salt": entry["master_salt"],
+                        "key_id": entry["key_id"],
+                    }
             return None
-        stamp = int(self._clock() if now is None else now)
-        current = {
-            "key_epoch": item.get("key_epoch"),
-            "master_secret": item.get("master_secret"),
-            "master_salt": item.get("master_salt"),
-            "key_id": item.get("key_id"),
-        }
-        if epoch == item.get("key_epoch"):
-            return current
-        for entry in self._live_retired(item, stamp, mutate=now is None):
-            if int(entry["key_epoch"]) == epoch:
-                return {
-                    "key_epoch": entry["key_epoch"],
-                    "master_secret": entry["master_secret"],
-                    "master_salt": entry["master_salt"],
-                    "key_id": entry["key_id"],
-                }
-        return None
 
     def record_invitation(
         self,
@@ -464,27 +472,30 @@ class GroupsCollectionResource(resource.Resource):
         by forced removal) is refused: replaying a signed invitation cannot
         resurrect a revoked enrollment.
         """
-        item = self.groups.get(group_id)
-        if item is None:
-            return False
-        if type(node) is not str or node == "":
-            return False
-        if role not in ALLOWED_INVITE_ROLES:
-            return False
-        if expires is not None and (type(expires) is not int or expires <= int(self._clock())):
-            return False
-        identity: str | None = None
-        if type(inviter) is str and inviter != "":
-            identity = _invitation_identity(inviter, node, expires=expires, role=role)
-            burned = item.setdefault("consumed_invitations", {})
-            if identity in burned:
+        # The burned-identity check and the invitations write are one
+        # transition; serialize against rekey's locked snapshot/rebuild.
+        with self._mutation_lock:
+            item = self.groups.get(group_id)
+            if item is None:
                 return False
-        invited = item.setdefault("invitations", {})
-        entry: dict[str, Any] = {"expires": expires, "role": role}
-        if identity is not None:
-            entry["identity"] = identity
-        invited[node] = entry
-        return True
+            if type(node) is not str or node == "":
+                return False
+            if role not in ALLOWED_INVITE_ROLES:
+                return False
+            if expires is not None and (type(expires) is not int or expires <= int(self._clock())):
+                return False
+            identity: str | None = None
+            if type(inviter) is str and inviter != "":
+                identity = _invitation_identity(inviter, node, expires=expires, role=role)
+                burned = item.setdefault("consumed_invitations", {})
+                if identity in burned:
+                    return False
+            invited = item.setdefault("invitations", {})
+            entry: dict[str, Any] = {"expires": expires, "role": role}
+            if identity is not None:
+                entry["identity"] = identity
+            invited[node] = entry
+            return True
 
     def invitation_consumed(self, group_id: str, node: str) -> bool:
         """True when *node*'s live invitation has already been spent once."""
@@ -495,12 +506,30 @@ class GroupsCollectionResource(resource.Resource):
 
     def consume_invitation(self, group_id: str, node: str) -> None:
         """Spend *node*'s invitation with a one-time enrollment marker."""
+        with self._mutation_lock:
+            self._consume_invitation_unlocked(group_id, node)
+
+    def _consume_invitation_unlocked(self, group_id: str, node: str) -> None:
+        """Consume without acquiring the mutation lock (caller holds it).
+
+        ``_mutation_lock`` is not reentrant, so callers already inside a
+        locked section (``_join_key``) must use this variant instead of the
+        public wrapper to avoid deadlocking the event loop.
+        """
         item = self.groups.get(group_id)
         if item is None:
             return
         entry = self._invitation_entry(group_id, node)
         if entry is None:
             return
+        invited = item.get("invitations")
+        if isinstance(invited, dict) and not isinstance(invited.get(node), dict):
+            # SECURITY: legacy scalar entries (pre-normalization persisted
+            # shape) synthesize a throwaway dict in _invitation_entry; the
+            # burn marker below would land on that copy and the one-time
+            # spend would be silently lost. Persist the normalized dict so
+            # the consumed marker survives.
+            invited[node] = entry
         entry["consumed"] = True
         identity = entry.get("identity")
         if type(identity) is str and identity:
@@ -666,13 +695,17 @@ class GroupsItemResource(resource.Resource, resource.PathCapable):
         peer = _pairwise_oscore_identity(request)
         if peer is None:
             return _oscore_required_response()
-        if rest[0] not in self.collection.groups:
-            return Message(code=NOT_FOUND)
         # spec 18.8.2 roles: delete is owner capability; this is the
-        # authoritative record, not a local leave.
-        if self.collection.requester_role(rest[0], peer) != "owner":
-            return Message(code=FORBIDDEN)
-        del self.collection.groups[rest[0]]
+        # authoritative record, not a local leave. Existence check, role
+        # check, and removal are one transition under the mutation lock:
+        # unlocked check-then-del lets a concurrent join mutate a detached
+        # record and hand out key material for a deleted group.
+        with self.collection._mutation_lock:
+            if rest[0] not in self.collection.groups:
+                return Message(code=NOT_FOUND)
+            if self.collection.requester_role(rest[0], peer) != "owner":
+                return Message(code=FORBIDDEN)
+            del self.collection.groups[rest[0]]
         return Message(code=DELETED)
 
     async def render_post(self, request: Message) -> Message:
@@ -710,29 +743,45 @@ class GroupsItemResource(resource.Resource, resource.PathCapable):
         # mismatch cannot distinguish "invited" from "unknown".
         if node != peer:
             return Message(code=FORBIDDEN)
-        invited_role = self.collection.invitation_role(group_id, node)
-        if invited_role is None:
-            return Message(code=FORBIDDEN)
-        members = item.setdefault("members", [])
-        if self.collection.invitation_consumed(group_id, node) and node not in members:
-            # SECURITY: a consumed invitation cannot resurrect enrollment;
-            # membership loss after the single spend is authoritative.
-            return Message(code=FORBIDDEN)
-        if node not in members:
-            if len(members) >= MAX_MEMBERS_PER_GROUP:
-                return _groups_full_response("members_full")
-            members.append(node)
-        if invited_role == "admin":
-            admins = item.setdefault("admins", [])
-            if node not in admins:
-                admins.append(node)
-        self.collection.consume_invitation(group_id, node)
-        return _cbor_response(
-            {
+        # SECURITY: invitation check, roster append, and burn marker are one
+        # check-and-use transition. Serialize against rekey's locked roster
+        # rebuild so a concurrent rotation cannot drop the membership append
+        # or resurrect a removed member. The consume goes through the unlocked
+        # variant because _mutation_lock is already held here (not reentrant).
+        with self.collection._mutation_lock:
+            # SECURITY: re-fetch under the lock. A concurrent render_delete
+            # can remove the record captured before the lock was acquired;
+            # joining into that detached record would mutate orphaned state
+            # and hand out key material for a deleted group.
+            item = self.collection.groups.get(group_id)
+            if item is None or not item.get("encrypted"):
+                return Message(code=NOT_FOUND)
+            invited_role = self.collection.invitation_role(group_id, node)
+            if invited_role is None:
+                return Message(code=FORBIDDEN)
+            members = item.setdefault("members", [])
+            if self.collection.invitation_consumed(group_id, node) and node not in members:
+                # SECURITY: a consumed invitation cannot resurrect enrollment;
+                # membership loss after the single spend is authoritative.
+                return Message(code=FORBIDDEN)
+            if node not in members:
+                if len(members) >= MAX_MEMBERS_PER_GROUP:
+                    return _groups_full_response("members_full")
+                members.append(node)
+            if invited_role == "admin":
+                admins = item.setdefault("admins", [])
+                if node not in admins:
+                    admins.append(node)
+            self.collection._consume_invitation_unlocked(group_id, node)
+            # SECURITY: capture the epoch tuple inside the locked span. Reading
+            # these after release lets a locked rekey commit item.update() in
+            # between, handing the joiner a torn (old-epoch id + new-epoch
+            # secret) context instead of the epoch their enrollment used.
+            response = {
                 "key_id": item["key_id"],
                 "key_epoch": item["key_epoch"],
                 "master_secret": item["master_secret"],
                 "master_salt": item["master_salt"],
                 "algorithm": OSCORE_GROUP_ALG,
             }
-        )
+        return _cbor_response(response)

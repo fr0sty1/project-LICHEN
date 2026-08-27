@@ -2,19 +2,29 @@
   "id": "project-LICHEN-worker6-l1qw.1.5.3",
   "title": "Zephyr: LLSec encode/decode",
   "description": "LLSec byte encoding/decoding in Zephyr. DONE",
+  "notes": "2026-08-27 read-only validation against spec/02-physical-link.md §4.2 and canonical link_frame_signed_modes.json: address-mode bits 0-1, MIC-selector bits 2-4 (0/1 accepted; 2-7 rejected), E bit 6 rejection, and S bit 5 MIC sizing exist in Zephyr frame.c. Full LLSec acceptance is nevertheless blocked by SI/SenderID: current C defines bit7 as reserved, rejects canonical signed LLSec bytes 0xA0|mode (e.g. vector 0xA6), accepts and emits noncanonical S-only 0x20|mode, never parses/writes the required 8-byte signer EUI-64, and production lichen_link_tx.c passes NULL signer. Host frame ctest passed 1/1, but its signed positives are explicitly stale: tests/frame/main.c expects signer_iid_present=false and therefore cannot establish spec parity. Shared frame sources/tests are actively conflicted and were kept read-only. Added exact blocker project-LICHEN-worker6-l1qw.1.5.4.3 (current spec requires 8-byte EUI-64 despite stale 10-byte bead wording); no separate signature dependency is needed because Python/Rust LLSec beads .1/.2 and canonical vector bead .4.5 are already closed.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:04.227709Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:04.227709Z",
+  "updated_at": "2026-08-27T18:03:35.048577Z",
+  "started_at": "2026-08-27T18:02:37.078209Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.5.3",
       "depends_on_id": "project-LICHEN-worker6-l1qw.1.5",
       "type": "parent-child",
       "created_at": "2026-07-25T03:42:05.70258Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.1.5.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.5.4.3",
+      "type": "blocks",
+      "created_at": "2026-08-27T18:03:33.90647Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

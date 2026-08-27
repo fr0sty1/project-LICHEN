@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-i3ug",
+  "title": "adaptive_duty_permille accepts negative density (fail-open)",
+  "description": "File: python/src/lichen/timing/duty_cycle.py\nLine: 45-69\n\nBug: The function accepts negative density values without validation. Negative density falls into the sparse case (density \u003c 3), returning the maximum budget (20 or 50 permille).\n\nSpec 2a.9 states: \"A node MUST use the most conservative (lowest) applicable value when the operating class is unknown.\"\n\nCurrent behavior contradicts this - negative density (which indicates an error or unknown state) fails OPEN to maximum budget rather than failing CLOSED to minimum budget (dense case).\n\nImpact: If caller passes erroneous negative density, node allocates maximum airtime budget instead of minimum, potentially causing regulatory compliance issues in dense deployments.\n\nFix: Add validation to reject negative density or treat unknown/invalid density as dense (fail-closed):\n  if density \u003c 0:\n      raise ValueError(\"density must be non-negative\")\n  # or fail-closed: treat negative as dense",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T22:10:48.646945Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:10:48.646945Z",
+  "labels": [
+    "codereview",
+    "correctness"
+  ]
+}

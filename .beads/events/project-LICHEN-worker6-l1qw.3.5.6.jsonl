@@ -1,1 +1,2 @@
 {"id":"019f975d-0700-7cd9-96b5-5643f3d2b354","issue_id":"project-LICHEN-worker6-l1qw.3.5.6","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:41:24.096843Z"}
+{"id":"01a044f0-ae0a-7718-b61a-96ca3f4a0f4f","issue_id":"project-LICHEN-worker6-l1qw.3.5.6","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All seven Rule 6 implementation and vector children are closed; current global-OSCORE cross-implementation acceptance is complete","created_at":"2026-08-27T20:36:59.018465Z"}

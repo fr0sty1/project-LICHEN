@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-zn2c",
+  "title": "groups _join_key reads key material after releasing _mutation_lock (torn rekey tuple)",
+  "description": "groups_collection.py:749-756: response key_id/key_epoch/master_secret/master_salt read AFTER the with-block; concurrent locked rekey committing item.update() between release and reads yields torn (old-epoch id + new-epoch secret) joiner context. Build response inside the locked span.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:43:21.799518Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:55:36.482287Z",
+  "started_at": "2026-08-27T21:44:17.166418Z",
+  "closed_at": "2026-08-27T21:55:36.482287Z",
+  "close_reason": "join response epoch tuple now captured inside the _mutation_lock span (python/src/lichen/coap/resources/groups_collection.py _join_key); pinned by test_rekey_before_response_readback_yields_join_epoch_tuple (rekey commits before read-back -\u003e self-consistent join-epoch tuple). tests/coap -k group: 102 passed; full tests/coap: 1787 passed, 1 skipped, 3 xfailed; ruff clean.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-zn2c",
+      "depends_on_id": "project-LICHEN-worker6-ze7h",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T21:43:22.295313Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

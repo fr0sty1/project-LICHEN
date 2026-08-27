@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-6vov",
+  "title": "C DAO manager rejects equal-reordered Path Sequence snapshot required accepted by canonical route-state vectors",
+  "description": "native_sim rpl_routing test_canonical_route_state_vectors fails at main.c:1017: vector equal_reordered_equivalence_no_refresh expects acceptance (semantic_replay class, no deadline refresh) but C lichen_rpl_dao_manager returns reject. Rust side implements exactly this per closed bead 2auf.44.9.7.1 (equal sequence accepts only semantic equality without refreshing deadlines); canonical vectors live in test/vectors/rpl_route_state.json consumed by rust/lichen-rpl/tests/rpl_route_state_vectors.rs. Fix C DaoManager/DAO process path in lichen/subsys/lichen/rpl/ to the same equal-sequence semantics; verify west build -b native_sim/native/64 -d \u003cdir\u003e lichen/tests/rpl_routing on the AWS workstation (baseline scratch recipe: /mnt/lichen-zephyr/work/waves-base, source /mnt/lichen-zephyr/env.sh, -DZEPHYR_EXTRA_MODULES=$PWD/lichen) plus host rpl suite if present.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:19:11.411285Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T21:19:11.411285Z",
+  "labels": [
+    "codereview",
+    "zephyr"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6vov",
+      "depends_on_id": "project-LICHEN-2auf.44.9.7.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T21:19:11.813245Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-xeh1",
+  "title": "P1: CoAP proxy incomplete response option relaying",
+  "description": "File: python/src/lichen/coap/resources/proxy.py (lines 102-104)\n\nThe proxy only relays content_format but not other standard CoAP response options. Missing:\n- ETag (caching broken)\n- Max-Age (default 60s applied instead of server's value)\n- Location-Path, Location-Query (POST creating resources fails)\n- Block1, Block2 (blockwise transfers fail)\n- Observe (observation sequence numbers lost)\n\nImpact: Caching semantics incorrect, resource creation broken, blockwise transfers fail.\n\nFix: Relay all safe-to-proxy response options per RFC 7252 section 5.7.2.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T19:52:53.105884Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T19:52:53.105884Z",
+  "labels": [
+    "codereview",
+    "bug",
+    "P1"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-liko",
+  "title": "P2: build_dio reads multiple fields without lock - potential thread safety issue",
+  "description": "In python/src/lichen/rpl/dodag.py, the build_dio method (lines 364-375) reads multiple mutable state fields (rpl_instance_id, version, rank, dodag_id, grounded, gateway_centric) without acquiring self._lock. If another thread modifies DODAG state between field reads (e.g., via _adopt_version or select_parent), the returned DIO may contain internally inconsistent values.\n\nExample race:\n1. Thread A reads self.version = 1\n2. Thread B calls _adopt_version, sets self.version = 2, clears parents, sets self.rank = INFINITE_RANK\n3. Thread A reads self.rank = INFINITE_RANK\n4. Thread A returns DIO with version=1, rank=INFINITE_RANK (inconsistent)\n\nWhile Python GIL ensures individual attribute reads are atomic, it does not ensure consistency across multiple reads.\n\nFix: Wrap the entire DIO construction in with self._lock.\n\nFile: python/src/lichen/rpl/dodag.py\nLine: 364-375\nPriority: P2\nCategory: thread-safety, correctness",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T20:23:24.123827Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T20:56:36.177375Z",
+  "closed_at": "2026-08-27T20:56:36.177375Z",
+  "close_reason": "Closed"
+}

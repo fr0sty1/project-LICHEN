@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-nz56",
+  "title": "Link-rx pubkey-\u003eEUI64 fallback uses SHA-256(LICHEN-EUI64-v1||pk) diverging from canonical SHA-512 derivation",
+  "description": "lichen/subsys/lichen/link/lichen_link_rx.c:188-201 (pre-existing since a24faa1abf): when ctx-\u003epeer_eui64 is NULL the rx fallback derives src_eui64 = SHA-256(\"LICHEN-EUI64-v1\"||peer_pubkey)[0:8] U/L-set, which can NOT equal the peer's canonical key-derived EUI-64 (SHA-512(pubkey)[0:8], pinned by link-addressing.json + yggdrasil_address.json, python identity.py:138, rust, ipv6_addr.c:175). No vector pins the fallback as intentionally distinct. Decide: align fallback to canonical derivation, or add cross-impl vector documenting the distinct scheme.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T21:43:33.241975Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:05:53.828545Z",
+  "started_at": "2026-08-27T21:44:50.683091Z",
+  "closed_at": "2026-08-27T22:05:53.828545Z",
+  "close_reason": "Aligned C link-rx pubkey-\u003eEUI64 fallback to canonical derivation: wire EUI-64 = SHA-512(pubkey)[0:8] with U/L set (canonical IID from lichen_pubkey_to_iid flipped once for Extended wire form), matching python identity._pubkey_to_iid, rust iid_from_pubkey_bytes, and link-addressing.json key_derived_extended_eui64 (3e8d1d929460b421). Replicated inline via crypto_sha512 in lichen_link_rx.c (link module must not depend on CONFIG_LICHEN_IPV6-gated l2 TU; announce.c precedent), with comment pointing at canonical impl. Removed dead LICHEN-EUI64-v1 domain-string + lichen_util.h include from rx (string remains live in lora_l2_identity.c for hwid-\u003eEUI64, different purpose). Added link_crypto test_rx_fallback_eui64_is_canonical_key_derived: signs an EXTENDED frame with an in-test keypair, rx ctx has peer_eui64=NULL, asserts fallback src_eui64 == aea6d0f1943844bb (python hashlib + RFC8032 Ed25519 oracle, hardcoded), plus asserts canonical C pubkey_to_iid == link-addressing vector 3c8d1d929460b421. Verified on AWS native_sim/native/64: 18/18 PASS (private coherent tree at /mnt/lichen-zephyr/work/wc-euifb); negative control with pre-fix SHA-256 fallback FAILS exactly at the src_eui64 assertion; fixed file restored, PASS. clang -fsyntax-only -Wall -Wextra clean on rx. Note: shared waves-base mirror drifted mid-run (another worker's in-flight drift_bound.c reference broke link CMakeLists at 21:54Z); verification done in private tree. Also noted: local repo tree does not build standalone on AWS gcc 11.5 (crypto/CMakeLists -Wno-error=stack-usage rejected by gcc 11; sync_hop.c missing errno includes) -- pre-existing, outside this bead.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-nz56",
+      "depends_on_id": "project-LICHEN-worker6-sejt",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T21:43:33.697608Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
