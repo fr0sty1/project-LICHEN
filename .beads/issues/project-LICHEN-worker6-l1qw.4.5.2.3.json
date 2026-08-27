@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.5.2.3",
   "title": "Zephyr: pubkey_to_iid",
-  "status": "open",
+  "notes": "Corrected Zephyr lichen_pubkey_to_iid to canonical SHA-512(pubkey)[0:8] with U/L bit cleared, selected vetted Monocypher SHA-512 for CONFIG_LICHEN_IPV6, and updated API documentation. Added standalone exact C test using all three yggdrasil-derivation vectors plus NULL/non-mutation and U/L-bit assertions. Validation: C UBSan/Werror 1/1 PASS; Rust yggdrasil vector consumer 3/3 PASS; Python cross-language/vector consumers 22/22 PASS; git diff --check PASS. Preserved untracked short_addr_iid work untouched.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:11.103593Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:11.103593Z",
+  "updated_at": "2026-08-27T16:51:07.144956Z",
+  "started_at": "2026-08-27T16:45:32.415185Z",
+  "closed_at": "2026-08-27T16:51:07.144956Z",
+  "close_reason": "Canonical SHA-512 pubkey-to-IID derivation implemented and cross-language vectors pass",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.5.2.3",

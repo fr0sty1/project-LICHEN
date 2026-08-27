@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-7gk6",
+  "title": "presence.py: No size limit on nodes array in PresenceCache.from_mapping (line 236-238). Malicious payload with millions of entries could cause memory exhaustion.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:15:54.81809Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T17:15:54.81809Z",
+  "labels": [
+    "bug"
+  ]
+}

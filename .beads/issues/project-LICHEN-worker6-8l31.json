@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-8l31",
+  "title": "rekey forced removal leaves removed admin in admins[] retaining admin role forever",
+  "description": "File: python/src/lichen/coap/resources/groups_collection.py:251-255. Strips removed_member from members[]+invitations only; requester_role checks admins FIRST (:383-389) so removed admin keeps GET-roster rights via _roster_view_authorized(:410-415). Repro'd: promote BADADMIN, rekey(removed_member=BADADMIN) -\u003e members=['OWNER'] admins=['BADADMIN'] role=admin. Spec 18.8.2 forced removal MUST fully demote; violates gyfo matrix + yuvj wall; no test exercises admin removal. Fix: strip from admins too + demotion test.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:37.512582Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:22:06.670169Z",
+  "started_at": "2026-08-26T19:06:42.687616Z",
+  "closed_at": "2026-08-26T19:22:06.670169Z",
+  "close_reason": "Verified fixed + tested: rekey(removed_member) strips admins[] alongside members[]/invitations (groups_collection.py), requester_role fail-closed requires members AND admins, _join_key FORBIDDENs without live invitation. Full demotion test with post-removal roster-access denial exists and passes: test_groups_rekey.py::test_rekey_removes_admin_from_authoritative_roster (promotion -\u003e rekey -\u003e admin gone from both lists, requester_role None, GET /members 4.03, owner view clean).",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-8l31",
+      "depends_on_id": "project-LICHEN-worker6-gyfo",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:38.315824Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

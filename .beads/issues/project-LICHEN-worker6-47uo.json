@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-47uo",
   "title": "[review] slot_claim.py:170: gateway_iid type coercion",
   "description": "If the CBOR \"gateway_iid\" field is an integer (not bytes), str(iid_bytes) converts it. An integer like 1234567890123456 becomes \"1234567890123456\" which passes the 16-char and hex validation but represents completely different bytes than intended. CBOR type should be strictly checked.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T04:38:17.426287Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T04:38:17.426287Z",
+  "updated_at": "2026-08-26T17:04:31.709342Z",
+  "closed_at": "2026-08-26T17:04:31.709342Z",
+  "close_reason": "Fixed: from_cbor() now strictly requires gateway_iid to be bytes type in CBOR. Integer/string types that could pass hex validation are rejected with ClaimError. One-line fix: replaced ternary with explicit type check.",
   "labels": [
     "review"
   ]

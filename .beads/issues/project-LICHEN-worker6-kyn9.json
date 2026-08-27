@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-kyn9",
+  "title": "TDMA TX window includes trailing guard; spec and Python/Rust end before guard",
+  "description": "File: lichen/subsys/lichen/link/tdma.c:120. Modified tx window [slot_start-guard, slot_start+d+guard] inclusive permits transmit during trailing guard. Spec/02a-coordinated-capacity.md:114 forbids transmitting during guard; python/src/lichen/sim/tdma.py:76-84 and rust/lichen-link tdma_clock.rs use [slot_start, start+d-guard). Cross-implementation silent mismatch; tests/link_crypto expectations codify C shape. Fix: align C window or ratify a guard-tolerance profile across C/Py/Rust + vectors.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:06.89198Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:55:47.351398Z",
+  "started_at": "2026-08-26T19:06:59.44902Z",
+  "closed_at": "2026-08-26T19:55:47.351398Z",
+  "close_reason": "tdma.c tx window aligned to spec/02a §2a.4 [start, start+d-g) via wrap-safe modular offset ((now-start) mod 2^32 \u003c d-g), matching python sim is_tx_allowed and rust tdma_clock::tx_allowed (current\u003cstart rejection replicated; no slot_start-g underflow possible). Host expectations in lichen/tests/link_crypto rewritten as hand-computed oracle table (d=250 g=100): Case A slot=4 sfn=0 start=1000 window[1000,1150): 999F/1000T/1070T/1149T/1150F/1151F/1349F; Case B set_slot sfn=1 start=3000: 3000T/2999F/3150F; Case C u32 clock wrap superframe=2147483 slot=5 start=4294967250 nominal end wraps to 104: 4294967250T/4294967295T(45)/0T(46)/103T(149)/104F(150)/4294967249F — old code failed every wrap case and allowed guard transmit. Verified: clang -fsyntax-only clean on tdma.c/link_ctx.c/lichen_link_tx.c; standalone ASan+UBSan harness compiling REAL tdma.c+link_ctx.c+tx_queue.c passes all hand-computed literals; python sim (.venv) matches 7/7 verdicts on identical inputs. Note: Zephyr ztest binary not run locally (v3.7.0 native_sim unreliable on this Mac per AGENTS.md); harness replicates its assertions byte-for-byte of logic.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-kyn9",
+      "depends_on_id": "project-LICHEN-worker6-9jqr",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:07.822037Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

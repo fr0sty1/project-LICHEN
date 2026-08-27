@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-85cd",
+  "title": "ForwardingBuffer.clear() violates B.2.5 No Silent Drops",
+  "description": "**File:** src/lichen/link/forwarding_buffer.py:357-366\n\n**Bug:** The clear() method removes all packets without calling the on_drop callback. This violates spec appendix-bufferbloat.md section 5 'No Silent Drops' which requires explicit signals when packets are dropped.\n\n**Contrast with tx_queue.py:** The peer implementation TxQueue.clear() correctly calls signal_all_pending(False) before clearing, ensuring callers are notified (lines 476-486).\n\n**Impact:** If clear() is called during operation (not just shutdown), upstream mesh sources will not receive NACKs and will not know to back off. Currently latent (ForwardingBuffer.clear() is not called in production code) but the API is public.\n\n**Fix:** Before clearing, iterate through all packets and call self._on_drop(entry.source_iid, entry.data, DropReason.EVICTED) for each, similar to how expire_old() handles expired packets.\n\n**Severity:** P2 - spec compliance gap, latent bug",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T17:41:04.976054Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:41:04.976054Z",
+  "labels": [
+    "codereview",
+    "p2",
+    "spec-compliance"
+  ]
+}

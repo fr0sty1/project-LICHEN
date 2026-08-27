@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-w63l",
+  "title": "tx_queue.py:414 - pop() does not update transmission statistics (packets_transmitted, latency) unlike _remove_first() and complete(success=True), causing incorrect stats if pop() is used for actual transmissions",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:19:07.002962Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T17:19:07.002962Z",
+  "labels": [
+    "bug"
+  ]
+}

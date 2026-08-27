@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-k1da",
+  "title": "Client apply_dao_ack does not bind ACK operation to outstanding request",
+  "description": "File: rust/lichen-rpl/src/address_assignment.rs\nPerspective: correctness / security\n\nShortAddressAssignmentClient stores only eui64, assigned_short, last_ack bytes, and last_sequence. apply_dao_ack() checks expected_sequence, option EUI, raw-wire conflict, and status==Success, then writes result.assigned_short.\n\nIt does not record the outstanding operation. A Success RELEASE ACK with the expected sequence (assigned_short=None) is accepted and clears the installed short address even if the node sent ALLOCATE. A later genuine ALLOCATE ACK for that sequence then hits conflicting DAO-ACK for one sequence and the node is left unassigned.\n\nFix: remember the outstanding ALLOCATE/RELEASE with the expected sequence, and reject an ACK whose operation (or Success-with-address vs Success-without) does not match that request.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:26.754612Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:23:26.754612Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-k1da",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.8.1.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:27.11141Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

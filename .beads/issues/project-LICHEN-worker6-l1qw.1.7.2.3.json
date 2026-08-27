@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.1.7.2.3",
   "title": "Zephyr: epoch persistence",
   "description": "Epoch persistence in Zephyr. DONE - epoch_persist.c",
+  "notes": "2026-08-27 leaf audit found the existing DONE implementation is not spec-compliant. spec/02-physical-link.md section 4.4 and test/vectors/epoch_rollover.json require ordinary unsigned ordering, forbid 255-to-0 wrap, require cold boot 128..255, and require fail-closed behavior when freshness cannot be established. epoch_persist.c instead explicitly permits 255-to-0, treats missing/corrupt/read-failed state as persisted zero then chooses epoch 1, ignores settings_load_subtree errors, mutates s_boot_epoch and s_advanced before confirming the save, and returns an epoch even when persistence fails. Its uint8_t lichen_link_epoch_advance_for_boot(void) API cannot propagate read/write/corruption/exhaustion errors; l2/lichen_l2_init.c also ignores lichen_link_set_epoch return. Focused tests encode the obsolete wrap behavior and have no torn/corrupt/failure cases. A correct bounded repair requires an error-returning API plus changes to link_ctx.h and l2/lichen_l2_init.c, beyond the assigned clean target set of epoch_persist.c and persistence tests. No files modified; claim released for broader coordinated repair.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:40.420718Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:40.420718Z",
+  "updated_at": "2026-08-27T17:18:42.526955Z",
+  "started_at": "2026-08-27T17:16:59.051185Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.1.7.2.3",

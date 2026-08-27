@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-41uk",
+  "title": "Shift-UB comment overstates: ILP32 uint32_t is unsigned int so old shift was defined-wrapping not UB",
+  "description": "oscore_protect.c:95-99 wording: promotion-to-signed UB only where int covers all uint32 values; ILP32 Zephyr targets have uint32_t==unsigned int so old idiom was defined wrapping. uint64 fix bit-identical either way. Reword comment for precision.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:14:42.974313Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:40:03.77352Z",
+  "started_at": "2026-08-27T16:15:38.694639Z",
+  "closed_at": "2026-08-27T16:40:03.77352Z",
+  "close_reason": "Reworded the shift comment in response_replay_update (oscore_protect.c) for ABI precision. New wording states: the shift is computed in uint64_t because the integer promotion of a uint32_t lvalue is ABI-dependent - on ILP32 targets (uint32_t == unsigned int, all current Zephyr targets here) (*window \u003c\u003c shift) was already defined wrapping arithmetic, while on an ABI whose int is wider than 32 bits the promoted type is signed int and a shift count \u003e= 32 would be UB; the uint64_t intermediate is defined wrapping on every ABI and produces identical bit patterns. This replaces the previous overstatement ('promotes to signed int, formally UB once bit 31 participates'), which was wrong for ILP32 where promotion is a no-op to unsigned int. Code unchanged (the uint64_t fix was already in place and bit-identical either way). Verified: clang -fsyntax-only -Wall -Wextra on all 7 oscore TUs at PT_MAX 256/2048 x MAX_CONTEXTS 8/32 clean; harness windows exercise shift\u003c32 and \u003e=32 branches (rr/margin harness, ASan+UBSan clean).",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-41uk",
+      "depends_on_id": "project-LICHEN-worker6-0cgc",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T16:14:43.405034Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-lbrq",
+  "title": "KeyError race in AiocoapResourceTransport backoff cleanup",
+  "description": "In ip_coap.py, both request() (line 178) and observe() (line 251) delete expired backoff entries using 'del self._peer_backoffs[peer]'. Under concurrent requests to the same peer after backoff expires, multiple coroutines can read the same expired entry via .get(), both determine remaining \u003c= 0, and both attempt deletion. The second delete raises KeyError.\n\nFix: Replace 'del self._peer_backoffs[peer]' with 'self._peer_backoffs.pop(peer, None)' at both locations.\n\nFile: src/lichen/client/ip_coap.py\nLines: 178, 251",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T17:20:05.517093Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:43:18.857652Z",
+  "closed_at": "2026-08-27T17:43:18.857652Z",
+  "close_reason": "Closed"
+}

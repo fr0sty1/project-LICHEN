@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-ex47",
+  "title": "DeadDrop OSCORE POST gate treats option presence as auth",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py\nPerspective: security (also correctness)\n\nSpec 18.9: writes MUST be OSCORE-protected; unprotected POST returns 4.01\n{\"error\":\"oscore_required\"}. DeadDropResource.render_post uses\n_request_context_id() as that gate.\n\n_request_context_id() (lines 57-71) reads request.oscore_context,\nrequest.oscore_context_id, and request.oscore_protected. The live CoAP\nstack never sets those attributes (only tests set oscore_context_id).\nIt then treats request.opt.oscore is not None as authenticated and\nreturns context id \"default\".\n\nEvidence: POST with valid SenML and request.opt.oscore=b\"\\x00\" (no\nOSCORE unprotect) returns 2.01 Created and stores the drop under\n\"default\". An empty OSCORE option also passes.\n\nImpact:\n- Unprotected clients satisfy the MUST-protect rule by attaching an\n  OSCORE option to plaintext.\n- All such writes share context \"default\", so they share the 6/hour\n  bucket and can GET private/group drops stored under \"default\".\n- Per-context rate limits and private-drop ACL cannot work on the\n  live stack because real OSCORE identities are never bound.\n\nContrast: HandoffResource documents that object_security is set only\nafter successful unprotect.\n\nAcceptance: unprotected POST with a spoofed OSCORE option still\nreturns 4.01; only a request that actually unprotected under a\ndistinct OSCORE context is allowed, rate-limited, and used as the\nprivate/group ACL key.\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:04.467472Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:34:29.363478Z",
+  "started_at": "2026-08-26T17:26:25.538188Z",
+  "closed_at": "2026-08-26T17:34:29.363478Z",
+  "close_reason": "DeadDrop POST/GET OSCORE gate no longer treats opt.oscore or oscore_protected as auth. Only a non-empty identity bound after unprotect (request.oscore_context / oscore_context_id or the same on request.remote) is accepted as the rate-limit and private/group ACL key. Spoofed option (b'\\x00' and empty), boolean flags, and empty ids return 4.01 oscore_required; tests in test_deaddrop_resource.py pass (42).",
+  "labels": [
+    "python",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ex47",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.22.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:04.823412Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

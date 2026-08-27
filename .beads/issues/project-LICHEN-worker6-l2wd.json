@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-worker6-l2wd",
+  "title": "accept_authenticated_schc_packet ignores DIO admission counter floor",
+  "description": "File: rust/lichen-schc/src/link.rs\n\nPython LinkLayer.accept_authenticated_schc_packet rejects ingress when logical_counter(epoch, seqnum) \u003c= the DIO issuance admitted_counter (test_peer_policy_gates_unfragmented_ingress_and_egress, match 'predates'). AuthenticatedFragmentReceiver::receive_frame in this crate already rejects counter \u003c= admission_floor.\n\naccept_authenticated_schc_packet never compares the data frame counter to peer.authenticated_counter(). Link replay can still accept an in-window older seqnum that was not yet seen (DIO at N, delayed data at N-k). That packet is then decompressed under the newer peer SCHC policy.\n\nCompute the frame counter the same way fragment.rs does ((epoch as u32) \u003c\u003c 16) | seqnum and reject when counter \u003c= peer.authenticated_counter() as InvalidPeerEvidence / invalid packet, matching Python.",
+  "acceptance_criteria": "A replay-accepted SCHC data frame whose logical counter is less than or equal to the peer DIO authenticated_counter is rejected. A frame with a strictly greater counter still decompresses. Behavior matches Python predates-policy rejection and the fragment receiver admission floor. Test covers seqnum == floor and seqnum == floor+1 on the same admitted peer context.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:20:54.294049Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:46:47.525684Z",
+  "started_at": "2026-08-26T17:41:58.480656Z",
+  "closed_at": "2026-08-26T17:46:47.525684Z",
+  "close_reason": "Reject unfragmented SCHC data when logical counter \u003c= DIO authenticated_counter. Test covers seqnum == floor, in-window floor-1, and floor+1. cargo test -p lichen-schc --features std --test link_layer_integration 5 passed.",
+  "labels": [
+    "rust",
+    "schc",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l2wd",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.7.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:20:54.658633Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

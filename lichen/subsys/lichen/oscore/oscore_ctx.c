@@ -172,8 +172,8 @@ int oscore_init(void)
 	return 0;
 }
 
-void oscore_nvm_register_callbacks(oscore_nvm_write_cb write_cb,
-				   oscore_nvm_read_cb read_cb)
+void oscore_nvm_register_callbacks(oscore_nvm_write_cb _Nullable write_cb,
+				   oscore_nvm_read_cb _Nullable read_cb)
 {
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 	if (s_nvm_write_cb != write_cb || s_nvm_read_cb != read_cb) {
@@ -208,11 +208,10 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 	}
 
 	/*
-	 * RFC 8613 Section 5.2: The nonce format reserves 6 bytes for
-	 * the sender ID in the nonce computation. IDs of 7 bytes are
-	 * allowed but the 7th byte overlaps with the ID length field,
-	 * which is handled correctly by compute_nonce. IDs > 7 bytes
-	 * would overflow the nonce format.
+	 * Nonce layout per RFC 8613 Section 5.2 / Figure 8: S flag at byte 0,
+	 * Sender/Recipient ID right-aligned into byte 7, PIV in bytes 8..12;
+	 * implemented by compute_nonce() and verified against Python/Rust
+	 * cross-implementation test vectors.
 	 */
 	if (sender_id_len > 7 || recipient_id_len > 7) {
 		LOG_ERR("sender/recipient ID exceeds RFC 8613 max (7 bytes)");
@@ -358,6 +357,12 @@ void oscore_ctx_free(struct oscore_ctx *ctx)
 	ctx_idx = ctx_get_index(ctx);
 	if (ctx_idx >= 0) {
 		replay_clear_pending_context_locked(ctx_idx);
+		/*
+		 * SECURITY: Sender_seq is no longer valid once the context
+		 * is freed. Prevents a stale/recycled slot from passing the
+		 * initialization check in oscore_protect_request().
+		 */
+		s_seq_initialized[ctx_idx] = false;
 	}
 
 	crypto_wipe(ctx, sizeof(*ctx));
@@ -523,24 +528,35 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint64_t sender_seq)
 	}
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
 	idx = ctx_get_index(ctx);
-	if (idx >= 0 && ctx->active) {
-		/*
-		 * SECURITY: Verify context identity hasn't changed while mutex
-		 * was released. Protects against slot reuse by another peer.
-		 */
-		bool identity_matches = false;
-		if (had_peer_eui64) {
-			identity_matches = ctx->has_peer_eui64 &&
-				memcmp(ctx->peer_eui64, eui64_copy, OSCORE_EUI64_LEN) == 0;
-		} else {
-			identity_matches = !ctx->has_peer_eui64;
-		}
-		if (identity_matches) {
-			ctx->sender_seq = sender_seq;
-			s_seq_initialized[idx] = true;
-		}
+	if (idx < 0 || !ctx->active) {
+		k_mutex_unlock(&s_ctx_mutex);
+		LOG_ERR("Context released before sender_seq commit");
+		return OSCORE_ERR_NO_CONTEXT;
 	}
+
+	/*
+	 * SECURITY: Verify context identity hasn't changed while mutex
+	 * was released. Protects against slot reuse by another peer.
+	 * Caller MUST see the failure instead of a silent OSCORE_OK.
+	 */
+	bool identity_matches = false;
+	if (had_peer_eui64) {
+		identity_matches = ctx->has_peer_eui64 &&
+			memcmp(ctx->peer_eui64, eui64_copy, OSCORE_EUI64_LEN) == 0;
+	} else {
+		identity_matches = !ctx->has_peer_eui64;
+	}
+	if (!identity_matches) {
+		k_mutex_unlock(&s_ctx_mutex);
+		LOG_ERR("Context slot recycled during sender_seq update");
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+
+	ctx->sender_seq = sender_seq;
+	s_seq_initialized[idx] = true;
+
 	k_mutex_unlock(&s_ctx_mutex);
 
 	LOG_DBG("Set sender_seq to %llu for nonce persistence", (unsigned long long)sender_seq);
@@ -572,7 +588,8 @@ int oscore_ctx_get_seq_remaining(const struct oscore_ctx *ctx, uint64_t *remaini
 	}
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
-	*remaining = OSCORE_SSN_MAX - ctx->sender_seq;
+	*remaining = ctx->sender_seq > OSCORE_SSN_MAX ?
+		     0 : OSCORE_SSN_MAX - ctx->sender_seq + 1;
 	k_mutex_unlock(&s_ctx_mutex);
 
 	return OSCORE_OK;
@@ -588,7 +605,8 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *ctx,
 	}
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
-	remaining = OSCORE_SSN_MAX - ctx->sender_seq;
+	remaining = ctx->sender_seq > OSCORE_SSN_MAX ?
+		    0 : OSCORE_SSN_MAX - ctx->sender_seq + 1;
 	k_mutex_unlock(&s_ctx_mutex);
 
 	enum oscore_freshness result;
@@ -626,10 +644,13 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *ctx,
 int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 {
 	int ret;
+	int idx;
 	oscore_nvm_write_cb write_cb;
 	uint64_t ssn;
+	uint64_t durable;
 	uint8_t eui64_copy[OSCORE_EUI64_LEN];
 	const uint8_t *eui64 = NULL;
+	bool had_peer_eui64;
 
 	if (ctx == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
@@ -637,9 +658,20 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 
+	/*
+	 * The in-RAM advance below requires a valid, stable slot, so the
+	 * context must be resolvable before anything is written.
+	 */
+	idx = ctx_get_index(ctx);
+	if (idx < 0 || !ctx->active) {
+		k_mutex_unlock(&s_ctx_mutex);
+		return OSCORE_ERR_NO_CONTEXT;
+	}
+
 	write_cb = s_nvm_write_cb;
 	ssn = ctx->sender_seq;
-	if (ctx->has_peer_eui64) {
+	had_peer_eui64 = ctx->has_peer_eui64;
+	if (had_peer_eui64) {
 		memcpy(eui64_copy, ctx->peer_eui64, OSCORE_EUI64_LEN);
 		eui64 = eui64_copy;
 	}
@@ -647,18 +679,64 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 	k_mutex_unlock(&s_ctx_mutex);
 
 	if (write_cb == NULL) {
-		/* No callback registered, success (no-op) */
+		/*
+		 * No callback registered, success (no-op). Nothing is
+		 * durable, so no margin is skipped and the in-RAM SSN is
+		 * untouched; reboot safety then rests entirely on the
+		 * mandatory oscore_ctx_set_sender_seq() call after every
+		 * reboot.
+		 */
 		return OSCORE_OK;
 	}
 
+	/*
+	 * SECURITY: the durable value skips OSCORE_SSN_SAFETY_MARGIN
+	 * sequences beyond the next unused one. A reboot that reloads this
+	 * value resumes STRICTLY ABOVE every sequence this boot could have
+	 * transmitted, so no (key, nonce) pair is reused (RFC 8613 Section
+	 * 7.2, Appendix D.4); the skipped sequences are permanently unused.
+	 * The cap is the exhaustion sentinel OSCORE_SSN_MAX + 1, not
+	 * OSCORE_SSN_MAX: if the terminal five-byte PIV itself was ever
+	 * transmitted, only a reloaded value strictly above it preserves the
+	 * guarantee, and a reloaded sentinel makes protect_request() refuse
+	 * with OSCORE_ERR_SEQ_EXHAUSTED (key rotation required).
+	 */
+	durable = ssn > OSCORE_SSN_MAX - OSCORE_SSN_SAFETY_MARGIN ?
+		  OSCORE_SSN_MAX + 1 : ssn + OSCORE_SSN_SAFETY_MARGIN;
+
 	/* Retry logic (3 attempts with backoff) on NVM failure. Critical for
 	 * security: SSN persistence prevents nonce reuse on reboot (RFC 8613
-	 * Sections 7.2.1, 7.5). Failure after retries requires caller to bump
-	 * SSN safely before continuing.
+	 * Sections 7.2.1, 7.5).
 	 */
 	for (int attempt = 0; attempt < 3; attempt++) {
-		ret = write_cb(eui64, ssn);
+		ret = write_cb(eui64, durable);
 		if (ret == 0) {
+			k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+			/*
+			 * Advance the in-RAM SSN only for the same, still-live
+			 * slot the durable value was computed for, and only
+			 * forward (a concurrent reservation may already have
+			 * progressed further). On a recycled slot the NVM
+			 * value stays valid for the recorded peer and the
+			 * caller sees the failure instead of a stale advance.
+			 */
+			idx = ctx_get_index(ctx);
+			bool identity_matches = idx >= 0 && ctx->active &&
+				ctx->has_peer_eui64 == had_peer_eui64 &&
+				(!had_peer_eui64 ||
+				 memcmp(ctx->peer_eui64, eui64_copy,
+					OSCORE_EUI64_LEN) == 0);
+			if (!identity_matches) {
+				k_mutex_unlock(&s_ctx_mutex);
+				LOG_ERR("Context slot recycled during SSN persist");
+				return OSCORE_ERR_NO_CONTEXT;
+			}
+			if (ctx->sender_seq < durable) {
+				ctx->sender_seq = durable;
+			}
+
+			k_mutex_unlock(&s_ctx_mutex);
 			return OSCORE_OK;
 		}
 		if (attempt < 2) {
@@ -668,6 +746,11 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 		}
 	}
 
+	/*
+	 * On NVM failure the in-RAM SSN is left unchanged so the caller's
+	 * reservation rollback (protect paths) or explicit recovery decision
+	 * governs, as before the margin existed.
+	 */
 	LOG_ERR("Failed to persist SSN to NVM after 3 attempts: %d", ret);
 	return OSCORE_ERR_NVM_FAILED;
 }
@@ -682,6 +765,7 @@ int oscore_ctx_get(const uint8_t *recipient_id,
 	if (ctx_out == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
+	*ctx_out = NULL;
 
 	if (recipient_id == NULL && recipient_id_len > 0) {
 		return OSCORE_ERR_INVALID_PARAM;

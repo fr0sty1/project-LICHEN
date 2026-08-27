@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-2rp8",
+  "title": "DECISION: SOS int-token coordinates accepted at Python app layer, rejected by C/Rust wire codec",
+  "description": "RR3-SOS-1: python emergency.py CheckInResource accepts integer lat/lon (SenML permits numeric ints; LCI app-layer convenience, documented + tested) while C/Rust wire codecs require float tokens. Orchestrator ruling: legitimate layering divergence — AGENTS.md identical-output mandate applies to canonical test vectors (all float tokens, pass on all three impls), not to app-resource input convenience. Divergence documented in emergency.py docstring. Reopen if spec/12-apps SOS section later defines wire-level int admission.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:14:54.925226Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:14:57.077726Z",
+  "closed_at": "2026-08-27T16:14:57.077726Z",
+  "close_reason": "Ruled intentional layering: app-resource int acceptance is SenML-conformant convenience; wire codecs stay float-only; canonical vectors float-only and triple-green. Documented in emergency.py docstring.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2rp8",
+      "depends_on_id": "project-LICHEN-worker6-97c9",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T16:14:55.39996Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

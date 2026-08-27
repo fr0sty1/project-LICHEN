@@ -1,17 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.6.4",
   "title": "SRH insertion at root",
-  "status": "in_progress",
+  "notes": "Implemented complete RFC 6554 root SRH insertion across Python and Rust. Generation now requires a nonempty \u003c=8-hop strict unicast path ending at the packet destination; rejects duplicates, source-in-path, multicast, existing Routing headers, and unusable Hop Limit. Python and Rust preserve Hop-by-Hop as the first extension and insert SRH after it; direct-neighbor routes remain byte-identical. Rust raw insertion now validates IPv6 version/declared length, enforces profile limits consistently, preserves extension ordering, and rejects malformed/existing routing chains. Added dedicated closed JSON Schema and independent canonical Python/Rust vectors for byte-exact plain, direct, Hop-by-Hop, and eight negative cases. Corrected the gateway's invalid self-hop SRH fixture to use a real relay after confirming gateway.rs was no longer actively owned. Green: Python RPL/relay 705 passed (10 deselected, one unrelated deprecation warning); focused Python 58 passed; full Rust lichen-rpl 194 unit plus integrations/docs green; full lichen-node 242 passed/1 ignored plus all integrations/docs green; full gateway 192 passed/1 ignored plus bin/integrations/docs green; focused gateway SRH green; no_std checks for lichen-rpl/node green; Ruff and mypy green; lichen-rpl/node Clippy -D warnings green; gateway Clippy --no-deps -D warnings green; exact Rust fmt and diff-check green. Full dependency-linting gateway Clippy was blocked only by a concurrent unrelated lichen-oscore too_many_arguments warning; gateway's own all-target lint passed.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:34.812025Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T16:17:03.800291Z",
+  "updated_at": "2026-08-26T16:30:57.636171Z",
   "started_at": "2026-08-26T16:17:03.800291Z",
-  "lease_expires_at": "2026-08-26T16:22:03.800291Z",
-  "heartbeat_at": "2026-08-26T16:17:03.800291Z",
+  "closed_at": "2026-08-26T16:30:57.636171Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.6.4",

@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.7.3",
   "title": "DODAG Configuration option (type 4) - all impls",
+  "notes": "2026-08-26 bounded three-implementation audit: NOT ready to claim/close. Python has no typed DODAG Configuration codec at all: python/src/lichen/rpl/messages.py carries type 4 only as generic RplOption bytes, and python/tests/rpl/test_messages.py:267 explicitly round-trips an invalid four-byte payload rather than enforcing RFC 6550's exact 14-byte data layout. Rust has typed DodagConfig in rust/lichen-rpl/src/message.rs:586-672 and rejects nonzero reserved data[10], preserving PCS/A/gateway flags. Zephyr C has a typed 14-byte parser/writer in lichen/subsys/lichen/rpl/messages.c:264-327, but its struct omits PCS and A, parse ignores them, and parse accepts nonzero reserved data[10], so its semantic behavior differs from Rust. No DODAG Configuration case exists in canonical test/vectors/rpl_messages.json, no separate shared type-4 vector exists, and lichen/tests/rpl_dodag tests gateway behavior with manually constructed structs rather than byte-exact cross-language codec vectors. rust/lichen-rpl/src/lib.rs is currently shared dirty and excluded C/Zephyr changes are required, so isolated Python/Rust edits cannot complete acceptance. Leave open/unclaimed until one schema-backed canonical positive/negative corpus covers exact length, every field/flag, reserved bits/byte, bounds/trailing bytes and is consumed by production Python/Rust/C codecs. No files modified or tests run because source/vector inspection already demonstrates incompatible/missing consumers.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:50.709498Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:50.709498Z",
+  "updated_at": "2026-08-26T16:40:09.778879Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.7.3",

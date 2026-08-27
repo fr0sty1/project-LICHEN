@@ -1,14 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.7.3.3",
   "title": "Zephyr: protect_response with request AAD",
-  "notes": "Already implemented",
-  "status": "open",
+  "notes": "Implemented request-bound response protection while preserving concurrent 64-bit PIV and active-slot/NVM work. Existing oscore_protect_response now emits RFC 8613 no-PIV responses and rejects duplicate construction for one request correlation; new oscore_protect_response_with_piv emits fresh response PIVs, binds nonce to responder KID/context and AAD to original request KID/PIV, persists sender sequence, and rolls back without publishing output on capacity/crypto/NVM/context-recycle failure. Added exact RFC C7/C8 vectors, round trips, replay/correlation, and NVM rollback coverage. Isolated Zephyr qemu_x86 build compiled/linked. Response-focused QEMU tests all pass: C7, C8 exact bytes, cross-response/fresh-PIV replay, malformed correlation, rollback. Broad image retains three unrelated pre-existing failures: stale NVM retry count, peer-EUI lookup expectation, and request-only roundtrip. cppcheck scoped C sources and git diff --check pass. Python OSCORE cross parity 12 passed; Rust cross_parity 4 passed/1 ignored generator helper. Concurrent OSCORE active-slot/NVM hunks were preserved.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:07.437066Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:07.437066Z",
+  "updated_at": "2026-08-26T20:49:40.185222Z",
+  "started_at": "2026-08-26T19:08:59.07349Z",
+  "closed_at": "2026-08-26T20:49:40.185222Z",
+  "close_reason": "Request-AAD response protection complete with RFC C7/C8, replay, rollback, Zephyr compile/QEMU response tests, C static analysis, and Python/Rust parity green.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.3.3",

@@ -53,6 +53,13 @@ def test_roster_authority() -> None:
     assert roster.can_invite("owner")
     assert roster.can_invite("admin")
     assert not roster.can_invite("member")
+    # spec 18.8.2 L1129-1143: promotion/demotion is reserved to the owner,
+    # so an admin may mint only member-role invitations.
+    assert roster.can_invite("owner", requested_role="admin")
+    assert roster.can_invite("owner", requested_role="member")
+    assert not roster.can_invite("admin", requested_role="admin")
+    assert roster.can_invite("admin", requested_role="member")
+    assert not roster.can_invite("member", requested_role="member")
     assert roster.can_remove("owner", target="member")
     assert not roster.can_remove("admin", target="owner")
     assert not roster.can_remove("admin", target="admin")

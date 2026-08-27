@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-27ew",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/link/time_sync.c:334 lichen_time_sync_update_from_parent incorrectly sets child stratum to NO_SYNC (0) when parent has stratum 1 (CONSERVATIVE). The child should remain synced at stratum 1, not become NO_SYNC which prevents establishing a valid wall clock.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T15:09:05.341967Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T15:09:05.341967Z",
+  "updated_at": "2026-08-26T17:51:43.705908Z",
+  "started_at": "2026-08-26T17:47:20.498716Z",
+  "closed_at": "2026-08-26T17:51:43.705908Z",
+  "close_reason": "Child stratum now floors at LICHEN_TIME_STRATUM_CONSERVATIVE instead of 0: parent CONSERVATIVE(1) yields child stratum 1 (stays synced), parents 2..4 degrade one hop to 1..3. Verified via clang -fsyntax-only (-Wall -Wextra -Werror).",
   "labels": [
     "codereview",
     "wave-fix"

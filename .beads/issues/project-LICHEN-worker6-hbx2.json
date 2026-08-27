@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-hbx2",
+  "title": "Invitation consumption ledger memory-only: restart+identical-name recreation enables replay against fresh epochs",
+  "description": "groups_collection.py consumed_invitations/invitations/retired_epochs volatile dicts, no persistence module-wide. Post-restart revoke-and-burn markers vanish; owner recreating same-named group (deterministic group_id from name) lets adversary re-record + re-spend still-valid signed invitation against new epoch keys. Mechanism confirmed; external restart+recreate precondition. Decision needed for owner: persist ledgers alongside group records or document service lifetime trust boundary.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:02:12.744482Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T21:02:12.744482Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-hbx2",
+      "depends_on_id": "project-LICHEN-worker6-4u1a",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T21:02:13.145982Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

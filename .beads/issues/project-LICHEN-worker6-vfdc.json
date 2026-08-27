@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-vfdc",
+  "title": "POST /groups ignores creator identity and hands out group keys",
+  "description": "File: python/src/lichen/coap/resources/groups_collection.py\n\nspec/12-apps.md 18.8.2 Group Creation: POST coap://[creator-node]/groups. Creator automatically becomes owner. Encrypted create returns master_secret only on that creation response.\n\n_create (191-238):\n- encrypted=True only checks _pairwise_oscore_identity(request) is not None\n- unencrypted=True/default has no OSCORE check\n- record[\\\"owner\\\"] and record[\\\"members\\\"] are always self.owner\n- the authenticated peer is not recorded and is not compared to self.owner\n- encrypted 2.01 still includes master_secret\n\ntest_encrypted_create_pairwise_oscore_returns_master_secret sets oscore_context_id to \\\"edhoc-pairwise\\\" while owner is \\\"0200::1111\\\" and still expects CREATED plus master_secret. test_groups_create_and_list POSTs unencrypted groups with no OSCORE from a mesh client.\n\nConsequence: any EDHOC peer can mint an encrypted group attributed to this node and receive the group OSCORE master_secret without being a member. Any mesh peer can mint unencrypted groups under the victim owner identity (DoS/cap tracked separately as worker6-bfzz). a594 closed the plaintext-key case; this is the remaining creator-authorization hole.",
+  "acceptance_criteria": "Encrypted POST /groups 2.01 only when the pairwise OSCORE identity is the collection owner (or a documented LCI principal). That identity becomes owner and is the only member at create. Any other pairwise peer gets 4.03 and no master_secret. Unencrypted POST is not mesh-open: same owner bind or 4.01. Tests: non-owner pairwise encrypted create has no key material and does not insert a group; owner pairwise still creates.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:14:36.265342Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T19:04:24.512882Z",
+  "started_at": "2026-08-26T19:02:10.626513Z",
+  "closed_at": "2026-08-26T19:04:24.512882Z",
+  "close_reason": "POST /groups now requires one unambiguous live pairwise OSCORE identity matching the configured owner for encrypted and unencrypted creation. The authenticated creator is the sole initial member; non-owner, absent, spoofed, group, and conflicting contexts fail before mutation or key disclosure. Creation is serialized and entropy failures return 5.00 without state, permitting retry. Full group/OSCORE tests, Ruff, and focused mypy passed.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-vfdc",
+      "depends_on_id": "project-LICHEN-worker6-a594",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:14:37.203754Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

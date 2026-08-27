@@ -32,16 +32,25 @@ Undrivable cases (no Python enforcement surface; not fabricated):
 
 - ``sos_type_validation`` unknown-type handling ("reject_or_log_unknown"):
   SosResource deliberately tolerates non-"sos" type values.
-- ``sos_lat_lon_range`` out-of-range handling ("clamp_or_reject"): no
-  range check exists; CheckInResource validates finiteness only.
 - ``coap_transport`` "prefer_non" CON/NON selection policy and
   "gateway_translation" external-leg strings: prose policy with no code
   surface; only the port membership is machine-checkable.
+
+Rejection contract coverage:
+
+- The six negative ``sos_cbor.json`` vectors carry machine-drivable
+  ``cbor_hex`` now and are driven through :class:`CheckInResource` POST,
+  whose coordinate rules mirror the C decoder contract (lat [-90, 90],
+  lon [-180, 180] inclusive; non-finite rejected; lat/lon all-or-none).
+  The four non-finite-coordinate vectors have no ``cbor_payload`` because
+  NaN/Infinity are not representable in JSON; their raw CBOR structure is
+  asserted directly instead of through payload equality.
 """
 
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import AsyncIterator
 from ipaddress import IPv6Address
 from pathlib import Path
@@ -75,7 +84,7 @@ from lichen.coap.params import (
     congestion_service_unavailable,
 )
 from lichen.coap.resources import StaticNodeInfo
-from lichen.coap.resources.emergency import SosResource
+from lichen.coap.resources.emergency import CheckInResource, SosResource
 from lichen.coap.resources.node_resources import NeighborsResource
 from lichen.coap.sos_origin import (
     canonicalize_sos_payload,
@@ -276,31 +285,90 @@ def _sos_payload_cases() -> list[tuple[str, dict]]:
     return [(name, vector) for name, vector in _cases("sos_cbor.json") if "cbor_hex" in vector]
 
 
+def _is_rejection_case(vector: dict) -> bool:
+    return vector.get("expected", {}).get("decode_success") is False
+
+
 @pytest.mark.parametrize("name,vector", _sos_payload_cases())
 def test_sos_cbor_wire_contract(name: str, vector: dict) -> None:
     wire = bytes.fromhex(vector["cbor_hex"])
-    payload = vector["cbor_payload"]
     assert len(wire) == vector["cbor_length"], name
     decoded = cbor2.loads(wire)
-    assert decoded == payload, name
-    for field in vector["expected"].get("fields_present", []):
-        assert field in decoded, f"{name}: missing {field}"
-    for field in vector["expected"].get("fields_absent", []):
-        assert field not in decoded, f"{name}: unexpected {field}"
-    assert cbor2.dumps(payload) == wire, f"re-encode drift: {name}"
-    if vector["expected"].get("lat_negative") is True:
-        assert decoded["lat"] < 0
+    if "cbor_payload" in vector:
+        # Payload equality is raw-CBOR structure, valid for both accepted
+        # and rejected vectors; application-level rejection is covered by
+        # test_sos_cbor_negative_vectors_rejected.
+        payload = vector["cbor_payload"]
+        assert decoded == payload, name
+        assert cbor2.dumps(payload) == wire, f"re-encode drift: {name}"
+    if not _is_rejection_case(vector):
+        for field in vector["expected"].get("fields_present", []):
+            assert field in decoded, f"{name}: missing {field}"
+        for field in vector["expected"].get("fields_absent", []):
+            assert field not in decoded, f"{name}: unexpected {field}"
+        if vector["expected"].get("lat_negative") is True:
+            assert decoded["lat"] < 0
+    else:
+        error = vector["expected"]["error"]
+        assert isinstance(decoded, dict), name
+        lat = decoded.get("lat")
+        lon = decoded.get("lon")
+        if error == "non_finite_coordinate":
+            bad_lat = isinstance(lat, float) and not math.isfinite(lat)
+            bad_lon = isinstance(lon, float) and not math.isfinite(lon)
+            assert bad_lat != bad_lon, f"{name}: exactly one non-finite coordinate expected"
+            assert lat is not None and lon is not None, f"{name}: paired map with one defect"
+        elif error == "coordinate_out_of_range":
+            bad_lat = lat is not None and not -90 <= lat <= 90
+            bad_lon = lon is not None and not -180 <= lon <= 180
+            assert bad_lat != bad_lon, f"{name}: exactly one out-of-range coordinate expected"
+        else:  # pragma: no cover - guards against silent schema drift
+            pytest.fail(f"{name}: unexpected rejection error {error!r}")
+
+
+@pytest.mark.parametrize("name,vector", _sos_payload_cases())
+async def test_sos_cbor_negative_vectors_rejected(name: str, vector: dict) -> None:
+    """All six negative vectors are rejected by the real check-in decoder.
+
+    :class:`CheckInResource` enforces the same coordinate contract as the
+    C ``sos_alert_from_cbor`` reference: inclusive bounds, non-finite
+    rejection, all-or-none lat/lon pairing. The wire bytes from the vector
+    are decoded with cbor2 so the exact committed encoding drives the
+    implementation surface (status/node/ts defaults fill the unrelated
+    required fields).
+    """
+    if not _is_rejection_case(vector):
+        pytest.skip("positive vector")
+    wire = bytes.fromhex(vector["cbor_hex"])
+    coordinates = cbor2.loads(wire)
+    body = {
+        "node": str(coordinates.get("node", "0200111122223333")),
+        "ts": coordinates.get("ts", 1_700_000_000),
+        "status": "ok",
+    }
+    for field in ("lat", "lon"):
+        if coordinates.get(field) is not None:
+            body[field] = coordinates[field]
+    resource = CheckInResource()
+    response = await resource.render_post(Message(code=POST, payload=cbor2.dumps(body)))
+    assert response.code == BAD_REQUEST, name
+    assert not resource._checkins, name
 
 
 @pytest.mark.parametrize("name,vector", _sos_payload_cases())
 def test_sos_cbor_canonical_signing_roundtrip(name: str, vector: dict) -> None:
-    canonical = canonicalize_sos_payload(dict(vector["cbor_payload"]))
-    assert cbor2.loads(canonical) == vector["cbor_payload"]
-    assert canonicalize_sos_payload(dict(vector["cbor_payload"])) == canonical
+    payload = vector.get("cbor_payload")
+    if payload is None:
+        # Non-finite coordinates (NaN/Inf) are not representable in JSON,
+        # so these rejection vectors carry no signed-payload example.
+        pytest.skip(f"{name}: cbor_payload not representable")
+    canonical = canonicalize_sos_payload(dict(payload))
+    assert cbor2.loads(canonical) == payload
+    assert canonicalize_sos_payload(dict(payload)) == canonical
 
     privkey, pubkey = derive_keypair(bytes(range(32)))
     origin_address = IPv6Address("fe80::0200:0011:2233:4455")
-    signature = sign_sos_origin(privkey, pubkey, origin_address, 1, dict(vector["cbor_payload"]))
+    signature = sign_sos_origin(privkey, pubkey, origin_address, 1, dict(payload))
     assert verify_sos_origin(pubkey, origin_address.packed, canonical, signature)
 
     tampered = bytearray(canonical)

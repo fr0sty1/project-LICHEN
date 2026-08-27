@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-96tj",
+  "title": "Messages lack explicit body-size cap unlike deaddrop",
+  "description": "File: python/src/lichen/coap/resources/messaging.py:134-296. Exposure bounded (~1KiB max blockwise x100 entries) small; spec parity with firmware body caps may require DEADDROP-style max constant. Low urgency, decide once with firmware.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:36.049805Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:26:27.395144Z",
+  "started_at": "2026-08-26T19:06:50.883146Z",
+  "closed_at": "2026-08-26T19:26:27.395144Z",
+  "close_reason": "Added MESSAGES_MAX_BODY_SIZE = 1024 mirroring DEADDROP_MAX_DROP_SIZE pattern including public export from lichen.coap.resources (__init__ import block + __all__). Enforced twice in MessagesResource.render_post: raw len(payload) \u003e cap -\u003e 4.13 REQUEST_ENTITY_TOO_LARGE before decode (deaddrop error style), and final expanded body string \u003e cap -\u003e 4.00 BAD_REQUEST before ANY state mutation (covers canned-catalog expansion inflation). Constant aligned with blockwise-observation note (1KiB), below deaddrop's 1536. Tests: oversize CBOR {'body':'x'*4096} and raw b'x'*1025 -\u003e 4.13 with zero inbox/_sent/_next_id mutation; largest encodable under-cap body accepted using cbor2 encoder as independent oracle for exact boundary sizing; canned expansion over cap -\u003e 4.00 no mutation. Intentional test adjustment (not weakening): moved the x*4096 case out of test_post_rejects_all_cbor_resource_limit_bypasses_without_mutation into the dedicated 4.13 test with stricter code assertion, and removed its 256-item payload because busting _CBOR_MAX_ITEMS needs \u003e1024 encoded bytes which the new guard now short-circuits first; map-entry/array-entry decode limits remain covered in-list. ruff check+format clean; tests/coap/test_messages_resource.py 144 passed; tests/coap 1679 passed/1 skipped/3 xfailed; adjacent suites test_messaging_vectors+test_vector_consumers_lci+client/test_lci+test_lci_contract_docs green.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-96tj",
+      "depends_on_id": "project-LICHEN-worker6-6wrg",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:36.885167Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

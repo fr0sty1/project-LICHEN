@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-dl1g",
   "title": "python/src/lichen/ccp.py: ZeroDivisionError when num_slots=0",
   "description": "The slot_hash function performs `h % num_slots` without validating that num_slots is non-zero. Calling slot_hash with num_slots=0 raises ZeroDivisionError.\n\nFix suggestion: Add validation at function entry: `if num_slots \u003c= 0: raise ValueError(\"num_slots must be positive\")` or return a default value.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T04:13:42.109188Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T04:13:42.109188Z",
+  "updated_at": "2026-08-26T17:01:43.408455Z",
+  "closed_at": "2026-08-26T17:01:43.408455Z",
+  "close_reason": "Fixed: Added eui64 length validation to select_channel(). ZeroDivisionError in slot_hash not a bug (delegates to slot_for which validates). Out-of-bounds channel for n_channels\u003c3 is spec-compliant.",
   "labels": [
     "bug",
     "codereview"

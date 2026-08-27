@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-oi5q",
+  "title": "Incomplete memory wipe: provisioned_seed bytes not zeroed before dereference, crypto material remains in memory until GC (provisioning.py:652)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:19:22.454584Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T17:19:22.454584Z",
+  "labels": [
+    "bug"
+  ]
+}

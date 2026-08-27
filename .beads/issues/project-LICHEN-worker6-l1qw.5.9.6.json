@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.9.6",
   "title": "LRU Eviction",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:50:32.180746Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:50:32.180746Z",
+  "updated_at": "2026-08-26T16:52:28.506618Z",
+  "started_at": "2026-08-26T16:43:32.853697Z",
+  "closed_at": "2026-08-26T16:52:28.506618Z",
+  "close_reason": "Implemented deterministic bounded Rust LRU parity: successful destination/IID lookups promote entries; successful updates preserve relative recency via stable remove+append; missing/expired lookups leave order unchanged; zero/single-capacity behavior remains safe. Added canonical gradient_table.json production-consumer regression plus focused lookup/update eviction tests and updated mutable routing callers. Verified Python OrderedDict behavior and C timestamp-touch implementation read-only. Green: cargo test -p lichen-node --features std (245 passed, 1 pre-existing ignored plus all integration/doc tests), canonical vector test, clippy -D warnings, no-default-features check, package fmt; Python gradient pytest 11 passed, ruff, mypy.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.9.6",

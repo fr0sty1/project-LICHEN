@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-6oh1",
+  "title": "presence.py: No length limit on msg field (line 70). _optional_msg only checks type, not size. For constrained network protocol, unbounded message strings are DoS vector via memory/bandwidth exhaustion.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:15:54.334656Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:48:05.230293Z",
+  "closed_at": "2026-08-27T16:48:05.230293Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug"
+  ]
+}

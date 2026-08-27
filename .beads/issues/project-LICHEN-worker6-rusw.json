@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-rusw",
+  "title": "Test gate command substring filter excludes address_assignment_vectors integration suite",
+  "description": "cargo test -p lichen-rpl address_assignment matches 13 lib unit tests but 0 of tests/address_assignment_vectors.rs whose names lack substring. Full suite requires --test address_assignment_vectors (26 passed combined, exit 0 verified). Update test-gate docs/CI invocation.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:50.440878Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:53:59.418312Z",
+  "started_at": "2026-08-26T19:07:03.550592Z",
+  "closed_at": "2026-08-26T19:53:59.418312Z",
+  "close_reason": "Invocation string is documented nowhere outside .beads bookkeeping, so added module-level //! docs to tests/address_assignment_vectors.rs stating the required cargo test -p lichen-rpl --test address_assignment_vectors invocation and explaining that the substring filter skips the suite (verified: filter catches 13 lib tests + 0 of 13 vector tests; --test yields 13 passed).",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rusw",
+      "depends_on_id": "project-LICHEN-worker6-cvbb",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:51.252524Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

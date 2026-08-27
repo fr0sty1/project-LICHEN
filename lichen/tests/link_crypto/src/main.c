@@ -20,6 +20,34 @@
 
 #include <string.h>
 
+DEFINE_FFF_GLOBALS;
+FAKE_VALUE_FUNC(int, __wrap_z_impl_sys_csrand_get, void *, size_t);
+
+static int csrand_success(void *dst, size_t len)
+{
+	memset(dst, 0xa5, len);
+	return 0;
+}
+
+static void reset_csrand_fake(void)
+{
+	RESET_FAKE(__wrap_z_impl_sys_csrand_get);
+	FFF_RESET_HISTORY();
+	__wrap_z_impl_sys_csrand_get_fake.custom_fake = csrand_success;
+}
+
+static void link_crypto_before(void *fixture)
+{
+	ARG_UNUSED(fixture);
+	reset_csrand_fake();
+}
+
+static void link_crypto_after(void *fixture)
+{
+	ARG_UNUSED(fixture);
+	reset_csrand_fake();
+}
+
 static const uint8_t test_eui64[LICHEN_EUI64_LEN] = {
 	0x02, 0x00, 0x5e, 0x10, 0x20, 0x30, 0x40, 0x50
 };
@@ -343,11 +371,13 @@ ZTEST(link_crypto, test_derived_node_keys_authenticate_cross_node)
 	/* A signs; B verifies with the derived pubkey */
 	memcpy(signed_payload, payload, sizeof(payload));
 	ret = schnorr48_sign_frame(60, 0x20, 1, 42, NULL, 0U,
+				   NULL, 0U,
 				   payload, sizeof(payload),
 				   node_a.ed25519_sk, node_a.ed25519_pk,
 				   &signed_payload[sizeof(payload)]);
 	zassert_equal(ret, 0, "sign failed: %d", ret);
 	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
+				     NULL, 0U,
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
 				     SCHNORR48_SIG_LEN, pk_a);
@@ -355,6 +385,7 @@ ZTEST(link_crypto, test_derived_node_keys_authenticate_cross_node)
 
 	/* B's key must NOT verify A's signature */
 	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
+				     NULL, 0U,
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
 				     SCHNORR48_SIG_LEN, pk_b);
@@ -427,7 +458,7 @@ ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 {
 	/* Verifies hash slot calculation and timing windows against
 	 * spec/02a-coordinated-capacity.md §2a.2 + test/vectors/ccp16.json,
-	 * ccp_tdma.json (independent oracles for hash, 100ms guard, SFN wrap).
+	 * ccp_tdma.json (independent oracles for hash, 50ms guard, SFN wrap).
 	 */
 
 	/* Slot static hash vector 1: eui64=0000000000000001, epoch=0, n_slots=8 -> expected_slot=2 */
@@ -445,7 +476,16 @@ ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 		zassert_equal(13, slot, "slot_static_hash_eui2: expected_slot=13, got=%d", slot);
 	}
 
-	/* Timing windows (guard=100ms, slot_duration=250ms per spec) */
+	/* Timing windows (guard=50ms per spec/02a §2a.2 "MUST be 50", d=250ms
+	 * per LICHEN_TDMA_SLOT_MS).
+	 * Spec/02a §2a.4: data window begins at slot start and ends BEFORE
+	 * the single trailing guard: TX window is [start, start + d - g)
+	 * with no leading-edge tolerance — matches TDMAScheduler.is_tx_allowed()
+	 * (python/src/lichen/sim/tdma.py) and tdma_clock::tx_allowed (rust).
+	 * Expected values below are hand-computed from the slot parameters
+	 * as an independent oracle (offset = now - start mod 2^32, allowed iff
+	 * offset in [0, d-g) = [0, 200)), never copied from implementation
+	 * output. */
 	struct lichen_link_ctx lctx;
 	memset(&lctx, 0, sizeof(lctx));
 	memcpy(lctx.eui64, test_eui64, 8);
@@ -456,10 +496,110 @@ ZTEST(link_crypto, test_tdma_matches_ccp_tdma_vectors)
 	zassert_equal(250, tdma.slot_duration);
 	zassert_false(tdma.synced);
 	tdma.synced = true;
+
+	/* Case A: slot=4, superframe=0 -> start=4*250=1000; window [1000,1200) */
 	tdma.slot = 4;
-	zassert_true(tdma_tx_allowed(&tdma, 1070));
-	zassert_true(tdma_tx_allowed(&tdma, 990));
-	zassert_true(tdma_tx_allowed(&tdma, 1000));
+	tdma.superframe = 0;
+	zassert_true(tdma_tx_allowed(&tdma, 1070));      /* offset 70  */
+	zassert_true(tdma_tx_allowed(&tdma, 1000));      /* offset 0 (start inclusive) */
+	zassert_true(tdma_tx_allowed(&tdma, 1199));      /* offset 199 (last data ms) */
+	zassert_false(tdma_tx_allowed(&tdma, 999));      /* 1ms before start rejected */
+	zassert_false(tdma_tx_allowed(&tdma, 1200));     /* offset 200 = guard begins */
+	zassert_false(tdma_tx_allowed(&tdma, 1201));     /* inside trailing guard */
+	zassert_false(tdma_tx_allowed(&tdma, 1349));     /* offset 349: slot tail, still guarded */
+
+	/* Sentinel auto-derive with NULL context must be rejected (no write) */
+	{
+		struct lichen_tdma_ctx sent = {0};
+		zassert_equal(-EINVAL,
+			      lichen_link_set_slot(NULL, &sent, 0xff, 8, 0),
+			      "set_slot must reject sentinel 0xff with NULL ctx");
+		zassert_equal(0U, sent.slot);
+		zassert_false(sent.synced);
+	}
+
+	/* Case B: beacon advances superframe -> set_slot(sfn=1), slot=4
+	 * start = 1*8*250 + 4*250 = 3000; window [3000,3200) */
+	zassert_equal(0, lichen_link_set_slot(&lctx, &tdma, 4, 8, 1));
+	zassert_true(tdma.synced);
+	zassert_true(tdma_tx_allowed(&tdma, 3000));
+	zassert_false(tdma_tx_allowed(&tdma, 2999));
+	zassert_true(tdma_tx_allowed(&tdma, 3150));      /* offset 150: inside data window at g=50 */
+	zassert_true(tdma_tx_allowed(&tdma, 3199));      /* offset 199 (last data ms) */
+	zassert_false(tdma_tx_allowed(&tdma, 3200));     /* offset 200 = guard begins */
+
+	/* Case C: u32 clock wrap. superframe=2147483, slot=5 ->
+	 * start = 2147483*8*250 + 5*250 = 4294967250 (fits u32);
+	 * window [4294967250, 4294967450) exceeds 2^32: end wraps to 154.
+	 * offset(0)=46, offset(103)=149, offset(153)=199, offset(154)=200. */
+	zassert_equal(0, lichen_link_set_slot(&lctx, &tdma, 5, 8, 2147483U));
+	zassert_true(tdma_tx_allowed(&tdma, 4294967250U));
+	zassert_true(tdma_tx_allowed(&tdma, 4294967295U)); /* offset 45 */
+	zassert_true(tdma_tx_allowed(&tdma, 0));           /* post-wrap clock, offset 46 */
+	zassert_true(tdma_tx_allowed(&tdma, 103));         /* offset 149 */
+	zassert_true(tdma_tx_allowed(&tdma, 153));         /* offset 199: last data ms across wrap */
+	zassert_false(tdma_tx_allowed(&tdma, 154));        /* offset 200: guard resumes after wrap */
+	zassert_false(tdma_tx_allowed(&tdma, 4294967249U));/* 1ms before start */
+
+	/* Case D: first SFN whose schedule product overflows u32.
+	 * superframe=2147484, slot=5 -> true start = 2147484*8*250 + 5*250 =
+	 * 4294969250; reduced modulo 2^32 per spec §2a.2 unsigned rule:
+	 * 4294969250 - 4294967296 = 1954; window [1954, 2154).
+	 * Hand-computed offsets only, as above. */
+	zassert_equal(0, lichen_link_set_slot(&lctx, &tdma, 5, 8, 2147484U));
+	zassert_equal(2147484U, tdma.superframe);
+	zassert_true(tdma_tx_allowed(&tdma, 1954));        /* offset 0 */
+	zassert_true(tdma_tx_allowed(&tdma, 2000));        /* offset 46 */
+	zassert_true(tdma_tx_allowed(&tdma, 2153));        /* offset 199: last data ms */
+	zassert_false(tdma_tx_allowed(&tdma, 1953));       /* 1ms before start: huge offset */
+	zassert_false(tdma_tx_allowed(&tdma, 2154));       /* offset 200: guard begins */
+	zassert_false(tdma_tx_allowed(&tdma, 1000000U));   /* mid-cycle, outside window */
+
+	/* Sentinel auto-derivation MUST hash the beacon SFN argument per
+	 * ccp_sfn_wrap_slot_hash.json, not ctx->epoch:
+	 * vectors[slot_for_sfn_one]: EUI64=0102030405060708,
+	 * fnv1a32=0x2804678d, sfn=1, n=16 -> (h+1) % 16 = 14.
+	 * vectors[slot_for_wrapping_sum_before_non_power_of_two_modulus]:
+	 * sfn=0xFFFFFFFF, n=3 -> (0x2804678d+0xffffffff) & 0xffffffff = 0x2804678c
+	 * -> 0x2804678c % 3 = 2 (wrap happens BEFORE the non-power-of-two modulus).
+	 * A memset ctx carries epoch==0; epoch substitution would yield
+	 * 0x2804678d % 16 = 13 for both calls instead. */
+	{
+		static const uint8_t vec_eui[8] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+		};
+		struct lichen_link_ctx vctx;
+		struct lichen_tdma_ctx vtd;
+
+		memset(&vctx, 0, sizeof(vctx));
+		memcpy(vctx.eui64, vec_eui, sizeof(vec_eui));
+		memset(&vtd, 0, sizeof(vtd));
+
+		zassert_equal(0, lichen_link_set_slot(&vctx, &vtd, 0xff, 16, 1));
+		zassert_equal(14, vtd.slot, "sfn=1 n=16 must give slot 14");
+		zassert_equal(16, vtd.n_slots);
+		zassert_equal(1U, vtd.superframe);
+		zassert_true(vtd.synced);
+
+		zassert_equal(0, lichen_link_set_slot(&vctx, &vtd, 0xff, 3, 0xFFFFFFFFU));
+		zassert_equal(2, vtd.slot, "sfn wrap must land before %%3 modulus");
+		zassert_equal(3, vtd.n_slots);
+		zassert_equal(0xFFFFFFFFU, vtd.superframe);
+	}
+
+	/* Case F: ccp_tdma.json data_window_last_millisecond probe (the
+	 * previously-failing vector at g=100). Profile-max 2346 ms slot,
+	 * guard=50: boundary d-g = 2346-50 = 2296; data window is
+	 * [start, start+2296). Vector slot_start_ms=1000, current 3295/3296,
+	 * i.e. offsets 2295/2296 from slot start; reproduced here with
+	 * slot=4, superframe=0, d=2346 -> start=9384, probes at
+	 * 9384+2295=11679 (allowed) and 9384+2296=11680 (rejected). */
+	tdma.slot = 4;
+	tdma.superframe = 0;
+	tdma.slot_duration = 2346;
+	zassert_true(tdma_tx_allowed(&tdma, 11679U));    /* offset 2295 < 2296 */
+	zassert_false(tdma_tx_allowed(&tdma, 11680U));   /* offset 2296 = guard start */
+	tdma.slot_duration = LICHEN_TDMA_SLOT_MS;
 }
 
 ZTEST(link_crypto, test_lichen_pubkey_to_human_address_matches_node_address_vectors)
@@ -490,4 +630,5 @@ ZTEST(link_crypto, test_lichen_pubkey_to_human_address_matches_node_address_vect
 	zassert_equal(ret, -EINVAL, "small buffer should return -EINVAL");
 }
 
-ZTEST_SUITE(link_crypto, NULL, NULL, NULL, NULL, NULL);
+ZTEST_SUITE(link_crypto, NULL, NULL, link_crypto_before, link_crypto_after,
+	    NULL);

@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.2.9",
   "title": "Zephyr: Time Exceeded",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:53.576338Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:53.576338Z",
+  "updated_at": "2026-08-26T21:08:35.387771Z",
+  "started_at": "2026-08-26T19:09:11.134376Z",
+  "closed_at": "2026-08-26T21:08:35.387771Z",
+  "close_reason": "Implemented RFC 4443 Time Exceeded generation for hop-limit and fragment-reassembly codes with validated invoking IPv6 packet/source binding, extension-header inspection, error/Redirect/multicast/link-broadcast/non-unique-source/congestion suppression, zero unused field, canonical checksum/wire output, 1280-byte quote cap, and no-partial invalid/short-buffer behavior. Added shared-vector, first-fragment, suppression, malformed, boundary, standalone C, and Zephyr qemu tests. Green: qemu_x86 32/32, strict standalone C, clang-tidy, cppcheck, Python parity 6/6, Rust vector consumer 2/2, Rust no_std.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.2.9",

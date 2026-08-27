@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-mcd9",
   "title": "emergency.py: DoS via never-expiring rollcall entries",
   "description": "Lines 217-218: No range validation on ts and timeout_s. CBOR allows float('inf') for timeout_s or very large future ts values. Entries where `now - started \u003e timeout_s` is always false never get pruned by _prune_expired(). Attacker can fill MAX_ROLLCALLS=256 slots with immortal entries, blocking all legitimate rollcalls until restart.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T15:52:14.507544Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T15:52:14.507544Z",
+  "updated_at": "2026-08-26T17:01:40.819631Z",
+  "closed_at": "2026-08-26T17:01:40.819631Z",
+  "close_reason": "Duplicate of vtw7. Bug already fixed - line 399 rejects infinity, line 404 validates ranges.",
   "labels": [
     "bug",
     "codereview"

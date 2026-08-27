@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-cv2a",
+  "title": "DeadDrop unknown privacy values fail-open to public",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py\nPerspective: security\n\nSpec 18.9 / LCI UI: privacy toggles are Public, OSCORE-Paired Only, Group Only. Private/group drops require a matching bound OSCORE context or 4.03; public listing must omit them.\n\nrender_post (deaddrop.py ~523-525):\n  privacy = _senml_text(records, \"privacy\") or \"public\"\n  if privacy not in {\"public\", \"private\", \"group\"}:\n      privacy = \"public\"\n\nUnknown or non-canonical values become public. add_drop is slightly different (unknown keeps the caller default) but the CoAP path is fail-open.\n\nEvidence: POST pack() of n=privacy vs=\"Private\" or vs=\"oscore-paired\" or vs=\"restricted\" stores privacy=\"public\". Unauthenticated GET /deaddrop includes the payload; GET /deaddrop/{id} returns 2.05 and the body instead of 4.03.\n\nImpact: a typo or a client using the UI label instead of the token publishes a drop that the sender marked as restricted. Confidentiality failure, not just a parse nit.\n\nOracle: spec 18.9 private/group -\u003e 4.03 / omitted from public GET. Unknown MUST NOT fail-open.\n",
+  "acceptance_criteria": "POST with privacy vs other than public/private/group (including Private, empty, and unknown tokens) must not list the drop on unauthenticated GET and must not return the body on unauthenticated GET /deaddrop/{id}. Prefer 4.00, or fail-closed as private. Canonical lowercase public/private/group keep current visibility.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:14:11.261381Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:19:08.766688Z",
+  "closed_at": "2026-08-27T16:19:08.766688Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview",
+    "python"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-cv2a",
+      "depends_on_id": "project-LICHEN-worker6-3n9o",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:14:11.702751Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

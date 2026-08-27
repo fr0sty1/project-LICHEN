@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-r4e0",
+  "title": "protect_response call-frame stack roughly doubled by ciphertext_tmp buffer",
+  "description": "File: lichen/subsys/lichen/oscore/oscore_protect.c:531. Consolidated protect_response adds ciphertext_tmp[PT_MAX+TAG] atop plaintext/aad/snapshots (~340B-\u003e~620B default PT_MAX=256; ~4.3KB frame at Kconfig max 2048) on thread stacks provisioned for old profile incl. memory-constrained STM32WL baseline. Options: encrypt into caller buffer after full validation (restore publish-order w/ partial-output guarantee care), shared scratch between request/response paths, or Kconfig-documented static assertion of required headroom. Measure then choose smallest-change option.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:02:07.030906Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T15:47:57.073961Z",
+  "started_at": "2026-08-26T21:04:13.429559Z",
+  "closed_at": "2026-08-27T15:47:57.073961Z",
+  "close_reason": "Eliminated ciphertext_tmp[PT_MAX+TAG] from protect_response() entirely (preferred direct approach; smallest-change fallbacks not needed). Mirrored the request-path lifecycle (oscore_protect_request encrypts straight into the caller buffer): every failure-prone step (capacity checks, context validation, NVM persist_ssn, slot-recycle re-validation under re-locked mutex, sent-response replay commit, AAD build, option_tmp assembly) now completes BEFORE the single lichen_aes_ccm_encrypt call, which writes directly into the caller-visible ciphertext as the final fallible action; fresh_reserved cleared and out-params published only after it. Partial-output guarantee preserved for every policy/validation/NVM failure: zero caller-visible bytes written. Residual, documented in a SECURITY comment at the encrypt site: if the AEAD primitive itself faults (hardware-error territory with pre-validated sizes), partial bytes may land in the caller buffer, and (a) fresh-PIV path keeps the already-persisted NVM SSN rolled forward (RAM-side rollback in cleanup still applies; sequence gap is safe per the two-class model), (b) no-PIV path leaves the sent-response window committed so an identical retry is REPLAY-refused, matching the existing lost-response behavior. Chosen over shared-static scratch (new global-state locking discipline, larger correctness risk) and over STATIC_ASSERT headroom documentation (documents cost instead of removing it). Stack delta measured against Kconfig: frame shrinks by PT_MAX+8 bytes; default PLAINTEXT_MAX=256: -264B (~620B to ~356B call frame, -43%); Kconfig max 2048: -2056B (~4.3KB to ~2.3KB, -48%), directly relieving provisioned STM32WL stacks. Verified: clang -fsyntax-only -Wall -Wextra on all 7 oscore TUs (protect/ctx/replay/option/nonce/cbor/hkdf) against the real repo headers via stub zephyr/tinycrypt sandbox, at both default and max Kconfig configs, clean; response-replay semantics preserved byte-for-byte on the reachable domain (gate -\u003e nonce -\u003e AAD -\u003e commit -\u003e encrypt ordering keeps AAD-failure paths commit-free as before); crypto_wipe of the removed buffer deleted with it.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-r4e0",
+      "depends_on_id": "project-LICHEN-worker6-lyzq",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T21:02:07.431Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

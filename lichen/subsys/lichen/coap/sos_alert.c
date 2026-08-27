@@ -340,6 +340,16 @@ static bool validate_node_id(const char *node)
 }
 
 /*
+ * Coordinate validity per header contract (lat [-90,90], lon [-180,180]).
+ * Rejects non-finite values too: NaN fails both comparisons and
+ * infinities fail the upper/lower bound checks.
+ */
+static bool coordinate_in_range(double value, double limit)
+{
+	return value >= -limit && value <= limit;
+}
+
+/*
  * Public API implementation.
  */
 
@@ -359,11 +369,22 @@ void sos_alert_init(struct sos_alert *alert,
 	alert->has_msg = false;
 }
 
-void sos_alert_set_location(struct sos_alert *alert, double lat, double lon)
+int sos_alert_set_location(struct sos_alert *alert, double lat, double lon)
 {
+	/* Same contract the decoder enforces: inclusive bounds, non-finite
+	 * rejected (NaN fails both comparisons, infinities fail one bound).
+	 * Atomic: on failure the alert keeps its previous location state.
+	 */
+	if (!coordinate_in_range(lat, 90.0)) {
+		return SOS_ALERT_ERR_INVALID_VALUE;
+	}
+	if (!coordinate_in_range(lon, 180.0)) {
+		return SOS_ALERT_ERR_INVALID_VALUE;
+	}
 	alert->has_location = true;
 	alert->lat = lat;
 	alert->lon = lon;
+	return SOS_ALERT_OK;
 }
 
 void sos_alert_set_message(struct sos_alert *alert, const char *msg)
@@ -538,14 +559,18 @@ int sos_alert_from_cbor(const uint8_t *buf,
 			if (has_lat) return SOS_ALERT_ERR_DUPLICATE_KEY;
 			err = cbor_read_float64(&r, &alert->lat);
 			if (err) return err;
+			if (!coordinate_in_range(alert->lat, 90.0)) {
+				return SOS_ALERT_ERR_INVALID_VALUE;
+			}
 			has_lat = true;
-			alert->has_location = true;
 		} else if (strcmp(key, KEY_LON) == 0) {
 			if (has_lon) return SOS_ALERT_ERR_DUPLICATE_KEY;
 			err = cbor_read_float64(&r, &alert->lon);
 			if (err) return err;
+			if (!coordinate_in_range(alert->lon, 180.0)) {
+				return SOS_ALERT_ERR_INVALID_VALUE;
+			}
 			has_lon = true;
-			alert->has_location = true;
 		} else if (strcmp(key, KEY_MSG) == 0) {
 			if (alert->has_msg) return SOS_ALERT_ERR_DUPLICATE_KEY;
 			size_t msg_len;
@@ -569,6 +594,11 @@ int sos_alert_from_cbor(const uint8_t *buf,
 	if (!has_type || !has_node || !has_ts || !has_seq) {
 		return SOS_ALERT_ERR_MISSING_FIELD;
 	}
+
+	if (has_lat != has_lon) {
+		return SOS_ALERT_ERR_MISSING_FIELD;
+	}
+	alert->has_location = has_lat;
 
 	/* Verify no trailing data */
 	if (r.pos != r.len) {

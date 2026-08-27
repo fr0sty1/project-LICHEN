@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-1bfv",
+  "title": "[refactor] Split oversized Python modules",
+  "description": "link_layer.py (2858 lines) and time_sync.py (2273 lines) need splitting into logical chunks for maintainability.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:55:35.57667Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T20:15:04.663897Z",
+  "closed_at": "2026-08-26T20:15:04.663897Z",
+  "close_reason": "Closed"
+}

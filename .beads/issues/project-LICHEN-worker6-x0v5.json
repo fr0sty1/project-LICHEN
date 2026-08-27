@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-x0v5",
+  "title": "SAT2 durable-state trust boundary undocumented; CRC32-only protection allows forged leases",
+  "description": "File: rust/lichen-rpl/src/address_assignment.rs:537-542 trait docs require only atomicity; SAT2 blobs crc32_ieee protected so any writer of state file sets arbitrary deadlines/resurrects EUIs honored across restarts post-cvbb fix. Not cvbb-introduced; brief asks trust-boundary question explicitly. Fix: SECURITY note on AddressAssignmentStore requiring trusted storage or MAC snapshot. Document decision either way.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:47.571825Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:53:56.159546Z",
+  "started_at": "2026-08-26T19:06:58.189993Z",
+  "closed_at": "2026-08-26T19:53:56.159546Z",
+  "close_reason": "Trust boundary documented on AddressAssignmentStore (# Trust boundary section: crc32_ieee detects corruption not forgery; implementations MUST surface state only from trusted/verified storage; MAC machinery deliberately out of scope), plus pointer notes on with_store, with_lease, and build constructors. Docs-only.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-x0v5",
+      "depends_on_id": "project-LICHEN-worker6-cvbb",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:48.217825Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

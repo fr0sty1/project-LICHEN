@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-2tdl",
+  "title": "accept_authenticated_schc_packet admits overheard unicast SCHC",
+  "description": "File: rust/lichen-schc/src/link.rs accept_authenticated_schc_packet\n\nlichen-link::LinkLayer::receive_frame authenticates known-peer frames with no destination admission (unlike Python LinkLayer.receive _wire_is_for_local, which returns NOT_FOR_US before a receipt exists). AuthenticatedFragmentReceiver::receive_frame in this crate already requires frame.is_unicast_for(link). accept_authenticated_schc_packet does not inspect destination_mode/destination at all.\n\nOn LoRa everyone hears the air. An Extended unicast SCHC data frame destined to Charlie, overheard by Bob who has Alice's DIO context, therefore decompresses: is_current_for and accepts_authenticated_frame pass, counter \u003e DIO floor passes, peer.decompress runs. Callers that then route/deliver the IPv6 (node/stack) can locally process or relay a frame that was not addressed to them, duplicating Charlie's copy. Broadcast (AddrMode::None) must remain admissible, matching Python _wire_is_for_local.\n\nFix: before decompress, require the authenticated destination to be this receiver: Extended dest == link.local_eui64(), None/broadcast allowed, Short only if the link has that short address, Elided only when the inner IPv6 dest is local or multicast. Reject others as InvalidPacket/InvalidPeerEvidence. Do not require is_unicast_for (that would drop legitimate broadcast SCHC).",
+  "acceptance_criteria": "accept_authenticated_schc_packet rejects an otherwise valid authenticated SCHC data frame whose Extended destination is another node's EUI-64. The same payload accepted when dest is the receiving link's EUI-64 still decompresses. AddrMode::None broadcast SCHC still accepts. Behavior matches Python receive NOT_FOR_US for overheard unicast and does not break broadcast. Test covers Extended-foreign, Extended-local, and broadcast on one admitted peer context.",
+  "notes": "2026-08-26 Phase-2 fix: reproduced Bob accepting Alice's authenticated SCHC frame addressed to Charlie (Ok(59)). accept_authenticated_schc_packet now rejects foreign Extended and all Short destinations before payload classification/decompression (LinkLayer has no installed local short-address state), admits local Extended and None broadcast, and validates Elided packets against the decoded inner IPv6 destination (local link-local, local native 0200::/8, or multicast only). Elided decode uses a bounded 1500-byte scratch buffer so rejected foreign traffic leaves caller output unchanged. Regression covers Extended foreign/local, broadcast, Short fail-closed, Elided link-local/native/multicast/foreign, one peer context, and output non-mutation. Green: focused regression; full lichen-schc --features std (71 unit, all integrations/vectors/docs); strict scoped Clippy std all-targets; no-default-features check; targeted rustfmt and diff check. Rust-only surface; no applicable C/Zephyr module and no Python changes (existing Python filtering was the oracle). No Phase-3 review.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:19:12.156358Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T18:46:42.075001Z",
+  "started_at": "2026-08-26T18:28:19.655957Z",
+  "closed_at": "2026-08-26T18:46:42.075001Z",
+  "close_reason": "Reject overheard authenticated unicast SCHC before decompression; preserve broadcast and validated elided local/multicast admission with green Rust gates.",
+  "labels": [
+    "rust",
+    "schc",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2tdl",
+      "depends_on_id": "project-LICHEN-worker6-l2wd",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:19:13.23688Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

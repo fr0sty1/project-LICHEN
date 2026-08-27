@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-vtw7",
   "title": "emergency.py: Falsy timestamp 0 incorrectly rejected",
   "description": "Line 125 uses `body.get(\"t\") or body.get(\"ts\")` which treats timestamp 0 as falsy, causing it to fall through to checking \"ts\". If only \"t\" is provided with value 0, timestamp becomes None and line 128 returns BAD_REQUEST. However, lines 140-141 explicitly allow timestamp \u003e= 0, so epoch 0 should be valid. Fix: use `body.get(\"t\") if body.get(\"t\") is not None else body.get(\"ts\")`",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T15:52:03.875107Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T15:52:03.875107Z",
+  "updated_at": "2026-08-26T17:01:29.655188Z",
+  "closed_at": "2026-08-26T17:01:29.655188Z",
+  "close_reason": "Bug already fixed. Current code (line 212) uses 'body[\"t\"] if \"t\" in body else body.get(\"ts\")' which correctly handles falsy timestamp=0. Type validation (lines 395-401) and range validation (line 404) also prevent DoS via infinite/far-future values.",
   "labels": [
     "bug",
     "codereview"

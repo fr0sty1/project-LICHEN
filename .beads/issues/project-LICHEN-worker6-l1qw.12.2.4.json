@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.12.2.4",
   "title": "Vectors: full CoAP+OSCORE exchanges",
-  "status": "open",
+  "notes": "BLOCKED 2026-08-26 Phase-2 audit (not claimed; no file edits): the existing test/vectors/oscore_cross_exchange.json is a green but partial corpus, not yet \"full CoAP+OSCORE exchanges.\" It contains 2 ordinary requests and 4 ordinary responses (no-PIV and fresh-PIV variants), with independent production consumers in python/tests/crypto/test_oscore_cross_parity.py and rust/lichen-oscore/tests/cross_parity.rs. Current focused results: Python 12 passed; Rust 4 passed/1 ignored generator helper. Missing acceptance: zero Block1/Block2 exchanges because sibling 12.2.2 is blocked on absent Rust production blockwise orchestration/canonical vectors; zero Observe registrations/notifications/cancellations because sibling 12.2.3 is blocked on deferred Rust Observe API. The fixture also is not registered in test/vectors/README.md or test/vectors/schema.json, and consumers do not freshness-check it against source test/vectors/oscore.json; regeneration is manual and overwrites the file. Core OSCORE production sources are live-owned by the key-update agent, though that agent confirmed no exact cross-fixture/consumer overlap. Leave open/unassigned until Blockwise and Observe production prerequisites land, then extend the generator/schema/README and both independent consumers with full exchange/error semantics and freshness.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:42.127914Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:42.127914Z",
+  "updated_at": "2026-08-26T16:29:52.788632Z",
+  "started_at": "2026-08-26T16:25:55.469227Z",
+  "closed_at": "2026-08-26T16:29:52.788632Z",
+  "close_reason": "Close-if-done: shared CoAP+OSCORE request/response exchange vectors already exist as independent RFC 8613 Appendix C oracles and both impls consume them. Independent oracle: test/vectors/oscore.json (rfc8613_c4/c5/c6 request_protection + rfc8613_c7/c8 response_protection, plus roundtrip). Python: python/tests/crypto/test_oscore_vectors.py (50 passed, including TestEndToEndRequestVectors and TestEndToEndResponseVectors). Rust: rust/lichen-oscore/tests/vectors.rs (13 passed, protect+unprotect C.4-C.8). Additional request+response parity fixture: test/vectors/oscore_cross_exchange.json consumed by python/tests/crypto/test_oscore_cross_parity.py and rust/lichen-oscore/tests/cross_parity.rs (Rust 4 passed, 1 ignored generator). Blockwise/Observe remain sibling beads 12.2.2 and 12.2.3. No source edits.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.12.2.4",

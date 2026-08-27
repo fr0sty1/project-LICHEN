@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-8jel",
+  "title": "to_ipv6 maps bool to loopback (::1/::)",
+  "description": "## Problem\n\npython/src/lichen/ipv6/addr.py to_ipv6() is the routing-table canonicalizer (loadng RouteCache, GradientTable, RPL paths, gateway handoff). It documents AddrError for any invalid input and accepts only IPv6Address, str, or 16 packed bytes.\n\nBecause ipaddress.IPv6Address treats bool as int:\n- to_ipv6(True) -\u003e ::1 (loopback)\n- to_ipv6(False) -\u003e ::\n\nVerified with the stdlib constructor. Sibling helpers in the same file already reject bool via type(x) is int (unicast_prefix_based_mcast group_id, _normalize_zone_id).\n\n## Why it matters\n\nA JSON/CBOR boolean in an address field does not fail closed. Traffic or a route cache entry is bound to loopback instead of being rejected. That is silent misdelivery at a system boundary.\n\n## Where\n\npython/src/lichen/ipv6/addr.py:30-47 (to_ipv6)\nCallers: python/src/lichen/loadng/cache.py, python/src/lichen/gradient.py, python/src/lichen/rpl/routing.py, python/src/lichen/gateway/handoff.py",
+  "design": "Reject bool explicitly (bool is an int subclass). Do not accept arbitrary ints unless the documented contract is expanded; the current docstring allows only IPv6Address, str, and 16-byte packed data.",
+  "acceptance_criteria": "to_ipv6(True) and to_ipv6(False) raise AddrError. to_ipv6 still accepts IPv6Address, str, and 16-byte packed values. Tests cover the bool rejection without weakening existing vector checks. loadng/gradient/rpl call sites keep using to_ipv6 as the coercer.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:22:20.13381Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:29:46.210516Z",
+  "started_at": "2026-08-26T17:26:26.2911Z",
+  "closed_at": "2026-08-26T17:29:46.210516Z",
+  "close_reason": "to_ipv6 rejects bool/int (stdlib maps True/False to ::1/::). Tests cover bool rejection plus documented IPv6Address/str/packed-bytes forms. loadng/gradient/rpl still coerce via to_ipv6.",
+  "labels": [
+    "python",
+    "ipv6",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-8jel",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.5.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:22:20.500763Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

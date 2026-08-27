@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-xicz",
+  "title": "key_expires field is write-only state; no record/key GC beyond read-time pruning",
+  "description": "File: python/src/lichen/coap/resources/groups_collection.py:231,271 zero consumers found. Grace expiry checked on reads (correct) but dead field invites false assumption. Remove or implement GC semantics.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:44.876579Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T20:10:49.244944Z",
+  "started_at": "2026-08-26T19:57:02.931449Z",
+  "closed_at": "2026-08-26T20:10:49.244944Z",
+  "close_reason": "Premise stale after today's rework (commit 9a857b8ce3 + working tree): key_expires is NO LONGER write-only - groups_collection.py:570 consumes it, serving it as 'expires' in the live GET /groups/{id}/key metadata response. Deletion branch would regress a working endpoint to expires=None for zero benefit; GC branch is overkill: retired-key grace already prunes via per-entry expires (_live_retired), group deletion is explicit owner DELETE, and nothing keys a lifecycle off key_expires. Chose simplest correct option: keep the field and pin its sole consumer evidentially - added additive test_key_metadata_reports_advertised_key_expiry in test_groups_item.py asserting full hand-derived payloads (expires=t0+86400 at create; t0+100+86400 after rekey; algorithm/key_id exact; no secret/salt leak). grep confirms exactly 3 occurrences repo-wide (2 writes, 1 read).",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xicz",
+      "depends_on_id": "project-LICHEN-worker6-ku7v",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:45.568715Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

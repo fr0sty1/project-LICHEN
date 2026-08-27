@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.15.1",
   "title": "Python: Position Sharing oracle implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:24.993789Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:24.993789Z",
+  "updated_at": "2026-08-26T17:01:31.028163Z",
+  "started_at": "2026-08-26T16:59:40.281338Z",
+  "closed_at": "2026-08-26T17:01:31.028163Z",
+  "close_reason": "Python Position Sharing oracle already complete: PositionBeaconResource (PUT/GET /pos) and SenMLLocationResource (GET/Observe /sensors/location plus /location alias) exist with tests. Also present: PositionCacheResource (/pos/cache age_s), PositionPrivacyPolicy, senml.profiles.location. pytest tests/coap/test_senml_resources.py tests/coap/test_position_cache.py tests/coap/test_position_privacy_vectors.py tests/coap/test_lci_status_side_vectors.py tests/coap/test_group_messaging.py =\u003e 94 passed. senml.py clean; close-if-done, no code changes.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.15.1",

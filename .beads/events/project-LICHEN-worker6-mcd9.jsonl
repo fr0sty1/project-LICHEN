@@ -1,3 +1,4 @@
 {"id":"01a0106c-65b5-79c4-8ac4-bb385beb0f46","issue_id":"project-LICHEN-worker6-mcd9","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T15:52:14.517641Z"}
 {"id":"01a0106c-65c8-7232-aa70-a2f69b5c4548","issue_id":"project-LICHEN-worker6-mcd9","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T15:52:14.536144Z"}
 {"id":"01a0106c-65d2-737e-b31b-bc21bae7632c","issue_id":"project-LICHEN-worker6-mcd9","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T15:52:14.546229Z"}
+{"id":"01a03f05-3461-7cec-848b-bac0d9350dfb","issue_id":"project-LICHEN-worker6-mcd9","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate of vtw7. Bug already fixed - line 399 rejects infinity, line 404 validates ranges.","created_at":"2026-08-26T17:01:40.833851Z"}

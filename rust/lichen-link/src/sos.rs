@@ -180,11 +180,15 @@ pub enum SosCborError {
     DuplicateKey,
     /// Unknown map key.
     UnknownKey,
-    /// Required field `type`, `node`, `ts`, or `seq` missing.
+    /// Required field `type`, `node`, `ts`, or `seq` missing; also raised
+    /// when exactly one of the optional lat/lon pair is present
+    /// (location is all-or-none per the C decoder contract).
     MissingField,
     /// Field had the wrong CBOR type.
     UnexpectedType,
-    /// Text was not UTF-8, or `type` was not a spec 18.4.2 token.
+    /// Text was not UTF-8, `type` was not a spec 18.4.2 token, or a
+    /// coordinate was non-finite or outside its inclusive range
+    /// (lat [-90, 90], lon [-180, 180]) per the C decoder contract.
     InvalidValue,
     /// Integer did not fit the field width.
     OutOfRange,
@@ -463,6 +467,14 @@ fn valid_node_id(node: &str) -> bool {
     groups == 8
 }
 
+/// Coordinate validity per the C decoder contract (sos_alert.c):
+/// lat [-90, 90], lon [-180, 180], inclusive. Rejects non-finite values
+/// too: NaN fails both comparisons and infinities fail a bound check.
+/// `-0.0` compares within bounds and stays valid.
+fn coordinate_in_range(value: f64, limit: f64) -> bool {
+    value >= -limit && value <= limit
+}
+
 fn decode_alert(bytes: &[u8]) -> Result<SosAlert, SosCborError> {
     let mut r = CborReader::new(bytes);
     let (major, count) = r.header()?;
@@ -511,7 +523,9 @@ fn decode_alert(bytes: &[u8]) -> Result<SosAlert, SosCborError> {
                     return Err(SosCborError::DuplicateKey);
                 }
                 let value = r.float()?;
-                if !value.is_finite() {
+                // Coordinate contract per sos_alert.c/sos_alert.h (lat [-90, 90]):
+                // inclusive bounds; non-finite values fail both bound comparisons.
+                if !coordinate_in_range(value, 90.0) {
                     return Err(SosCborError::InvalidValue);
                 }
                 lat = Some(value);
@@ -521,7 +535,8 @@ fn decode_alert(bytes: &[u8]) -> Result<SosAlert, SosCborError> {
                     return Err(SosCborError::DuplicateKey);
                 }
                 let value = r.float()?;
-                if !value.is_finite() {
+                // Coordinate contract per sos_alert.c/sos_alert.h (lon [-180, 180]).
+                if !coordinate_in_range(value, 180.0) {
                     return Err(SosCborError::InvalidValue);
                 }
                 lon = Some(value);
@@ -542,17 +557,27 @@ fn decode_alert(bytes: &[u8]) -> Result<SosAlert, SosCborError> {
             _ => return Err(SosCborError::UnknownKey),
         }
     }
+    // Verify required fields and lat/lon pairing in the C decoder's order
+    // (sos_alert_from_cbor: required set, then all-or-none location, then
+    // trailing data). Location is all-or-none: exactly one of lat/lon is
+    // MISSING_FIELD per the header contract.
+    if alert_type.is_none() || node.is_none() || ts.is_none() || seq.is_none() {
+        return Err(SosCborError::MissingField);
+    }
+    if lat.is_some() != lon.is_some() {
+        return Err(SosCborError::MissingField);
+    }
     if r.pos != r.buf.len() {
         return Err(SosCborError::TrailingData);
     }
     Ok(SosAlert {
-        alert_type: alert_type.ok_or(SosCborError::MissingField)?,
-        node: node.ok_or(SosCborError::MissingField)?,
-        ts: ts.ok_or(SosCborError::MissingField)?,
+        alert_type: alert_type.expect("checked above"),
+        node: node.expect("checked above"),
+        ts: ts.expect("checked above"),
         lat,
         lon,
         msg,
-        seq: seq.ok_or(SosCborError::MissingField)?,
+        seq: seq.expect("checked above"),
     })
 }
 
@@ -784,6 +809,8 @@ impl SosRateLimitState {
 mod tests {
     use super::*;
 
+    const NODE_SOS: &str = "0200:0000:0000:0000:0011:2233:4455:6677";
+
     #[test]
     fn alert_type_roundtrip() {
         for t in [
@@ -922,6 +949,207 @@ mod tests {
             0x63, b'l', b'a', b't', 0xfb, 0x7f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ]);
         assert_eq!(SosAlert::from_cbor(&wire), Err(SosCborError::InvalidValue));
+    }
+
+    #[test]
+    fn coordinate_in_range_is_inclusive_and_rejects_non_finite() {
+        for limit in [90.0, 180.0] {
+            assert!(coordinate_in_range(limit, limit));
+            assert!(coordinate_in_range(-limit, limit));
+            assert!(!coordinate_in_range(f64::NAN, limit));
+            assert!(!coordinate_in_range(f64::INFINITY, limit));
+            assert!(!coordinate_in_range(f64::NEG_INFINITY, limit));
+        }
+        // -0.0 was previously valid and must stay valid.
+        assert!(coordinate_in_range(-0.0, 90.0));
+    }
+
+    /// Next representable f64 away from zero (works for both signs because
+    /// IEEE-754 bit patterns are monotonic in magnitude per sign side).
+    fn coordinate_just_beyond(value: f64) -> f64 {
+        f64::from_bits(value.to_bits().wrapping_add(1))
+    }
+
+    /// Builds {"type":"sos","node":...,"ts":...,[lat],[lon],"seq"} wire bytes
+    /// with coordinates passed as pre-encoded raw CBOR float tokens.
+    fn coord_alert_wire(lat_token: Option<&[u8]>, lon_token: Option<&[u8]>) -> Vec<u8> {
+        let mut pairs: u64 = 4;
+        if lat_token.is_some() {
+            pairs += 1;
+        }
+        if lon_token.is_some() {
+            pairs += 1;
+        }
+        let mut w = Vec::new();
+        push_type_len(&mut w, 5, pairs);
+        push_text(&mut w, KEY_TYPE);
+        push_text(&mut w, "sos");
+        push_text(&mut w, KEY_NODE);
+        push_text(&mut w, "0200:0000:0000:0000:0011:2233:4455:6677");
+        push_text(&mut w, KEY_TS);
+        push_type_len(&mut w, 0, 1716742800);
+        if let Some(token) = lat_token {
+            push_text(&mut w, KEY_LAT);
+            w.extend_from_slice(token);
+        }
+        if let Some(token) = lon_token {
+            push_text(&mut w, KEY_LON);
+            w.extend_from_slice(token);
+        }
+        push_text(&mut w, KEY_SEQ);
+        push_type_len(&mut w, 0, 1);
+        w
+    }
+
+    fn token_f16(bits: u16) -> Vec<u8> {
+        let mut t = Vec::new();
+        t.push(0xf9);
+        t.extend_from_slice(&bits.to_be_bytes());
+        t
+    }
+
+    fn token_f32(bits: u32) -> Vec<u8> {
+        let mut t = Vec::new();
+        t.push(0xfa);
+        t.extend_from_slice(&bits.to_be_bytes());
+        t
+    }
+
+    fn token_f64(value: f64) -> Vec<u8> {
+        let mut t = Vec::new();
+        t.push(0xfb);
+        t.extend_from_slice(&value.to_bits().to_be_bytes());
+        t
+    }
+
+    #[test]
+    fn cbor_accepts_inclusive_bounds_and_negative_zero() {
+        for (lat, lon) in [
+            (90.0, 180.0),
+            (-90.0, 180.0),
+            (90.0, -180.0),
+            (-90.0, -180.0),
+            (-0.0, 0.0),
+        ] {
+            let alert = SosAlert::new(SosAlertType::Sos, NODE_SOS.into(), 1716742800, 1)
+                .with_location(lat, lon);
+            let decoded = SosAlert::from_cbor(&alert.to_cbor())
+                .unwrap_or_else(|e| panic!("({lat}, {lon}) rejected: {e:?}"));
+            // Bit-exact: preserves -0.0 rather than collapsing to +0.0.
+            assert_eq!(decoded.lat.map(f64::to_bits), Some(lat.to_bits()));
+            assert_eq!(decoded.lon.map(f64::to_bits), Some(lon.to_bits()));
+        }
+    }
+
+    #[test]
+    fn cbor_rejects_one_ulp_beyond_coordinate_bounds() {
+        for (lat, lon) in [
+            (coordinate_just_beyond(90.0), 0.0),
+            (coordinate_just_beyond(-90.0), 0.0),
+            (0.0, coordinate_just_beyond(180.0)),
+            (0.0, coordinate_just_beyond(-180.0)),
+        ] {
+            let alert = SosAlert::new(SosAlertType::Sos, NODE_SOS.into(), 1716742800, 1)
+                .with_location(lat, lon);
+            let wire = alert.to_cbor();
+            assert_eq!(
+                SosAlert::from_cbor(&wire),
+                Err(SosCborError::InvalidValue),
+                "({lat}, {lon})"
+            );
+        }
+    }
+
+    #[test]
+    fn cbor_rejects_f16_f32_non_finite_coord_tokens() {
+        let nan_f16 = token_f16(0x7e00);
+        let neg_inf_f16 = token_f16(0xfc00);
+        let pos_inf_f16 = token_f16(0x7c00);
+        let nan_f32 = token_f32(0x7fc0_0000);
+        let neg_inf_f32 = token_f32(0xff80_0000);
+        let pos_inf_f32 = token_f32(0x7f80_0000);
+        for (name, lat, lon) in [
+            ("f16 NaN lat", nan_f16.as_slice(), token_f64(0.0).as_slice()),
+            (
+                "f16 -Inf lat",
+                neg_inf_f16.as_slice(),
+                token_f64(0.0).as_slice(),
+            ),
+            (
+                "f16 +Inf lon",
+                token_f64(0.0).as_slice(),
+                pos_inf_f16.as_slice(),
+            ),
+            ("f32 NaN lat", nan_f32.as_slice(), token_f64(0.0).as_slice()),
+            (
+                "f32 -Inf lat",
+                neg_inf_f32.as_slice(),
+                token_f64(0.0).as_slice(),
+            ),
+            (
+                "f32 +Inf lon",
+                token_f64(0.0).as_slice(),
+                pos_inf_f32.as_slice(),
+            ),
+        ] {
+            let wire = coord_alert_wire(Some(lat), Some(lon));
+            assert_eq!(
+                SosAlert::from_cbor(&wire),
+                Err(SosCborError::InvalidValue),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn cbor_rejects_out_of_range_f16_token_but_keeps_exact_f16_values() {
+        // Largest finite binary16 (65504.0) far exceeds every coordinate bound.
+        let max_half = token_f16(0x7bff);
+        let wire = coord_alert_wire(Some(max_half.as_slice()), Some(token_f64(0.0).as_slice()));
+        assert_eq!(SosAlert::from_cbor(&wire), Err(SosCborError::InvalidValue));
+
+        // In-range powers of two round-trip through shortest-form (f16) wire.
+        let alert = SosAlert::new(SosAlertType::Sos, NODE_SOS.into(), 1716742800, 1)
+            .with_location(64.0, -128.0);
+        let canonical = alert.to_canonical_cbor();
+        let lat_tok = token_f16(0x5400); // 64.0
+        let lon_tok = token_f16(0xd800); // -128.0
+        assert!(
+            canonical.windows(3).any(|w| w == lat_tok.as_slice()),
+            "lat token is f16"
+        );
+        assert!(
+            canonical.windows(3).any(|w| w == lon_tok.as_slice()),
+            "lon token is f16"
+        );
+        let decoded = SosAlert::from_cbor(&canonical).expect("in-range f16 decode");
+        assert_eq!(decoded.lat, Some(64.0));
+        assert_eq!(decoded.lon, Some(-128.0));
+    }
+
+    #[test]
+    fn cbor_requires_all_or_none_location() {
+        // Valid-value singletons are MISSING_FIELD (all-or-none contract),
+        // distinct from the INVALID_VALUE raised for invalid values themselves.
+        let lat_only = coord_alert_wire(Some(token_f64(37.77).as_slice()), None);
+        assert_eq!(
+            SosAlert::from_cbor(&lat_only),
+            Err(SosCborError::MissingField)
+        );
+        let lon_only = coord_alert_wire(None, Some(token_f64(-122.41).as_slice()));
+        assert_eq!(
+            SosAlert::from_cbor(&lon_only),
+            Err(SosCborError::MissingField)
+        );
+
+        // Both present with boundary values remains accepted.
+        let paired = coord_alert_wire(
+            Some(token_f64(-90.0).as_slice()),
+            Some(token_f64(180.0).as_slice()),
+        );
+        let decoded = SosAlert::from_cbor(&paired).expect("paired boundaries");
+        assert_eq!(decoded.lat, Some(-90.0));
+        assert_eq!(decoded.lon, Some(180.0));
     }
 
     #[test]

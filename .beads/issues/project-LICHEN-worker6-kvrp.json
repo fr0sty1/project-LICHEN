@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-kvrp",
+  "title": "Side-effecting read in group_key_for_epoch mutates state",
+  "description": "groups_collection.py line 441: group_key_for_epoch calls _live_retired(item, stamp, mutate=now is None). When now is None (the default), this mutates retired_epochs as a side effect. A read-only method should not modify state. This can cause surprising behavior when callers expect a pure read.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:43:44.906275Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:43:44.906275Z"
+}

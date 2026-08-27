@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-sd3b.1",
+  "title": "Extract SchcSessionManager from fragment.py to session_manager.py",
+  "description": "SchcSessionManager is 1003 lines (lines 517-1520). Move to schc/session_manager.py, keep Fragment/Ack/FragmentSender in fragment.py.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:00:35.390322Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T21:21:29.817648Z",
+  "started_at": "2026-08-26T21:05:30.192146Z",
+  "closed_at": "2026-08-26T21:21:29.817648Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sd3b.1",
+      "depends_on_id": "project-LICHEN-worker6-sd3b",
+      "type": "parent-child",
+      "created_at": "2026-08-26T21:00:35.789972Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-nhlj",
+  "title": "/groups/invite accepts unverifiable invitations fail-open when inviter pubkey unknown",
+  "description": "File: python/src/lichen/coap/resources/groups_invite.py:56-58. pubkey None -\u003e signature never checked, invitation accepted+recorded; same pattern groups_remove.py:59-61 where roster=None disables can_remove entirely. Source comment defers crypto to sibling bead BUT until that lands forged inviter='owner' role=admin documents unlock join_key today; test_invite_acceptance_records_usable_invitation currently enshrines acceptance with empty pubkeys. Interim mitigation required regardless of crypto bead scheduling.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:40.506168Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:22:23.662356Z",
+  "started_at": "2026-08-26T19:06:47.339956Z",
+  "closed_at": "2026-08-26T19:22:23.662356Z",
+  "close_reason": "Fixed fail-closed: GroupsInviteResource refuses invitations whose inviter lacks a known pubkey unless inviter == local node_id (provisioning carve-out, mirrors groups_remove node_id pattern); signature verified with verify_invitation_signature when pubkey available. Enshrining test flipped to genuine 48-byte Schnorr sigs (schnorr48 sign over canonical preimage, in-test Identity keypair). Split oracle tests: valid-sig acceptance, foreign-key rejection, tampered-document rejection, unknown-inviter refusal (test_groups_invite.py).",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-nhlj",
+      "depends_on_id": "project-LICHEN-worker6-gyfo",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:41.374562Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

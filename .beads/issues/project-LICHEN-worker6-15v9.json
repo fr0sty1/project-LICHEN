@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-15v9",
+  "title": "Child stratum parent-1 mapping mislabels provenance classes and diverges from Python",
+  "description": "File: lichen/subsys/lichen/link/time_sync.c:333-337. Spec 09 section 14.6 defines stratum as source QUALITY with mandatory protocol-stratum binding (Direct NTS must use 3, Roughtime 2, mismatches rejected); parent-1 makes hop-2 nodes downstream of NTS/GNSS roots advertise labels they never earned. Python StratumTracker adopts wire stratum verbatim (MESH_DERIVED constant) - interop diverges across generations. Zero in-tree callers yet, latent. Fix: constant CONSERVATIVE(1) for all non-BR parents aligned with Python, or spec amendment.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:14.551322Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:13:50.375239Z",
+  "started_at": "2026-08-26T19:06:58.099696Z",
+  "closed_at": "2026-08-26T19:13:50.375239Z",
+  "close_reason": "update_from_parent now sets constant LICHEN_TIME_STRATUM_CONSERVATIVE(1) for every valid non-root parent, mirroring Python Stratum.MESH_DERIVED==1 (time_sync.py:300 = link.h:496 numeric-identical). Guard rejects NO_SYNC parent and \u003e4 range (-EINVAL preserved). Old parent-1 path (3-\u003e2 Roughtime claim, 4-\u003e3 NTS claim) mislabeled provenance against spec 09 s14.6 protocol/stratum binding; clang -fsyntax-only -Wall -Wextra clean with stub zephyr headers.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-15v9",
+      "depends_on_id": "project-LICHEN-worker6-27ew",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:15.67317Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

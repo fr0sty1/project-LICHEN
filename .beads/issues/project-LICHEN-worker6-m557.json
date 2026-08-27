@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-m557",
+  "title": "Coordinator RELEASE ignores DAOSequence; stale RELEASE drops a newer allocation",
+  "description": "File: rust/lichen-rpl/src/address_assignment.rs\nPerspective: correctness\n\nShortAddressCoordinator::process() uses last_sequence_by_eui only on the ALLOCATE path. The RELEASE path (around the `AssignmentOperation::Release` branch) deletes the live mapping for request.eui64 with no check against the stored DAOSequence.\n\nConsequence: ALLOCATE seq=1, RELEASE seq=2 (ACK lost or delayed), ALLOCATE seq=3 (new mapping installed), then a retransmitted RELEASE seq=2 still succeeds and removes the seq=3 assignment. The ALLOCATE path treats equal sequence as idempotent retransmission; RELEASE treats every sequence as authoritative.\n\nA stale or replayed RELEASE is therefore destructive after re-acquisition. The same inequality test on ALLOCATE treats any sequence != last as a fresh request, so a stale ALLOCATE with a different sequence also renews the lease rather than being ignored as older.\n\nFix: apply RFC 6550 wrapping freshness (same sequence = idempotent copy, newer = new request, older = ignore) to both ALLOCATE and RELEASE before mutating the table. Dual-impl note: python/src/lichen/link/address_assignment.py has the same RELEASE gap; spec/vectors only require duplicate RELEASE of the current mapping to be idempotent, not clobbering a newer allocation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:22:46.828337Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:52:11.617189Z",
+  "started_at": "2026-08-26T17:41:55.156632Z",
+  "closed_at": "2026-08-26T17:52:11.617189Z",
+  "close_reason": "ShortAddressCoordinator::process now applies RFC 6550 Section 7.2 DAOSequence freshness to ALLOCATE and RELEASE before mutating. Same/older/incomparable sequences are ignored; last sequence is retained after RELEASE so a retransmitted RELEASE cannot drop a newer allocation. Tests cover the seq=1/2/3 replay, lease non-renewal, and 255-\u003e0 wrap. cargo test -p lichen-rpl --features std --lib address_assignment:: (12 passed) and --test address_assignment_vectors (11 passed).",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-m557",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.8.1.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:22:47.181765Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

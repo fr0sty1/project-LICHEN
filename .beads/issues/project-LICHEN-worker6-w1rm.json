@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-w1rm",
+  "title": "\"group\" privacy behaves identically to \"private\" in deaddrop.py",
+  "description": "In _drop_visible (line 402-406), both \"private\" and \"group\" privacy levels use the same check: context_id == drop.get(\"context\"). This means only the creator can see group drops, not other group members. Either \"group\" semantics are unimplemented, or there is missing group membership logic. File: python/src/lichen/coap/resources/deaddrop.py line 404",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:07:11.431219Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:35:46.149528Z",
+  "closed_at": "2026-08-27T16:35:46.149528Z",
+  "close_reason": "Closed"
+}

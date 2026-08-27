@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-r41z",
+  "title": "Confessions GET advertises ct=112 but returns application/cbor 60",
+  "description": "File: python/src/lichen/coap/resources/confessions.py\nPerspective: correctness\n\nget_link_description() sets ct=str(int(SENML_CBOR)) i.e. 112.\nrender_get, _collection_body, and render_one set\nmsg.opt.content_format = CBOR (60) and encode the 18.10.7 query map\n(count, confessions[], rate_*, storage_*), not a SenML pack.\n\nSpec 18.10.7 and test vector get_confessions_with_metadata expected\ncontent_format 60. Spec 18.10.2 still says GET Content-Format\napplication/senml+cbor. .well-known/core therefore advertises 112\nwhile the body is application/cbor.\n\nClients that decode advertised 112 as RFC 8428 SenML+CBOR will\nmisparse the collection and by-id maps.\n\nAcceptance: advertised ct MUST match the GET body (60 per 18.10.7),\nor GET must actually emit SenML+CBOR if 112 remains the contract.\n",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:09.204784Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:35:59.833281Z",
+  "closed_at": "2026-08-27T16:35:59.833281Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-r41z",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.23.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:09.567665Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

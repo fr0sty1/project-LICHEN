@@ -1,3 +1,4 @@
 {"id":"01a01079-2aa0-7eb5-97a2-59c31549fef1","issue_id":"project-LICHEN-worker6-voxc","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T16:06:11.360965Z"}
 {"id":"01a01079-2aa7-7da4-9f4e-2239bf569ac2","issue_id":"project-LICHEN-worker6-voxc","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T16:06:11.367895Z"}
 {"id":"01a01079-2aac-764d-91f5-2dc89fd19c64","issue_id":"project-LICHEN-worker6-voxc","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T16:06:11.372414Z"}
+{"id":"01a03f04-3dcc-79cb-9913-0321c6593f2b","issue_id":"project-LICHEN-worker6-voxc","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate of project-LICHEN-worker6-61ja, fixed in same commit.","created_at":"2026-08-26T17:00:37.708643Z"}

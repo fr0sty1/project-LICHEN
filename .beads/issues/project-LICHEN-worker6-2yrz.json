@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-2yrz",
+  "title": "inbox from is hostinfo, not spec 18.1.1 IPv6",
+  "description": "File: python/src/lichen/coap/resources/messaging.py\n\nCorrectness/security (remaining after worker6-6wrg): render_post pops client from then sets body['from'] = request.remote.hostinfo (lines 249-252) whenever the attribute exists. aiocoap hostinfo is an authority string: often '[ipv6]:port', a simulator name ('cli'), or None.\n\nSpec 18.1.1 requires from as sender IPv6 tstr (example '0200:...:1111', no brackets/port). Firmware GET inbox emits lichen_coap_format_ipv6 on the sockaddr (coap_msg.c:765). confessions.py already parses host via _host_from_hostinfo.\n\nhasattr(remote, 'hostinfo') is true when hostinfo is None, so from can be stored as CBOR null. OSCORE identity is used only for the write gate, never as from, so two OSCORE principals behind one UDP authority are attributed as one sender.\n\nThis is not 6wrg (missing rebind) and not 1v6y (admin parse of '[::1]:5683').",
+  "acceptance_criteria": "After POST /msg/inbox, stored from is an IPv6 tstr (RFC 5952, no brackets/port), taken from the request peer address (or OSCORE-bound IID when that is the sender identity). Client-supplied from is still ignored. hostinfo=None does not persist from=null. GET/Observe/sent detail show that IPv6 tstr. Independent of payload.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:16:14.494113Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:35:50.021525Z",
+  "closed_at": "2026-08-27T16:35:50.021525Z",
+  "close_reason": "Closed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2yrz",
+      "depends_on_id": "project-LICHEN-worker6-wz5u",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:16:15.278486Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

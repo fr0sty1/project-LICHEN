@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-141q",
+  "title": "test_presence_resource.py: test_not_exposed_without_resource has resource leak - if client context creation fails on line 67, server context from line 66 is never shut down (unlike _setup() which handles this correctly)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:21:03.890887Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:43:24.082268Z",
+  "closed_at": "2026-08-27T17:43:24.082268Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug"
+  ]
+}

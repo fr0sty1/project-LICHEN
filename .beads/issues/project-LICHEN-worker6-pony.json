@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-worker6-pony",
+  "title": "short_addr_to_iid accepts bool and leaks TypeError",
+  "description": "## Problem\n\npython/src/lichen/ipv6/addr.py short_addr_to_iid() range-checks with 0 \u003c= short_addr \u003c= 0xFFFF then bitwise-ORs into the RFC 4944 template.\n\nbool subclasses int, so short_addr_to_iid(True) returns 0000:00FF:FE00:0001. float 1.0 passes the range check then raises TypeError on |, not AddrError.\n\nunicast_prefix_based_mcast in the same file already uses type(group_id) is int and tests reject True. short_addr_dad_target() feeds this helper after a similar inclusive range check, so True becomes a DAD target.\n\n## Where\n\npython/src/lichen/ipv6/addr.py:81-90\npython/src/lichen/link/short_addr.py:284-290 short_addr_dad_target",
+  "design": "Mirror unicast_prefix_based_mcast: reject non-int before the range check so bool cannot pass as 0/1 and float cannot TypeError on bitwise OR.",
+  "acceptance_criteria": "short_addr_to_iid(True), short_addr_to_iid(False), and short_addr_to_iid(1.0) raise AddrError. Integers 0..0xFFFF still match RFC 4944 vectors (0000:00FF:FE00:XXXX). Same type(x) is int guard as unicast_prefix_based_mcast.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:22:22.49351Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:59:40.649402Z",
+  "started_at": "2026-08-26T17:53:46.580533Z",
+  "closed_at": "2026-08-26T17:59:40.649402Z",
+  "close_reason": "short_addr_to_iid now uses type(x) is int (same as unicast_prefix_based_mcast). True/False/1.0 raise AddrError; RFC 4944 0000:00FF:FE00:XXXX for 0..0xFFFF unchanged. Tests in test_addr.py.",
+  "labels": [
+    "python",
+    "ipv6"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pony",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.5.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:22:22.854407Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

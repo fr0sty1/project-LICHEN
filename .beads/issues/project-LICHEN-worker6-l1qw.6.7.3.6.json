@@ -1,14 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.7.3.6",
   "title": "Zephyr: unprotect_response",
-  "notes": "Already implemented",
-  "status": "open",
+  "notes": "Implemented and verified RFC 8613 response unprotection. Fixed C nonce layout to S@byte0/ID@1..7/PIV@8..12 (matching header, RFC C.5/C.7, Python, Rust); no-PIV responses now reuse the exact request nonce and emit a zero-length OSCORE option; fresh-PIV responses use responder KID/PIV. Added separate replay windows for fresh response PIVs and accepted no-PIV request correlations, context/KID/KID-context validation, response-code validation, context-slot locking, and fail-before-output/state mutation on auth/parse/buffer errors. Added exact RFC C.7 and independent test/vectors/oscore_cross_exchange.json coverage for no-PIV/fresh-PIV, wrong request PIV, auth rollback, buffer rollback, duplicate replay, malformed/reserved/truncated options, and context mismatch. Gates: isolated Zephyr 4.1 qemu_x86 module build PASS; response-specific QEMU tests PASS; Python cross parity 12 passed; Rust cross parity 4 passed/1 ignored; cppcheck C23 PASS; git diff --check PASS. Broad existing OSCORE run still has three unrelated pre-existing failures: NVM retry-count expectation, stale EUI lookup expectation, and request-only roundtrip; response tests all green. Shared oscore_protect active-slot/NVM hunks remained hash-stable and were preserved.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:13.944834Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:13.944834Z",
+  "updated_at": "2026-08-26T20:25:01.340909Z",
+  "started_at": "2026-08-26T19:08:55.394585Z",
+  "closed_at": "2026-08-26T20:25:01.340909Z",
+  "close_reason": "RFC response AAD/nonce correlation, independent byte-exact parity, replay state, fail-before-mutation, malformed/context boundaries, and QEMU/static gates are green.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.3.6",

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-uhf2",
+  "title": "presence: float precision loss for large timestamps can bypass uint64 check",
+  "description": "apply_automatic_status converts now to float via _finite_non_negative (line 279), then checks int(now_f) \u003e _UINT64_MAX (line 280). For values near 2^63+, float64 precision loss means some out-of-range values pass validation. Either: (1) check integer bounds before float conversion, or (2) document that now must be realistic Unix epoch values.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:06:09.366545Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:35:42.106654Z",
+  "closed_at": "2026-08-27T16:35:42.106654Z",
+  "close_reason": "Closed"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-97c9",
+  "title": "SOS coordinate-range/all-or-none decode rules diverge in Rust and Python violating cross-impl vector parity",
+  "description": "C sos_alert_from_cbor rejects out-of-range lat/lon + enforces pairing; rust/lichen-link/src/sos.rs:509-527 checks is_finite only accepting 91.0/-181.0 with independent lat/lon Options (:548-556); python/src/lichen/coap/resources/emergency.py:508-540 same finiteness-only. Violates AGENTS.md identical-output mandate; committed negative vectors sos_lat_above_max/sos_lon_below_min would fail Rust/Python consumers once wired. Port exact C semantics (boundaries inclusive +-90/+-180, all-or-none MISSING_FIELD taxonomy aligned to error enums of each impl) + machine-drivable vectors.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:02:04.403448Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T21:47:18.814276Z",
+  "started_at": "2026-08-26T21:04:13.432134Z",
+  "closed_at": "2026-08-26T21:47:18.814276Z",
+  "close_reason": "Ported C decoder semantics to both impls. Rust rust/lichen-link/src/sos.rs: coordinate_in_range inclusive lat [-90,90] lon [-180,180] with non-finite rejection -\u003e SosCborError::InvalidValue; all-or-none lat/lon -\u003e MissingField after required-fields check, before trailing-data (C precedence); preserved -0.0 and prior valid inputs. Python python/src/lichen/coap/resources/emergency.py CheckInResource: same contract mapped to existing BAD_REQUEST rejection class. Boundary matrix added on both: +/-90/+/-180 accepted incl pairs and -0.0 bit-preserved, one-ULP-beyond rejected (f64 bits+1), NaN/inf f32/f64 rejected via wire tokens plus f16 0xf9 tokens (NaN, +inf, -inf) and out-of-range f16 65504, in-range exact f16 values kept shortest-form, int coords valid, out-of-range ints rejected, lat-only/lon-only rejected, paired boundary values accepted. Gates green: cargo test -p lichen-link --all-features 152 lib tests ok incl sos_cbor_vectors driver now asserting 11 driven vectors; pytest test_vector_consumers_lci.py -k sos 34 passed 9 skipped; pytest tests/coap/test_sos_resource.py 107 passed; ruff check clean; cargo fmt/clippy -p lichen-link clean.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-97c9",
+      "depends_on_id": "project-LICHEN-worker6-j0xg",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T21:02:04.798484Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

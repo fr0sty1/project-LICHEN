@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-e4uw",
+  "title": "Presence check does not enforce spec 18.5.3 low_battery rule",
+  "description": "File: rust/lichen-client/src/presence.rs (Presence::check, PresenceCacheEntry::check, apply_automatic_status, PresenceClient::put)\n\nSpec 12-apps.md 18.5.3: when battery \u003c 10%, add low_battery; otherwise leave status/activity unchanged and do not add the flag. apply_automatic_status implements that (Some(true) iff battery \u003c LOW_BATTERY_PCT, else None).\n\nPresence::check only rejects battery \u003e 100. from_cbor/to_cbor therefore accept and emit contradictory documents, e.g. battery=87 with low_battery=true, or battery=5 with low_battery omitted, or low_battery=true with battery absent. PresenceClient::put will send those as a 2.04 PUT /presence body.\n\nPublic fields make the invalid state easy to construct; check() is the only gate on the wire.\n\nFix: in check(), require low_battery == Some(true) iff battery is Some(b) \u0026\u0026 b \u003c LOW_BATTERY_PCT; omit or reject other combinations. Reject on both encode and decode so PUT/GET cannot advertise a false low-battery flag.\n\nPerspectives: correctness, security.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:25:33.103315Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T17:25:26.822189Z",
+  "closed_at": "2026-08-27T17:25:26.822189Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-e4uw",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.18.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:25:33.483629Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

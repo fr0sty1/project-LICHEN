@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-0r6n",
+  "title": "DeadDropDetailsResource link-format leaks private drop IDs",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py\nPerspective: security\n\nDeadDropDetailsResource.get_resources_as_linkheader() (lines 499-503)\niterates self._deaddrop._drop_order with no _drop_visible() check\nand emits \u003c/{id}\u003e;ct=\"112\" for every drop, including privacy=private\nand privacy=group.\n\nEvidence: after POSTing a private drop, get_resources_as_linkheader()\nincludes that drop id next to public ids.\n\naiocoap PathCapable uses this for child discovery / link-format.\nDrop IDs are 24-bit hex. Publishing them lets any client GET\n/deaddrop/{id} and observe 4.03 vs 4.04, confirming a restricted\ndrop exists. Href is /{id} not /deaddrop/{id}.\n\nAcceptance: link-format MUST NOT list private/group drop IDs to\nunauthenticated callers. Prefer not advertising child ids at all\n(clients already get Location-Path on create).\n",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:06.790314Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:27:04.596191Z",
+  "closed_at": "2026-08-27T16:27:04.596191Z",
+  "close_reason": "Fix already in place: get_resources_as_linkheader() returns empty LinkFormat([]) at lines 693-699 with SECURITY comment. Test test_dynamic_discovery_is_auth_independent_and_cache_stable verifies behavior.",
+  "labels": [
+    "python",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0r6n",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.22.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:07.151721Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-nxwa",
+  "title": "TDMA latch single-threaded guarantee exceeds code; document contract or take seq_lock",
+  "description": "link_ctx.h:94-96 'latch pair guarantees at most one lichen_tdma_init per (context,epoch)' but tx.c:70-74 mutates latch/tdma without seq_lock while load_key/set_epoch/cleanup touch ctx-\u003eepoch under lock. Idempotent+fail-open racy writes, no worse than HEAD statics, but doc overpromises. Either document single-thread-per-context contract or serialize.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:14:38.09452Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:13:16.516471Z",
+  "started_at": "2026-08-27T16:15:37.609977Z",
+  "closed_at": "2026-08-27T17:13:16.516471Z",
+  "close_reason": "link_ctx.h TDMA latch doc extended in place (doc-only; chose document-over-serialize since the racy window is idempotent and fail-open and nxwa offers either remedy): latch guarantee now explicitly holds per single-threaded context owner; the latch is checked/updated by lichen_link_tx() outside seq_lock, so concurrent TX vs lichen_link_load_key()/cleanup() on the SAME context is caller-error (cross-referenced lichen_link_cleanup() thread-safety warning, matching surrounding doc style); worst-case racy outcomes stated as a redundant lichen_tdma_init() or one ungated TX (fail-open, matching HEAD statics), not serialized. No code change; latch logic untouched. Verified: clang -fsyntax-only -Wall -Wextra exit 0 on link_ctx.c and tdma.c consuming the header.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-nxwa",
+      "depends_on_id": "project-LICHEN-worker6-2m3o",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T16:14:38.539848Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

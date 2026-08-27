@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-1nou",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/oscore/oscore_replay.c:164 Integer truncation in replay_update_window diff calculation",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T15:08:33.931545Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T15:08:33.931545Z",
+  "updated_at": "2026-08-26T17:59:05.933166Z",
+  "started_at": "2026-08-26T17:47:29.340211Z",
+  "closed_at": "2026-08-26T17:59:05.933166Z",
+  "close_reason": "Diff calculations in replay_update_window and replay_check_acceptable widened to uint64_t so 2^32+ sequence gaps no longer truncate into the replay window range (shift path also widened); clang -fsyntax-only clean on both oscore TUs and out-of-repo native sanity harness verifies 2^32-gap rejection plus unchanged normal window behavior",
   "labels": [
     "codereview",
     "wave-fix"

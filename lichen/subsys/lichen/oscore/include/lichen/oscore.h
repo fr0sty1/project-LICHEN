@@ -19,9 +19,9 @@
  * @anchor oscore_key_rotation
  * ## Key Rotation
  *
- * OSCORE contexts have a finite lifetime bounded by the 32-bit sender sequence
- * number. When sender_seq reaches OSCORE_SSN_MAX (2^40 - 1), oscore_protect_request() returns
- * OSCORE_ERR_SEQ_EXHAUSTED and the context can no longer send messages.
+ * OSCORE contexts have a finite lifetime bounded by the 40-bit sender sequence
+ * number. OSCORE_SSN_MAX (2^40 - 1) is the terminal usable value; after it is
+ * reserved, oscore_protect_request() returns OSCORE_ERR_SEQ_EXHAUSTED.
  *
  * ### Recommended rotation pattern:
  *
@@ -102,13 +102,6 @@ extern "C" {
 #define OSCORE_EUI64_LEN 8
 
 /**
- * @deprecated Position of sender_id_len in the nonce (value 6).
- * No longer used by the current nonce computation (which places s at position 0
- * per RFC 8613 Section 5.2 / aiocoap reference). Kept for API compatibility.
- */
-#define OSCORE_NONCE_S_POS 6
-
-/**
  * Maximum Sender Sequence Number (SSN) per RFC 8613 Section 7.2.1.
  * Uses the full 40-bit range (5-byte PIV) for cross-implementation
  * compatibility with Rust and Python implementations. Matches the
@@ -130,11 +123,16 @@ extern "C" {
 #define OSCORE_SSN_ROTATION_CRITICAL 10000
 
 /**
- * Safety margin added to sender_seq on final NVM persist failure (after
- * retries). Prevents nonce reuse on reboot if NVM holds stale value.
- * Per RFC 8613 Section 7.2: implementations MUST ensure SSN used after
- * reboot is larger than any previously used SSN. 1024 provides ample
- * margin for multiple failures without excessive sequence waste.
+ * Safety margin skipped past the next unused sender sequence on every
+ * successful SSN persist. oscore_ctx_persist_ssn() stores
+ * sender_seq + OSCORE_SSN_SAFETY_MARGIN and, only after the write succeeds,
+ * advances the in-RAM sender_seq to that same value, so a reboot that
+ * reloads from NVM resumes STRICTLY ABOVE every sequence that could have
+ * been transmitted before the crash - no (key, nonce) pair is reused
+ * (RFC 8613 Section 7.2, Appendix D.4). The skipped sequences are never
+ * used as nonces. Without a registered NVM write callback the margin is not
+ * applied (nothing is durable; reboot safety then rests on the mandatory
+ * oscore_ctx_set_sender_seq() call after every reboot).
  */
 #define OSCORE_SSN_SAFETY_MARGIN 1024
 
@@ -156,8 +154,9 @@ enum oscore_err {
 	OSCORE_ERR_SEQ_EXHAUSTED = -8,  /**< Sender sequence exhausted, key rotation required */
 	OSCORE_ERR_ENCRYPT_FAILED = -9, /**< Encryption failed */
 	/**< NVM SSN persistence or restoration failed. In protect_request(), triggers
-	 * rollback of sender_seq (retry with same nonce safe). In set_sender_seq()
-	 * or persist_ssn(), prevents marking initialized. Guarantees (key,nonce)
+	 * rollback of sender_seq (retry with same nonce safe). In set_sender_seq(),
+	 * the context stays uninitialized; in persist_ssn(), the in-RAM SSN is
+	 * left unchanged (no margin advance). Guarantees (key,nonce)
 	 * uniqueness per RFC 8613 §7.2.1, Appendix D.4 even on transient NVM errors.
 	 * See oscore_protect_request() nvm_failed path and security comment. */
 	OSCORE_ERR_NVM_FAILED = -10,
@@ -177,11 +176,12 @@ enum oscore_freshness {
 /**
  * @brief NVM storage callback for SSN persistence (write_cb).
  *
- * Called from oscore_ctx_set_sender_seq(), oscore_ctx_persist_ssn(), and
- * oscore_protect_request() success path. Invoked WITHOUT holding OSCORE mutex
- * (non-blocking I/O recommended). On failure, protect_request() rolls back
- * the SSN increment (new retry semantics); set_sender_seq() leaves context
- * uninitialized.
+ * Called from oscore_ctx_set_sender_seq() and oscore_ctx_persist_ssn()
+ * (which the protect paths invoke before publishing output). Invoked WITHOUT
+ * holding OSCORE mutex (non-blocking I/O recommended). On failure,
+ * protect_request() rolls back the SSN increment (new retry semantics);
+ * set_sender_seq() leaves context uninitialized; persist_ssn() leaves the
+ * in-RAM SSN unchanged (no margin advance).
  *
  * @param[in] eui64  Peer EUI-64 for per-peer NVM key (NULL if not set)
  * @param[in] ssn    Sender sequence number to persist
@@ -264,15 +264,17 @@ int oscore_init(void);
  * When registered:
  * - read_cb used in oscore_ctx_create_with_eui64() to restore SSN (failure
  *   starts at 0; caller must call set_sender_seq before protect).
- * - write_cb used by set_sender_seq(), persist_ssn(), and protect_request()
- *   success path. On NVM failure in protect_request(), SSN rolled back
- *   (enables safe retry with identical nonce/SSN; see retry/bump behavior).
+ * - write_cb used by set_sender_seq() and by persist_ssn() (which the
+ *   protect paths invoke before publishing output). persist_ssn() writes a
+ *   margin-skipped value (see OSCORE_SSN_SAFETY_MARGIN) and advances the
+ *   in-RAM SSN to it only on success. On NVM failure in protect_request(),
+ *   SSN rolled back (enables safe retry with identical nonce/SSN).
  *
  * @param[in] write_cb Callback for writing SSN to NVM (NULL disables)
  * @param[in] read_cb  Callback for reading SSN from NVM (NULL disables)
  */
-void oscore_nvm_register_callbacks(oscore_nvm_write_cb write_cb,
-				   oscore_nvm_read_cb read_cb);
+void oscore_nvm_register_callbacks(oscore_nvm_write_cb _Nullable write_cb,
+				   oscore_nvm_read_cb _Nullable read_cb);
 
 /**
  * @brief Create a new OSCORE security context.
@@ -367,15 +369,17 @@ void oscore_ctx_free(struct oscore_ctx *_Nullable ctx);
  * @brief Set the sender sequence number for nonce persistence.
  *
  * MUST be called after oscore_ctx_create*() (before first protect_request())
- * to prevent nonce reuse on reboot (see python-ano.41). If NVM write_cb
- * registered, persists it; on OSCORE_ERR_NVM_FAILED, context remains
- * uninitialized (protect_request will fail). Use after NVM failure in
- * protect_request() to bump SSN if retry not desired.
+ * to prevent nonce reuse on reboot (see python-ano.41). Persists exactly the
+ * given value (no OSCORE_SSN_SAFETY_MARGIN skip is applied); if NVM write_cb
+ * registered and the write fails, returns OSCORE_ERR_NVM_FAILED and the
+ * context remains uninitialized (protect_request will fail). Use after NVM
+ * failure in protect_request() to bump SSN if retry not desired.
  *
  * @param[in] ctx       Security context
  * @param[in] sender_seq New sender sequence number (MUST be > previously used)
  * @return OSCORE_OK on success, OSCORE_ERR_INVALID_PARAM if ctx NULL,
- *         OSCORE_ERR_NVM_FAILED on NVM write error
+ *         OSCORE_ERR_NVM_FAILED on NVM write error, OSCORE_ERR_NO_CONTEXT
+ *         if the context was freed or its slot recycled before commit
  */
 int oscore_ctx_set_sender_seq(struct oscore_ctx *_Nonnull ctx, uint64_t sender_seq);
 
@@ -392,9 +396,9 @@ int oscore_ctx_get_sender_seq(const struct oscore_ctx *_Nonnull ctx,
 /**
  * @brief Get remaining sender sequence budget before exhaustion.
  *
- * Returns OSCORE_SSN_MAX - sender_seq, the number of messages that can be sent
- * before OSCORE_ERR_SEQ_EXHAUSTED is returned. Integrators should monitor
- * this value and trigger key rotation before it reaches zero.
+ * Returns OSCORE_SSN_MAX - sender_seq + 1 while the terminal PIV remains
+ * usable, then zero after it is reserved. Integrators should monitor this
+ * value and trigger key rotation before it reaches zero.
  *
  * Example rotation thresholds:
  *   - Warning at 1,000,000 remaining (proactive rotation)
@@ -430,19 +434,29 @@ int oscore_ctx_check_freshness(const struct oscore_ctx *_Nonnull ctx,
 			       enum oscore_freshness *_Nullable status);
 
 /**
- * @brief Persist the current sender sequence number to NVM.
+ * @brief Persist a margin-skipped sender sequence number to NVM.
  *
  * Critical for preventing nonce reuse after reboot (RFC 8613 Section 7.2.1,
- * 7.5). Implements up to 3 retries with linear backoff on NVM write failure
- * before returning OSCORE_ERR_NVM_FAILED. On persistent failure, caller
- * should bump SSN (to avoid reuse) and trigger key rotation per security
- * requirements.
+ * 7.5, Appendix D.4). Stores sender_seq + OSCORE_SSN_SAFETY_MARGIN (capped
+ * at the exhaustion sentinel OSCORE_SSN_MAX + 1) using up to 3 retries with
+ * linear backoff, and - only after a successful write - advances the in-RAM
+ * sender_seq to that same durable value. A later reload therefore resumes
+ * strictly above every sequence that could have been transmitted before a
+ * crash; the skipped range is permanently unused (see
+ * OSCORE_SSN_SAFETY_MARGIN).
  *
- * If no write callback registered via oscore_nvm_register_callbacks(), returns
- * OSCORE_OK immediately (no-op).
+ * On NVM failure the in-RAM sender_seq is left unchanged and
+ * OSCORE_ERR_NVM_FAILED is returned (the protect paths roll back their own
+ * reservation). On a recycled context slot OSCORE_ERR_NO_CONTEXT is
+ * returned after the durable write; the stored value remains valid for the
+ * recorded peer.
+ *
+ * If no write callback is registered via oscore_nvm_register_callbacks(),
+ * returns OSCORE_OK immediately (no-op; no margin is skipped).
  *
  * @param[in] ctx Security context
- * @return 0 on success, OSCORE_ERR_INVALID_PARAM if ctx is NULL,
+ * @return OSCORE_OK on success, OSCORE_ERR_INVALID_PARAM if ctx is NULL,
+ *         OSCORE_ERR_NO_CONTEXT if the slot was freed or recycled,
  *         OSCORE_ERR_NVM_FAILED if all retries fail
  */
 int oscore_ctx_persist_ssn(struct oscore_ctx *_Nonnull ctx);
@@ -489,22 +503,15 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
 /**
  * @brief Protect a CoAP request with OSCORE.
  *
- * Performs atomic sender_seq increment + exhaustion check under mutex.
- * Builds plaintext/AAD, AES-CCM encrypts, builds OSCORE option.
- * oscore_ctx_persist_ssn() is called only on the success path (after option
- * construction). On OSCORE_ERR_NVM_FAILED from persist_ssn(), the
- * nvm_failed path performs *conditional* SSN rollback under mutex
- * (only if no concurrent increment occurred) before wipe. This prevents
- * SSN regression (uosj), ensures monotonicity, and satisfies nonce
- * uniqueness per RFC 8613 Appendix D.4, §7.2, §7.2.1 (see detailed
- * security comment in oscore.c:nvm_failed).
- *
- * On OSCORE_ERR_NVM_FAILED from persistence (after retries+bump in
- * oscore_ctx_persist_ssn), the nvm_failed path handles sender_seq under
- * mutex (safe advance, no rollback - verifies the safety-margin bump or
- * completes it, clamped at OSCORE_SSN_MAX) and synchronizes
- * s_seq_initialized. This avoids nonce reuse on reboot per RFC 8613
- * §7.2 and §7.2.1. See SECURITY comment in oscore_protect_request().
+ * Atomically reserves the sender sequence and snapshots the context under
+ * mutex. Input, plaintext, AAD, option, and output bounds are validated before
+ * publishing output. A margin-skipped durable sequence
+ * (oscore_ctx_persist_ssn(), see OSCORE_SSN_SAFETY_MARGIN) is persisted
+ * before encryption and the in-RAM sender_seq advances to it on success.
+ * A failure before persistence conditionally rolls back this call's reservation;
+ * a successfully persisted sequence remains consumed even if encryption later
+ * fails, preventing nonce reuse after reboot. The context identity is rechecked
+ * after the unlocked persistence callback before any output is published.
  *
  * @param[in]     ctx          Security context (sender_seq must be initialized)
  * @param[in]     code         CoAP request code
@@ -516,9 +523,8 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * @param[in,out] ciphertext_len Input: buffer size, output: ciphertext length
  * @param[out]    oscore_opt   Output OSCORE option value
  * @param[in,out] oscore_opt_len Input: buffer size, output: option length
- * @return OSCORE_OK on success (with SSN persistence), OSCORE_ERR_NVM_FAILED
- *         on NVM failure (with conditional SSN rollback), or other negative
- *         error codes
+ * @return OSCORE_OK on success, OSCORE_ERR_NVM_FAILED on persistence failure
+ *         (with conditional pre-publication rollback), or another negative code
  */
 [[nodiscard]] int oscore_protect_request(struct oscore_ctx *_Nonnull ctx,
 					 uint8_t code,
@@ -530,7 +536,24 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
 /**
  * @brief Unprotect an OSCORE-protected CoAP request.
  *
- * Decrypts and verifies the request.
+ * Decrypts and authenticates the request, binding it to exactly this
+ * context. Failure semantics:
+ * - The OSCORE option MUST carry a canonical Partial IV (present, 1..
+ *   OSCORE_PIV_MAX_LEN bytes, no leading zero byte); violations are
+ *   OSCORE_ERR_INVALID_PARAM. A decoded PIV above OSCORE_SSN_MAX is
+ *   OSCORE_ERR_SEQ_EXHAUSTED.
+ * - The option KID MUST equal the context recipient_id and, when present,
+ *   the KID Context MUST equal the context id_context; otherwise
+ *   OSCORE_ERR_NO_CONTEXT.
+ * - Replay: the sequence is reserved before authentication and committed
+ *   only after it succeeds; duplicates and sequences older than
+ *   CONFIG_LICHEN_OSCORE_REPLAY_WINDOW return OSCORE_ERR_REPLAY.
+ * - The former NULL size-query mode was removed: *options_len and
+ *   *payload_len are strict in/out parameters (input capacity, output
+ *   length). options/payload == NULL while corresponding content exists is
+ *   OSCORE_ERR_INVALID_PARAM (caller contract); insufficient capacity is
+ *   OSCORE_ERR_BUFFER_TOO_SMALL.
+ * - No caller-visible byte (including *code) is written on any failure.
  *
  * @param[in]     ctx           Security context
  * @param[in]     oscore_opt    OSCORE option value
@@ -542,7 +565,7 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * @param[in,out] options_len   Input: buffer size, output: options length
  * @param[out]    payload       Decrypted payload
  * @param[in,out] payload_len   Input: buffer size, output: payload length
- * @return 0 on success, negative error code on failure
+ * @return OSCORE_OK on success, or a negative OSCORE_ERR_* code
  */
 [[nodiscard]] int oscore_unprotect_request(struct oscore_ctx *_Nonnull ctx,
 					   const uint8_t *_Nonnull oscore_opt, size_t oscore_opt_len,
@@ -552,21 +575,56 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
 					   uint8_t *_Nonnull payload, size_t *_Nonnull payload_len);
 
 /**
- * @brief Protect a CoAP response with OSCORE.
+ * @brief Protect a CoAP response with OSCORE (RFC 8613 Section 8.3, no fresh
+ *        Partial IV).
+ *
+ * The request correlation is answered with an EMPTY OSCORE option value and
+ * the response nonce reuses the request nonce, so no sender sequence is
+ * consumed and no NVM write occurs in this mode. Use
+ * oscore_protect_response_with_piv() for the Section 8.4 fresh-PIV mode.
+ *
+ * Requirements and failure semantics:
+ * - request_piv MUST be the canonical Partial IV of the request being
+ *   answered: 1..OSCORE_PIV_MAX_LEN bytes with a non-NULL buffer;
+ *   request_piv_len == 0 (the pre-rework acceptance of an empty correlation)
+ *   or a NULL buffer is OSCORE_ERR_INVALID_PARAM.
+ * - code MUST be a response class (top three bits 2..5); anything else is
+ *   OSCORE_ERR_INVALID_PARAM.
+ * - Duplicate correlation: each request PIV can be answered in this mode
+ *   once. Once an answer was built successfully, another call with the same
+ *   correlation is refused with OSCORE_ERR_REPLAY; the window tracks the
+ *   CONFIG_LICHEN_OSCORE_REPLAY_WINDOW most recent correlations.
+ * - Zero-caller-bytes guarantee: encryption is the final fallible step and
+ *   the only writer of the caller's buffers, so every policy and validation
+ *   failure leaves ciphertext and oscore_opt untouched. (Residual: if the
+ *   AEAD primitive itself faults, partial bytes may land in ciphertext.)
+ *
+ * Caller surfacing: on any error the in-tree callers
+ * (coap_oscore_respond_resource(), lichen_coap_oscore_respond()) fall back
+ * to an UNPROTECTED, empty 5.00 INTERNAL_ERROR reply. That fallback is the
+ * documented, acceptable behavior: the unprotected error carries no
+ * application payload, so nothing protected is degraded, and a caller
+ * contract violation such as piv_len == 0 surfaces only as this empty
+ * error reply. Callers that prefer stricter handling may surface the error
+ * instead of replying.
  *
  * @param[in]     ctx          Security context
- * @param[in]     request_piv  Partial IV from request
- * @param[in]     request_piv_len Request PIV length
- * @param[in]     code         CoAP response code
+ * @param[in]     request_piv  Partial IV from request (canonical, non-empty)
+ * @param[in]     request_piv_len Request PIV length (1..OSCORE_PIV_MAX_LEN)
+ * @param[in]     code         CoAP response code (class 2..5)
  * @param[in]     options      CoAP options to protect (Class E)
  * @param[in]     options_len  Options length
  * @param[in]     payload      Response payload
  * @param[in]     payload_len  Payload length
  * @param[out]    ciphertext   Output ciphertext buffer
  * @param[in,out] ciphertext_len Input: buffer size, output: ciphertext length
- * @param[out]    oscore_opt   Output OSCORE option value
+ * @param[out]    oscore_opt   Output OSCORE option value (empty on success)
  * @param[in,out] oscore_opt_len Input: buffer size, output: option length
- * @return 0 on success, negative error code on failure
+ * @return OSCORE_OK on success, OSCORE_ERR_INVALID_PARAM on contract
+ *         violations, OSCORE_ERR_REPLAY for an already-answered
+ *         correlation, OSCORE_ERR_NO_CONTEXT for a freed/recycled context,
+ *         OSCORE_ERR_BUFFER_TOO_SMALL on insufficient capacity, or another
+ *         negative code
  */
 [[nodiscard]] int oscore_protect_response(struct oscore_ctx *_Nonnull ctx,
 					  const uint8_t *_Nonnull request_piv, size_t request_piv_len,
@@ -577,12 +635,63 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
 					  uint8_t *_Nonnull oscore_opt, size_t *_Nonnull oscore_opt_len);
 
 /**
+ * @brief Protect a CoAP response with a fresh Partial IV.
+ *
+ * This is the RFC 8613 Section 8.4 response mode. It consumes and persists
+ * the context sender sequence, uses the responder Sender ID plus the fresh
+ * PIV for the nonce, and still binds the AAD to the original request PIV/KID.
+ * The ordinary oscore_protect_response() API uses the Section 8.3 mode and
+ * reuses the request nonce with an empty OSCORE option value.
+ *
+ * Parameters and output contracts match oscore_protect_response(). The
+ * caller MUST initialize sender sequence state before using this mode.
+ */
+[[nodiscard]] int oscore_protect_response_with_piv(
+					  struct oscore_ctx *_Nonnull ctx,
+					  const uint8_t *_Nonnull request_piv,
+					  size_t request_piv_len,
+					  uint8_t code,
+					  const uint8_t *_Nullable options,
+					  size_t options_len,
+					  const uint8_t *_Nullable payload,
+					  size_t payload_len,
+					  uint8_t *_Nonnull ciphertext,
+					  size_t *_Nonnull ciphertext_len,
+					  uint8_t *_Nonnull oscore_opt,
+					  size_t *_Nonnull oscore_opt_len);
+
+/**
  * @brief Unprotect an OSCORE-protected CoAP response.
+ *
+ * Correlates the response with the original request and decrypts it per
+ * RFC 8613 Sections 8.3/8.4:
+ * - request_piv MUST be the canonical Partial IV of the original request
+ *   (1..OSCORE_PIV_MAX_LEN bytes, non-NULL); violations are
+ *   OSCORE_ERR_INVALID_PARAM.
+ * - With a fresh response PIV in oscore_opt (Section 8.4) the nonce uses
+ *   the responder KID plus that PIV, and the PIV is checked against the
+ *   fresh-response replay window. Without one (Section 8.3) the request
+ *   nonce is reused and the request correlation itself is replay-checked.
+ *   Both refuse repeats with OSCORE_ERR_REPLAY.
+ * - KID and KID Context, when present in the response option, MUST match
+ *   this context (recipient_id / id_context); otherwise
+ *   OSCORE_ERR_NO_CONTEXT.
+ * - The decrypted inner code MUST be a response class (top three bits
+ *   2..5).
+ * - The former NULL size-query mode was removed: *options_len and
+ *   *payload_len are strict in/out parameters (input capacity, output
+ *   length), and oscore_opt may be NULL only when oscore_opt_len == 0.
+ *   options/payload == NULL while corresponding content exists is
+ *   OSCORE_ERR_INVALID_PARAM; insufficient capacity is
+ *   OSCORE_ERR_BUFFER_TOO_SMALL.
+ * - Replay state is committed and caller bytes are written only after
+ *   authentication and all validation succeed; no caller-visible byte is
+ *   written on any failure.
  *
  * @param[in]     ctx            Security context
  * @param[in]     request_piv    Partial IV from original request
  * @param[in]     request_piv_len Request PIV length
- * @param[in]     oscore_opt     OSCORE option value
+ * @param[in]     oscore_opt     OSCORE option value (NULL only if len == 0)
  * @param[in]     oscore_opt_len OSCORE option length
  * @param[in]     ciphertext     Encrypted payload
  * @param[in]     ciphertext_len Ciphertext length
@@ -591,7 +700,7 @@ int oscore_option_build(const struct oscore_option *_Nonnull option,
  * @param[in,out] options_len    Input: buffer size, output: options length
  * @param[out]    payload        Decrypted payload
  * @param[in,out] payload_len    Input: buffer size, output: payload length
- * @return 0 on success, negative error code on failure
+ * @return OSCORE_OK on success, or a negative OSCORE_ERR_* code
  */
 [[nodiscard]] int oscore_unprotect_response(struct oscore_ctx *_Nonnull ctx,
 					    const uint8_t *_Nonnull request_piv, size_t request_piv_len,

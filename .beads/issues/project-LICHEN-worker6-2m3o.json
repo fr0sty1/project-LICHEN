@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-2m3o",
+  "title": "TDMA tx-gate latch globals shared across contexts; churn silently disables collision gating",
+  "description": "lichen/subsys/lichen/link/lichen_link_tx.c:54-81. tdma/tdma_epoch_seen/tdma_init_done function-local statics keyed solely on epoch equality: alternating contexts with differing epochs re-run lichen_tdma_init every call resetting synced=false/ccp UNJOINED while tdma_tx_allowed returns TRUE when !synced =\u003e gate bypassed under multi-context use; statics unlocked; SECURITY-marked sync-persistence comment factually wrong (no accessor exists). Fix direction: move TDMA state into struct lichen_link_ctx per-context, correct comment, preserve load_key-before-init ordering invariant.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:02:10.984731Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T21:20:08.646348Z",
+  "started_at": "2026-08-26T21:04:13.429544Z",
+  "closed_at": "2026-08-26T21:20:08.646348Z",
+  "close_reason": "TDMA latch moved into struct lichen_link_ctx (link_ctx.h CONFIG_LICHEN_TDMA-guarded fields tdma/tdma_epoch_seen/tdma_init_done, conditional include placed below length macros for include-order coherence); lichen_link_tx.c migrated off function-local statics; explicit latch reset in lichen_link_init() and lichen_link_cleanup() covering stack-allocated contexts and post-cleanup epoch-collision window; load_key-before-tdma_init ordering preserved via lazy init behind has_key; false persistence comment replaced; runtime harness (HEAD vs fix) proves multi-context gate bypass eliminated and ALL PASS with ASan/UBSan",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2m3o",
+      "depends_on_id": "project-LICHEN-worker6-mxar",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T21:02:11.376456Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

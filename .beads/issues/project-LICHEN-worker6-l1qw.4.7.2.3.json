@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.2.3",
   "title": "Zephyr: Destination Unreachable",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:41.872378Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:41.872378Z",
+  "updated_at": "2026-08-26T20:18:27.203271Z",
+  "started_at": "2026-08-26T20:05:48.000102Z",
+  "closed_at": "2026-08-26T20:18:27.203271Z",
+  "close_reason": "Implemented RFC 4443 Destination Unreachable codes 0-6, exact 1232-byte quote bound, canonical wire/checksum generation, address/link-layer/congestion/ICMP-error suppression, extension-header-safe fail-closed handling, and no-partial-output errors. Standalone C, clang-tidy, cppcheck, Python/Rust reference checks, and Zephyr qemu_x86 25/25 pass. native_sim is unavailable locally because Zephyr POSIX requires Linux.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.2.3",

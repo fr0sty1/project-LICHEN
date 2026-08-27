@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-rcsu",
+  "title": "Presence from_cbor still skips mutation-safe CBOR checks",
+  "description": "File: rust/lichen-client/src/presence.rs (Presence::from_cbor, PresenceCache::from_cbor, PresenceClient get/put/get_cache)\n\n4qlx added Cursor leftover rejection. from_cbor still does ciborium serde into the struct with no duplicate-key, tag, or size/depth scan.\n\nPython PUT /presence uses _decode_single_cbor (python/src/lichen/coap/resources/cbor_validation.py): reject trailing items, duplicate map keys, CBOR tags, payloads \u003e 4096 bytes, depth \u003e 16, maps \u003e 64, arrays \u003e 256. Sibling lichen-client ConfigUpdate already applies those mutation limits. serde last-wins on duplicate keys (status twice can flip available vs emergency). Tags may decode. PresenceClient feeds untrusted GET /presence and GET /presence/cache payloads through these decoders; put() encodes whatever passed Presence::check.\n\ne4uw (low_battery rule) and 4qlx (trailing bytes) are separate. umgp is the Python Presence.from_cbor peer, not this file.\n\nFix: decode one item, require position == len (already done), reject duplicate keys and tags, and apply the same size/depth caps as ConfigUpdate / _decode_single_cbor. Keep presence_cbor.json vectors decoding.\n\nPerspectives: security, robustness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:15:07.356763Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:18:58.808016Z",
+  "closed_at": "2026-08-27T16:18:58.808016Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rcsu",
+      "depends_on_id": "project-LICHEN-worker6-4qlx",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:16:24.779422Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

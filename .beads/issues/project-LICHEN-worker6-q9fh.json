@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-q9fh",
+  "title": "rekey leaves removed admins on the admin roster",
+  "description": "File: python/src/lichen/coap/resources/groups_collection.py\n\nspec/12-apps.md 18.8.2 Roles: Admins are always members. Removal by owner/admin plus rekey must drop the removed node from the authoritative roster.\n\nrekey() (240-272) when removed_member is not the owner:\n- filters item[\\\"members\\\"]\n- pops item[\\\"invitations\\\"][removed_member]\n- does not touch item[\\\"admins\\\"]\n\nrequester_role (378-389) checks owner, then admins, then members. A removed admin therefore still returns \\\"admin\\\".\n\nImpact on this resource:\n- _roster_view_authorized still treats them as affiliated\n- GET /groups/{id} includes members/admins for that pairwise identity\n- GET /groups/{id}/members returns 2.05 instead of 4.03\n\ntest_rekey_never_strips_owner covers owner only. test_rekey_on_member_removal uses a member, not an admin. join_key admin promotion (test_join_key_admin_invitation_promotes_admin) has no corresponding removal path.",
+  "acceptance_criteria": "rekey(removed_member=X) where X is not the owner MUST drop X from members and admins and keep requester_role(X) is None. Owner is still never stripped. Tests: promote admin, rekey(removed_member=admin), admin pairwise GET /members is 4.03, admins list no longer contains them, owner remains a member.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:14:36.265671Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T19:00:50.04799Z",
+  "started_at": "2026-08-26T18:53:28.46422Z",
+  "closed_at": "2026-08-26T19:00:50.04799Z",
+  "close_reason": "Rekey now atomically removes non-owner identities from current members, admins, and invitations while rotating keys; stale persisted admin-only entries fail closed. Rust parity preserves owners and removes admins. Added authorization, last-admin, entropy retry, concurrent epoch, persistence, and owner regressions; group/OSCORE tests, Ruff, focused mypy, Rust tests/clippy/package fmt passed.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-q9fh",
+      "depends_on_id": "project-LICHEN-worker6-a594",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:14:37.216162Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

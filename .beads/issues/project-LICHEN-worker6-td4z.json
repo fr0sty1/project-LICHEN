@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-td4z",
+  "title": "RollcallResource.render_post: data[\"id\"] not type-validated before str() - null coerces to \"None\" string, colliding with legitimate \"None\" ID; also accepts bytes/list/dict with repr conversion (line 406 in python/src/lichen/coap/resources/emergency.py)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:17:09.486954Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:48:03.315686Z",
+  "closed_at": "2026-08-27T16:48:03.315686Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug"
+  ]
+}

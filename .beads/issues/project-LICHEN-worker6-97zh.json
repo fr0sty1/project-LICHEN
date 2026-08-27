@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-97zh",
+  "title": "lookup/len/snapshot report expired leases as live",
+  "description": "File: rust/lichen-rpl/src/address_assignment.rs\nPerspective: correctness\n\nprune_expired() is invoked from build(), process(), and handle_dao(). lookup_by_short(), lookup_by_eui(), expires_at(), len(), is_empty(), and snapshot() do not prune.\n\nAfter a lease deadline passes, lookup_by_short still returns the EUI, len() still counts it, and snapshot() still includes it, while expires_at() already reports a deadline in the past. The lookup docs say currently owns; expired rows do not currently own. A caller using lookup_by_short for L2 resolution will keep mapping traffic to a lapsed lease until an unrelated process()/prune_expired() runs.\n\nFix: have the read APIs prune (or answer from a view that excludes deadline \u003c= now) so lookup/len/snapshot and process() observe the same table. expires_at() can still return the stored deadline after prune (None).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:25.988033Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:23:25.988033Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-97zh",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.8.1.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:26.337041Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

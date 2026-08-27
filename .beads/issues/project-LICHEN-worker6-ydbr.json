@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ydbr",
+  "title": "test(coap): Missing PUT rejection test for battery\u003c10 without low_battery",
+  "description": "## Summary\n\nThe test file `tests/coap/test_presence_resource.py` lacks coverage for the rejection path when PUT receives a payload with `battery \u003c 10` but missing the required `low_battery=True` field.\n\n## Details\n\nPer spec 18.5.3, a presence document with `battery \u003c 10` must include `low_battery: true`. The implementation correctly enforces this via `_validate_low_battery_consistency()` in `Presence.__post_init__`, returning BAD_REQUEST when violated.\n\nHowever, no test exercises this path through the PUT endpoint:\n- `test_put_battery_below_ten_sets_low_battery_without_tick` sends `low_battery=True` explicitly (valid payload)\n- No test sends `{\"status\": \"busy\", \"battery\": 9}` (invalid - missing low_battery) to verify rejection\n\n## Risk\n\nA regression in the validation could silently accept invalid payloads, allowing malformed presence documents to propagate through the mesh.\n\n## Suggested Fix\n\nAdd test case to TestPresencePut:\n\n```python\nasync def test_put_rejects_battery_without_low_battery_flag(self) -\u003e None:\n    \"\"\"Spec 18.5.3: battery \u003c 10 requires low_battery=True.\"\"\"\n    client, server, _, _ = await _setup_writable()\n    try:\n        req = Message(\n            code=PUT,\n            uri=\"coap://srv/presence\",\n            payload=cbor2.dumps({\"status\": \"busy\", \"battery\": 9}),\n        )\n        req.opt.content_format = 60\n        resp = await client.request(req).response\n        assert resp.code == aiocoap.BAD_REQUEST\n    finally:\n        await client.shutdown()\n        await server.shutdown()\n```\n\n## Location\n\nFile: tests/coap/test_presence_resource.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T17:42:29.056994Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:42:29.056994Z",
+  "labels": [
+    "codereview",
+    "test",
+    "python"
+  ]
+}

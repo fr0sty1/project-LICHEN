@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-2l9m",
+  "title": "Confessions rate limit and sender keyed on spoofable SenML bn",
+  "description": "File: python/src/lichen/coap/resources/confessions.py\nPerspective: security (also robustness)\n\nSpec 18.10.3 REQUIRED rate limit is 1 POST / 30s and 12 / hour per\nnode IID, to prevent spam. Rate limiting \"uses per-node IID (not\nOSCORE context)\".\n\nrender_post gets source_iid from _extract_source_iid() (lines 62-69,\n469-471): the SenML base name urn:dev:mac:\u003ctoken\u003e: is taken as the\nnode IID. There is no bind to CoAP source, OSCORE kid, or signature.\nbn is attacker-controlled. The same token is stored as sender when\nanonymous is false (lines 489, 530).\n\nEvidence:\n- 20 POSTs with distinct bn IIDs in one second all return 2.01\n- anonymous=0 with bn of another node stores source=that IID and\n  GET /confessions/{id} includes sender\n- _request_times grows one list per spoofed IID and is only pruned\n  when that key is seen again (_prune_old_requests)\n\nImpact: the tightest LICHEN rate limit is honor-system; spam is\nunlimited; the rate table is an unbounded RAM DoS; non-anonymous\nposts impersonate any IID.\n\nAcceptance: rate-limit key MUST be an authenticated identifier\n(IPv6 source IID and/or OSCORE identity when present). Client\nsupplied sender/bn MUST NOT create a distinct quota bucket or a\ndisplayed sender unless it matches that identity. Stale rate\nbuckets MUST be reaped without waiting for that key to return.\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:07.633009Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:36:02.517375Z",
+  "started_at": "2026-08-26T17:26:27.796885Z",
+  "closed_at": "2026-08-26T17:36:02.517375Z",
+  "close_reason": "Rate limits and displayed sender now key on authenticated IPv6 source IID (OSCORE identity if no IPv6). SenML bn/sender cannot mint quota or impersonate. Stale rate buckets reaped globally. Tests in test_confessions_resource.py and confessions_rate vector consumers pass.",
+  "labels": [
+    "python",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2l9m",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.23.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:07.995185Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

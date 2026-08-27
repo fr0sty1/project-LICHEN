@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-xsko",
   "title": "test_vectors.py: bare next() can raise StopIteration (P2)",
   "description": "**File:** python/tests/test_vectors.py\n**Lines:** 251-258, 2170, 2187, 2204, 2225, 2240, 2274, 2297\n\n**Issue:** Multiple uses of bare `next()` on generators without default values:\n\nLine 251-258:\n```python\ndropped = next(\n    fragment\n    for fragment in vector[\"fragments\"]\n    if fragment[\"name\"] == vector[\"loss\"][\"drop_fragment\"]\n)\n```\n\nLines 2170, 2187, etc:\n```python\nvector = next(v for v in doc[\"vectors\"] if v[\"name\"] == \"incremental_retry\")\n```\n\n**Problem:** If the expected item is missing from the vector data (e.g., JSON file modified), `StopIteration` is raised with no context about which vector was missing. This makes debugging test failures difficult.\n\n**Suggested fix:**\n```python\n# Option 1: Use next() with default and explicit check\ndropped = next(\n    (fragment for fragment in vector[\"fragments\"]\n     if fragment[\"name\"] == vector[\"loss\"][\"drop_fragment\"]),\n    None\n)\nif dropped is None:\n    raise ValueError(f\"Fragment {vector['loss']['drop_fragment']} not found in vector\")\n\n# Option 2: Helper function\ndef find_vector(vectors: list, name: str) -\u003e dict:\n    for v in vectors:\n        if v[\"name\"] == name:\n            return v\n    raise ValueError(f\"Vector '{name}' not found\")\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T18:53:23.810078Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T18:53:23.810078Z",
+  "updated_at": "2026-08-27T17:09:31.332442Z",
+  "closed_at": "2026-08-27T17:09:31.332442Z",
+  "close_reason": "Closed",
   "labels": [
     "correctness",
     "test-infra"

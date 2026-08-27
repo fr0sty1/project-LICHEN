@@ -29,8 +29,14 @@
 #ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
 #else
-/* BUILD_ASSERT for non-Zephyr test builds */
-#define BUILD_ASSERT(cond, msg) _Static_assert(cond, msg)
+/* BUILD_ASSERT for non-Zephyr test builds. Variadic fallback supports both
+ * the Zephyr-style single-argument form and an optional message (message
+ * omitted requires C23 or GCC/Clang static_assert extension). */
+#define BUILD_ASSERT_1(cond) _Static_assert(cond, "BUILD_ASSERT")
+#define BUILD_ASSERT_2(cond, msg) _Static_assert(cond, msg)
+#define BUILD_ASSERT_SEL(_1, _2, name, ...) name
+#define BUILD_ASSERT(...) \
+	BUILD_ASSERT_SEL(__VA_ARGS__, BUILD_ASSERT_2, BUILD_ASSERT_1)(__VA_ARGS__)
 #endif
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
@@ -63,9 +69,6 @@ extern "C" {
 #define LICHEN_MAX_FRAME_BODY_LEN 254
 #endif
 
-#define SLOT_DURATION_MS 250 /* spec/02a-coordinated-capacity.md:2a.2 (100ms guard, hash slot) */
-#define GUARD_TIME_MS 100 /* spec/02a-coordinated-capacity.md:2a.2 validated by ccp16.json */
-
 #ifdef CONFIG_LICHEN_TDMA
 struct LICHEN_TDMA_Slot {
 	uint32_t start_ms;
@@ -80,13 +83,19 @@ BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 20);
 	/** Schnorr-48 signature length in bytes */
 #define LICHEN_SIG_LEN 48
 
-#define LICHEN_TDMA_GUARD_MS 100 /* spec/02a-coordinated-capacity.md §2a.2 (ccp16.json, ccp_tdma.json) */
-#define LICHEN_TDMA_SLOT_MS 250 /* spec/02a-coordinated-capacity.md §2a.2 hash(EUI64^epoch)%num_slots via lichen_hash_32 */
+#define LICHEN_TDMA_GUARD_MS 50 /* spec/02a-coordinated-capacity.md §2a.2: guard "MUST be 50 for this revision"; ccp_tdma.json guard_ms=50 */
+#define LICHEN_TDMA_SLOT_MS 250 /* spec/02a-coordinated-capacity.md §2a.2 Slot=(fnv1a32(EUI64)+u32(SFN)) mod n via lichen_hash_32; epoch MUST NOT enter the hash */
 #define LICHEN_TDMA_BEACON_TIMEOUT_SUPERFRAMES 3 /* BEACON_TIMEOUT per 09-packets-timing.md FSM */
 #define LICHEN_TDMA_CONTENTION_RETRIES 5 /* Max DAO retransmissions in contention slot */
 #define LICHEN_TDMA_CONTENTION_BACKOFF_MIN_MS 100 /* CSMA min backoff */
 #define LICHEN_TDMA_CONTENTION_BACKOFF_MAX_MS 1000 /* CSMA max backoff */
 #define LICHEN_TDMA_MISSED_BEACON_THRESHOLD 3 /* >3 missed beacons triggers DRIFTING per 09-packets-timing.md FSM */
+
+/* CSMA/CA profile constants (spec/09-packets-timing.md section 14.5). */
+#define LICHEN_CSMA_CAD_TIMEOUT_SYMBOLS 3U
+#define LICHEN_CSMA_BACKOFF_UNIT_MS     10U
+#define LICHEN_CSMA_BACKOFF_MAX_EXPONENT 5U
+#define LICHEN_CSMA_RETRY_LIMIT         3U
 
 #ifdef CONFIG_LICHEN_TDMA
 struct lichen_tdma_slot {uint8_t id;uint8_t assigned;uint32_t next;};
@@ -442,9 +451,28 @@ int lichen_link_rx(struct lichen_link_rx_ctx *_Nonnull ctx,
 
 #ifdef CONFIG_LICHEN_TDMA
 int lichen_tdma_init(struct lichen_tdma_ctx *_Nonnull tdma, struct lichen_link_ctx *_Nonnull ctx);
-int lichen_link_set_slot(struct lichen_link_ctx *ctx, struct lichen_tdma_ctx *tdma, uint8_t slot_id, uint8_t n_slots, uint32_t sfn);
-bool tdma_tx_allowed(const struct lichen_tdma_ctx *tdma, uint32_t now_ms);
-uint8_t lichen_tdma_compute_slot(const uint8_t eui64[8], uint32_t sfn, uint8_t num_slots);
+int lichen_link_set_slot(struct lichen_link_ctx *_Nullable ctx,
+			 struct lichen_tdma_ctx *_Nullable tdma, uint8_t slot_id,
+			 uint8_t n_slots, uint32_t sfn);
+bool tdma_tx_allowed(const struct lichen_tdma_ctx *_Nullable tdma,
+			 uint32_t now_ms);
+uint8_t lichen_tdma_compute_slot(
+	const uint8_t eui64[_Nonnull 8], uint32_t sfn, uint8_t num_slots);
+
+/**
+ * @brief Validate the CCP-7 guard budget.
+ *
+ * All arguments use the same caller-selected time unit.  The guard is
+ * sufficient exactly when G >= B_i + B_j + J_i + J_j + P + M.  Arithmetic
+ * overflow fails closed and returns false.
+ */
+bool lichen_tdma_guard_budget_sufficient(uint64_t guard,
+					 uint64_t local_bound,
+					 uint64_t peer_bound,
+					 uint64_t local_jitter,
+					 uint64_t peer_jitter,
+					 uint64_t propagation,
+					 uint64_t margin);
 #endif
 
 uint32_t lichen_hash_32(const uint8_t *_Nonnull data, size_t len);
@@ -452,15 +480,19 @@ uint32_t lichen_hash_32(const uint8_t *_Nonnull data, size_t len);
 /**
  * @brief Select a LoRa channel per CCP-12 synchronized hopping.
  *
- * Implements the SelectChannel pseudocode from spec/02a-coordinated-capacity.md:120.
- * Uses FNV-1a32 hash over (EUI-64 || epoch) with the epoch providing the PHY time
- * sync link — the epoch counter is derived from the link-layer time synchronization
- * state (see lichen_link_next_tx and lichen_link_set_epoch). Both sender and receiver
- * compute identical channels for the same (eui64, epoch) pair, enabling deterministic
+ * Implements the SelectChannel pseudocode from spec/02a-coordinated-capacity.md:190.
+ * Uses FNV-1a32 hash over (EUI-64 || epoch), where epoch is the key-rotation
+ * counter from the link context (see lichen_link_next_tx and
+ * lichen_link_set_epoch) — it is not a PHY time-sync value. Spec/02a:193
+ * defines SelectChannel's Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32),
+ * so the epoch MAY enter the CHANNEL hash; the prohibition on epoch
+ * substitution applies to the SLOT hash instead (§2a.2: Slot =
+ * (fnv1a32(EUI64) + u32(SFN)) mod n). Both sender and receiver compute
+ * identical channels for the same (eui64, epoch) pair, enabling deterministic
  * synchronized frequency hopping without explicit channel negotiation.
  *
  * @param[in]  eui64       8-byte EUI-64 address (big-endian)
- * @param[in]  epoch       Current epoch (PHY time sync value from link context)
+ * @param[in]  epoch       Current epoch (key-rotation counter from link context)
  * @param[in]  density     Neighbor density count (0-8 normal; >8 forces channel 0)
  * @param[in]  num_channels Number of available channels (clamped to min 3)
  * @param[out] channel     Selected channel (0 = control channel, or 1..num_channels)
@@ -487,6 +519,94 @@ enum lichen_time_source_class {
 	LICHEN_TIME_SOURCE_MANUAL = 3,      /**< Operator-provisioned static */
 	LICHEN_TIME_SOURCE_INTERNAL_RTC = 4,/**< On-board RTC */
 	LICHEN_TIME_SOURCE_MONOTONIC = 5,   /**< Uptime only; no wall clock */
+};
+
+#define LICHEN_TIME_SOURCE_CLASS_COUNT 6U
+
+/**
+ * @brief Configurable time-source ranking, best source first
+ *
+ * A valid policy contains every time source class exactly once.  The default
+ * order is the canonical spec order: GNSS, Network, Local-client, Manual,
+ * Internal RTC, then Monotonic.
+ */
+struct lichen_time_source_precedence {
+	enum lichen_time_source_class order[LICHEN_TIME_SOURCE_CLASS_COUNT];
+};
+
+/**
+ * @brief Prevalidated candidate for precedence/fallback selection
+ *
+ * These booleans are evidence supplied by the owning time provider after its
+ * source-specific authentication, validity, freshness, and correction checks.
+ * They MUST NOT be populated directly from unauthenticated packet fields.
+ */
+struct lichen_time_source_candidate {
+	enum lichen_time_source_class source;
+	bool source_valid;
+	bool fresh;
+	bool policy_accepted;
+	bool rollback_safe;
+};
+
+/**
+ * @brief Non-decreasing uptime observations for one power cycle
+ *
+ * The tracker deliberately has no wraparound semantics: a smaller observation,
+ * including a counter wrapping to zero, is rejected and leaves the last
+ * accepted value unchanged. Callers must synchronize access to a shared
+ * tracker.
+ */
+struct lichen_monotonic_uptime {
+	uint64_t last_ticks;
+	bool initialized;
+};
+
+#define LICHEN_WALL_CLOCK_DEFAULT_FRESH_S 300U
+#define LICHEN_WALL_CLOCK_DEFAULT_HOLDOVER_S 0U
+
+enum lichen_wall_clock_state {
+	LICHEN_WALL_CLOCK_INVALID = 0,
+	LICHEN_WALL_CLOCK_FRESH = 1,
+	LICHEN_WALL_CLOCK_HOLDOVER = 2,
+};
+
+struct lichen_wall_clock_snapshot {
+	bool wall_clock_valid;
+	enum lichen_wall_clock_state state;
+	uint32_t unix_time;
+	enum lichen_time_source_class source;
+	uint8_t stratum;
+	uint32_t age_s;
+};
+
+/**
+ * @brief Provenance of the immutable firmware build epoch
+ *
+ * Release and SOURCE_DATE_EPOCH values are production metadata.  Fixed test
+ * and developer values remain distinguishable so a generated host timestamp
+ * can never be mistaken for reproducible release metadata.
+ */
+enum lichen_build_epoch_source {
+	LICHEN_BUILD_EPOCH_SOURCE_INVALID = 0,
+	LICHEN_BUILD_EPOCH_SOURCE_DATE_EPOCH = 1,
+	LICHEN_BUILD_EPOCH_SOURCE_RELEASE = 2,
+	LICHEN_BUILD_EPOCH_SOURCE_DEVELOPER_FIXED = 3,
+	LICHEN_BUILD_EPOCH_SOURCE_DEVELOPER_GENERATED = 4,
+	LICHEN_BUILD_EPOCH_SOURCE_FIXED_TEST = 5,
+};
+
+struct lichen_build_epoch_metadata {
+	uint64_t unix_time;
+	enum lichen_build_epoch_source source;
+};
+
+struct lichen_build_epoch_snapshot {
+	bool initialized;
+	uint32_t unix_time;
+	enum lichen_build_epoch_source source;
+	bool deterministic;
+	bool production;
 };
 
 /**
@@ -528,11 +648,49 @@ struct lichen_dio_time_option {
 const char *lichen_time_source_class_str(enum lichen_time_source_class source);
 bool lichen_time_source_can_establish_wall_clock(enum lichen_time_source_class source);
 
+/* Monotonic uptime tracking (single power cycle) */
+int lichen_monotonic_uptime_init(
+	struct lichen_monotonic_uptime *_Nonnull uptime);
+int lichen_monotonic_uptime_observe(
+	struct lichen_monotonic_uptime *_Nonnull uptime, uint64_t ticks);
+int lichen_monotonic_uptime_now(
+	const struct lichen_monotonic_uptime *_Nonnull uptime,
+	uint64_t *_Nonnull ticks);
+int lichen_monotonic_uptime_sample(
+	struct lichen_monotonic_uptime *_Nonnull uptime,
+	uint64_t *_Nonnull ticks);
+
+/* Time source precedence and fallback */
+int lichen_time_source_precedence_default(
+	struct lichen_time_source_precedence *_Nonnull policy);
+int lichen_time_source_precedence_init(
+	struct lichen_time_source_precedence *_Nonnull policy,
+	const enum lichen_time_source_class *_Nonnull order,
+	size_t count);
+int lichen_time_source_precedence_rank(
+	const struct lichen_time_source_precedence *_Nonnull policy,
+	enum lichen_time_source_class source,
+	uint8_t *_Nonnull rank);
+int lichen_time_source_precedence_preferred(
+	const struct lichen_time_source_precedence *_Nonnull policy,
+	enum lichen_time_source_class left,
+	enum lichen_time_source_class right,
+	enum lichen_time_source_class *_Nonnull preferred);
+int lichen_time_source_precedence_select(
+	const struct lichen_time_source_precedence *_Nonnull policy,
+	const struct lichen_time_source_candidate *_Nullable candidates,
+	size_t count,
+	enum lichen_time_source_class *_Nonnull selected);
+
 /* Time stratum validation */
 bool lichen_time_stratum_valid(uint8_t stratum);
 
 /* Epoch floor (firmware build + optional board provision) */
 int lichen_epoch_floor_init(uint32_t firmware_build_epoch);
+int lichen_epoch_floor_init_metadata(
+	const struct lichen_build_epoch_metadata *_Nonnull metadata);
+int lichen_build_epoch_snapshot_get(
+	struct lichen_build_epoch_snapshot *_Nonnull snapshot);
 int lichen_epoch_floor_set_provision(uint32_t provision_epoch,
 				     bool authenticated,
 				     uint32_t max_lead_s,
@@ -548,6 +706,17 @@ int lichen_dio_time_option_decode(const uint8_t *_Nonnull buf, size_t buflen,
 				  struct lichen_dio_time_option *_Nonnull opt);
 
 /* Wall clock management */
+int lichen_wall_clock_establish(
+	uint32_t unix_time,
+	enum lichen_time_source_class source,
+	uint8_t stratum,
+	uint64_t observed_monotonic_ms,
+	uint64_t now_monotonic_ms,
+	uint32_t fresh_for_s,
+	uint32_t holdover_s);
+int lichen_wall_clock_snapshot_get(
+	uint64_t now_monotonic_ms,
+	struct lichen_wall_clock_snapshot *_Nonnull snapshot);
 int lichen_wall_clock_set(uint32_t unix_time,
 			  enum lichen_time_source_class source,
 			  uint8_t stratum);

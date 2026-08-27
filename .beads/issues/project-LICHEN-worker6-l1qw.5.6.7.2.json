@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.5.6.7.2",
   "title": "Transit Information option (type 6) - all impls",
+  "notes": "2026-08-26 bounded all-implementation audit: NOT ready to claim/close. Spec/05-routing.md:272 requires exact Data Length 20 with a 16-byte Parent Address, and :376 assigns E to external reachability (not parent presence). Python TransitInformation supports exact 4/20 RFC forms and models E as external ownership; its production DAO path accepts E and applies the DODAGID fallback for the 4-byte form. Rust's current profile codec enforces exact 20, parent present, and flags byte exactly zero, so it rejects E=1 and cannot represent spec-required external reachability. Zephyr C is internally contradictory: lichen_rpl_transit_info_parse/write in messages.c:398-443 require/write flags=0x80 under the incorrect comment that E means parent present, but production rpl_dao_process.c:171-180 first rejects opt.data[0] != 0 and then calls that parser. Therefore no Transit option can satisfy both C checks: C-built 0x80 options are rejected before parse, while 0x00 options fail the parser. test/vectors/rpl_messages.json has no type=option / option_type=6 case despite dormant Python/Rust consumer branches, and no C shared-vector consumer exists. Excluded C/Zephyr changes are necessary, so leave open/unclaimed until E semantics are unified, the C contradiction is fixed, exact length/parent rules are enforced, and one schema-backed positive/negative corpus is independently consumed by all three. No files modified or tests run because source/vector inspection conclusively fails acceptance.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:48.588013Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:48.588013Z",
+  "updated_at": "2026-08-26T16:41:53.62183Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.5.6.7.2",

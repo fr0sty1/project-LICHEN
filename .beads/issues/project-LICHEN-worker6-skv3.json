@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-skv3",
   "title": "Consume node_handoff.json and gcp_psk_oscore.json in GCP gateway lane",
   "description": "test/vectors/node_handoff.json and gcp_psk_oscore.json (spec/08-gateway-coordination.md) unconsumed on the Rust side; GCP handoff/persistence security fixes are actively claimed by other agents (shvq, 07cg, eni9...). Coordinate with claimants, then add consumers in rust/lichen-gateway tests.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T00:13:07.187167Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T00:13:07.187167Z",
+  "updated_at": "2026-08-27T17:43:27.605785Z",
+  "closed_at": "2026-08-27T17:43:27.605785Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-skv3",

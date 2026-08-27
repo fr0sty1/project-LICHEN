@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import time
 from ipaddress import IPv6Address
 
@@ -648,12 +649,13 @@ class TestSosObserve:
             await server.shutdown()
 
     async def test_retrigger_noop_when_idle(self) -> None:
-        _, server, sos = await _setup()
+        client, server, sos = await _setup()
         try:
             # retrigger while idle should not call updated_state (no crash, no notification)
             sos.retrigger()
             assert sos._active is False
         finally:
+            await client.shutdown()
             await server.shutdown()
 
     async def test_observe_notified_on_put(self) -> None:
@@ -1170,6 +1172,71 @@ class TestCheckInPostValidation:
         finally:
             await client.shutdown()
             await server.shutdown()
+
+    @pytest.mark.parametrize(
+        ("lat", "lon"),
+        [
+            (90.0, 180.0),
+            (-90.0, 180.0),
+            (90.0, -180.0),
+            (-90.0, -180.0),
+            (-0.0, 0.0),
+            (37, -122),
+            (90, -180),
+        ],
+    )
+    async def test_post_coordinate_boundaries_accepted(self, lat: float, lon: float) -> None:
+        """Coordinate bounds are inclusive; prior valid inputs stay valid.
+
+        Covers the exact limits (-90/90, -180/180), integer coordinates,
+        and negative zero, which must be preserved rather than collapsed.
+        """
+        resource = CheckInResource()
+        resp = await resource.render_post(
+            Message(code=POST, payload=_checkin_post_body(lat=lat, lon=lon))
+        )
+        assert resp.code == aiocoap.CHANGED
+        entry = resource._checkins["0200111122223333"]
+        assert entry["lat"] == lat and entry["lon"] == lon
+        if lat == 0:
+            assert math.copysign(1.0, entry["lat"]) == math.copysign(1.0, lat)
+
+    @pytest.mark.parametrize(
+        ("lat", "lon"),
+        [
+            (math.nextafter(90.0, math.inf), 0.0),
+            (math.nextafter(-90.0, -math.inf), 0.0),
+            (0.0, math.nextafter(180.0, math.inf)),
+            (0.0, math.nextafter(-180.0, -math.inf)),
+            (float("nan"), 0.0),
+            (float("inf"), 0.0),
+            (float("-inf"), 0.0),
+            (0.0, float("nan")),
+            (0.0, float("inf")),
+            (0.0, float("-inf")),
+            (91, 0.0),
+            (0.0, -181),
+        ],
+    )
+    async def test_post_coordinates_out_of_contract_rejected(self, lat: float, lon: float) -> None:
+        """One ULP beyond a bound, non-finite values, and out-of-range
+        integers mirror the C decoder's INVALID_VALUE rejections."""
+        resource = CheckInResource()
+        resp = await resource.render_post(
+            Message(code=POST, payload=_checkin_post_body(lat=lat, lon=lon))
+        )
+        assert resp.code == aiocoap.BAD_REQUEST
+        assert not resource._checkins
+
+    async def test_post_all_or_none_location_enforced(self) -> None:
+        """Exactly one of lat/lon is invalid input even with valid values."""
+        for partial in ({"lat": 10.5}, {"lon": -20.5}, {"lat": 90.0}, {"lon": 180.0}):
+            resource = CheckInResource()
+            resp = await resource.render_post(
+                Message(code=POST, payload=_checkin_post_body(**partial))
+            )
+            assert resp.code == aiocoap.BAD_REQUEST, partial
+            assert not resource._checkins
 
     async def test_post_invalid_msg_rejected(self) -> None:
         """Non-string msg should be rejected."""

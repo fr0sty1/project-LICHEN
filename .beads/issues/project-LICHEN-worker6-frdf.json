@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-frdf",
+  "title": "Client DAO-ACK fingerprint is raw wire plus 40-byte cap",
+  "description": "File: rust/lichen-rpl/src/address_assignment.rs\nPerspective: robustness\n\nShortAddressAssignmentClient::apply_dao_ack() stores the entire received DAO-ACK (MAX_ACK_WIRE=40) and treats any byte difference at the same DAOSequence as conflicting DAO-ACK for one sequence.\n\none_assignment_option() already ignores Pad1 and non-252 options, and DaoAck::from_bytes() does not require reserved flag bits to be zero. Semantically identical ACKs that add Pad1/PadN, an extra ignored option, or reserved flag bits therefore parse to the same AddressAssignmentAck but fail the raw-wire compare after the first ACK was accepted.\n\nMAX_ACK_WIRE=40 is also too tight: DAO-ACK with DODAGID is 20+16=36 bytes, leaving 4 bytes of slack. A valid first ACK at 41 bytes (DODAGID form plus modest padding) is parsed, then rejected with DAO-ACK exceeds stored fingerprint and never installed.\n\nPython fingerprints ack.to_bytes() (canonical re-encode) with no size cap, so padded retransmissions are accepted there and rejected or conflicted here. Fix: fingerprint the parsed assignment fields (and maybe canonical encoding), not the raw buffer; drop or raise the 40-byte cap to the LoRa frame limit.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:25.216858Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T17:25:31.810214Z",
+  "closed_at": "2026-08-27T17:25:31.810214Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-frdf",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.8.1.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:25.569313Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

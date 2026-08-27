@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-hhpz",
+  "title": "Observe responses with 5.03 do not record peer backoff state",
+  "description": "File: python/src/lichen/client/ip_coap.py\n\nSummary: The AiocoapResourceSubscription._results() method yields CoapResult objects without checking for 5.03 Service Unavailable responses or recording backoff state in the parent transport. This violates the spec 07 section 10.2.3 requirement: Senders receiving 5.03 MUST back off for the indicated duration.\n\nFailure Scenario:\n1. Client has an active Observe relationship with peer P\n2. Peer P becomes congested and sends a 5.03 notification with Max-Age: 60\n3. _results() yields this as a normal CoapResult\n4. Transport _peer_backoffs dict is NOT updated\n5. Client immediately calls request() to peer P\n6. Request goes through because no backoff is recorded\n7. Result: client contributes to peer congestion, violating the spec MUST requirement\n\nLocation: Lines 353-364 in _results() async generator - no 5.03 check or backoff recording.\nContrast with request() at lines 196-216 which properly records backoff and raises ServiceUnavailableError.\n\nFix: AiocoapResourceSubscription needs a reference to the transport backoff state (or a callback) to record 5.03 responses.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T17:40:27.595449Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:40:27.595449Z"
+}

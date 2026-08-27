@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-j0xg",
+  "title": "sos_alert accepts NaN/Inf/out-of-range coordinates contradicting documented invariant",
+  "description": "Files: lichen/subsys/lichen/coap/include/lichen/sos_alert.h:87-88,131 + sos_alert.c:362-367,238-311,537-546. Header documents lat[-90,90]/lon[-180,180]; decoder validates neither; f16 exp31/f32/f64 non-finite values decode and round-trip with has_location=true feeding SOS dispatch/blue-force consumers. Policy decision needed: reject non-finite and/or range-enforce, document chosen behavior; update vectors.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:24.752574Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:33:30.755033Z",
+  "started_at": "2026-08-26T19:06:43.241407Z",
+  "closed_at": "2026-08-26T19:33:30.755033Z",
+  "close_reason": "sos_alert.c now rejects non-finite (f16 exp31 NaN/Inf incl signed qNaN, f32 inf/nan, f64 nan) and out-of-range finite coords with SOS_ALERT_ERR_INVALID_VALUE via coordinate_in_range() at lat/lon decode sites; header doc updated. Vectors: 6 negative entries added to test/vectors/sos_cbor.json per receipt_cbor.json precedent (no cbor_hex so python wire-contract consumer unaffected). Verified: all 5 canonical vectors decode+re-encode byte-identical; 7 reject classes return err 8; +-90/+-180 boundary accepted (ASan+UBSan driver over real sos_alert.c, exit=0). python pytest: test_vector_consumers_lci.py -k sos 20 passed; test_security_app_vector_consumers.py 94 passed; cppcheck exit=0.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-j0xg",
+      "depends_on_id": "project-LICHEN-worker6-3gfh",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:25.642703Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-5pi6",
+  "title": "link_crypto csrand-failure fixture never intercepts: no linker wrap wired so committed test fails when run",
+  "description": "Files: lichen/tests/link_crypto/src/main.c:23-49,75-88 + lichen/tests/link_crypto/CMakeLists.txt. Restored FAKE_VALUE_FUNC/DEFINE_FFF_GLOBALS fix HEAD-era link break but nothing engages interceptor: sys_csrand_get is __syscall binding directly to real z_impl_sys_csrand_get which succeeds under CONFIG_TEST_RANDOM_GENERATOR, so test_init_rejects_csrand_failure_without_mutation gets ret==0/-EIO mismatch, call_count==0, ctx mutates vs snapshot - three assertions red deterministically whenever suite actually runs. Zero --wrap flags anywhere tree-wide. Fix: zephyr_ld_options(-Wl,--wrap=z_impl_sys_csrand_get) in test CMakeLists (or EXTRA_LDFLAGS in testcase.yaml); confirm call_count==1 path passes.",
+  "notes": "Fixed the link_crypto-only entropy fixture by linking the test image with --wrap=z_impl_sys_csrand_get under CONFIG_TEST_RANDOM_GENERATOR; production link targets are unaffected. Reproduced the committed fixture in an isolated focused qemu_x86 image without the wrapper: lichen_link_init returned success instead of -EIO and the test failed at main.c:85. With the wrapper, the same image passed 1/1 and the fixture verified -EIO, exactly one fake call, and byte-identical context rollback (no key/random material published). The generated final link command contains the wrap option and zephyr.elf exports the FFF wrapper. Full shared-tree Zephyr compilation is temporarily obstructed by unrelated live API migrations (lichen_sha256 header/callers, DAO process prototype, Ygg identity symbol); validation used a snapshot with compatibility-only isolation changes, none copied into the repo. Standalone schnorr48 CTest passed 1/1; cppcheck on link_crypto main passed; clang-tidy is not installed locally; git diff --check passed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:02:03.533581Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T21:12:26.379408Z",
+  "started_at": "2026-08-26T21:04:13.429711Z",
+  "closed_at": "2026-08-26T21:09:36.877474Z",
+  "close_reason": "Wired interceptor: zephyr_ld_options(-Wl,--wrap=z_impl_sys_csrand_get) guarded by CONFIG_TEST_RANDOM_GENERATOR in lichen/tests/link_crypto/CMakeLists.txt. Fake symbol __wrap_z_impl_sys_csrand_get (main.c:24) signature-matches random.h sys_csrand_get(void*,size_t); intercepted call sites confirmed at link_ctx.c:165/235/297. Flag idiom verified against upstream precedent (soc/andestech/ae350 uses same bare -Wl, comma form through zephyr_ld_options, extensions.cmake:163-\u003etarget_ld_options probe+propagate). RESIDUAL: local macOS configure/built-run impossible (pykwalify import failure in board discovery even under Attic venv; syntax-only blocked by generated headers) - CI/native_sim must confirm suite green end-to-end.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5pi6",
+      "depends_on_id": "project-LICHEN-worker6-enyo",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T21:02:03.932556Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

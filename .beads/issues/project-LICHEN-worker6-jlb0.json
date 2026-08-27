@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-worker6-jlb0",
+  "title": "accept_authenticated_schc_packet does not bind peer context to receiving link",
+  "description": "File: rust/lichen-schc/src/link.rs\n\naccept_authenticated_schc_packet admits SCHC data if link.accepts_authenticated_frame(data_frame) and data_frame.sender pubkey equals peer.signer_identity(). Decompress then only checks retained DIO evidence is_current() (retirement flags).\n\nIt does not call peer.is_current_for(link). That check is what compress_schc_for_peer uses, and it is the full live binding: same receiving LinkLayer instance, peer still in the table, matching key-generation Arc, still pinned.\n\nWithout it, a caller can decode on link B using a DIO-issued AuthenticatedPeerSchcContext from link A, or keep using a context after the peer is unpinned/removed as long as the retirement atomics are still live. Python stores peer contexts on the LinkLayer and cannot do this. FragmentSender::new / policy.accepts_current already fail closed on the same binding.\n\nFix: require peer.is_current_for(link) (and signer match against the live evidence) before decompress, matching compress_schc_for_peer.",
+  "acceptance_criteria": "accept_authenticated_schc_packet returns InvalidPeerEvidence when the peer context was issued for a different LinkLayer instance, when the peer is no longer pinned or present, or when the DIO evidence is otherwise not accepted by the receiving link. compress_schc_for_peer and unfragmented accept use the same is_current_for gate. Regression test covers foreign-link and unpinned-peer contexts.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:20:53.496447Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:31:19.315958Z",
+  "started_at": "2026-08-26T17:26:28.553902Z",
+  "closed_at": "2026-08-26T17:31:19.315958Z",
+  "close_reason": "accept_authenticated_schc_packet now requires peer.is_current_for(link) and live-evidence signer match before decompress, matching compress_schc_for_peer. Regression covers foreign-link and unpinned-peer contexts. cargo test -p lichen-schc --features std --test link_layer_integration 4 passed.",
+  "labels": [
+    "rust",
+    "schc",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-jlb0",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.7.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:20:53.874883Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

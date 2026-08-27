@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-3n9o",
+  "title": "DeadDropResource does not speak RFC 8428 SenML+CBOR",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py\nPerspective: correctness (security impact on privacy)\n\nSpec 18.9 and get_link_description advertise Content-Format 112\n(application/senml+cbor). RFC 8428 Table 4 uses integer labels\n(0=n, 2=v, 3=vs, -2=bn, ...). lichen.senml.codec.pack() emits those\nlabels. ConfessionsResource correctly uses unpack().\n\nDeadDrop POST uses _decode_single_cbor() plus _senml_text() /\n_extract_ttl() which look up string keys \"n\", \"vs\", \"v\" on each\nrecord. GET /deaddrop wraps metadata as string-key maps and labels\nthe body ct=112.\n\nEvidence with pack() of privacy=private, ttl=3600, type=message:\n- _senml_text(payload, \"privacy\") is None\n- _extract_ttl returns 86400\n- stored privacy is \"public\"\n- unauthenticated GET lists the drop\n- unpack() of the GET body returns SenmlRecord objects with all\n  fields None (string labels without trailing _ are ignored)\n\nOracle tests hide this by cbor2.dumps()'ing Python dicts with\nstring keys, which is not RFC 8428 SenML+CBOR.\n\nImpact: spec-compliant C/Rust/Python pack() peers cannot set TTL,\ntype, recipient, or privacy. \"private\"/\"group\" drops are stored\npublic (confidentiality failure). GET bodies are not SenML+CBOR\nso cross-impl interop fails spec 18.9 \"MUST produce identical\nSenML output\".\n\nAcceptance: POST of lichen.senml.codec.pack() records honors ttl,\ntype, recipient, and privacy; private drops are omitted from public\nGET and return 4.03 by id; GET collection unpack()s to records\nwith n/vs/v populated.\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:05.240932Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:55:03.995295Z",
+  "started_at": "2026-08-26T17:41:56.793207Z",
+  "closed_at": "2026-08-26T17:55:03.995295Z",
+  "close_reason": "DeadDrop POST/GET speak RFC 8428 integer-label SenML+CBOR via lichen.senml.codec (pack GET, SenmlRecord.from_cbor_map POST). pack() privacy/ttl/type/recipient honored; private omitted from public GET and 4.03 by id; collection GET unpacks with n/vs/v. Independent tests in test_deaddrop_resource.py (hand-built Table 4 maps + pack/unpack). 46 passed.",
+  "labels": [
+    "python",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-3n9o",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.22.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:05.600101Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
 {"id":"01a00dec-ea84-74f1-9be0-d3e948e7ba28","issue_id":"project-LICHEN-worker6-144i","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T04:13:45.476325Z"}
 {"id":"01a00dec-ea8f-7d17-a77d-032ad75cf410","issue_id":"project-LICHEN-worker6-144i","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T04:13:45.48786Z"}
 {"id":"01a00dec-ea97-7ef4-b3d8-69f6946a558d","issue_id":"project-LICHEN-worker6-144i","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T04:13:45.495981Z"}
+{"id":"01a03f05-609e-7e25-acc9-fa47a8c29e56","issue_id":"project-LICHEN-worker6-144i","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate of dl1g - fixed by adding eui64 length validation to select_channel()","created_at":"2026-08-26T17:01:52.158928Z"}

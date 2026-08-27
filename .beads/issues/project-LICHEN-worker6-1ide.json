@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-1ide",
+  "title": "InboxMessage/SentMessage drop spec ts; firmware keys only",
+  "description": "File: rust/lichen-client/src/msg.rs (InboxMessage, SentMessage, Inbox::from_cbor)\n\nCrate and module docs claim the firmware contract and spec 18.1 / 17.5.7. The typed GET decoders do not:\n\n- Spec 18.1.2 inbox element: {id, from, ts, body}\n- LCI 17.5.7 received is an ISO-8601 string\n- Firmware coap_msg.c encode_inbox_cbor: {id, from, body, received} as Unix uint\n- Firmware sent records: {id, to, body, timestamp, status}\n\nInboxMessage only has received: u64 (default 0). A spec-shaped map with ts is accepted and ts is dropped, so received is 0. Python lichen.client.lci.normalize_message reads received as a string and timestamp from ts/t.\n\nSame-module MessagesStore::get_inbox() returns the stored POST map (ts if the client sent it, never received). inbox_get_includes_unread then decodes that payload with Inbox::from_cbor, so timestamps are lost even in-process.\n\nSentMessage uses timestamp, not spec ts, with the same silent drop.\n\nFix: alias ts and timestamp onto the time field; keep received as uint for firmware; reject or separately parse LCI ISO received rather than defaulting to 0.\n\nPerspectives: correctness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:25:31.525259Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T17:25:28.654153Z",
+  "closed_at": "2026-08-27T17:25:28.654153Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1ide",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.14.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:25:31.905519Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

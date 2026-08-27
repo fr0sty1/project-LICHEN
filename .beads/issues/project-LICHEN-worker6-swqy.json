@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-swqy",
   "title": "[review] provisioning.py:613: provision_node() never invokes callback",
   "description": "The high-level provision_node() method successfully provisions a node (lines 578-613) but never calls self._provisioned_callback. The callback is only invoked in _handle_br_post() (line 368), which is a different code path reached via render_post(). Users of the high-level API will never receive the callback they registered via for_br(provisioned_callback=...). Either provision_node() should invoke the callback before returning, or the docstring should clarify that callers must handle registration themselves.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T17:05:40.965787Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T17:05:40.965787Z",
+  "updated_at": "2026-08-26T17:03:13.082762Z",
+  "closed_at": "2026-08-26T17:03:13.082762Z",
+  "close_reason": "Fixed: Added callback invocation in provision_node() after successful ACK verification (lines 614-626). Now matches _handle_br_post() behavior. All 25 tests pass.",
   "labels": [
     "review"
   ]

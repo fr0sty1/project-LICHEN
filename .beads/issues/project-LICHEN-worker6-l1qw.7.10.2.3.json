@@ -1,19 +1,29 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.2.3",
   "title": "Zephyr: CoAP client",
+  "notes": "Implementation present in exactly three local files: coap_client.c, coap_client.h, tests/coap_client/src/main.c. AWS validation 2026-08-27: verified account 210337117346; instance i-0d14dd9fb53dae004 state stopped, AZ us-west-2c, Project=LICHEN; approved volume vol-0a95eee8d1d8461eb attached/in-use, Project=LICHEN, Name=lichen-zephyr-arm64. Started instance (new IP 35.90.138.149). Fetched origin/main and created NEW isolated worktree /mnt/lichen-zephyr/work/project-LICHEN-validate-coap-7-10-2-3-20260827 via tools/zephyr-clean-worktree.sh; transferred only git diff for the three bead files; git apply --check and git diff --check passed. Pinned environment confirmed Zephyr 3.7.0 and SDK 0.16.8. Command: west build -b native_sim lichen/tests/coap_client -d build/coap_client-l1qw-7-10-2-3 --pristine -- -DZEPHYR_EXTRA_MODULES=$PWD/lichen. RESULT: blocked before compilation by repository Kconfig dependency loop LICHEN_COAP_KEYS -\u003e ZCBOR -\u003e LICHEN_COAP_KEYS. No extra source/Kconfig workaround applied per three-file constraint. tools/zephyr-clean-worktree.sh verify passed module isolation. Workstation flushed with sync twice and stopped; bead remains open pending correction of the independent Kconfig loop and rerun.\nContinuation validation 2026-08-27: diagnosed pinned Zephyr v3.7 Kconfig cycle as local redundant reverse edge: LICHEN_COAP_KEYS had both depends on ZCBOR and imply ZCBOR. Removed only imply ZCBOR, preserving the hard feature prerequisite. Added focused coap_client test configuration CONFIG_LICHEN_COAP_CLIENT=y and CONFIG_LICHEN_COAP_SERVER=n so unrelated default server/status code is excluded. Replaced non-C11 strnlen use with a bounded loop after pinned compile exposed its absence. AWS isolation reverified account 210337117346, instance i-0d14dd9fb53dae004 Project=LICHEN/us-west-2c, and approved attached volume vol-0a95eee8d1d8461eb Project=LICHEN. Created NEW worktree /mnt/lichen-zephyr/work/project-LICHEN-validate-coap-kconfig-20260827-4 from origin/main and applied only five bead files; git apply --check and git diff --check passed. Pinned config command: west build -b native_sim/native/64 lichen/tests/coap_client -d build/coap-client --pristine -- -DZEPHYR_EXTRA_MODULES=$PWD/lichen (Zephyr v3.7.0, SDK 0.16.8, GCC 14.2.1 host shim because repository mandates -std=c23). Kconfig completed without cycle; .config confirmed CONFIG_LICHEN_COAP_CLIENT=y and server unset. CoAP client and test sources compiled, then build stopped in unrelated lichen/subsys/lichen/l2/lichen_util.c: implementation lichen_sha256(input,inlen,output,outlen) conflicts with header lichen_sha256(input,inlen,output), with -Werror=array-parameter/conflicting types. Existing bead project-LICHEN-q3iy.25 tracks the output-length API change; added it as a blocking dependency. tools/zephyr-clean-worktree.sh verify passed. Workstation sync completed; stopping per AGENTS.md. Bead remains open pending blocker fix and final run.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:14.125135Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:14.125135Z",
+  "updated_at": "2026-08-27T17:06:34.472014Z",
+  "started_at": "2026-08-26T19:08:54.157816Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.2.3",
       "depends_on_id": "project-LICHEN-worker6-l1qw.7.10.2",
       "type": "parent-child",
       "created_at": "2026-07-25T03:46:14.686235Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.7.10.2.3",
+      "depends_on_id": "project-LICHEN-q3iy.25",
+      "type": "blocks",
+      "created_at": "2026-08-27T17:06:32.898326Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

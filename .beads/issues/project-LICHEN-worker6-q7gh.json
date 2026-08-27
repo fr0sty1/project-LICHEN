@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-q7gh",
   "title": "discovery.py: Time wraparound not handled in _prune_seen",
   "description": "Line 252: Unlike _is_suppressed (lines 245-247), _prune_seen does not handle timestamp wraparound. When now \u003c v[1] due to clock wrap or reset, (now - v[1]) becomes negative, which is less than suppress_window_ms, so entries are incorrectly kept instead of pruned. This causes stale entries to accumulate and memory to grow after a time wraparound. The impact is limited to memory growth since _is_suppressed correctly handles negative elapsed time.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T15:24:52.264665Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T15:24:52.264665Z",
+  "updated_at": "2026-08-26T17:01:03.532417Z",
+  "closed_at": "2026-08-26T17:01:03.532417Z",
+  "close_reason": "Fixed: added '0 \u003c=' guard to elapsed-time checks in _prune_seen and _seen_record, matching _seen_is_repeat pattern",
   "labels": [
     "bug",
     "codereview"

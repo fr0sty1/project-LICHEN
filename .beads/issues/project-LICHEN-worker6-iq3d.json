@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-iq3d",
+  "title": "Presence ts and age_s accept integers above uint64",
+  "description": "Spec 18.5.1 marks ts as uint. _require_ts and _require_age_s only require type int and value \u003e= 0. apply_automatic_status and PUT fill ts with int(now_f) with no upper bound.\n\nPython then encodes values \u003e= 2**64 as CBOR bignums (tag 2). _decode_single_cbor rejects tags, so those documents cannot PUT. Rust lichen-client Presence.ts / age_s are u64. Other Python codecs cap uints at (1 \u003c\u003c 64) - 1 (messaging ids, RPL sequence, announce revision).\n\nFile: python/src/lichen/presence.py _require_ts, _require_age_s, apply_automatic_status ts=int(now_f)",
+  "acceptance_criteria": "ts and age_s must be integers in 0..2**64-1. Larger values raise PresenceError. PUT of a too-large ts is 4.00. Vector timestamps still decode.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:21:16.434563Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:19:02.02817Z",
+  "closed_at": "2026-08-27T16:19:02.02817Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-iq3d",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.18.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:21:16.789556Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

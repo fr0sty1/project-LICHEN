@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-gyfo",
+  "title": "Group PUT/DELETE/join_key skip owner/admin roles",
+  "description": "File: python/src/lichen/coap/resources/groups_collection.py\n\nspec/12-apps.md 18.8.2 Roles:\n- Owner: delete group, invite/remove anyone\n- Admin: invite/remove members (not owner/admins)\n- Member: send/receive, view membership\n\nThe handlers ignore the requester:\n- GroupsItemResource.render_put (235-257) lets any client rename any group\n- GroupsItemResource.render_delete (259-266) lets any client drop the group record\n- GroupsItemResource._join_key (288-293) appends body['node'] to members with no invitation check and no bind of 'node' to the CoAP/OSCORE peer\n\nUnlike deaddrop.py and handoff.py, this resource never inspects OSCORE context or peer identity. join_key is therefore open enrollment plus key fetch. DELETE on the owner node destroys the authoritative group, not a local leave.",
+  "acceptance_criteria": "Mutating /groups/{id} and /groups/{id}/key MUST authenticate the requester (pairwise OSCORE) and enforce the 18.8.2 role table. join_key MUST require a prior valid invitation and MUST bind body.node to the authenticated peer. Unauthorized PUT/DELETE/join_key return 4.01 or 4.03.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:19:23.070445Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T18:13:44.885718Z",
+  "started_at": "2026-08-26T17:48:13.096788Z",
+  "closed_at": "2026-08-26T18:05:02.60532Z",
+  "close_reason": "PUT/DELETE require pairwise OSCORE and owner role (admin/member -\u003e 4.03, plaintext -\u003e 4.01). join_key requires pairwise OSCORE, a live invitation, and body.node bound to the peer; admin invitations promote to admins. pytest groups item/roles/rekey/collection 43 passed.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-gyfo",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.1.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:19:23.424452Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

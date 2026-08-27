@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.5.3.3",
   "title": "Zephyr: short address to IID",
-  "status": "open",
+  "notes": "Implemented Zephyr/C short-address IID module and production CMake integration. Mapping is byte-exact RFC 6282 0000:00ff:fe00:XXXX with big-endian XXXX, reverse canonical-prefix validation, explicit 0x0000/0xfffe/0xffff reserved classification, and fail-before-mutation errors. Dedicated shared vector table mirrors test/vectors/ipv6-addresses.json and adds 0x0000/0xfffd/0xfffe boundaries. Gates: standalone strict C + UBSan 1/1 passed; Clang static analyzer clean; local Zephyr qemu_cortex_m3 build/run 4/4 passed (FLASH 21879 B, RAM 5480 B); Python ipv6 parity 34/34; Rust lichen-core ipv6/short-address vector parity 9/9 using isolated target dir; diff check clean. native_sim configure was attempted but Zephyr POSIX architecture rejects macOS as Linux-only; qemu_cortex_m3 provided the local Zephyr execution path. clang-tidy/clang-format are not installed; strict compiler, analyzer, and Zephyr build were used.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:44:15.923414Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:44:15.923414Z",
+  "updated_at": "2026-08-26T19:21:42.806063Z",
+  "started_at": "2026-08-26T19:09:28.871404Z",
+  "closed_at": "2026-08-26T19:21:42.806063Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.5.3.3",

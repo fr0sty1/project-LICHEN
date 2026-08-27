@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-1out",
+  "title": "Confession IDs are truncated SHA-256 of content and timestamp",
+  "description": "File: python/src/lichen/coap/resources/confessions.py\nPerspective: security (privacy)\n\nSpec 18.10 is an anonymous board. Example ids look random (8a4f2b).\nDeadDropResource uses secrets.token_hex(3).\n\n_generate_id() (lines 42-45) does\nsha256(f\"{content}:{timestamp}\").hexdigest()[:6]. timestamp is the\nSenML bt (client-supplied) or receive time. _unique_id() only\nsuffixes on in-store collision.\n\nImpact:\n- ID is a fingerprint of content+bt; a guess of the text can be\n  verified without reading the body from another replica\n- identical content+bt on an empty board yields a stable, predictable\n  Location-Path\n- unlinkability fails for the same confession stored on multiple\n  nodes\n\nAcceptance: allocate confession ids from a CSPRNG (same 6-hex form)\nwith collision retry, not from content hash.\n",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:08.412167Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:59:12.113959Z",
+  "started_at": "2026-08-26T17:53:47.516958Z",
+  "closed_at": "2026-08-26T17:59:12.113959Z",
+  "close_reason": "Confession IDs now come from secrets.token_hex(3) with in-store collision retry, matching DeadDrop. Content/timestamp SHA-256 fingerprinting is gone. Tests pin format, unlinkability of identical payloads, independent-hash non-match, collision retry, and POST Location-Path.",
+  "labels": [
+    "python",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1out",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.23.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:08.779393Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

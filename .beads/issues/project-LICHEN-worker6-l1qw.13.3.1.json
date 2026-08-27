@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.13.3.1",
   "title": "Full handshake (all 3 impls)",
+  "notes": "2026-08-26 bounded read-only acceptance audit: NOT ready to close. RFC 9528 Appendix A.1 Table 14 requires Initiator OSCORE Sender ID=C_R and Recipient ID=C_I, and Responder Sender ID=C_I and Recipient ID=C_R. Current Python export_oscore does the inverse (python/src/lichen/crypto/edhoc.py:555 and :820); the external Rust dependency /Volumes/Attic/Desktop/Projects/crates/oscore is dirty/out-of-scope and its EDHOC initiator/responder export currently mirrors that inverse; Zephyr C also explicitly mirrors Python and assigns initiator sender=c_i/recipient=c_r (lichen/subsys/lichen/edhoc/edhoc_initiator.c:466+) and responder sender=c_r/recipient=c_i (edhoc_responder.c:511+). test/vectors/edhoc.json encodes the same non-normative initiator mapping (sender 00, recipient 01), so current cross-language agreement is self-consistency, not RFC-correct parity. Related open bead project-LICHEN-worker6-l1qw.13.3.4 already tracks the derived-secret/export correction and external dependency blocker. No dedicated Zephyr EDHOC three-party canonical vector consumer/test was found under lichen/tests. Exact external Rust files are actively dirty and must not be edited here. Leave this bead open/unclaimed until .13.3.4 is resolved, the canonical vector is corrected, and an independent C/Python/Rust full-handshake parity gate passes. No files changed; no test run because the normative acceptance condition fails by source/vector inspection.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:45.220693Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:45.220693Z",
+  "updated_at": "2026-08-26T16:33:58.451666Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.13.3.1",

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-t5lp",
+  "title": "[refactor] Split LinkLayer god class (2570 lines)",
+  "description": "LinkLayer class in link_layer.py is 2570 lines. Needs internal refactoring: extract state management, frame processing, crypto ops, SCHC handling into focused helper classes or modules.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T20:30:04.24572Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T20:40:26.836333Z",
+  "closed_at": "2026-08-26T20:40:26.836333Z",
+  "close_reason": "Closed"
+}

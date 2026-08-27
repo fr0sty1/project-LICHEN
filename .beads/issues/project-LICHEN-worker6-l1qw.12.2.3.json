@@ -1,13 +1,14 @@
 {
   "id": "project-LICHEN-worker6-l1qw.12.2.3",
   "title": "Observe with OSCORE",
+  "notes": "BLOCKED 2026-08-26 Phase-2 audit (not claimed; no source edits): full in-scope Python/Rust Observe-over-OSCORE acceptance is unavailable because project-LICHEN-worker6-l1qw.7.11.2 (Rust: Observe subscribe/notify) is DEFERRED pending design of the observer registry, notification dispatch, client subscription API, sequence tracking, and deregistration. rust/lichen-coap/src/client.rs explicitly states there is no Observe support; rust/lichen-coap only recognizes option number 6, and rust/lichen-node secure.rs has no production subscribe/notify surface. Python has substantial production correlation/PIV/replay/cancellation coverage in secure/channel.py plus test_secure_lifecycle.py, test_secure_context.py, and test_secure_protection.py, but shared coap_observe_sequence.json still has a strict xfail at the exact 2**23 half-range boundary, tracked by open bead project-LICHEN-worker6-l1qw.7.11.4. Zephyr Observe /status also remains open under 9.8.3.1.5, though excluded from this lane. Leave 12.2.3 open/unassigned until Rust Observe architecture/API and the canonical sequence-boundary decision land; then exercise registrations, multiple protected notifications with fresh responder PIVs, replay/ordering, cancellation/RST, context replacement, and errors across both production implementations.\nERRATUM: project-LICHEN-worker6-l1qw.7.11.4 is CLOSED, not open. Its close reason explicitly records that the production 24-bit serial arithmetic is correct but canonical vector observe_seq_large_jump_accept remains off by one at diff == 2**23; the current strict xfail confirms that residual vector discrepancy. The missing/deferred Rust Observe API remains the primary blocker.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:39.234462Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:39.234462Z",
+  "updated_at": "2026-08-26T16:23:51.585846Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.12.2.3",

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-dbdn",
+  "title": "rpl/dodag.py: parents dict unbounded growth allows DoS - Line 344 adds parent candidates with no MAX_PARENTS limit. Attacker sending DIOs from spoofed neighbor_ids can exhaust memory. Fix: add MAX_PARENTS constant and evict lowest-quality candidates when limit reached.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:17:43.111887Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T17:17:43.111887Z",
+  "labels": [
+    "bug",
+    "security"
+  ]
+}

@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-9jqr",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/link/tdma.c:119 Integer underflow in tdma_tx_allowed: (slot_start - g) underflows when slot_start \u003c LICHEN_TDMA_GUARD_MS (100). For superframe=0, slot=0, slot_start=0, causing 0-100 to wrap to 0xFFFFFF9C. The condition becomes false for any reasonable now_ms, incorrectly blocking TX.",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T15:08:41.385993Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T15:08:41.385993Z",
+  "updated_at": "2026-08-26T17:57:07.234112Z",
+  "started_at": "2026-08-26T17:47:12.88851Z",
+  "closed_at": "2026-08-26T17:57:07.234112Z",
+  "close_reason": "Fixed underflow in tdma.c tdma_tx_allowed: window_start clamped via (slot_start \u003e= g) compare before subtraction; validated by compiling real tdma.c with host harness against ccp_tdma.json vectors plus slot-0 regression cases (all pass)",
   "labels": [
     "codereview",
     "wave-fix"

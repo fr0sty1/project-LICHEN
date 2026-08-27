@@ -1,14 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.7.2.6",
   "title": "Zephyr: unprotect_request (decrypt)",
-  "notes": "Already implemented",
-  "status": "open",
+  "notes": "Implemented strict Zephyr OSCORE request unprotection: reject reserved option bits and non-canonical/exhausted PIVs; require exact recipient KID and KID Context binding; retain full-width replay reservation through authenticated decrypt and semantic/output validation; rollback on every failure; commit before exposing outputs; defer CoAP correlation output until success. Added focused regressions for output-capacity retry, spoofed/missing KID/context, reserved bits, malformed/noncanonical/exhausted PIV, authentication failure, replay, invalid request code/options/empty payload marker, and exact retry after rollback. Preserved concurrent response, uint64 PIV, active-slot, and NVM hunks. Gates: isolated qemu_x86 OSCORE request-focused suite 6/6 PASS; Zephyr compile/link PASS; Python OSCORE cross-parity 12 PASS; Rust cross-parity 4 PASS/1 ignored helper; cargo test -p lichen-oscore --no-default-features PASS; relevant cppcheck PASS; git diff --check PASS. Broad Zephyr image retains unrelated pre-existing stale NVM/peer expectations and a malformed legacy RFC vector, outside this bead.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:01.344272Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:01.344272Z",
+  "updated_at": "2026-08-26T21:57:42.736064Z",
+  "started_at": "2026-08-26T19:09:04.586644Z",
+  "closed_at": "2026-08-26T21:57:42.736064Z",
+  "close_reason": "Implemented and verified strict request decrypt/authentication, binding, full-width replay rollback/commit, fail-before-output, and malformed-boundary behavior.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.7.2.6",

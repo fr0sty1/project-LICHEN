@@ -7,7 +7,6 @@ menuconfig LICHEN_LINK
 	bool "LICHEN link layer"
 	depends on LICHEN
 	select CRC
-	select LICHEN_CRYPTO_AES_CCM
 	select LICHEN_SCHC
 	select TINYCRYPT
 	select TINYCRYPT_SHA256
@@ -70,8 +69,10 @@ config LICHEN_LINK_INSECURE_CRC32_MIC
 	  - Development and testing
 	  - Networks with higher-layer authentication (e.g., OSCORE)
 
-	  For production deployments requiring link-layer security, configure
-	  a link key to enable AES-CCM-64 MIC instead of enabling this option.
+	  For production deployments, rely on the mandatory Schnorr-48 link
+	  signatures and end-to-end protection from upper layers (OSCORE)
+	  instead of enabling this option. Link-key AES-CCM MIC/encryption is
+	  unsupported; encrypted frames (E=1) are rejected by every boundary.
 
 	  When enabled, a compile-time warning is emitted to ensure the
 	  insecure configuration is visible in build logs.
@@ -138,9 +139,10 @@ config LICHEN_TDMA
 	depends on LICHEN_RPL
 	help
 	  Enable TDMA struct and lichen_tdma_init() after lichen_link_load_key() per
-	  AGENTS.md init graph and spec/02a-coordinated-capacity.md §2a.2 (guard=100ms,
-	  slot=hash(EUI64^epoch)%num_slots via lichen_hash_32; validated by ccp16.json
-	  + ccp_tdma.json). Supports beacon sync, GPS sync, dynamic slot assignment
+	  AGENTS.md init graph and spec/02a-coordinated-capacity.md §2a.2 (guard=50ms,
+	  Slot=(fnv1a32(EUI64)+u32(SFN)) mod num_slots; epoch MUST NOT enter the
+	  slot hash; validated by ccp_sfn_wrap_slot_hash.json + ccp_tdma.json).
+	  Supports beacon sync, GPS sync, dynamic slot assignment
 	  from root, spatial reuse, desync FSM per §2a.5. Must not call before key
 	  loaded. Mimics lichen_link_ctx pattern exactly.
 

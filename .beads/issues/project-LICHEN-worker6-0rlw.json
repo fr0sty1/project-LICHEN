@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-0rlw",
+  "title": "handle_origin_validated_dao reconstructs option-252 EUI via U/L xor on 02xx origin",
+  "description": "File: rust/lichen-rpl/src/address_assignment.rs\nPerspective: correctness / security\n\nhandle_origin_validated_dao() requires origin == ygg_addr_from_pubkey(pubkey) (02xx), then sets authenticated_eui64 = eui64_from_authenticated_origin(origin). That helper is NodeId::from_ipv6, which always does iid[0] ^= 0x02 (RFC 4291 inverse for link-local/ULA hardware EUI).\n\nConsequences:\n- Link-local origins, where that inverse actually recovers the hardware EUI-64 used by option 252 and short_addr_assignment.json (e.g. 0011223344556677), are rejected by the ygg_addr equality check.\n- 02xx origins are accepted, but from_ipv6 then yields SHA-512(pubkey) IID with the U/L bit set. That value is neither the hardware EUI-64 in canonical assignment wires nor the pin-table IID used by DaoOriginValidator (origin[8..], U/L already cleared). Those 8-byte strings differ in bit 1 of byte 0 for every 02xx address.\n- process() then fails closed with \"assignment option EUI-64 does not match authenticated origin\" for any DAO that carries the hardware EUI or the Announce IID. The only matching option EUI is the synthetic xor-ed hash, which the in-module test constructs on purpose.\n\nThis is not a refile of project-LICHEN-worker6-810t (missing origin binding). The binding exists and is the wrong identifier for 02xx. Fix: map authenticated origin/pubkey to the same EUI-64 option 252 uses (hardware NodeId from the pin/identity table, or the unmodified 02xx IID if that is the spec identity). Do not apply the RFC 4291 hardware inverse to a key-derived 02xx IID.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:16:40.382528Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T18:46:58.459451Z",
+  "started_at": "2026-08-26T18:37:44.282688Z",
+  "closed_at": "2026-08-26T18:46:58.459451Z",
+  "close_reason": "Bound option-252 EUI derivation to the authenticated DAO public key and exact key-derived 02xx origin, then toggled the U/L bit once per the link profile. Removed handle_origin_validated_dao use of generic IPv6-to-NodeId inverse. Added non-native, raw-IID, mismatched-key, low-order substitution, and U/L-boundary regressions. Verified 207 lichen-rpl library tests, 13 address-assignment vector tests, Clippy with warnings denied, no-default-features check, and fmt.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0rlw",
+      "depends_on_id": "project-LICHEN-worker6-m557",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:16:40.864381Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

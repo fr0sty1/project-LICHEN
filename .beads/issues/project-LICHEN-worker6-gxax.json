@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-gxax",
   "title": "Silent skip when expected channel is missing from vector",
   "description": "At line 239, the assertion only runs 'if expected_ch is not None'. If a test vector omits all of select_channel/expected_channel/channel fields, no assertion is made and the test silently passes without validating anything.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T18:12:53.830686Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T18:12:53.830686Z",
+  "updated_at": "2026-08-27T17:25:35.150218Z",
+  "closed_at": "2026-08-27T17:25:35.150218Z",
+  "close_reason": "Closed",
   "labels": [
     "file:python/tests/test_channel_plan.py",
     "line:239"

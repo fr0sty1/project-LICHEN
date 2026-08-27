@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-nwbk",
+  "title": "Decimal-valued expires bypasses _numeric_value and resurrects expired drop at DEFAULT_TTL",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py:148-152,174-180. Codec _validate_field_type accepts Decimal as num so hand-built/add_drop records legitimately carry it; isinstance(int,float) check misses -\u003e falls to DEFAULT_TTL violating no-resurrection invariant this bead established. Wire path safe (CBOR tags rejected). Fix: accept Decimal in _numeric_value or reject Decimal expires explicitly.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:27.703688Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:22:23.453425Z",
+  "started_at": "2026-08-26T19:06:42.101631Z",
+  "closed_at": "2026-08-26T19:22:23.453425Z",
+  "close_reason": "_numeric_value now accepts finite Decimal (codec-admitted num type), converting via float() and clamping beyond-float-range values to +/-inf; non-finite Decimals rejected to None like bools/non-numerics. Decimal past-expires drops can no longer resurrect at DEFAULT_TTL. Regression tests: decimal future-remaining, decimal past-no-resurrection (listing empty + storage count 0), NaN-Decimal -\u003e default-ttl observation via raw CBOR oracle. Wire path unchanged (CBOR tags still rejected at _decode_single_cbor). tests/coap -k deaddrop: 71 passed.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-nwbk",
+      "depends_on_id": "project-LICHEN-worker6-y4ad",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:28.525575Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

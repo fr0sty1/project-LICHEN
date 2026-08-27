@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-frjv.10",
   "title": "No cleanup of parents dict entries over time",
   "description": "File: python/src/lichen/rpl/dodag.py. The parents dict grows as neighbors are heard but entries are only removed on: (1) poisoned DIO, (2) explicit remove_parent(), (3) version change. Long-running nodes may accumulate stale parent entries for neighbors that went silent. Consider a max-age or LRU eviction for parent candidates, or rely on caller to call remove_parent() on link timeout.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T18:45:01.392098Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T18:45:01.392098Z",
+  "updated_at": "2026-08-27T17:09:27.924311Z",
+  "closed_at": "2026-08-27T17:09:27.924311Z",
+  "close_reason": "Closed",
   "labels": [
     "resource-cleanup",
     "review"

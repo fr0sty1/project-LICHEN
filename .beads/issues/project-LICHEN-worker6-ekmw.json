@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ekmw",
+  "title": "test_low_battery_flag_when_below_ten is a false oracle",
+  "description": "The test at line 209-215 claims to verify spec 18.5.3: that apply_automatic_status sets low_battery=True when battery \u003c 10%. However, the test creates input with low_battery=True already set, then asserts it remains True in output. This proves nothing - if apply_automatic_status had a bug where it does not set the low_battery flag, this test would still pass because the input already has the flag.\n\nFix: Create input with battery=9 and low_battery=None (unset), call apply_automatic_status, then assert low_battery is True. This verifies the function actually sets the flag rather than just preserving it.\n\nFile: python/tests/test_presence.py:209-215",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T17:19:50.734827Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:19:50.734827Z"
+}

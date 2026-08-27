@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-4cmc",
+  "title": "IPv4 local admin creates messages without mandatory 'from' field",
+  "description": "In messaging.py, _accept_outbound() only sets body['from'] when _ipv6_from_remote() returns a valid IPv6 address (lines 337-340). However, _request_is_oscore_or_admin() auth check allows IPv4 local admin peers (e.g., 127.0.0.1) because _peer_is_local_admin() correctly identifies IPv4 loopback. This creates a gap: IPv4 local admin passes auth but cannot populate the 'from' field since they have no IPv6 address. Result: messages from IPv4 local admin are stored without the mandatory 'from' field required by Spec 18.1.1. The C firmware binds IPv6-only sockets so this never occurs there, but the Python reference diverges. Fix: either reject IPv4 peers that cannot produce a valid 'from', or store IPv4 address in an alternative format.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:32:11.019372Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:47:51.603876Z",
+  "closed_at": "2026-08-27T16:47:51.603876Z",
+  "close_reason": "Closed"
+}

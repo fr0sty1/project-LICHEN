@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-6seu",
+  "title": "MessagesStore inbox always stamps ts=0, dropping sender ts",
+  "description": "File: rust/lichen-client/src/msg.rs (inbox_receive_document, MessagesStore::post_inbox_from)\n\nAfter nqes, POST /msg/inbox persists a server-built receive document {id, from, ts, body} instead of the caller map. from is rebound from the transport peer. ts is hardcoded to Integer(0) with the comment that this store has no wall clock.\n\nSpec 18.1.1 defines ts as the sender Unix timestamp (firmware time provider). Spec 18.1.2 inbox items are {id, from, ts, body} using that same field. Receivers MAY accept omitted ts or ts=0 as time unknown; they are not required to wipe a valid sender ts.\n\nPython MessagesResource.render_post keeps body['ts'] when present and deliver()s it into the inbox. A POST with ts=1716742800 therefore round-trips in the Python oracle and is replaced with 0 in Rust. GET /msg/inbox then reports time-unknown for every message, including ones that carried a valid sender timestamp.\n\nFix: if the POST map has a uint ts, copy it onto the receive document; only default to 0 when ts is absent or 0. Do not invent a receiver clock. Keep stripping send-only keys (to, canned, ack, priority, text, read).\n\nPerspectives: correctness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:15:05.001103Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:35:53.921463Z",
+  "closed_at": "2026-08-27T16:35:53.921463Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6seu",
+      "depends_on_id": "project-LICHEN-worker6-nqes",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:16:19.981356Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

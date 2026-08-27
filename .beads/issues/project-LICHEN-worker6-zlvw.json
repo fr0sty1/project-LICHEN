@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-zlvw",
+  "title": "Unbounded tombstone accumulation in ShortAddressCoordinator",
+  "description": "[codereview]\n\n## Location\n`python/src/lichen/link/address_assignment.py` lines 604-608, 371-380\n\n## Summary\nWhen peers release their addresses, tombstone entries (EUI64 -\u003e last_sequence) are created to prevent DAO sequence replay attacks. These tombstones are never automatically cleaned up.\n\n## Failure Scenario\n1. Coordinator starts with lease-based address management\n2. Many peers join and later release their addresses (via AssignmentOperation.RELEASE)\n3. Each release creates a tombstone entry in `_last_sequence_by_eui` but NOT in `_expires_by_eui`\n4. `prune_expired()` only removes entries that have expiries; tombstones have no expiry\n5. Over time, tombstone count grows toward the limit of 65533 (SHORT_POOL_SIZE)\n6. Memory usage grows: ~9 bytes per tombstone = ~600KB worst case\n\n## Analysis\n- Line 674-675, 678: On release, sequence is stored but no expiry is set\n- Line 589-591: `prune_expired` iterates `_expires_by_eui`, which excludes tombstones\n- Line 604-607: Sequences are only removed if the EUI64 is in the `expired` set\n- Tombstones are only \"cleaned\" if the peer allocates again (lines 712-714)\n\nThe tombstone limit at line 372 prevents unbounded growth but does not provide cleanup:\n```python\nif len(tombstone_euis) \u003e _SHORT_POOL_SIZE:\n    raise AssignmentProtocolError(\"too many released-peer sequence tombstones\")\n```\n\n## Suggested Fix\nAdd a tombstone TTL or a bounded LRU eviction for released-peer sequences. The security window for replay protection is typically short (minutes to hours), so old tombstones can be safely pruned.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T17:42:50.914659Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:42:50.914659Z"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-nqes",
+  "title": "MessagesStore POST stores caller map; from is spoofable",
+  "description": "File: rust/lichen-client/src/msg.rs (MessagesStore::post_inbox)\n\nPOST /msg/inbox keeps the decoded caller CBOR map (after canned expansion and id assign) as both the sent record and the inbox record. It does not build a server-authoritative receive document.\n\nSpec 18.1.2 inbox items are {id, from, ts, body}. from is the sender identity. The Python oracle (python/src/lichen/coap/resources/messaging.py render_post) has a SECURITY comment and body.pop(\"from\", None) so the client cannot spoof sender.\n\nRust never strips from, never stamps receiver time, and never allowlists keys. A mesh POST can:\n\n1. Set from to an arbitrary IPv6 string (sender spoofing).\n2. Set read to true so unread_count() (spec 18.1.2) skips the message.\n3. Leak send-only keys (to, canned, ack, priority, text) into GET /msg/inbox.\n\nFix: strip or ignore untrusted keys; set from from the transport/peer, not the payload; persist only the spec receive fields (plus server id/ts). Match the Python from strip at minimum.\n\nPerspectives: security, correctness.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:25:29.149762Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:32:04.027286Z",
+  "started_at": "2026-08-26T17:26:27.045734Z",
+  "closed_at": "2026-08-26T17:32:04.027286Z",
+  "close_reason": "POST /msg/inbox strips payload from, rebinds from transport peer, and persists spec 18.1.2 receive fields only. Tests cover spoof, rebind, duplicate keys, read unread, send-key leak.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-nqes",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.14.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:25:29.516469Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

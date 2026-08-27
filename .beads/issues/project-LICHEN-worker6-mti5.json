@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-mti5",
+  "title": "PresenceCacheResource.record() does not validate time_source() output",
+  "description": "In PresenceCacheResource.record() at line 258-260, the ts parameter is validated with _finite_non_negative(), but now from self._time_source() is not validated. If time_source() returns NaN or a negative value: 1) min(stamp, nan) returns nan in Python, 2) NaN gets stored in self._nodes[addr]['ts'], 3) Later calls to snapshot() invoke age_s_at() which validates the stored ts and raises PresenceError. This corrupts the cache with no recovery path. The __init__ validates time_source() at construction but not on subsequent calls. Fix: validate now with _finite_non_negative before using it in the min() call.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:06:49.887419Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:35:43.914696Z",
+  "closed_at": "2026-08-27T16:35:43.914696Z",
+  "close_reason": "Closed"
+}

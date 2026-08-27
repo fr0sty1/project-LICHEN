@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-y4ad",
+  "title": "DeadDrop after/expires use monotonic default clock",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py\nPerspective: correctness\n\nDeadDropResource.__init__ defaults time_func to time.monotonic().\nDrop created timestamps, age_s, GET ?after, and SenML expires all\nuse that same clock.\n\nSpec 18.9 GET query is ?after=17216... (unix). LCI 17.5.8 POST\nexample uses SenML n=expires as unix 1721736400. _extract_ttl does\nremaining = expires - now. drops() filters\ndrop[\"created\"] \u003c= after.\n\nWith the default monotonic now (uptime seconds, ~1e6-1e7):\n- unix after=1721650000 compares against created~uptime, so\n  created \u003c= after is true for every drop and the filter drops\n  the whole collection\n- unix expires - monotonic now is ~1.7e9 seconds, clamped to\n  DEADDROP_MAX_TTL (7d) instead of remaining wall time\n- expires in the past does not expire; _extract_ttl falls through\n  to DEADDROP_DEFAULT_TTL (24h)\n\nTests pass because they inject _Clock() at unix-epoch values,\nhiding the default-clock mismatch.\n\nAcceptance: default construction honors unix after/expires as\nspecified; keep monotonic (or equivalent) only for the 6/hour\nrate window.\n",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:06.018233Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T18:00:35.964104Z",
+  "started_at": "2026-08-26T17:47:49.592878Z",
+  "closed_at": "2026-08-26T18:00:35.964104Z",
+  "close_reason": "Default DeadDrop clock is unix time.time for created/age/after/expires (spec 18.9, LCI 17.5.8); monotonic only for the 6/hour rate window. ttl=0 past-expires prune immediately. Tests: TestDefaultClockUnixEpoch plus exact TTL boundary. 54 passed.",
+  "labels": [
+    "python",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-y4ad",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.22.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:06.376749Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

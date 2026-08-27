@@ -1,3 +1,4 @@
 {"id":"01a00deb-608c-734f-bfe7-e293c8da4d11","issue_id":"project-LICHEN-worker6-m5kt","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T04:12:04.620218Z"}
 {"id":"01a00deb-6097-7dac-8214-2093bc0cc488","issue_id":"project-LICHEN-worker6-m5kt","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T04:12:04.631897Z"}
 {"id":"01a00deb-609e-7887-91c2-53e27341a9ea","issue_id":"project-LICHEN-worker6-m5kt","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T04:12:04.638559Z"}
+{"id":"01a03f05-2b56-7962-af9e-b780dc3e2f53","issue_id":"project-LICHEN-worker6-m5kt","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate of vtw7. Bug already fixed - lines 395-401 now validate types for ts and timeout_s.","created_at":"2026-08-26T17:01:38.518616Z"}

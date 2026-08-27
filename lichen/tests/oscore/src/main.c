@@ -189,10 +189,13 @@ static const uint8_t rfc8613_c7_expected_ciphertext[] = {
  *     nonce = 4722d4dd6d944169eefb54987c
  *     oscore_option = 0100
  *     ciphertext = 4d4c13669384b67354b2b6175ff4b8658c666a6cf88e
- * Note: Current oscore_protect_response does not include PIV in response
- * option. The ciphertext/nonce values are provided for reference but the
- * full protect_response test is deferred until include_piv support is added.
  */
+static const uint8_t rfc8613_c8_expected_option[] = { 0x01, 0x00 };
+static const uint8_t rfc8613_c8_expected_ciphertext[] = {
+	0x4d, 0x4c, 0x13, 0x66, 0x93, 0x84, 0xb6, 0x73,
+	0x54, 0xb2, 0xb6, 0x17, 0x5f, 0xf4, 0xb8, 0x65,
+	0x8c, 0x66, 0x6a, 0x6c, 0xf8, 0x8e,
+};
 
 static const uint8_t master_secret[OSCORE_KEY_LEN] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -308,7 +311,7 @@ ZTEST(rfc8613_vectors, test_c1_key_derivation_client_with_salt)
 		      OSCORE_OK);
 	zassert_not_null(ctx);
 
-	uint32_t seq;
+	uint64_t seq;
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &seq), OSCORE_OK);
 	zassert_equal(seq, 0U);
 
@@ -330,7 +333,7 @@ ZTEST(rfc8613_vectors, test_c1_key_derivation_server_with_salt)
 		      OSCORE_OK);
 	zassert_not_null(ctx);
 
-	uint32_t seq;
+	uint64_t seq;
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &seq), OSCORE_OK);
 	zassert_equal(seq, 0U);
 
@@ -352,7 +355,7 @@ ZTEST(rfc8613_vectors, test_c2_key_derivation_client_no_salt)
 		      OSCORE_OK);
 	zassert_not_null(ctx);
 
-	uint32_t seq;
+	uint64_t seq;
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &seq), OSCORE_OK);
 	zassert_equal(seq, 0U);
 
@@ -374,7 +377,7 @@ ZTEST(rfc8613_vectors, test_c2_key_derivation_server_no_salt)
 		      OSCORE_OK);
 	zassert_not_null(ctx);
 
-	uint32_t seq;
+	uint64_t seq;
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &seq), OSCORE_OK);
 	zassert_equal(seq, 0U);
 
@@ -468,10 +471,8 @@ ZTEST(rfc8613_vectors, test_c5_request_protection_no_salt)
  * with request_piv=0x14, then unprotect using client context
  * (sender_id="", recipient_id=0x01).
  *
- * Note: The C implementation computes response nonce using server's sender_id
- * (per RFC 8613 Section 8.4), while aiocoap reuses the request nonce for GET
- * responses. This means the ciphertext differs from the RFC 8613 C.7 test
- * vector. We verify correctness via roundtrip instead.
+ * The no-PIV response reuses the original request nonce and is checked both
+ * byte-for-byte against Appendix C.7 and through the client round trip.
  */
 ZTEST(rfc8613_vectors, test_c7_response_roundtrip)
 {
@@ -521,8 +522,25 @@ ZTEST(rfc8613_vectors, test_c7_response_roundtrip)
 		      OSCORE_OK);
 
 	zassert_true(ct_len > 0, "response ciphertext should not be empty");
+	zassert_mem_equal(ciphertext, rfc8613_c7_expected_ciphertext,
+			  sizeof(rfc8613_c7_expected_ciphertext),
+			  "C.7 response ciphertext mismatch");
+	zassert_equal(ct_len, sizeof(rfc8613_c7_expected_ciphertext));
 	zassert_equal(opt_len, 0U,
 		      "C.7 expected empty oscore_option (no PIV in response)");
+
+	/* A no-PIV response may be created only once for a request correlation. */
+	zassert_equal(oscore_protect_response(server_ctx,
+					      rfc8613_c7_request_piv,
+					      sizeof(rfc8613_c7_request_piv),
+					      0x45, NULL, 0,
+					      rfc8613_c7_payload,
+					      sizeof(rfc8613_c7_payload),
+					      ciphertext, &ct_len,
+					      oscore_opt, &opt_len),
+		      OSCORE_ERR_REPLAY);
+	zassert_equal(ct_len, sizeof(rfc8613_c7_expected_ciphertext));
+	zassert_equal(opt_len, 0U);
 
 	/* Unprotect response (client side) */
 	zassert_equal(oscore_unprotect_response(client_ctx,
@@ -544,6 +562,319 @@ ZTEST(rfc8613_vectors, test_c7_response_roundtrip)
 		      "C.7 response payload length mismatch");
 
 	oscore_ctx_free(server_ctx);
+	oscore_ctx_free(client_ctx);
+}
+
+ZTEST(rfc8613_vectors, test_c8_response_with_fresh_partial_iv)
+{
+	struct oscore_ctx *server_ctx = NULL;
+	struct oscore_ctx *client_ctx = NULL;
+	uint8_t ciphertext[64];
+	size_t ciphertext_len = sizeof(ciphertext);
+	uint8_t oscore_opt[8];
+	size_t oscore_opt_len = sizeof(oscore_opt);
+	uint8_t code;
+	uint8_t options[8];
+	size_t options_len = sizeof(options);
+	uint8_t payload[32];
+	size_t payload_len = sizeof(payload);
+	uint64_t sender_seq;
+
+	zassert_equal(oscore_ctx_create(rfc8613_master_secret,
+					rfc8613_master_salt, sizeof(rfc8613_master_salt),
+					(uint8_t[]){0x01}, 1, NULL, 0,
+					&server_ctx), OSCORE_OK);
+	zassert_equal(oscore_ctx_set_sender_seq(server_ctx, 0), OSCORE_OK);
+	zassert_equal(oscore_ctx_create(rfc8613_master_secret,
+					rfc8613_master_salt, sizeof(rfc8613_master_salt),
+					NULL, 0, (uint8_t[]){0x01}, 1,
+					&client_ctx), OSCORE_OK);
+
+	zassert_equal(oscore_protect_response_with_piv(
+			server_ctx,
+			rfc8613_c7_request_piv, sizeof(rfc8613_c7_request_piv),
+			0x45, NULL, 0,
+			rfc8613_c7_payload, sizeof(rfc8613_c7_payload),
+			ciphertext, &ciphertext_len, oscore_opt, &oscore_opt_len),
+		      OSCORE_OK);
+	zassert_mem_equal(ciphertext, rfc8613_c8_expected_ciphertext,
+			  sizeof(rfc8613_c8_expected_ciphertext));
+	zassert_equal(ciphertext_len, sizeof(rfc8613_c8_expected_ciphertext));
+	zassert_mem_equal(oscore_opt, rfc8613_c8_expected_option,
+			  sizeof(rfc8613_c8_expected_option));
+	zassert_equal(oscore_opt_len, sizeof(rfc8613_c8_expected_option));
+	zassert_equal(oscore_ctx_get_sender_seq(server_ctx, &sender_seq), OSCORE_OK);
+	zassert_equal(sender_seq, 1U);
+
+	zassert_equal(oscore_unprotect_response(
+			client_ctx,
+			rfc8613_c7_request_piv, sizeof(rfc8613_c7_request_piv),
+			oscore_opt, oscore_opt_len, ciphertext, ciphertext_len,
+			&code, options, &options_len, payload, &payload_len), OSCORE_OK);
+	zassert_equal(code, 0x45);
+	zassert_equal(options_len, 0U);
+	zassert_mem_equal(payload, rfc8613_c7_payload, sizeof(rfc8613_c7_payload));
+	zassert_equal(payload_len, sizeof(rfc8613_c7_payload));
+
+	oscore_ctx_free(server_ctx);
+	oscore_ctx_free(client_ctx);
+}
+
+ZTEST(rfc8613_vectors, test_fresh_response_failures_rollback_without_output)
+{
+	struct oscore_ctx *server_ctx = NULL;
+	uint8_t ciphertext[64];
+	uint8_t oscore_opt[8];
+	size_t ciphertext_len;
+	size_t oscore_opt_len;
+	uint64_t sender_seq;
+
+	zassert_equal(oscore_ctx_create_with_eui64(
+				rfc8613_master_secret,
+				rfc8613_master_salt, sizeof(rfc8613_master_salt),
+				(uint8_t[]){0x01}, 1, NULL, 0,
+				peer_eui64_1, &server_ctx), OSCORE_OK);
+	zassert_equal(oscore_ctx_set_sender_seq(server_ctx, 0), OSCORE_OK);
+
+	/* Capacity failures are detected before consuming a sender sequence. */
+	ciphertext_len = 1;
+	oscore_opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_response_with_piv(
+			server_ctx,
+			rfc8613_c7_request_piv, sizeof(rfc8613_c7_request_piv),
+			0x45, NULL, 0,
+			rfc8613_c7_payload, sizeof(rfc8613_c7_payload),
+			ciphertext, &ciphertext_len, oscore_opt, &oscore_opt_len),
+		      OSCORE_ERR_BUFFER_TOO_SMALL);
+	zassert_equal(ciphertext_len, 1U);
+	zassert_equal(oscore_opt_len, sizeof(oscore_opt));
+	zassert_equal(oscore_ctx_get_sender_seq(server_ctx, &sender_seq), OSCORE_OK);
+	zassert_equal(sender_seq, 0U);
+
+	/* Persistence failure rolls back the reservation and publishes nothing. */
+	mock_nvm_reset();
+	mock_nvm_set_write_fail(true);
+	oscore_nvm_register_callbacks(mock_nvm_write, NULL);
+	memset(ciphertext, 0xa5, sizeof(ciphertext));
+	memset(oscore_opt, 0xa5, sizeof(oscore_opt));
+	ciphertext_len = sizeof(ciphertext);
+	oscore_opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_response_with_piv(
+			server_ctx,
+			rfc8613_c7_request_piv, sizeof(rfc8613_c7_request_piv),
+			0x45, NULL, 0,
+			rfc8613_c7_payload, sizeof(rfc8613_c7_payload),
+			ciphertext, &ciphertext_len, oscore_opt, &oscore_opt_len),
+		      OSCORE_ERR_NVM_FAILED);
+	zassert_equal(mock_nvm_write_count, 3);
+	zassert_equal(ciphertext_len, sizeof(ciphertext));
+	zassert_equal(oscore_opt_len, sizeof(oscore_opt));
+	zassert_equal(ciphertext[0], 0xa5);
+	zassert_equal(oscore_opt[0], 0xa5);
+	zassert_equal(oscore_ctx_get_sender_seq(server_ctx, &sender_seq), OSCORE_OK);
+	zassert_equal(sender_seq, 0U);
+
+	oscore_nvm_register_callbacks(NULL, NULL);
+	mock_nvm_set_write_fail(false);
+	oscore_ctx_free(server_ctx);
+}
+
+/*
+ * Canonical cross-implementation response vectors from
+ * test/vectors/oscore_cross_exchange.json. The ciphertexts are independently
+ * produced by the Python and Rust implementations.
+ */
+ZTEST(rfc8613_vectors, test_cross_response_vectors_and_fresh_piv_replay)
+{
+	static const uint8_t requester_id[] = { 0x00 };
+	static const uint8_t responder_id[] = { 0x01 };
+	static const uint8_t request_piv[] = { 0x00 };
+	static const uint8_t fresh_opt[] = { 0x01, 0x00 };
+	static const uint8_t expected_payload[] = "LICHEN cross response";
+	static const uint8_t no_piv_ciphertext[] = {
+		0x93, 0x9e, 0xa8, 0x9e, 0x47, 0xf1, 0x07, 0x00,
+		0x90, 0x5b, 0x7f, 0x5c, 0xa2, 0xf6, 0xc4, 0x87,
+		0x45, 0xd0, 0x9e, 0x45, 0x4e, 0xb5, 0x97, 0x2b,
+		0x66, 0xd0, 0xb6, 0x21, 0x98, 0x0e, 0x4e,
+	};
+	static const uint8_t fresh_ciphertext[] = {
+		0x4d, 0x4c, 0x17, 0x4a, 0xbc, 0xa0, 0x9c, 0x1d,
+		0x23, 0xbe, 0xb6, 0x14, 0x48, 0xa6, 0x07, 0xf8,
+		0x22, 0x00, 0xf6, 0xb3, 0xe0, 0xc4, 0x2e, 0xec,
+		0xd0, 0x07, 0x04, 0x1f, 0xa9, 0x6a, 0xf8,
+	};
+	struct oscore_ctx *client_ctx = NULL;
+	uint8_t code;
+	uint8_t options[8];
+	uint8_t payload[64];
+	size_t options_len;
+	size_t payload_len;
+	uint8_t tampered[sizeof(fresh_ciphertext)];
+
+	zassert_equal(oscore_ctx_create(rfc8613_master_secret,
+					rfc8613_master_salt, sizeof(rfc8613_master_salt),
+					requester_id, sizeof(requester_id),
+					responder_id, sizeof(responder_id),
+					&client_ctx), OSCORE_OK);
+
+	/* A response without a fresh PIV is bound to the original request PIV. */
+	code = 0xa5;
+	memset(options, 0xa5, sizeof(options));
+	memset(payload, 0xa5, sizeof(payload));
+	options_len = sizeof(options);
+	payload_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						request_piv, sizeof(request_piv), NULL, 0,
+						no_piv_ciphertext, sizeof(no_piv_ciphertext),
+						&code, options, &options_len,
+						payload, &payload_len), OSCORE_OK);
+	zassert_equal(code, 0x45);
+	zassert_equal(options_len, 0U);
+	zassert_equal(payload_len, sizeof(expected_payload) - 1);
+	zassert_mem_equal(payload, expected_payload, sizeof(expected_payload) - 1);
+
+	/* A wrong request PIV must fail authentication without publishing output. */
+	code = 0xa5;
+	options_len = sizeof(options);
+	payload_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						(uint8_t[]){0x01}, 1, NULL, 0,
+						no_piv_ciphertext, sizeof(no_piv_ciphertext),
+						&code, options, &options_len,
+						payload, &payload_len), OSCORE_ERR_DECRYPT_FAILED);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+
+	/* The successful no-PIV response consumes its request correlation once. */
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						request_piv, sizeof(request_piv), NULL, 0,
+						no_piv_ciphertext, sizeof(no_piv_ciphertext),
+						&code, options, &options_len,
+						payload, &payload_len), OSCORE_ERR_REPLAY);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+
+	/* Failed authentication must release, rather than commit, the fresh PIV. */
+	memcpy(tampered, fresh_ciphertext, sizeof(tampered));
+	tampered[sizeof(tampered) - 1] ^= 0x01;
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						request_piv, sizeof(request_piv),
+						fresh_opt, sizeof(fresh_opt),
+						tampered, sizeof(tampered),
+						&code, options, &options_len,
+						payload, &payload_len), OSCORE_ERR_DECRYPT_FAILED);
+	zassert_equal(code, 0xa5);
+
+	/* A local buffer error likewise cannot consume an authenticated PIV. */
+	options_len = sizeof(options);
+	payload_len = 4;
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						request_piv, sizeof(request_piv),
+						fresh_opt, sizeof(fresh_opt),
+						fresh_ciphertext, sizeof(fresh_ciphertext),
+						&code, options, &options_len,
+						payload, &payload_len), OSCORE_ERR_BUFFER_TOO_SMALL);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, 4U);
+
+	/* The authentic response now succeeds and commits the fresh PIV. */
+	payload_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						request_piv, sizeof(request_piv),
+						fresh_opt, sizeof(fresh_opt),
+						fresh_ciphertext, sizeof(fresh_ciphertext),
+						&code, options, &options_len,
+						payload, &payload_len), OSCORE_OK);
+	zassert_equal(code, 0x45);
+	zassert_equal(options_len, 0U);
+	zassert_equal(payload_len, sizeof(expected_payload) - 1);
+	zassert_mem_equal(payload, expected_payload, sizeof(expected_payload) - 1);
+
+	/* Replaying the same response PIV is rejected before any output mutation. */
+	code = 0xa5;
+	options_len = sizeof(options);
+	payload_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						request_piv, sizeof(request_piv),
+						fresh_opt, sizeof(fresh_opt),
+						fresh_ciphertext, sizeof(fresh_ciphertext),
+						&code, options, &options_len,
+						payload, &payload_len), OSCORE_ERR_REPLAY);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+
+	oscore_ctx_free(client_ctx);
+}
+
+ZTEST(rfc8613_vectors, test_unprotect_response_rejects_malformed_correlation)
+{
+	static const uint8_t request_piv[] = { 0x00 };
+	static const uint8_t wrong_kid[] = { 0x08, 0x02 };
+	static const uint8_t wrong_kid_context[] = { 0x10, 0x01, 0x99 };
+	static const uint8_t malformed_options[][2] = {
+		{ 0x81, 0x00 }, /* reserved flag bit */
+		{ 0x02, 0x00 }, /* truncated two-byte PIV */
+		{ 0x06, 0x00 }, /* PIV length exceeds the five-byte profile */
+	};
+	static const size_t malformed_lengths[] = { 2, 2, 2 };
+	static const uint8_t ciphertext[OSCORE_TAG_LEN + 1] = {0};
+	struct oscore_ctx *client_ctx = NULL;
+	uint8_t code = 0xa5;
+	uint8_t options[4] = { 0xa5, 0xa5, 0xa5, 0xa5 };
+	uint8_t payload[4] = { 0xa5, 0xa5, 0xa5, 0xa5 };
+	size_t options_len = sizeof(options);
+	size_t payload_len = sizeof(payload);
+
+	zassert_equal(oscore_ctx_create(rfc8613_master_secret,
+					rfc8613_master_salt, sizeof(rfc8613_master_salt),
+					(uint8_t[]){0x00}, 1,
+					(uint8_t[]){0x01}, 1,
+					&client_ctx), OSCORE_OK);
+
+	for (size_t i = 0; i < ARRAY_SIZE(malformed_options); i++) {
+		zassert_equal(oscore_unprotect_response(client_ctx,
+							request_piv, sizeof(request_piv),
+							malformed_options[i], malformed_lengths[i],
+							ciphertext, sizeof(ciphertext),
+							&code, options, &options_len,
+							payload, &payload_len),
+			      OSCORE_ERR_INVALID_PARAM);
+		zassert_equal(code, 0xa5);
+		zassert_equal(options_len, sizeof(options));
+		zassert_equal(payload_len, sizeof(payload));
+		zassert_equal(options[0], 0xa5);
+		zassert_equal(payload[0], 0xa5);
+	}
+
+	/* Explicit response identifiers must select this exact context. */
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						request_piv, sizeof(request_piv),
+						wrong_kid, sizeof(wrong_kid),
+						ciphertext, sizeof(ciphertext),
+						&code, options, &options_len,
+						payload, &payload_len), OSCORE_ERR_NO_CONTEXT);
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						request_piv, sizeof(request_piv),
+						wrong_kid_context, sizeof(wrong_kid_context),
+						ciphertext, sizeof(ciphertext),
+						&code, options, &options_len,
+						payload, &payload_len), OSCORE_ERR_NO_CONTEXT);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+
+	/* Original request correlation always carries a one-to-five-byte PIV. */
+	zassert_equal(oscore_unprotect_response(client_ctx,
+						NULL, 0, NULL, 0,
+						ciphertext, sizeof(ciphertext),
+						&code, options, &options_len,
+						payload, &payload_len),
+		      OSCORE_ERR_INVALID_PARAM);
+
 	oscore_ctx_free(client_ctx);
 }
 
@@ -585,7 +916,8 @@ ZTEST(rfc8613_vectors, test_roundtrip_protect_unprotect)
 	zassert_not_null(recipient_ctx);
 
 	/* PROTECT: GET /hello */
-	uint8_t req_options[] = { 0xbd, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f };
+	/* Uri-Path "hello": delta 11, literal five-byte value. */
+	uint8_t req_options[] = { 0xb5, 0x68, 0x65, 0x6c, 0x6c, 0x6f };
 	uint8_t req_payload[] = { 0x00 };
 
 	zassert_equal(oscore_protect_request(sender_ctx, 0x01,
@@ -753,8 +1085,8 @@ ZTEST(oscore_ctx, test_check_freshness_exhausted_returns_error)
 		      OSCORE_OK);
 	zassert_not_null(ctx);
 
-	/* Set SSN to max */
-	zassert_equal(oscore_ctx_set_sender_seq(ctx, OSCORE_SSN_MAX), OSCORE_OK);
+	/* The value after the terminal five-byte PIV is the exhausted sentinel. */
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, OSCORE_SSN_MAX + 1), OSCORE_OK);
 
 	/* Should return error for exhausted context */
 	zassert_equal(oscore_ctx_check_freshness(ctx, &status),
@@ -871,6 +1203,142 @@ ZTEST(oscore_ctx, test_persist_ssn_noop_without_callback)
 	oscore_ctx_free(ctx);
 }
 
+/*
+ * Decode a PIV out of a public oscore_option struct (big-endian).
+ */
+static uint64_t decode_option_piv(const struct oscore_option *opt)
+{
+	uint64_t seq = 0;
+
+	for (size_t i = 0; i < opt->piv_len; i++) {
+		seq = (seq << 8) | opt->piv[i];
+	}
+	return seq;
+}
+
+/*
+ * RFC 8613 Section 7.2 / Appendix D.4: after a simulated reboot (context
+ * freed and reloaded from the NVM store), the reloaded sender_seq must be
+ * strictly above every sequence transmitted before the crash, the skipped
+ * safety-margin range must never appear as a PIV, and the post-reboot
+ * transmission must continue from the reloaded value.
+ */
+ZTEST(oscore_ctx, test_persist_ssn_safety_margin_prevents_reboot_reuse)
+{
+	struct oscore_ctx *ctx = NULL;
+	struct oscore_option opt;
+	uint8_t ciphertext[64];
+	size_t ct_len = sizeof(ciphertext);
+	uint8_t oscore_opt[32];
+	size_t opt_len = sizeof(oscore_opt);
+	uint64_t transmitted;
+	uint64_t ssn;
+
+	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
+
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_not_null(ctx);
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, 100), OSCORE_OK);
+
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ct_len,
+					     oscore_opt, &opt_len),
+		      OSCORE_OK);
+	zassert_equal(oscore_option_parse(oscore_opt, opt_len, &opt), OSCORE_OK);
+	zassert_true(opt.has_piv, "request carries a PIV");
+	transmitted = decode_option_piv(&opt);
+	zassert_equal(transmitted, 100U);
+
+	/* Simulated reboot: free the context and reload from the store. */
+	oscore_ctx_free(ctx);
+	ctx = NULL;
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_true(ssn > transmitted,
+		     "reloaded SSN must strictly exceed the pre-crash transmission");
+	zassert_equal(ssn, 101U + OSCORE_SSN_SAFETY_MARGIN);
+
+	/* The reloaded SSN is the next PIV; the skipped range is never used. */
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ct_len,
+					     oscore_opt, &opt_len),
+		      OSCORE_OK);
+	zassert_equal(oscore_option_parse(oscore_opt, opt_len, &opt), OSCORE_OK);
+	zassert_equal(decode_option_piv(&opt), 101U + OSCORE_SSN_SAFETY_MARGIN);
+
+	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
+}
+
+/*
+ * Near the end of the sequence space the durable value caps at the
+ * exhaustion sentinel OSCORE_SSN_MAX + 1 (never at OSCORE_SSN_MAX: a
+ * reloaded OSCORE_SSN_MAX could transmit the terminal PIV a second time
+ * after a crash). A reloaded sentinel must refuse to protect.
+ */
+ZTEST(oscore_ctx, test_persist_ssn_margin_caps_at_exhaustion_sentinel)
+{
+	struct oscore_ctx *ctx = NULL;
+	uint8_t ciphertext[64];
+	size_t ct_len = sizeof(ciphertext);
+	uint8_t oscore_opt[32];
+	size_t opt_len = sizeof(oscore_opt);
+	uint64_t ssn;
+
+	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
+
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_not_null(ctx);
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, OSCORE_SSN_MAX - 2),
+		      OSCORE_OK);
+
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ct_len,
+					     oscore_opt, &opt_len),
+		      OSCORE_OK);
+	zassert_equal(mock_nvm_ssn, OSCORE_SSN_MAX + 1U);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, OSCORE_SSN_MAX + 1U);
+
+	/* Simulated reboot: the reloaded sentinel refuses to protect. */
+	oscore_ctx_free(ctx);
+	ctx = NULL;
+	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
+						   sender_id, sizeof(sender_id),
+						   recipient_id, sizeof(recipient_id),
+						   peer_eui64_1, &ctx),
+		      OSCORE_OK);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
+	zassert_equal(ssn, OSCORE_SSN_MAX + 1U);
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					     ciphertext, &ct_len,
+					     oscore_opt, &opt_len),
+		      OSCORE_ERR_SEQ_EXHAUSTED);
+
+	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
+}
+
 ZTEST(oscore_ctx, test_nvm_protect_request_nvm_failure)
 {
 	struct oscore_ctx *ctx = NULL;
@@ -887,14 +1355,17 @@ ZTEST(oscore_ctx, test_nvm_protect_request_nvm_failure)
 	zassert_equal(ssn, 100U);
 	mock_nvm_set_write_fail(true);
 	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0, ciphertext, &ct_len, oscore_opt, &opt_len), OSCORE_ERR_NVM_FAILED);
-	zassert_equal(mock_nvm_write_count, 1);
+	zassert_equal(mock_nvm_write_count, 3);
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
 	zassert_equal(ssn, 100U);
 	mock_nvm_set_write_fail(false);
 	ct_len = sizeof(ciphertext); opt_len = sizeof(oscore_opt);
 	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0, ciphertext, &ct_len, oscore_opt, &opt_len), OSCORE_OK);
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
-	zassert_equal(ssn, 101U);
+	/* Persisted SSN skips OSCORE_SSN_SAFETY_MARGIN past the next unused
+	 * sequence; the in-RAM SSN advances to the same durable value. */
+	zassert_equal(ssn, 101U + OSCORE_SSN_SAFETY_MARGIN);
+	zassert_equal(mock_nvm_ssn, 101U + OSCORE_SSN_SAFETY_MARGIN);
 	oscore_ctx_free(ctx);
 	oscore_nvm_register_callbacks(NULL, NULL);
 }
@@ -902,7 +1373,7 @@ ZTEST(oscore_ctx, test_nvm_protect_request_nvm_failure)
 ZTEST(oscore_ctx, test_nvm_read_failure_fallback_to_zero)
 {
 	struct oscore_ctx *ctx = NULL;
-	uint32_t ssn;
+	uint64_t ssn;
 	enum oscore_freshness status;
 	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
 	zassert_equal(oscore_ctx_create_with_eui64(master_secret, NULL, 0,
@@ -932,7 +1403,8 @@ ZTEST(oscore_ctx, test_nvm_read_failure_fallback_to_zero)
 					     oscore_opt, &oscore_opt_len),
 		      OSCORE_OK);
 	zassert_equal(oscore_ctx_get_sender_seq(ctx, &ssn), OSCORE_OK);
-	zassert_equal(ssn, 1U);
+	/* Persist path skips OSCORE_SSN_SAFETY_MARGIN; in-RAM SSN follows. */
+	zassert_equal(ssn, 1U + OSCORE_SSN_SAFETY_MARGIN);
 	oscore_ctx_free(ctx);
 	oscore_nvm_register_callbacks(NULL, NULL);
 }
@@ -1125,6 +1597,444 @@ ZTEST(oscore_vectors, test_request_roundtrip)
 	zassert_equal(recv_pay_len, sizeof(rt_payload), "roundtrip payload len mismatch");
 	zassert_mem_equal(payload, rt_payload, sizeof(rt_payload),
 			  "roundtrip payload mismatch");
+
+	oscore_ctx_free(sender_ctx);
+	oscore_ctx_free(recipient_ctx);
+}
+
+/*
+ * A 40-bit Partial IV must remain 64-bit through replay processing. First
+ * commit sequence 1, then accept 2^32 + 1 even though the low 32 bits collide.
+ * At the highest usable sequence, failed authentication must also release the
+ * pending reservation without advancing replay state.
+ */
+ZTEST(oscore_vectors, test_request_replay_uses_full_40_bit_partial_iv)
+{
+	struct oscore_ctx *sender_ctx = NULL;
+	struct oscore_ctx *recipient_ctx = NULL;
+	uint8_t ciphertext[64];
+	uint8_t saved_ciphertext[64];
+	uint8_t oscore_opt[32];
+	uint8_t saved_oscore_opt[32];
+	uint8_t code;
+	uint8_t options[8];
+	uint8_t payload[64];
+	size_t ct_len;
+	size_t opt_len;
+	size_t recv_opt_len;
+	size_t recv_pay_len;
+
+	zassert_equal(oscore_ctx_create(rt_ms, rt_salt, sizeof(rt_salt),
+					rt_sender_id, sizeof(rt_sender_id),
+					rt_recipient_id, sizeof(rt_recipient_id),
+					&sender_ctx),
+		      OSCORE_OK);
+	zassert_equal(oscore_ctx_create(rt_ms2, rt_salt2, sizeof(rt_salt2),
+					rt_recipient_id, sizeof(rt_recipient_id),
+					rt_sender_id, sizeof(rt_sender_id),
+					&recipient_ctx),
+		      OSCORE_OK);
+
+	const uint64_t sequences[] = { 1, (1ULL << 32) + 1 };
+	for (size_t i = 0; i < ARRAY_SIZE(sequences); i++) {
+		ct_len = sizeof(ciphertext);
+		opt_len = sizeof(oscore_opt);
+		recv_opt_len = sizeof(options);
+		recv_pay_len = sizeof(payload);
+		zassert_equal(oscore_ctx_set_sender_seq(sender_ctx, sequences[i]), OSCORE_OK);
+		zassert_equal(oscore_protect_request(sender_ctx, 0x02,
+						NULL, 0, rt_payload, sizeof(rt_payload),
+						ciphertext, &ct_len, oscore_opt, &opt_len),
+			      OSCORE_OK);
+		zassert_equal(oscore_unprotect_request(recipient_ctx,
+						  oscore_opt, opt_len, ciphertext, ct_len,
+						  &code, options, &recv_opt_len,
+						  payload, &recv_pay_len),
+			      OSCORE_OK,
+			      "40-bit PIV was truncated at sequence %llu",
+			      (unsigned long long)sequences[i]);
+	}
+
+	/* The exact high-PIV ciphertext is still rejected as a replay. */
+	recv_opt_len = sizeof(options);
+	recv_pay_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  oscore_opt, opt_len, ciphertext, ct_len,
+					  &code, options, &recv_opt_len,
+					  payload, &recv_pay_len),
+		      OSCORE_ERR_REPLAY);
+
+	/* OSCORE_SSN_MAX is the terminal usable five-byte PIV. */
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_ctx_set_sender_seq(sender_ctx, OSCORE_SSN_MAX), OSCORE_OK);
+	zassert_equal(oscore_protect_request(sender_ctx, 0x02,
+					NULL, 0, rt_payload, sizeof(rt_payload),
+					ciphertext, &ct_len, oscore_opt, &opt_len),
+		      OSCORE_OK);
+	zassert_equal(opt_len, 7U);
+	zassert_equal(oscore_opt[0], 0x0d);
+	zassert_mem_equal(&oscore_opt[1], "\xff\xff\xff\xff\xff", 5);
+	zassert_equal(oscore_opt[6], rt_sender_id[0]);
+	memcpy(saved_ciphertext, ciphertext, ct_len);
+	memcpy(saved_oscore_opt, oscore_opt, opt_len);
+
+	/* Authentication failure must neither commit nor strand the reservation. */
+	ciphertext[0] ^= 0x80;
+	recv_opt_len = sizeof(options);
+	recv_pay_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  oscore_opt, opt_len, ciphertext, ct_len,
+					  &code, options, &recv_opt_len,
+					  payload, &recv_pay_len),
+		      OSCORE_ERR_DECRYPT_FAILED);
+
+	recv_opt_len = sizeof(options);
+	recv_pay_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  saved_oscore_opt, opt_len,
+					  saved_ciphertext, ct_len,
+					  &code, options, &recv_opt_len,
+					  payload, &recv_pay_len),
+		      OSCORE_OK);
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  saved_oscore_opt, opt_len,
+					  saved_ciphertext, ct_len,
+					  &code, options, &recv_opt_len,
+					  payload, &recv_pay_len),
+		      OSCORE_ERR_REPLAY);
+
+	/* The terminal PIV is single-use; the following request is exhausted. */
+	memset(ciphertext, 0xa5, sizeof(ciphertext));
+	memset(oscore_opt, 0x5a, sizeof(oscore_opt));
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(sender_ctx, 0x02,
+					NULL, 0, rt_payload, sizeof(rt_payload),
+					ciphertext, &ct_len, oscore_opt, &opt_len),
+		      OSCORE_ERR_SEQ_EXHAUSTED);
+	zassert_equal(ct_len, sizeof(ciphertext));
+	zassert_equal(opt_len, sizeof(oscore_opt));
+	for (size_t i = 0; i < sizeof(ciphertext); i++) {
+		zassert_equal(ciphertext[i], 0xa5);
+	}
+	for (size_t i = 0; i < sizeof(oscore_opt); i++) {
+		zassert_equal(oscore_opt[i], 0x5a);
+	}
+
+	oscore_ctx_free(sender_ctx);
+	oscore_ctx_free(recipient_ctx);
+}
+
+ZTEST(oscore_vectors, test_protect_request_rolls_back_before_publish)
+{
+	struct oscore_ctx *ctx = NULL;
+	uint8_t ciphertext[32];
+	uint8_t oscore_opt[16];
+	uint64_t seq;
+	size_t ct_len;
+	size_t opt_len;
+
+	zassert_equal(oscore_ctx_create(rt_ms, rt_salt, sizeof(rt_salt),
+					rt_sender_id, sizeof(rt_sender_id),
+					rt_recipient_id, sizeof(rt_recipient_id), &ctx),
+		      OSCORE_OK);
+	zassert_equal(oscore_ctx_set_sender_seq(ctx, 9), OSCORE_OK);
+
+	/* Invalid input and an undersized option fail before consuming SSN 9. */
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01,
+					NULL, 1, NULL, 0,
+					ciphertext, &ct_len, oscore_opt, &opt_len),
+		      OSCORE_ERR_INVALID_PARAM);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &seq), OSCORE_OK);
+	zassert_equal(seq, 9U);
+
+	memset(ciphertext, 0xa5, sizeof(ciphertext));
+	memset(oscore_opt, 0x5a, sizeof(oscore_opt));
+	ct_len = sizeof(ciphertext);
+	opt_len = 1;
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					ciphertext, &ct_len, oscore_opt, &opt_len),
+		      OSCORE_ERR_BUFFER_TOO_SMALL);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &seq), OSCORE_OK);
+	zassert_equal(seq, 9U);
+	zassert_equal(ct_len, sizeof(ciphertext));
+	zassert_equal(opt_len, 1U);
+	for (size_t i = 0; i < sizeof(ciphertext); i++) {
+		zassert_equal(ciphertext[i], 0xa5);
+	}
+	for (size_t i = 0; i < sizeof(oscore_opt); i++) {
+		zassert_equal(oscore_opt[i], 0x5a);
+	}
+
+	/* Failed durable reservation likewise rolls back and publishes nothing. */
+	oscore_nvm_register_callbacks(mock_nvm_write, mock_nvm_read);
+	mock_nvm_set_write_fail(true);
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					ciphertext, &ct_len, oscore_opt, &opt_len),
+		      OSCORE_ERR_NVM_FAILED);
+	zassert_equal(mock_nvm_write_count, 3);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &seq), OSCORE_OK);
+	zassert_equal(seq, 9U);
+	zassert_equal(ct_len, sizeof(ciphertext));
+	zassert_equal(opt_len, sizeof(oscore_opt));
+	for (size_t i = 0; i < sizeof(ciphertext); i++) {
+		zassert_equal(ciphertext[i], 0xa5);
+	}
+	for (size_t i = 0; i < sizeof(oscore_opt); i++) {
+		zassert_equal(oscore_opt[i], 0x5a);
+	}
+
+	mock_nvm_set_write_fail(false);
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_protect_request(ctx, 0x01, NULL, 0, NULL, 0,
+					ciphertext, &ct_len, oscore_opt, &opt_len),
+		      OSCORE_OK);
+	zassert_equal(oscore_ctx_get_sender_seq(ctx, &seq), OSCORE_OK);
+	/* Durable persist skips OSCORE_SSN_SAFETY_MARGIN past the next
+	 * unused sequence; in-RAM SSN and NVM hold the same skipped value. */
+	zassert_equal(seq, 10U + OSCORE_SSN_SAFETY_MARGIN);
+	zassert_equal(mock_nvm_ssn, 10U + OSCORE_SSN_SAFETY_MARGIN);
+	zassert_equal(oscore_opt[0], 0x09);
+	zassert_equal(oscore_opt[1], 9U);
+	zassert_equal(oscore_opt[2], rt_sender_id[0]);
+
+	oscore_ctx_free(ctx);
+	oscore_nvm_register_callbacks(NULL, NULL);
+}
+
+ZTEST(oscore_vectors, test_request_unprotect_is_bound_and_fail_before_output)
+{
+	static const uint8_t valid_options[] = { 0xb1, 'x' };
+	static const uint8_t valid_payload[] = { 0x10, 0x20 };
+	struct oscore_ctx *sender_ctx = NULL;
+	struct oscore_ctx *recipient_ctx = NULL;
+	uint8_t ciphertext[64];
+	uint8_t saved_ciphertext[64];
+	uint8_t oscore_opt[32];
+	uint8_t saved_oscore_opt[32];
+	uint8_t bad_opt[32];
+	uint8_t code;
+	uint8_t options[16];
+	uint8_t payload[16];
+	size_t ct_len;
+	size_t opt_len;
+	size_t options_len;
+	size_t payload_len;
+
+	zassert_equal(oscore_ctx_create(rt_ms, rt_salt, sizeof(rt_salt),
+					rt_sender_id, sizeof(rt_sender_id),
+					rt_recipient_id, sizeof(rt_recipient_id),
+					&sender_ctx), OSCORE_OK);
+	zassert_equal(oscore_ctx_create(rt_ms2, rt_salt2, sizeof(rt_salt2),
+					rt_recipient_id, sizeof(rt_recipient_id),
+					rt_sender_id, sizeof(rt_sender_id),
+					&recipient_ctx), OSCORE_OK);
+
+	ct_len = sizeof(ciphertext);
+	opt_len = sizeof(oscore_opt);
+	zassert_equal(oscore_ctx_set_sender_seq(sender_ctx, 77), OSCORE_OK);
+	zassert_equal(oscore_protect_request(sender_ctx, 0x01,
+					valid_options, sizeof(valid_options),
+					valid_payload, sizeof(valid_payload),
+					ciphertext, &ct_len, oscore_opt, &opt_len),
+		      OSCORE_OK);
+	memcpy(saved_ciphertext, ciphertext, ct_len);
+	memcpy(saved_oscore_opt, oscore_opt, opt_len);
+
+	/* Insufficient output must not expose plaintext or consume the request. */
+	code = 0xa5;
+	memset(options, 0xa5, sizeof(options));
+	memset(payload, 0xa5, sizeof(payload));
+	options_len = 1;
+	payload_len = 1;
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  saved_oscore_opt, opt_len,
+					  saved_ciphertext, ct_len,
+					  &code, options, &options_len,
+					  payload, &payload_len),
+		      OSCORE_ERR_BUFFER_TOO_SMALL);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, 1U);
+	zassert_equal(payload_len, 1U);
+	zassert_equal(options[0], 0xa5);
+	zassert_equal(payload[0], 0xa5);
+
+	/* A KID, KID Context, or reserved-bit mismatch selects no usable context. */
+	memcpy(bad_opt, saved_oscore_opt, opt_len);
+	bad_opt[opt_len - 1] ^= 0x01;
+	options_len = sizeof(options);
+	payload_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_request(recipient_ctx, bad_opt, opt_len,
+					  saved_ciphertext, ct_len, &code,
+					  options, &options_len, payload, &payload_len),
+		      OSCORE_ERR_NO_CONTEXT);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+
+	bad_opt[0] = (uint8_t)(saved_oscore_opt[0] | 0x10);
+	/* Rebuild h=1 ordering: flags, PIV, context length/value, then KID. */
+	bad_opt[1] = saved_oscore_opt[1];
+	bad_opt[2] = 1;
+	bad_opt[3] = 0x99;
+	bad_opt[4] = rt_sender_id[0];
+	zassert_equal(oscore_unprotect_request(recipient_ctx, bad_opt, 5,
+					  saved_ciphertext, ct_len, &code,
+					  options, &options_len, payload, &payload_len),
+		      OSCORE_ERR_NO_CONTEXT);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+
+	memcpy(bad_opt, saved_oscore_opt, opt_len);
+	bad_opt[0] |= 0x20;
+	zassert_equal(oscore_unprotect_request(recipient_ctx, bad_opt, opt_len,
+					  saved_ciphertext, ct_len, &code,
+					  options, &options_len, payload, &payload_len),
+		      OSCORE_ERR_INVALID_PARAM);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+
+	/* Missing/non-canonical PIVs fail before authentication state. */
+	static const uint8_t missing_piv[] = { 0x08, 0xaa };
+	static const uint8_t missing_kid[] = { 0x01, 77 };
+	static const uint8_t noncanonical_piv[] = { 0x0a, 0x00, 0x4d, 0xaa };
+	static const uint8_t terminal_piv_wrong_ciphertext[] = {
+		0x0d, 0xff, 0xff, 0xff, 0xff, 0xff, 0xaa
+	};
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  missing_piv, sizeof(missing_piv),
+					  saved_ciphertext, ct_len, &code,
+					  options, &options_len, payload, &payload_len),
+		      OSCORE_ERR_INVALID_PARAM);
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  missing_kid, sizeof(missing_kid),
+					  saved_ciphertext, ct_len, &code,
+					  options, &options_len, payload, &payload_len),
+		      OSCORE_ERR_NO_CONTEXT);
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  noncanonical_piv, sizeof(noncanonical_piv),
+					  saved_ciphertext, ct_len, &code,
+					  options, &options_len, payload, &payload_len),
+		      OSCORE_ERR_INVALID_PARAM);
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  terminal_piv_wrong_ciphertext,
+					  sizeof(terminal_piv_wrong_ciphertext),
+					  saved_ciphertext, ct_len, &code,
+					  options, &options_len, payload, &payload_len),
+		      OSCORE_ERR_DECRYPT_FAILED);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+
+	/* Authentication failure rolls the reservation back for an exact retry. */
+	ciphertext[0] ^= 0x80;
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  saved_oscore_opt, opt_len, ciphertext, ct_len,
+					  &code, options, &options_len,
+					  payload, &payload_len),
+		      OSCORE_ERR_DECRYPT_FAILED);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+	options_len = sizeof(options);
+	payload_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  saved_oscore_opt, opt_len,
+					  saved_ciphertext, ct_len,
+					  &code, options, &options_len,
+					  payload, &payload_len), OSCORE_OK);
+	zassert_equal(code, 0x01);
+	zassert_mem_equal(options, valid_options, sizeof(valid_options));
+	zassert_mem_equal(payload, valid_payload, sizeof(valid_payload));
+
+	code = 0xa5;
+	options_len = sizeof(options);
+	payload_len = sizeof(payload);
+	zassert_equal(oscore_unprotect_request(recipient_ctx,
+					  saved_oscore_opt, opt_len,
+					  saved_ciphertext, ct_len,
+					  &code, options, &options_len,
+					  payload, &payload_len), OSCORE_ERR_REPLAY);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options_len, sizeof(options));
+	zassert_equal(payload_len, sizeof(payload));
+
+	oscore_ctx_free(sender_ctx);
+	oscore_ctx_free(recipient_ctx);
+}
+
+ZTEST(oscore_vectors, test_request_plaintext_validation_rolls_back_replay)
+{
+	static const uint8_t malformed_options[] = { 0xf0 };
+	static const uint8_t empty_payload_marker[] = { 0xff };
+	struct oscore_ctx *sender_ctx = NULL;
+	struct oscore_ctx *recipient_ctx = NULL;
+	uint8_t ciphertext[64];
+	uint8_t oscore_opt[32];
+	uint8_t code;
+	uint8_t options[8] = {0};
+	uint8_t payload[8] = {0};
+	size_t ct_len;
+	size_t opt_len;
+	size_t options_len;
+	size_t payload_len;
+	const uint8_t *bad_options[] = { NULL, malformed_options, empty_payload_marker };
+	const size_t bad_options_len[] = { 0, sizeof(malformed_options),
+					   sizeof(empty_payload_marker) };
+	const uint8_t bad_codes[] = { 0x00, 0x01, 0x01 };
+
+	zassert_equal(oscore_ctx_create(rt_ms, rt_salt, sizeof(rt_salt),
+					rt_sender_id, sizeof(rt_sender_id),
+					rt_recipient_id, sizeof(rt_recipient_id),
+					&sender_ctx), OSCORE_OK);
+	zassert_equal(oscore_ctx_create(rt_ms2, rt_salt2, sizeof(rt_salt2),
+					rt_recipient_id, sizeof(rt_recipient_id),
+					rt_sender_id, sizeof(rt_sender_id),
+					&recipient_ctx), OSCORE_OK);
+
+	for (size_t i = 0; i < ARRAY_SIZE(bad_codes); i++) {
+		uint64_t seq = 100 + i;
+		ct_len = sizeof(ciphertext);
+		opt_len = sizeof(oscore_opt);
+		zassert_equal(oscore_ctx_set_sender_seq(sender_ctx, seq), OSCORE_OK);
+		zassert_equal(oscore_protect_request(sender_ctx, bad_codes[i],
+						bad_options[i], bad_options_len[i],
+						NULL, 0, ciphertext, &ct_len,
+						oscore_opt, &opt_len), OSCORE_OK);
+		code = 0xa5;
+		options_len = sizeof(options);
+		payload_len = sizeof(payload);
+		zassert_equal(oscore_unprotect_request(recipient_ctx,
+						  oscore_opt, opt_len, ciphertext, ct_len,
+						  &code, options, &options_len,
+						  payload, &payload_len),
+			      OSCORE_ERR_INVALID_PARAM);
+		zassert_equal(code, 0xa5);
+		zassert_equal(options_len, sizeof(options));
+		zassert_equal(payload_len, sizeof(payload));
+
+		/* The same sequence remains usable by a valid authenticated request. */
+		ct_len = sizeof(ciphertext);
+		opt_len = sizeof(oscore_opt);
+		zassert_equal(oscore_ctx_set_sender_seq(sender_ctx, seq), OSCORE_OK);
+		zassert_equal(oscore_protect_request(sender_ctx, 0x01, NULL, 0, NULL, 0,
+						ciphertext, &ct_len, oscore_opt, &opt_len),
+			      OSCORE_OK);
+		options_len = sizeof(options);
+		payload_len = sizeof(payload);
+		zassert_equal(oscore_unprotect_request(recipient_ctx,
+						  oscore_opt, opt_len, ciphertext, ct_len,
+						  &code, options, &options_len,
+						  payload, &payload_len), OSCORE_OK);
+	}
 
 	oscore_ctx_free(sender_ctx);
 	oscore_ctx_free(recipient_ctx);

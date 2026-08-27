@@ -1,3 +1,4 @@
 {"id":"01a01053-56b0-757a-9cd7-373f75ef40cb","issue_id":"project-LICHEN-worker6-q7gh","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T15:24:52.272359Z"}
 {"id":"01a01053-56b8-743a-a0ad-a10c89a6d096","issue_id":"project-LICHEN-worker6-q7gh","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T15:24:52.280277Z"}
 {"id":"01a01053-56bb-7eb1-a0fb-858152cf7cf9","issue_id":"project-LICHEN-worker6-q7gh","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T15:24:52.283963Z"}
+{"id":"01a03f04-a2ba-7850-95ab-2febfbf163cc","issue_id":"project-LICHEN-worker6-q7gh","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: added '0 \u003c=' guard to elapsed-time checks in _prune_seen and _seen_record, matching _seen_is_repeat pattern","created_at":"2026-08-26T17:01:03.546546Z"}

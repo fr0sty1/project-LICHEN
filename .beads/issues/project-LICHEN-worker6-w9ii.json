@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-w9ii",
+  "title": "AiocoapResourceTransport.check_security_for_path is an unimplemented no-op yet class is instantiated concretely",
+  "description": "Spotted during mypy-gate worker6-1nfe. lichen/client/packet_coap.py:296 def check_security_for_path(self, path: str) -\u003e None has an empty body (docstring only), making it implicitly abstract per mypy (python/src/lichen/client/packet_coap.py:153 error [abstract]) — yet AiocoapResourceTransport is instantiated directly at packet_coap.py:153 and tui/native/client.py:46, so security-for-path decisions silently do nothing (no reject path exists). Either implement real enforcement or make it explicitly abstract/subclass-provided; if intended pass-through for trusted local clients, document that decision in code.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T20:20:05.440144Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:25:23.49162Z",
+  "closed_at": "2026-08-27T17:25:23.49162Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-w9ii",
+      "depends_on_id": "project-LICHEN-worker6-1nfe",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T20:20:05.907556Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

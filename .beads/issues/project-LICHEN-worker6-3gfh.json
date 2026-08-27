@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-3gfh",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/coap/sos_alert.c:541 Decoder accepts partial location data (lat without lon or vi",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T15:07:49.256366Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T15:07:49.256366Z",
+  "updated_at": "2026-08-26T17:53:45.545234Z",
+  "started_at": "2026-08-26T17:47:37.252915Z",
+  "closed_at": "2026-08-26T17:53:45.545234Z",
+  "close_reason": "sos_alert_from_cbor now enforces all-or-none location semantics matching the encoder: mismatched has_lat/has_lon returns SOS_ALERT_ERR_MISSING_FIELD and alert-\u003ehas_location is set only from the validated pair. Verified: clang -fsyntax-only -Wall -Wextra -Werror; standalone harness drove all 5 sos_cbor.json vectors (decode+byte-exact re-encode), full/no-location roundtrips, lat-only and lon-only rejection, lat=0/lon=0 acceptance, dup-lat=0.0 DUPLICATE_KEY preserved. No sos test dir under lichen/tests exists so no Zephyr run applied.",
   "labels": [
     "codereview",
     "wave-fix"

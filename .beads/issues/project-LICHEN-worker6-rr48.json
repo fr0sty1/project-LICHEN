@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-rr48",
+  "title": "apply_dao_ack can reinstall an older Success ACK after a newer one",
+  "description": "File: rust/lichen-rpl/src/address_assignment.rs\nPerspective: correctness / robustness\n\nShortAddressAssignmentClient::apply_dao_ack() ignores an ACK when dao_sequence != expected_sequence, and only fingerprints last_ack when last_sequence == dao_sequence. It never requires dao_sequence to be newer than last_sequence (RFC 6550 Section 7.2).\n\nIf a node has two outstanding DAOs (ALLOCATE seq=5 then RELEASE seq=6 before the first ACK), ACKs can arrive out of order:\n1. Success RELEASE seq=6 with expected_sequence=6 installs assigned_short=None and last_sequence=6\n2. Delayed Success ALLOCATE seq=5 with expected_sequence=5 (still outstanding) skips the fingerprint check because last_sequence is 6, then overwrites assigned_short with the old address\n\nNon-success ACKs (Exhausted/Invalid) return Ok(false) without storing last_ack/last_sequence, so a later Success for that same sequence also installs.\n\nThis is not a refile of project-LICHEN-worker6-k1da (ACK operation not bound to the outstanding request at one sequence) or project-LICHEN-worker6-frdf (raw-wire fingerprint and 40-byte cap). Fix: reject Success ACKs that are not newer than last_sequence (equal sequence stays the identical-retransmit path), and bind a sequence to the first accepted status/operation so Exhausted then Success cannot upgrade.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:16:42.444978Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T18:16:42.444978Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rr48",
+      "depends_on_id": "project-LICHEN-worker6-m557",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:16:42.980149Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

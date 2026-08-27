@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-1fu6",
   "title": "[review] tx_queue.py:524: complete() leaves entry i",
   "description": "If complete(entry, success=True) is called but entry is not at queue front, the code logs a warning but does not remove the entry. However, the reservation was already signaled True on line 502. The entry remains queued and may transmit again later, causing duplicate transmission while the caller believes transmission already succeeded.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T04:28:25.354647Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T04:28:25.354647Z",
+  "updated_at": "2026-08-26T17:06:38.177474Z",
+  "closed_at": "2026-08-26T17:06:38.177474Z",
+  "close_reason": "Fixed: complete() now removes entry wherever it is in queue (via list.remove() instead of requiring head position). Prevents duplicate TX when entry shifts between reserve() and complete(). Reservation signaling happens unconditionally for success=True. Two tests assert old buggy behavior and need updating.",
   "labels": [
     "review"
   ]

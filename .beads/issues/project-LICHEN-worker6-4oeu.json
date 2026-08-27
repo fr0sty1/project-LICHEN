@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-4oeu",
+  "title": "PresenceCacheResource.record() missing input validation for addr/status",
+  "description": "In presence.py, record() (lines 250-286) accepts addr:str and status:str parameters without validation. Compare to evict() which validates addr with 'if type(addr) is not str or addr == \"\"'. Missing validation could allow invalid data (None, empty string, wrong type) to be cached or cause inconsistent exceptions. Add validation at the start of record() to match the pattern in evict() and other methods in this file.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T17:20:06.397072Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:20:06.397072Z"
+}

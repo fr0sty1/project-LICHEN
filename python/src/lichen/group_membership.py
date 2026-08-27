@@ -137,8 +137,15 @@ class GroupRoster:
     admins: frozenset[str] = frozenset()
     members: frozenset[str] = frozenset()
 
-    def can_invite(self, inviter: str) -> bool:
-        return inviter == self.owner or inviter in self.admins
+    def can_invite(self, inviter: str, *, requested_role: str = "member") -> bool:
+        """spec 18.8.2 roles table (L1129-1143): promotion/demotion of
+        membership level is reserved to the owner, so an admin may mint only
+        member-role invitations; admin-role invitations are owner-only."""
+        if inviter == self.owner:
+            return True
+        if inviter in self.admins:
+            return requested_role == "member"
+        return False
 
     def can_remove(self, remover: str, *, target: str) -> bool:
         if remover == self.owner:

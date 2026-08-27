@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-ixev",
+  "title": "PUT /presence has no local-admin or write gate",
+  "description": "Spec 18.5.2 treats PUT coap://[node]/presence as set-own-presence. Peer operations are GET/Observe. PresenceResource.render_put accepts any CoAP client with a valid CBOR map.\n\nImpact:\n- A mesh peer can overwrite another node's advertised status, msg, battery, and ts.\n- A peer can PUT status=emergency without the SOS origin-signature path (spec 18.4.1).\n- Observe subscribers are then fed attacker-chosen presence documents (amplification / false emergency).\n\nSibling resources already gate writes: ConfigResource defaults allow_writes=False (4.01), SentMessagesResource requires _peer_is_local_admin.\n\nFile: python/src/lichen/coap/resources/presence.py render_put\n\nThis is not LCI access.py (out of scope); the resource itself needs a write gate (local-admin, allow_writes, or equivalent OSCORE-bound check).",
+  "acceptance_criteria": "Unauthenticated/non-local PUT returns 4.01. Local-admin or explicitly enabled writes still return 2.04. GET/Observe from peers remain allowed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:21:12.590849Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:46:48.914833Z",
+  "started_at": "2026-08-26T17:41:55.975727Z",
+  "closed_at": "2026-08-26T17:46:48.914833Z",
+  "close_reason": "PUT /presence now rejects unauthenticated writes with 4.01 unless allow_writes=True or local-admin loopback; GET/Observe remain public. Tests cover both gates.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ixev",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.18.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:21:12.937631Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

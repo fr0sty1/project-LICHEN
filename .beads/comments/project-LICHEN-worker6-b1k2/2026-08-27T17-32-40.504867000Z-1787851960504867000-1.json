@@ -1,0 +1,7 @@
+{
+  "id": "1787851960504867000-1",
+  "issue_id": "project-LICHEN-worker6-b1k2",
+  "author": "Mark Atwood",
+  "text": "Fixed directly by orchestrator: Kconfig LICHEN_TDMA help now cites Slot=(fnv1a32(EUI64)+u32(SFN)) mod n, epoch-MUST-NOT-enter-hash, ccp_sfn_wrap_slot_hash.json + ccp_tdma.json",
+  "created_at": "2026-08-27T17:32:40.504867Z"
+}

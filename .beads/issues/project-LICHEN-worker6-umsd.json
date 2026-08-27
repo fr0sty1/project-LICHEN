@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-umsd",
+  "title": "Gate and identity source disagree: render-level callers can store records without from",
+  "description": "File: python/src/lichen/coap/resources/messaging.py:251-252. _request_is_oscore_or_admin accepts request-level bound identity while rebind requires remote.hostinfo; SimpleNamespace(remote=None, oscore_context_id=b'x') passes gate storing sender-less records. Unreachable through LichenTransport (server remote always populated); affects direct render API consumers/test drivers. Reject with 4.01/BAD_REQUEST or deterministic fallback binding.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:33.478815Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:26:09.002227Z",
+  "started_at": "2026-08-26T19:06:48.07579Z",
+  "closed_at": "2026-08-26T19:26:09.002227Z",
+  "close_reason": "Gate/binding agreement: new _request_remote_hostinfo() helper; _request_is_oscore_or_admin rejects any request without non-empty remote.hostinfo string BEFORE granting via OSCORE identity or local-admin, eliminating sender-less record creation (SimpleNamespace(remote=...no hostinfo)+oscore_context_id or remote=None -\u003e 4.01). MessagesResource.render_post now binds body['from'] unconditionally post-gate (gate guarantees str), dropping the old hasattr divergent branch; MessageReceiptsResource shares the stricter gate harmlessly. Production unaffected: LichenRemote always exposes hostinfo; all existing OSCORE-positive tests already bind hostinfo remotes. Regression tests TestGateRequiresRemoteIdentity: request-level b'oscore-peer-id' with empty SimpleNamespace remote and with remote=None -\u003e UNAUTHORIZED with zero inbox/_sent/_next_id mutation; receipts variant. Full tests/coap suite 1679 passed, ruff clean.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-umsd",
+      "depends_on_id": "project-LICHEN-worker6-6wrg",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:34.329593Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

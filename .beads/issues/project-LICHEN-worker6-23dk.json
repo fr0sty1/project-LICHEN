@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-23dk",
   "title": "python/src/lichen/channel_plan.py: Standalone select_channel has same out-of-bounds bug",
   "description": "The standalone select_channel function at line 199 duplicates the same flawed logic: `n = max(plan.num_channels - 1, 2)` followed by `return 1 + (h % n)`. Same out-of-bounds behavior for plans with 1-2 channels.\n\nFix suggestion: Apply the same fix as line 57, or refactor to call the method version to avoid code duplication.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T04:13:58.558126Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T04:13:58.558126Z",
+  "updated_at": "2026-08-26T17:00:33.15131Z",
+  "closed_at": "2026-08-26T17:00:33.15131Z",
+  "close_reason": "Duplicate of project-LICHEN-worker6-61ja, fixed in same commit.",
   "labels": [
     "bug",
     "codereview"

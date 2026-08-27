@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-mn9p",
+  "title": "TOCTOU in render_delete: existence/role check and delete not atomic",
+  "description": "groups_collection.py lines 662-676: render_delete checks existence (669), then role (673), then deletes (675) without holding _mutation_lock. If another thread deletes the group between the role check and the delete, del raises KeyError. Fix: acquire _mutation_lock around the entire operation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:43:43.309972Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:43:43.309972Z"
+}

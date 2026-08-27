@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-1v6y",
+  "title": "IPv6 bracket notation parsing fails in _peer_is_local_admin (messaging.py:55): hostinfo '[::1]:5683' is incorrectly parsed to '::1]:5683', causing local admin detection to fail for legitimate loopback requests",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:18:42.976121Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:31:45.484646Z",
+  "started_at": "2026-08-26T19:22:33.100275Z",
+  "closed_at": "2026-08-26T19:31:45.484646Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1v6y",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.14.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:21:30.469933Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

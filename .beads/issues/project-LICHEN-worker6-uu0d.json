@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-uu0d",
+  "title": "test_presence_cache: missing purge_older_than boundary test",
+  "description": "purge_older_than uses \u003c comparison (line 302 of presence.py: v['ts'] \u003c cutoff), so entries exactly at cutoff timestamp are retained. No test verifies this boundary condition. Test should verify that purge_older_than(ts) where ts equals an entry's timestamp does NOT purge that entry. File: python/tests/coap/test_presence_cache.py, TestPresenceCacheGet.test_purge_older_than_removes_stale",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:07:32.957349Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:07:32.957349Z"
+}

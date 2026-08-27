@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-6zd6",
+  "title": "float(huge-int expires) raises OverflowError out of add_drop instead of clamping",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py:171. Bare float(value) with 10**400 input crashes add_drop; suppress(OverflowError) blocks cover only int() paths. Not wire-reachable (codec finite check gives 4.00) but direct/mesh callers crash rather than MAX_TTL clamp. Wrap or clamp.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:29.139999Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:22:22.102212Z",
+  "started_at": "2026-08-26T19:06:44.501635Z",
+  "closed_at": "2026-08-26T19:22:22.102212Z",
+  "close_reason": "float(huge-int expires) no longer raises OverflowError out of add_drop/render_post paths: _numeric_value converts int/Decimal through guarded float(), returning +/-math.inf beyond float range; _extract_ttl's existing suppressed int() conversion then clamps +huge to DEADDROP_MAX_TTL and -huge to immediate expiry. Added regressions: 10**400 expires clamps to MAX_TTL (not default), -10**400 expires immediate-expiry, and wire-path huge-int remains 4.00 via codec finiteness validation. tests/coap -k deaddrop: 71 passed.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6zd6",
+      "depends_on_id": "project-LICHEN-worker6-y4ad",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:29.939037Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-a594",
+  "title": "join_key returns group OSCORE keys in plaintext",
+  "description": "File: python/src/lichen/coap/resources/groups_collection.py\n\nGroupsItemResource._join_key (approx lines 274-302) returns master_secret and master_salt as a CBOR CoAP payload. There is no check for pairwise OSCORE (request.opt.oscore / oscore_protected / object_security). Encrypted POST /groups in GroupsCollectionResource._create (lines 137-143) also returns master_secret on the same unauthenticated path.\n\nspec/12-apps.md 18.8.2 Key Distribution: the join_key exchange MUST be OSCORE-protected with the pairwise context from EDHOC. Quote: Never sent in plaintext.\n\nAny mesh peer who knows or guesses a group id can POST /groups/{id}/key and receive the current group OSCORE master secret. That is full compromise of group confidentiality.\n\nRelated planned work exists as l1qw.10.11.3.2 (pairwise OSCORE key distribution); this bead tracks the defect in the code that already ships join_key.",
+  "acceptance_criteria": "Reject join_key (and encrypted create if mesh-reachable) unless the request was unprotected only after a successful pairwise OSCORE unprotect. Do not put master_secret or master_salt on a plaintext CoAP response. Tests must cover unprotected join_key -\u003e 4.01 and protected join_key still returning key material.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:19:22.278988Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:50:06.201539Z",
+  "started_at": "2026-08-26T17:41:54.340502Z",
+  "closed_at": "2026-08-26T17:50:06.201539Z",
+  "close_reason": "join_key and encrypted POST /groups require a pairwise OSCORE identity bound after successful unprotect (oscore_context/oscore_context_id on request or remote). Spoofed CoAP OSCORE option, oscore_protected flag, empty identity, and group OSCORE contexts return RFC 7252 4.01 with no master_secret/master_salt and no membership mutation. OSCORE-bound join_key still returns spec 18.8.2 key material (32-byte secret, 8-byte salt, AES-CCM-16-64-128). pytest tests/coap/test_groups_{item,collection,rekey}.py passed.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-a594",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.1.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:19:22.645512Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

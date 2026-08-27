@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-jdb7",
+  "title": "PresenceResource local-admin rejects real UDP [::1]:port hostinfo",
+  "description": "File: python/src/lichen/coap/resources/presence.py (_peer_is_local_admin, render_put)\n\nThe ixev write gate treats loopback as LCI admin. The helper only strips a port when hostinfo has exactly one colon (IPv4 host:port). IPv6 with a port is left intact, then strip(\"[]\") turns \"[::1]:54321\" into \"::1]:54321\", which IPv6Address rejects, so the peer is untrusted.\n\naiocoap udp6 hostinfo is hostportjoin(plainaddress, sockaddr[1]) and omits the port only when it equals 5683. A loopback LCI client uses an ephemeral source port, so request.remote.hostinfo is \"[::1]:\u003cephemeral\u003e\" on the real UDP path (bind_coap_udp defaults to ::1). LichenRemote.authority also emits \"[host]:port\" when the port is not 5683.\n\nImpact:\n- PUT /presence from a real loopback LCI client returns 4.01 unless allow_writes=True.\n- Tests only use SimpleNamespace(hostinfo=\"[::1]\") without a port, so they do not catch this.\n- Fail-closed (not an auth bypass), but the documented LCI exception never matches production remotes.\n\nSame parse mistake as open bead project-LICHEN-worker6-1v6y in messaging.py. confessions.py _host_from_hostinfo already parses bracketed IPv6 correctly. Do not refile 1v6y; this is the copy used by the presence write gate.",
+  "acceptance_criteria": "PUT /presence from a loopback remote whose hostinfo is [::1]:\u003cephemeral\u003e (and LichenRemote [::1]:non-5683) returns 2.04 without allow_writes. Mesh/global remotes still return 4.01. Tests cover the port-bearing IPv6 hostinfo form, not only [ ::1 ].",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:14:37.23249Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T18:52:01.403194Z",
+  "started_at": "2026-08-26T18:48:30.45135Z",
+  "closed_at": "2026-08-26T18:52:01.403194Z",
+  "close_reason": "Fixed strict aiocoap hostinfo parsing for bracketed IPv6 and IPv4 loopback peers with validated ports; added remote, scoped, malformed, and boundary regressions. Full CoAP suite, Ruff, and focused mypy are green.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-jdb7",
+      "depends_on_id": "project-LICHEN-worker6-ixev",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:14:37.775994Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

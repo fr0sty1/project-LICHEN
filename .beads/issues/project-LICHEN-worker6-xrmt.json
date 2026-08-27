@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-xrmt",
+  "title": "Unreachable final return in time_sync update_from_parent",
+  "description": "File: lichen/subsys/lichen/link/time_sync.c:341. lichen_time_sync_set_sfn only returns 0/-EALREADY both handled; final return err unreachable. Remove or fold; revisit if set_sfn contract grows.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:17.91138Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:13:53.93065Z",
+  "started_at": "2026-08-26T19:07:03.002253Z",
+  "closed_at": "2026-08-26T19:13:53.93065Z",
+  "close_reason": "Unreachable trailing return removed. Branch coverage over set_sfn contract provably complete: guard (-EINVAL), err!=0 propagation (-EALREADY covers full 0/-EALREADY contract via generic nonzero check, future-proof), assignment+return 0. No empty trailing block remains. clang -fsyntax-only -Wall -Wextra clean.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xrmt",
+      "depends_on_id": "project-LICHEN-worker6-27ew",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:18.673651Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

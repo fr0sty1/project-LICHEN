@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-61ja",
   "title": "channel_plan.py: select_channel returns out-of-bounds index for plans with \u003c 3 channels",
   "description": "Line 87-88 and 311-312: The formula `n = max(num_channels - 1, 2); return 1 + (h % n)` can return indices 1 or 2 for a 2-channel plan (valid indices 0-1) or 1-channel plan (valid index 0 only). This causes ValueError when frequency() is called. All built-in plans have 8+ channels so this only affects custom plans.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T16:06:14.450185Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T16:06:14.450185Z",
+  "updated_at": "2026-08-26T17:00:27.336994Z",
+  "closed_at": "2026-08-26T17:00:27.336994Z",
+  "close_reason": "Fixed: changed line 285 from 'return 1 + (h % n_channels)' to 'return 1 + (h % (n_channels - 1))' to ensure channel index stays in valid range [1, n_channels-1] for data channels.",
   "labels": [
     "bug",
     "codereview"

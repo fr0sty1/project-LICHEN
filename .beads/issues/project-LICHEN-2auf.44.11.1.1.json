@@ -1,16 +1,17 @@
 {
   "id": "project-LICHEN-2auf.44.11.1.1",
   "title": "Bind runtime and actions to single RplStack generation; reject poll with pending actions",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:15:46.545825885Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T16:40:12.521439431Z",
+  "updated_at": "2026-08-26T18:12:58.660356Z",
   "started_at": "2026-07-23T05:17:05.271692295Z",
-  "closed_at": "2026-07-23T05:19:16.418981574Z",
-  "close_reason": "Decomposed into subtasks",
+  "closed_at": "2026-08-26T18:12:58.660356Z",
+  "close_reason": "Duplicate/decomposition parent fully satisfied by project-LICHEN-2auf.44.11.1.5. Live RplRuntime rejects polling with a pending action, binds every action to one Option\u003cu64\u003e stack generation including wrapped generation zero, preserves pending state on stale completion, and rejects a generation-changed receive before radio await. Fresh focused runtime run: 12 passed. The implementing child already passed full lichen-node 249/249 unit tests plus all integrations, strict Clippy, no-default-features, and fmt. No additional edits.",
   "labels": [
     "defer-external"
   ],

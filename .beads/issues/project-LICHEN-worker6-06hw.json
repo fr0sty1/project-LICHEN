@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-worker6-06hw",
+  "title": "accept/compress keep superseded DIO SCHC policy live",
+  "description": "File: rust/lichen-schc/src/link.rs\n\ncompress_schc_for_peer and accept_authenticated_schc_packet gate only on peer.is_current_for(link) (DIO evidence still accepted by this LinkLayer: same receiver Arc, current key-generation Arc, still pinned). That is not 'latest DIO for this signer'.\n\nPeerContextAuthority::issue_from_authenticated_dio and FragmentationPolicy::install_peer both reject authenticated_counter \u003c= the stored floor and bump generation so an older capability fails is_current/accepts_entry. from_authenticated_dio_frame (the only constructor that sets evidence, which is_current_for requires) has no such registry. A later DIO for the same signer (higher seqnum, possibly incompatible Rule Set Version) leaves the earlier AuthenticatedPeerSchcContext fully usable:\n\n- compress_schc_for_peer still encodes under the old remote_version (v3 compressed rules after a mismatch DIO, or the reverse)\n- accept_authenticated_schc_packet still decompresses data with counter \u003e the OLD floor under the old policy, even when a newer DIO admitted a stricter floor and different version\n\nPython LinkLayer keeps one _schc_peer_contexts entry per signer and always looks that up (w0mm is the store-rollback dual). Std link.rs has no equivalent, so stale and current capabilities both work until unpin/rekey.\n\nFix: keep a per-signer latest DIO counter/version (PeerContextAuthority, FragmentationPolicy, or LinkLayer) and treat a context as current only when its authenticated_counter/generation is the live one. Reject superseded contexts as InvalidPeerEvidence. Do not use a capability whose remote_version no longer matches the latest admitted DIO.",
+  "acceptance_criteria": "After two authenticated DIOs from the same signer on one LinkLayer (seqnum 10 then 20, same key generation), compress_schc_for_peer and accept_authenticated_schc_packet reject the seqnum-10 AuthenticatedPeerSchcContext with InvalidPeerEvidence. The seqnum-20 context still compresses/accepts. If the second DIO advertises an incompatible Rule Set Version, data is not decompressed with v3 compressed rules via the first context. FragmentationPolicy/PeerContextAuthority supersession behavior is unchanged. Regression covers same-version refresh vs version-changing DIO.",
+  "notes": "2026-08-26 Phase-2 fix: added bounded 32-entry AuthenticatedSchcPolicy owner for std link integration. compress_schc_for_peer and accept_authenticated_schc_packet now require the candidate context to match the registry's signer/counter/version/key-generation entry before output or policy use. DIO role is cryptographically parsed then retained in AuthenticatedPeerSchcContext, so callers cannot mislabel root vs peer. Same-signer refresh/version change supersedes older capabilities; \u003c= counter and receipt-clock rollback reject; a different authenticated root becomes current while the old root high-water remains retained, preventing rollback when switching back. Regression encodes the prior seq10 context surviving seq20 failure mode and covers old/new acceptance+compression, same-version refresh, v3-to-incompatible fallback, root switch, rollback before/after switch, and output non-mutation. Existing 2tdl destination filtering preserved. Green: focused lifecycle test; full lichen-schc std suite (71 unit, all integrations/vectors/docs, 7 link integration); strict std all-target Clippy; no-default-features check; targeted rustfmt and diff checks. C/Zephyr audit found wire codecs and rule-version option parsing but no retained std peer-capability/free-function analog, so no west build was applicable. No Phase-3 review.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:19:10.183472Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T19:00:20.414902Z",
+  "started_at": "2026-08-26T18:49:15.546447Z",
+  "closed_at": "2026-08-26T19:00:20.414902Z",
+  "close_reason": "Bound std SCHC compression/ingress to the latest authenticated signer/version/root policy with rollback-safe tests and green scoped gates.",
+  "labels": [
+    "rust",
+    "schc",
+    "security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-06hw",
+      "depends_on_id": "project-LICHEN-worker6-l2wd",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:19:11.158661Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.23.1",
   "title": "Python: Confessions oracle implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:26:04.597998Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:26:04.597998Z",
+  "updated_at": "2026-08-26T17:11:54.386466Z",
+  "started_at": "2026-08-26T16:59:41.148769Z",
+  "closed_at": "2026-08-26T17:11:54.386466Z",
+  "close_reason": "Python ConfessionsResource oracle implements spec 18.10 (SenML POST, CBOR query GET, 1/30s and 12/hr IID limits, 768 B, 2/8 KB FIFO, TTL clamp, RAM-only reboot clear, Observe). Tests in python/tests/coap/test_confessions_resource.py pass plus existing confessions_rate vector consumers.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.23.1",

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-4rzt",
+  "title": "lollipop counter uses modular arithmetic in linear region",
+  "description": "_dao_sequence_is_newer (line 116-123 in address_assignment.py) incorrectly uses modular arithmetic (`\u0026 0x7F`) for both linear and circular regions. RFC 6550 Section 7.2 defines two regions: linear (0-127) where sequences should be compared strictly (new \u003e old), and circular (128-255) where modular comparison is correct. Current code: with old=120 and new=5, difference=(5-120)\u00260x7F=13, returns True. But 5 is not newer than 120 in linear region. This allows stale sequences to be accepted as newer, enabling replay or incorrect retransmission handling during bootstrap.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T17:20:40.6983Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:43:20.604607Z",
+  "closed_at": "2026-08-27T17:43:20.604607Z",
+  "close_reason": "Closed"
+}

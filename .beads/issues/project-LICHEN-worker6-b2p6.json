@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-b2p6",
   "title": "python/src/lichen/ccp.py: slot_hash silently produces wrong hash for short eui64 inputs",
   "description": "The zip() on line 306 truncates to the shorter of eui64 and sfn_bytes (8 bytes). If eui64 is less than 8 bytes, only the provided bytes are XORed, producing a different hash than expected. No validation ensures eui64 is exactly 8 bytes.\n\nFix suggestion: Add validation: `if len(eui64) != 8: raise ValueError('eui64 must be exactly 8 bytes')`",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T04:13:32.913094Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T04:13:32.913094Z",
+  "updated_at": "2026-08-26T17:01:57.27783Z",
+  "closed_at": "2026-08-26T17:01:57.27783Z",
+  "close_reason": "Duplicate of dl1g - fixed by adding eui64 length validation to select_channel()",
   "labels": [
     "bug",
     "codereview"

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-irxh",
   "title": "test_channel_plan.py: EUI64 value 0 mishandled due to falsy or evaluation",
   "description": "Line 210: `eui_hex = inp.get(\"eui64\") or inp.get(\"eui64_hex\", \"\")` uses `or` which treats integer 0 as falsy. If a test vector has `\"eui64\": 0` (all-zeros EUI64), the code falls through to `eui64_hex` or empty string. `bytes.fromhex(\"\")` produces `b\"\"` instead of 8 zero bytes. The hash is then computed over 4 bytes (epoch only) instead of 12 bytes (8 EUI + 4 epoch), producing wrong results. Fix: use `inp.get(\"eui64\") if \"eui64\" in inp else inp.get(\"eui64_hex\", \"\")`.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T16:06:20.515394Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T16:06:20.515394Z",
+  "updated_at": "2026-08-27T17:32:58.779249Z",
+  "closed_at": "2026-08-27T17:32:58.779249Z",
+  "close_reason": "Issue already fixed: the problematic pattern (inp.get(\"eui64\") or inp.get(\"eui64_hex\", \"\")) does not exist in test_channel_plan.py. Current code uses safe direct indexing with explicit key assertions. All 33 tests pass.",
   "labels": [
     "bug",
     "codereview"

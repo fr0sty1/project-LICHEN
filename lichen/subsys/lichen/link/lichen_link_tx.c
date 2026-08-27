@@ -47,28 +47,49 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		return -EINVAL;
 	}
 
+	if (!ctx->has_key) {
+		return -ENOKEY;
+	}
+
 #if defined(CONFIG_LICHEN_TDMA)
 	{
-		/* SECURITY: Static TDMA context persists across calls so external
-		 * code can sync it via lichen_link_set_slot(). A zero-initialized
-		 * local context would have synced=false, making tdma_tx_allowed()
-		 * always return true (collision check bypassed). */
-		static struct lichen_tdma_ctx tdma;
-		static bool tdma_init_done;
-		if (!tdma_init_done) {
-			(void)lichen_tdma_init(&tdma, ctx);
-			tdma_init_done = true;
+		/* SECURITY: TDMA schedule state lives inside lichen_link_ctx,
+		 * so each context gates its own TX with its own schedule;
+		 * alternating contexts can no longer churn a shared latch back
+		 * to synced=false, which would silently bypass the collision
+		 * gate. Sync installed on this context via
+		 * lichen_link_set_slot(ctx, &ctx->tdma, ...) persists across
+		 * calls. Ordering: the init graph (AGENTS.md) has
+		 * lichen_link_load_key() precede lichen_tdma_init(), so this
+		 * lazy init runs only after the has_key check above succeeded,
+		 * keeping an unkeyed context fail-fast (-ENOKEY) before any
+		 * TDMA latch/schedule state is created on it (tdma_init itself
+		 * consumes no RNG and no keys — it hashes ctx->eui64 against
+		 * the SFN-0 baseline only; load_key() does not rotate slots).
+		 * The latch re-runs init only when ctx->epoch differs from the
+		 * value tdma was built from: exactly one init per
+		 * (context, epoch). */
+		if (!ctx->tdma_init_done || ctx->tdma_epoch_seen != ctx->epoch) {
+			(void)lichen_tdma_init(&ctx->tdma, ctx);
+			ctx->tdma_epoch_seen = ctx->epoch;
+			ctx->tdma_init_done = true;
 		}
-		/* FIXME: Pass actual time once TDMA time source is wired up */
-		if (!tdma_tx_allowed(&tdma, 0)) {
+		/* FIXME: Pass actual time once TDMA time source is wired up.
+		 * A real clock source is REQUIRED before enabling synced
+		 * operation: the exact data window [slot_start,
+		 * slot_start + d - g) makes the synced gate schedule-dependent,
+		 * so the constant now_ms=0 is only correct while
+		 * ctx->tdma.synced is false (unsynced gate passes
+		 * unconditionally). Once synced, now_ms=0 maps every nonzero
+		 * schedule position to a huge modular offset and fails the
+		 * gate (-EBUSY); the sole exception is the slot_start==0
+		 * special case (superframe==0 AND slot==0), whose window
+		 * [0, d-g) contains 0 and alone stays open. */
+		if (!tdma_tx_allowed(&ctx->tdma, 0)) {
 			return -EBUSY;
 		}
 	}
 #endif
-
-	if (!ctx->has_key) {
-		return -ENOKEY;
-	}
 
 	/*
 	 * Validate IPv6 packet length (python-ano.11):

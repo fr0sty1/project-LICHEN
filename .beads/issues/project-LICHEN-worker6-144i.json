@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-144i",
   "title": "python/src/lichen/ccp.py: Short eui64 silently truncated in slot_hash",
   "description": "The zip operation `zip(eui64, sfn_bytes)` truncates to the shorter input. If eui64 has fewer than 8 bytes, the hash is computed over fewer bytes than specified, leading to incorrect slot assignments. Two different EUI64s sharing the same prefix would hash identically.\n\nFix suggestion: Add validation: `if len(eui64) != 8: raise ValueError(\"eui64 must be exactly 8 bytes\")` or pad/truncate explicitly with a warning.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T04:13:45.458343Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T04:13:45.458343Z",
+  "updated_at": "2026-08-26T17:01:52.087171Z",
+  "closed_at": "2026-08-26T17:01:52.087171Z",
+  "close_reason": "Duplicate of dl1g - fixed by adding eui64 length validation to select_channel()",
   "labels": [
     "bug",
     "codereview"

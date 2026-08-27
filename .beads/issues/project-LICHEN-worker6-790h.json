@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-790h",
+  "title": "Six SOS negative vectors lack cbor_hex/machine drivability so rejection contract unenforced by CI",
+  "description": "File: test/vectors/sos_cbor.json. Four non-finite entries embed hex only inside prose encoding_note; two range entries have cbor_payload but no cbor_hex. Automated consumers filter cbor_hex-less entries (rust tests sos_cbor_vectors.rs:22-24 assert driven==5; python test_vector_consumers_lci.py:276 same) leaving new contract ad-hoc-only verified. Add proper hex fields + extend consumer drivers.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:02:05.271364Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T21:47:21.810919Z",
+  "started_at": "2026-08-26T21:04:15.216903Z",
+  "closed_at": "2026-08-26T21:47:21.810919Z",
+  "close_reason": "All six negative sos_cbor.json vectors now carry real cbor_hex computed with independent cbor2 encoder (schema key order type/node/ts/lat/lon/msg/seq; full node/ts constants matching positive vectors): four non-finite entries assembled with explicit raw IEEE-754 tokens 0xf97e00 f16 NaN lat / 0xf97c00 f16 +Inf lon / 0xfaff800000 f32 -Inf lat / 0xfb7ff8000000000000 f64 qNaN lon each paired with a valid opposite coordinate plus cbor_length 89/89/91/95; two range entries cbor_hex equals cbor2.dumps of their already-committed payloads, length 82. All six verified programmatically against the generator output byte-for-byte. Rust driver sos_cbor_vectors.rs branches on expected.decode_success:false asserting Err(InvalidValue) per vector and count assertion raised 5-\u003e11; canonical five positive vectors remain byte-stable (git diff shows zero removed lines). Python filter path verified empirically: range-entry hexes were picked up automatically by unchanged _sos_payload_cases and pass; the four JSON-unrepresentable payloadless hexes KeyError'd as predicted risk, handled minimally: wire-contract test now asserts raw structural properties for rejection cases, canonical-signing roundtrip skips them honestly (visible skips), and new test_sos_cbor_negative_vectors_rejected drives every negative vector's committed bytes through CheckInResource.render_post expecting BAD_REQUEST with nothing stored.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-790h",
+      "depends_on_id": "project-LICHEN-worker6-j0xg",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T21:02:05.674839Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

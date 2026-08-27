@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-u2bg",
+  "title": "PUT name leaves id as hash of original name",
+  "description": "File: python/src/lichen/coap/resources/groups_collection.py\n\ngroup_id_from_name (32-34) is SHA-256(name)[:12] and is used as the dict key at create (119-121). GroupsItemResource.render_put (253-257) updates item['name'] only. It does not recompute id, mcast, or check uniqueness of the new name.\n\nConsequences:\n1. After rename, id is no longer the name hash. Clients that derive id from name look up the wrong group.\n2. POST create of the original name hits group_id in self.groups and returns 4.00 even though no group currently has that name.\n3. Two groups can share a display name after PUT.\n\nspec/12-apps.md 18.8.2: Group ID derived from name hash or randomly generated. If id is a name hash it must stay consistent; if id is assigned once, create must not key uniqueness off the current name hash after rename, and PUT must reject a name that collides with another group.",
+  "acceptance_criteria": "Either (a) names are immutable after create, or (b) PUT name rejects duplicates and create uniqueness is by current name not stale hash, with id policy documented and tested (rename then recreate original name; two groups cannot share a name).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:19:26.196354Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:47:59.49448Z",
+  "closed_at": "2026-08-27T16:47:59.49448Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-u2bg",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.1.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:19:26.60556Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

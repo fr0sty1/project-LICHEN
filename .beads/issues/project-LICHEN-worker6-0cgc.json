@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-0cgc",
+  "title": "Signed-promotion left-shift UB idiom replicated in new response_replay_update helper",
+  "description": "File: oscore_protect.c:95 (also pre-existing oscore_replay.c:161 pattern out-of-blast-radius note only). (*window \u003c\u003c shift)|1 / |= 1U \u003c\u003c diff shift uint32_t promoted to int; formally UB once bit31 set. New-from-this-round helper must use uint32_t/uint64_t math casts. In-scope hygiene; sibling legacy optional follow-up beaded separately if desired.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:02:07.910658Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T15:48:21.528809Z",
+  "started_at": "2026-08-26T21:04:15.29423Z",
+  "closed_at": "2026-08-27T15:48:21.528809Z",
+  "close_reason": "Fixed both flagged shifts in response_replay_update() (oscore_protect.c) with explicit uint64_t intermediate arithmetic per modern style, comments added: (1) newest-seq branch: *window = shift \u003e= 32 ? 1U : (uint32_t)(((uint64_t)*window \u003c\u003c shift) | 1U) — the old (*window \u003c\u003c shift) promoted uint32_t to signed int making bit-31 participation formal UB; uint64 math truncated back is bit-identical for every previously-defined input (shift \u003c 32 guaranteed by the ternary, \u003e= 32 collapses to 1 exactly as before). (2) in-window branch: *window |= diff \u003e= 32 ? 0U : (uint32_t)((uint64_t)1 \u003c\u003c diff) — old 1U \u003c\u003c diff was defined only for diff \u003c 32 (guaranteed by callers via response_replay_acceptable with REPLAY_WINDOW range 16..32, i.e. zero observable change on the reachable domain) but formally undefined otherwise; now defined everywhere. Legacy oscore_replay.c:161 pattern deliberately untouched (out-of-blast-radius per scope; verified unchanged in source). response_replay_acceptable() line 83 bare-1U shift left as-is: unsigned int shift by \u003c 32 is fully defined, no promotion hazard. Verified: clang -fsyntax-only -Wall -Wextra -Wshift-count-overflow clean on oscore_protect.c at default and max Kconfig configs; no PRIu64/format-string drift (helper contains no format usage); token greps confirm old signed-promotion idiom absent and guard idiom present.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0cgc",
+      "depends_on_id": "project-LICHEN-worker6-lyzq",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T21:02:08.308228Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

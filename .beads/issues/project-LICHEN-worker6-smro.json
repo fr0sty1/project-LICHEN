@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-smro",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/link/tdma.c:20 ODR violation: All four TDMA functions (lichen_tdma_init, lichen_ccp_fsm_event, lichen_link_set_slot, tdma_tx_allowed) are also defined in link_ctx.c lines 676-769 under the same #ifdef CONFIG_LICHEN_TDMA guard. When CONFIG_LICHEN_TDMA is enabled, CMakeLists.txt adds tdma.c to the build while link_ctx.c is always compiled, causing duplicate symbol linker errors.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T15:08:49.134268Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T15:08:49.134268Z",
+  "updated_at": "2026-08-26T17:57:09.710742Z",
+  "started_at": "2026-08-26T17:47:13.740681Z",
+  "closed_at": "2026-08-26T17:57:09.710742Z",
+  "close_reason": "Removed stale duplicate TDMA block from link_ctx.c; tdma.c is canonical (matches link.h declarations and CCP vectors, has dedicated doc header, CMakeLists-ifdef build entry). Verified no remaining refs outside canonical defs",
   "labels": [
     "codereview",
     "wave-fix"

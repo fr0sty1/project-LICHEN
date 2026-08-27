@@ -49,8 +49,13 @@ bool replay_check_acceptable(const struct oscore_ctx *ctx, uint64_t seq)
 		return true;
 	}
 
-	/* seq <= recipient_seq: check if within window */
-	uint32_t diff = ctx->recipient_seq - seq;
+	/*
+	 * seq <= recipient_seq: check if within window. The subtraction is
+	 * non-negative in this branch; computing it in 64 bits prevents a
+	 * distant sequence from truncating back into the window range.
+	 * (Fixes project-LICHEN-worker6-1nou)
+	 */
+	uint64_t diff = ctx->recipient_seq - seq;
 	if (diff >= window_size) {
 		/* Too old */
 		return false;
@@ -148,8 +153,8 @@ void replay_clear_pending_context_locked(int ctx_idx)
 bool replay_update_window(struct oscore_ctx *ctx, uint64_t seq)
 {
 	if (seq > ctx->recipient_seq) {
-		/* New highest seq - shift window */
-		uint32_t shift = seq - ctx->recipient_seq;
+		/* New highest seq - shift window (64-bit to avoid truncation) */
+		uint64_t shift = seq - ctx->recipient_seq;
 		if (shift >= 32) {
 			ctx->replay_window = 0;
 		} else {
@@ -160,8 +165,9 @@ bool replay_update_window(struct oscore_ctx *ctx, uint64_t seq)
 		return true;
 	}
 
-	/* seq <= recipient_seq: check if still within window */
-	uint32_t diff = ctx->recipient_seq - seq;
+	/* seq <= recipient_seq: check if still within window (64-bit diff,
+	 * see replay_check_acceptable) */
+	uint64_t diff = ctx->recipient_seq - seq;
 	if (diff >= CONFIG_LICHEN_OSCORE_REPLAY_WINDOW) {
 		/*
 		 * SECURITY: Seq fell outside window while we were decrypting -

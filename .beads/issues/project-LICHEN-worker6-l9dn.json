@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-l9dn",
+  "title": "inbox POST skips spec 18.1.1 field types",
+  "description": "File: python/src/lichen/coap/resources/messaging.py\n\nCorrectness: render_post validates body/text as str, canned as catalog uint, and id as u64. It then persists the rest of the decoded map unchanged.\n\nSpec 18.1.1 types: to tstr (IPv6 or ff02::1), ts uint, ack bool, priority uint 0..2, reply_to uint, ttl uint. Firmware POST /msg/sent rejects non-IPv6 to and non-bool ack (coap_msg.c:431-450).\n\nConfirmed: POST {body, ack:'yes', priority:9, read:True} is 2.01 Created; those values are stored; unread_count() is 0 because read is truthy. Unknown keys are echoed on GET /msg/inbox.\n\nunread_count (line 163) treats any truthy read as read, so a client-controlled extra key poisons spec 18.1.2 unread.",
+  "acceptance_criteria": "If present, to is a string, ack is bool, priority is 0/1/2, and ts/ttl/reply_to are u64; otherwise 4.00 and no mutation. Client-supplied read (and other non-spec keys) are not stored. unread_count only counts messages not marked read by a local/authorized path.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:21:28.681611Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:35:55.814952Z",
+  "closed_at": "2026-08-27T16:35:55.814952Z",
+  "close_reason": "Closed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l9dn",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.14.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:21:29.066058Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-n0cn",
+  "title": "presence: unbounded nodes array enables DoS via memory exhaustion",
+  "description": "PresenceCache.from_mapping (line 244) iterates over the nodes array without any length limit. A malicious CBOR payload with millions of cache entries could cause memory exhaustion. Add a MAX_CACHE_ENTRIES constant and reject payloads exceeding it.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:06:07.366571Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:35:38.487067Z",
+  "closed_at": "2026-08-27T16:35:38.487067Z",
+  "close_reason": "Closed"
+}

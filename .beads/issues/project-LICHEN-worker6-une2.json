@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-une2",
+  "title": "CBOR scanner: u64-to-usize truncation on 32-bit platforms",
+  "description": "In presence.rs scan_cbor_item() line 119, 'length as usize' truncates u64 values on 32-bit systems. A CBOR string claiming length 0x1_0000_0010 would truncate to 0x10, passing the bounds check. Practical impact is low (4KB payload limit, ciborium fails anyway, rare 32-bit target), but this is a defense-in-depth failure. Fix: check length \u003e usize::MAX as u64 before cast, or use saturating conversion.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:31:39.283409Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:47:45.944685Z",
+  "closed_at": "2026-08-27T16:47:45.944685Z",
+  "close_reason": "Closed"
+}

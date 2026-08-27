@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-o3fn",
+  "title": "test_presence_cache: no test for max_entries=0 or negative",
+  "description": "PresenceCacheResource accepts max_entries=0 and negative values without validation. With max_entries=0, entries are immediately evicted after recording (cache is useless). With negative values, behavior is undefined. Tests should verify either (1) invalid values raise ValueError, or (2) behavior is well-defined and documented. File: python/tests/coap/test_presence_cache.py, TestPresenceCacheMaxEntries class.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:07:20.712718Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:07:20.712718Z"
+}

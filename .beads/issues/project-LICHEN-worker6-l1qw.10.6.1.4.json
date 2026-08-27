@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-l1qw.10.6.1.4",
   "title": "Zephyr: /waypoints resource + storage",
   "description": "CoAP resource with persistent waypoint storage",
+  "notes": "2026-08-27 wave attempt stopped before edits due required-file collision. A complete /waypoints resource needs CONFIG_LICHEN_COAP_WAYPOINTS (or equivalent) in lichen/subsys/lichen/coap/Kconfig plus coap/CMakeLists.txt source wiring. coap/Kconfig is already modified by another active agent, and the assignment explicitly forbids overwriting active CoAP integration edits. coap_client.c/.h, coap_dtn.c, and coap_status.c are also active and must remain untouched. No waypoint files were created and no source was modified; claim released for retry after Kconfig ownership clears.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:27.781131Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:27.781131Z",
+  "updated_at": "2026-08-27T17:12:14.886136Z",
+  "started_at": "2026-08-27T17:12:13.947737Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.6.1.4",

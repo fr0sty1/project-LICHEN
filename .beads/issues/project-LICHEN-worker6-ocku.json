@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-ocku",
+  "title": "lichen_link_set_slot accepts sentinel slot_id==0xff when ctx==NULL",
+  "description": "File: lichen/subsys/lichen/link/tdma.c:102. With auto-derive sentinel 0xff and ctx NULL the function proceeds, storing slot=0xff instead of returning -EINVAL; subsequent tdma_tx_allowed computes nonsense offsets. Carried over verbatim during dedup. Fix: return -EINVAL when slot_id==0xff \u0026\u0026 ctx==NULL before assignment.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:09.790591Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:55:48.936367Z",
+  "started_at": "2026-08-26T19:07:01.49257Z",
+  "closed_at": "2026-08-26T19:55:48.936367Z",
+  "close_reason": "lichen_link_set_slot returns -EINVAL when tdma!=NULL \u0026\u0026 ctx==NULL \u0026\u0026 slot_id==0xff before any write. Verified in ASan/UBSan harness: (-EINVAL returned, struct untouched synced=false/slot=0); explicit-slot-id with NULL ctx still succeeds (legit path). Grep of tree: no in-tree callers other than declaration; spec-only references — no regression surface. Test assertion added in lichen/tests/link_crypto/src/main.c.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ocku",
+      "depends_on_id": "project-LICHEN-worker6-smro",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:10.566777Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-8qdu",
+  "title": "MessagesStore/receipt CBOR decode is laxer than Python oracle",
+  "description": "File: rust/lichen-client/src/msg.rs (post_inbox, ReceiptStore::post, Inbox/Sent/DeliveryReceipt::from_cbor)\n\nPython mutation decode (_decode_single_cbor in python/src/lichen/coap/resources/cbor_validation.py) rejects:\n\n- trailing bytes after the first CBOR item\n- duplicate map keys\n- CBOR tags\n- payloads over 4096 bytes, depth \u003e 16, maps \u003e 64 entries, arrays \u003e 256\n\nRust uses ciborium::from_reader on the slice with no leftover check. Duplicate keys become a Vec of pairs; map_get/set_key use the first match; a later duplicate remains on the wire. Trailing bytes are ignored. Tags may decode as Value::Tag.\n\nParser differential vs the Python MessagesResource / MessageReceiptsResource that consume test/vectors/messaging.json. Duplicate keys are a classic first-vs-last security split. Sibling lichen-client decoders (config.rs, radio_config.rs) already reject trailing bytes via Cursor position.\n\nFix: decode one item, require reader.position() == len, reject duplicate keys and tags, and apply the same size/depth caps as the Python oracle.\n\nPerspectives: security, robustness, correctness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:25:30.733156Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T17:25:30.227292Z",
+  "closed_at": "2026-08-27T17:25:30.227292Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-8qdu",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.14.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:25:31.09307Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

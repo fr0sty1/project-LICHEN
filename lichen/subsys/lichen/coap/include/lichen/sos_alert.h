@@ -127,13 +127,20 @@ void sos_alert_init(struct sos_alert *_Nonnull alert,
 /**
  * @brief Set location on an SOS alert.
  *
+ * Coordinates are validated against the same contract the decoder enforces:
+ * latitude [-90, 90] and longitude [-180, 180] inclusive, non-finite values
+ * rejected. On failure the alert's previous location state is unchanged, so
+ * it never encodes coordinates its own decoder would reject.
+ *
  * @param[in,out] alert Alert to modify
  * @param[in]     lat   Latitude (-90 to 90)
  * @param[in]     lon   Longitude (-180 to 180)
+ * @return SOS_ALERT_OK on success,
+ *         SOS_ALERT_ERR_INVALID_VALUE if lat/lon out of range or non-finite
  */
-void sos_alert_set_location(struct sos_alert *_Nonnull alert,
-			    double lat,
-			    double lon);
+int sos_alert_set_location(struct sos_alert *_Nonnull alert,
+			   double lat,
+			   double lon);
 
 /**
  * @brief Set message on an SOS alert.
@@ -180,6 +187,9 @@ int sos_alert_to_cbor(const struct sos_alert *_Nonnull alert,
 
 /**
  * @brief Decode SOS alert from CBOR.
+ *
+ * Non-finite or out-of-range coordinates are rejected with
+ * SOS_ALERT_ERR_INVALID_VALUE (lat [-90,90], lon [-180,180]).
  *
  * @param[in]  buf      CBOR data
  * @param[in]  buf_len  Data length

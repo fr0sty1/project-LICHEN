@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-7o3g",
+  "title": "rpl/dodag.py: gateway_centric and grounded flags set from non-preferred parent DIO - Lines 345-347 set flags BEFORE select_parent() runs, so a non-preferred parent's DIO overwrites the preferred parent's flags. Fix: move flag assignment into select_parent() to derive from the actual preferred parent.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:17:41.355918Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T17:25:01.033475Z",
+  "closed_at": "2026-08-26T17:25:01.033475Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-5tao",
+  "title": "group mcast rejects spec CIDR prefix strings",
+  "description": "## Problem\n\nspec/12-apps.md 18.8.3 writes mesh prefixes as 0200:1234:5678:9abc::/64. unicast_prefix_based_mcast / group_multicast_from_id type-hint prefix as IPv6Address | IPv6Network | str.\n\n_native_prefix64 only special-cases IPv6Network objects. A CIDR string goes through to_ipv6 -\u003e IPv6Address and fails:\n\nAddrError: Unexpected '/' in '0200:1234:5678:9abc::/64'\n\nHost strings without /64 (0200:1234:5678:9abc::) and IPv6Network objects work. Tests never pass a CIDR string.\n\n## Why it matters\n\nCallers copying the spec prefix form get an error. Same /64 expressed three ways (CIDR str, host str, IPv6Network) should yield one RFC 3306 address.\n\n## Where\n\npython/src/lichen/ipv6/addr.py:192-202 _native_prefix64\npython/src/lichen/ipv6/addr.py:205-242 unicast_prefix_based_mcast, group_multicast_from_id",
+  "design": "_native_prefix64 should parse str with a prefix length as IPv6Network, not IPv6Address. Keep the host-address path (packed[:8] of a 0200::/8 unicast) for strings without '/'.",
+  "acceptance_criteria": "unicast_prefix_based_mcast and group_multicast_from_id accept '0200:1234:5678:9abc::/64' and IPv6Network('0200:1234:5678:9abc::/64') with the same packed output as the spec template ff35:0040:0200:1234:5678:9abc::1 for group 1. Non-/64 CIDR still raises AddrError. Existing host-address and IPv6Network tests stay independent-oracle.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:22:21.70801Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:19:13.715537Z",
+  "closed_at": "2026-08-27T16:19:13.715537Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "ipv6"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-5tao",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.11.5.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:22:22.072346Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

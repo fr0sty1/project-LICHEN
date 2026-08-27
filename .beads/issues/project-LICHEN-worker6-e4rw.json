@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-e4rw",
+  "title": "POST /msg/sent also deliver()s to public inbox",
+  "description": "File: python/src/lichen/coap/resources/messaging.py\n\nCorrectness/security: SentMessagesResource.render_post (line 326) gates on _peer_is_local_admin then calls MessagesResource.render_post. That path always writes _sent AND self.deliver(body), which appends the outbound body to _inbox and fires ObservableResource.updated_state (and legacy /messages aliases).\n\nFirmware lichen_msg_sent_post (coap_msg.c:373) only queues via lichen_msg_send into s_sent. It does not call lichen_msg_receive / touch the inbox. Spec 18.11 lists /msg/sent as GET; LCI vectors msg_sent_local_admin / msg_sent_mesh_forbidden treat POST /msg/sent as the sent mailbox, not receive.\n\nGET /msg/inbox is public (test_msg_inbox_get_is_public). So an LCI admin POST /msg/sent copies the outbound body into a mesh-observable inbox. Mesh observers of /msg/inbox see private sends. Inbox unread_count also increases for messages this node sent.\n\nDo not conflate with inbox POST, which spec 18.1.2 and the MessagesResource docstring intentionally deliver to inbox.",
+  "acceptance_criteria": "POST /msg/sent from loopback/admin returns 2.01 and stores the record in sent/_sent_order/detail only. _inbox, unread_count, and Observe notifications on /msg/inbox and /messages MUST NOT change. Firmware lichen_msg_sent_post / lichen_msg_send remain the contract. POST /msg/inbox still delivers to inbox.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:16:13.331079Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:35:52.029252Z",
+  "closed_at": "2026-08-27T16:35:52.029252Z",
+  "close_reason": "Closed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-e4rw",
+      "depends_on_id": "project-LICHEN-worker6-wz5u",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:16:13.885244Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

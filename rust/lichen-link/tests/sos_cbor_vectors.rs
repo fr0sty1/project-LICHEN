@@ -1,6 +1,6 @@
 //! Drive `test/vectors/sos_cbor.json` through `SosAlert` CBOR codec.
 
-use lichen_link::SosAlert;
+use lichen_link::{SosAlert, SosCborError};
 use serde_json::Value;
 
 const SOS_CBOR_JSON: &str = include_str!("../../../test/vectors/sos_cbor.json");
@@ -29,6 +29,19 @@ fn sos_cbor_hex_vectors_decode_and_reencode() {
             vector["cbor_length"].as_u64().expect("cbor_length") as usize,
             "{name} length"
         );
+        if vector["expected"]["decode_success"] == Value::Bool(false) {
+            // Negative vector: the wire is structurally valid CBOR whose
+            // coordinates violate the documented contract, so from_cbor
+            // must reject it (never panic) and positive assertions are skipped.
+            let error = vector["expected"]["error"].as_str().unwrap_or_default();
+            match SosAlert::from_cbor(&wire) {
+                Ok(alert) => panic!("{name}: expected rejection ({error}), decoded {alert:?}"),
+                Err(SosCborError::InvalidValue) => {}
+                Err(other) => panic!("{name}: unexpected error {other:?} for {error}"),
+            }
+            driven += 1;
+            continue;
+        }
         let alert = SosAlert::from_cbor(&wire).unwrap_or_else(|e| panic!("{name}: {e:?}"));
         assert_eq!(alert.to_cbor(), wire, "{name} re-encode");
         let payload = &vector["cbor_payload"];
@@ -60,7 +73,8 @@ fn sos_cbor_hex_vectors_decode_and_reencode() {
         assert_eq!(from_canonical.seq, alert.seq, "{name}");
         driven += 1;
     }
-    assert_eq!(driven, 5, "expected five cbor_hex payloads");
+    // Five positive vectors + six negative vectors with cbor_hex.
+    assert_eq!(driven, 11, "expected eleven cbor_hex payloads");
 }
 
 #[test]

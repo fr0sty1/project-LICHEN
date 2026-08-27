@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-r1vn",
+  "title": "Stale slot formula comments contradict implemented fnv1a32(EUI64)+SFN mapping",
+  "description": "link.h:90 LICHEN_TDMA_SLOT_MS comment 'hash(EUI64^epoch)%num_slots'; link_ctx.c:153-156 repeats variant. Implemented behavior post-tvsh/kyn9: Slot=(fnv1a32(EUI64)+u32(SFN)) mod n verified bit-exact vs ccp_sfn_wrap_slot_hash.json + ccp_tdma.json. Cross-impl ports following comments reproduce desynchronizing formula. Reword both citing spec/02a sec2a.2 noting epoch MUST NOT enter hash.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:02:20.479901Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T21:20:10.281311Z",
+  "started_at": "2026-08-26T21:04:15.026015Z",
+  "closed_at": "2026-08-26T21:20:10.281311Z",
+  "close_reason": "Stale hash(EUI64^epoch) formula comments replaced in link.h LICHEN_TDMA_SLOT_MS and link_ctx.c ponytail block with spec/02a section 2a.2 Slot=(fnv1a32(EUI64)+u32(SFN)) mod n and explicit MUST-NOT-enter-hash note; comments only",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-r1vn",
+      "depends_on_id": "project-LICHEN-worker6-tvsh",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T21:02:20.875113Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

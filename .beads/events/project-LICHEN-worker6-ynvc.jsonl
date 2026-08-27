@@ -1,2 +1,3 @@
 {"id":"01a0073a-d98b-7134-a98a-fccec8e68c26","issue_id":"project-LICHEN-worker6-ynvc","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-15T21:01:32.427079Z"}
 {"id":"01a0073a-d9a4-79cf-893c-9ced890869af","issue_id":"project-LICHEN-worker6-ynvc","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: review","created_at":"2026-08-15T21:01:32.452643Z"}
+{"id":"01a03f09-ebf4-7140-9a91-bfcb1d6d0977","issue_id":"project-LICHEN-worker6-ynvc","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate of project-LICHEN-worker6-1fu6 - fixed: reservation always signaled for success=True","created_at":"2026-08-26T17:06:49.972082Z"}

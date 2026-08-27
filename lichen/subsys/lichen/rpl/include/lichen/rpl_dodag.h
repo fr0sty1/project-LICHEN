@@ -49,7 +49,8 @@ extern "C" {
 
 /* TDMA constants synced from constants.toml; see spec/02a-coordinated-capacity.md §2a.2
  * and test/vectors/ccp16.json, ccp_tdma.json for independent vectors on slot
- * assignment (hash via lichen_hash_32), 100ms guard boundaries, SFN wrap, and
+ * assignment (hash via lichen_hash_32), 50ms guard boundaries (spec/02a
+ * §2a.2), SFN wrap, and
  * drift compensation. Zephyr tests validate against these (no code oracle). */
 
 #ifndef CONFIG_LICHEN_RPL_MAX_PARENTS

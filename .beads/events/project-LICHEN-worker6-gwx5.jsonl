@@ -1,3 +1,4 @@
 {"id":"01a00deb-7532-7ec5-aaa6-8026c389f423","issue_id":"project-LICHEN-worker6-gwx5","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T04:12:09.906969Z"}
 {"id":"01a00deb-753b-7ead-b1d6-f63850f76472","issue_id":"project-LICHEN-worker6-gwx5","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T04:12:09.915962Z"}
 {"id":"01a00deb-7541-7a06-91e8-512255d31536","issue_id":"project-LICHEN-worker6-gwx5","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T04:12:09.921658Z"}
+{"id":"01a03f05-2218-7518-8188-b43cc0627f90","issue_id":"project-LICHEN-worker6-gwx5","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Duplicate of vtw7. Bug already fixed - code now uses 'in body' check instead of falsy-prone 'or' pattern.","created_at":"2026-08-26T17:01:36.152335Z"}

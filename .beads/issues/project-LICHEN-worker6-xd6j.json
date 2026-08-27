@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-xd6j",
+  "title": "Sent-archive restriction asymmetry: authenticated non-admin populates _sent indirectly",
+  "description": "File: python/src/lichen/coap/resources/messaging.py:326-332. SentMessagesResource.render_post restricts archive writes to loopback-admin but MessagesResource.render_post also writes _sent for any OSCORE-authenticated peer posting to /msg/inbox with client-chosen to (including all). Policy inconsistency requiring explicit decision either tighten or document.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:34.905663Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:26:24.656723Z",
+  "started_at": "2026-08-26T19:06:49.760387Z",
+  "closed_at": "2026-08-26T19:26:24.656723Z",
+  "close_reason": "POLICY CHOSEN: sent-archive recording follows the /msg/inbox posting rules (any authenticated peer's outbound copies are recorded by MessagesResource.render_post); the admin-only restriction applies ONLY to directly POSTing /msg/sent, so mesh peers cannot fabricate archive history out of band. Basis: spec/11-lci.md 17.6.3 access levels + vectors msg_sent_mesh_forbidden/msg_sent_local_admin (both carry no OSCORE identity, so they pin loopback-admin allowed / unauthenticated-mesh denied without constraining OSCORE peers' indirect recording). Implementation: replaced misleading 'Writing to the sent archive is an admin operation' comment on SentMessagesResource.render_post with an explicit POLICY statement describing both halves; recording side untouched. Tests TestSentArchivePolicy: authenticated non-admin inbox POST records sent copy; same peer direct POST /msg/sent -\u003e 4.01 with zero mutation; loopback admin direct POST -\u003e CREATED with location-path ('msg','sent','1'). Known cross-impl divergence flagged for maintainers: firmware lichen_msg_sent_post gates oscore||admin rather than admin-only; vectors treated as authoritative per repo policy.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xd6j",
+      "depends_on_id": "project-LICHEN-worker6-6wrg",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:35.458516Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

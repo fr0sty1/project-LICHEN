@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-iz1u",
+  "title": "test_presence.py: missing PresenceCache.from_cbor error path tests",
+  "description": "TestPresenceCacheCodec lacks tests for from_cbor error handling. TestPresenceCodec has test_rejects_non_bytes_payload and test_rejects_invalid_cbor for Presence.from_cbor, but no equivalent tests exist for PresenceCache.from_cbor. The implementation (presence.py:254-266) has the same validation (type check for bytes, CBOR decode exception wrapping) but it is untested. Add tests for PresenceCache.from_cbor with bytearray input and malformed CBOR input.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:32:04.644594Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:32:04.644594Z"
+}

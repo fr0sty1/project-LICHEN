@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-2z6x",
+  "title": "Stale/replayed sync frames can inflate advertised stratum label via -EALREADY path",
+  "description": "File: lichen/subsys/lichen/link/time_sync.c:332-338. Accepted -EALREADY branch overwrites s_stratum even without fresh SFN advance; link-authenticated-but-stale upstream frames claim higher quality label gaining adoption preference. Impact bounded (range enforced 0..3, wall clock untouched, gated elsewhere) but fix belongs here: refresh stratum only when set_sfn returned 0 or never increase current.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:16.479891Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:13:52.060816Z",
+  "started_at": "2026-08-26T19:06:59.925108Z",
+  "closed_at": "2026-08-26T19:13:52.060816Z",
+  "close_reason": "s_stratum refresh now gated on lichen_time_sync_set_sfn()==0 fresh SFN advance; -EALREADY (stale/duplicate frame) propagates err without touching any state. Stale link-authenticated frames can no longer inflate or degrade the advertised label. Variant chosen: strict fresh-advance gate, consistent with set_sfn's strictly-advancing freshness model and simpler than monotonic-label tracking.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2z6x",
+      "depends_on_id": "project-LICHEN-worker6-27ew",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:17.282787Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

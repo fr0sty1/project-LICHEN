@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-g9nh",
+  "title": "PresenceCacheResource.max_entries not validated",
+  "description": "In python/src/lichen/coap/resources/presence.py, PresenceCacheResource.__init__ (lines 238-242) accepts max_entries without validation. If max_entries \u003c= 0 or is not an integer, _enforce_max() would immediately evict all entries on every record() call (the condition 'len(self._nodes) \u003c= self._max_entries' would always be false). Compare with MessagesResource.__init__ in messaging.py which validates max_messages with 'if isinstance(max_messages, bool) or not isinstance(max_messages, int) or max_messages \u003c= 0: raise ValueError'. Fix: add the same validation at the start of PresenceCacheResource.__init__.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:30:39.077585Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:47:47.853696Z",
+  "closed_at": "2026-08-27T16:47:47.853696Z",
+  "close_reason": "Closed"
+}

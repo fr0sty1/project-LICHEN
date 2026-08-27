@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-m5ri",
+  "title": "messaging.py _bound_oscore_identity unbounded recursion",
+  "description": "Lines 109-110 in python/src/lichen/coap/resources/messaging.py recursively call _bound_oscore_identity(durable()) when value has a callable durable_context_id attribute. If the returned object also has this method and creates a cycle (e.g., returns self), infinite recursion results in stack overflow. While unlikely in practice (requires malformed OSCORE context object), adding a recursion depth limit would be defensive. Not externally exploitable since OSCORE context is set by internal aiocoap processing.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:44:25.911487Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:44:25.911487Z"
+}

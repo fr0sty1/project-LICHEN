@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.11.3.1",
   "title": "200::/7 prefix in RPL DODAG",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:52.02743Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T16:21:22.336023Z",
+  "updated_at": "2026-08-26T16:22:29.617875Z",
   "started_at": "2026-08-26T16:21:22.336023Z",
-  "lease_expires_at": "2026-08-26T16:26:22.336023Z",
-  "heartbeat_at": "2026-08-26T16:21:22.336023Z",
+  "closed_at": "2026-08-26T16:22:29.617875Z",
+  "close_reason": "Superseded by the resolved single-primary address model: nodes self-derive exact 0200::/8 native /128 addresses, so RPL DODAG formation MUST NOT advertise 200::/7 (or 0200::/8) Prefix Information. Border-router global reachability is advertised with the RPL Grounded bit instead. Verified by Python gateway-reachability vectors (4 passed) and Rust gateway/root DIO tests (2 passed), which assert no Prefix Information option.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.11.3.1",

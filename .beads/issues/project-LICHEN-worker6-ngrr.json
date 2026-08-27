@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-ngrr",
+  "title": "deaddrop: 403 vs 404 leaks private drop existence",
+  "description": "DeadDropDetailsResource.render_get returns 403 FORBIDDEN when requesting a private/group drop the caller cannot see, but 404 NOT_FOUND when the drop does not exist. This allows an attacker to probe drop IDs to determine which contain private drops, even if they cannot read them. For private drops (where only creator should know existence), this is an information disclosure. Fix: return 404 for private drops that fail visibility check to preserve existence confidentiality. Group drops may intentionally want 403 to signal the recipient should authenticate. Consider: separate handling for private (return 404) vs group (return 403). File: python/src/lichen/coap/resources/deaddrop.py, line 678-679",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:46:22.414798Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:09:16.319346Z",
+  "closed_at": "2026-08-27T17:09:16.319346Z",
+  "close_reason": "Closed"
+}

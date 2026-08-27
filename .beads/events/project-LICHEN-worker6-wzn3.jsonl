@@ -1,3 +1,4 @@
 {"id":"01a00df4-d534-7ae8-9fef-f7244f378998","issue_id":"project-LICHEN-worker6-wzn3","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T04:22:24.308715Z"}
 {"id":"01a00df4-d53d-7a39-9173-ca4ba8154f41","issue_id":"project-LICHEN-worker6-wzn3","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T04:22:24.317671Z"}
 {"id":"01a00df4-d542-7d42-ad33-d41ea05b9a04","issue_id":"project-LICHEN-worker6-wzn3","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T04:22:24.32287Z"}
+{"id":"01a03f03-cfe1-7236-947b-ce08bf2f8e11","issue_id":"project-LICHEN-worker6-wzn3","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Bug already fixed: sfn_from_unix_time() guards against superframe_duration_us \u003c= 0 at line 57. No code changes needed.","created_at":"2026-08-26T17:00:09.569147Z"}

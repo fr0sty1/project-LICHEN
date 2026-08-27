@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-vh26",
+  "title": "_drop_visible fails-open for unknown privacy values",
+  "description": "In python/src/lichen/coap/resources/deaddrop.py lines 402-414, the _drop_visible method checks 'if privacy not in _PRIVACY_RESTRICTED' and returns True (visible). This means unknown privacy values are treated as public, violating the spec 18.9 requirement that unknown privacy MUST NOT fail-open. While entry points validate privacy values, this is a defense-in-depth violation. The fix should explicitly check for 'public' or fail closed for unknown values.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:31:16.447544Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:47:49.704078Z",
+  "closed_at": "2026-08-27T16:47:49.704078Z",
+  "close_reason": "Closed"
+}

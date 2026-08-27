@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-8ed7",
+  "title": "Unchecked -ENOBUFS at neighbors_get/routes_get fallback call sites",
+  "description": "File: lichen/subsys/lichen/coap/coap_status.c:706-710,881-885. Error-contract change makes encoders able to return negative where 0 previously possible; two fallback sites pass len unchecked into respond() -\u003e (size_t)(-ENOBUFS) huge length class sending uninitialized memory on any future size regression (same class as closed dadw). Add len\u003c0 branches mirroring :727-730/:903-906 which DO check.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:23.240837Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:33:28.965629Z",
+  "started_at": "2026-08-26T19:06:41.878065Z",
+  "closed_at": "2026-08-26T19:33:28.965629Z",
+  "close_reason": "Added len\u003c0 guards at neighbors_get fallback (:705-712) and routes_get fallback (:884-891) mirroring checked sites :727-730/:903-906 -\u003e TOO_MANY_REQUESTS response instead of huge (size_t)len payload. Verified: clang -fsyntax-only of full TU via verbatim-subset Zephyr 4.1 shim (exit=0, canary-sensitive harness); cppcheck 2.21 clean.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-8ed7",
+      "depends_on_id": "project-LICHEN-worker6-f5uc",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:24.128896Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

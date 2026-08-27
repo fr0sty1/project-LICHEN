@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-ynvc",
   "title": "[review] tx_queue.py:527: complete(success=True) with no",
   "description": "When complete(entry, True) is called but entry is not at queue head, only a warning is logged. The reservation is never signaled True or False. Any coroutine awaiting reservation.wait() hangs indefinitely. Should either signal False or raise an exception.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-15T21:01:32.387793Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-15T21:01:32.387793Z",
+  "updated_at": "2026-08-26T17:06:49.962378Z",
+  "closed_at": "2026-08-26T17:06:49.962378Z",
+  "close_reason": "Duplicate of project-LICHEN-worker6-1fu6 - fixed: reservation always signaled for success=True",
   "labels": [
     "review"
   ]

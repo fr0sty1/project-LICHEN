@@ -9,7 +9,8 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:46:05.302422Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:46:05.302422Z",
+  "updated_at": "2026-08-26T19:09:46.360633Z",
+  "started_at": "2026-08-26T19:09:01.520051Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.8.3.1.4",

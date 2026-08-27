@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-sd3b",
+  "title": "[refactor] Split remaining chunky Python modules",
+  "description": "Extract god classes from fragment.py, dao_manager.py, node.py",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:00:27.635979Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T21:45:08.146427Z",
+  "closed_at": "2026-08-26T21:45:08.146427Z",
+  "close_reason": "Closed"
+}

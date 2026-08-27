@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-k208",
+  "title": "PresenceCacheResource.record has no max size or TTL",
+  "description": "The resource docstring calls /presence/cache a table of recently-heard peers. record() inserts every addr into an unbounded dict and GET/Observe serializes the whole table. evict/purge_older_than exist but nothing invokes them and there is no cap.\n\nA caller that records overheard addrs (spoofed or many) grows memory and Observe payloads without bound. WaypointsResource and MessagesResource cap at 100. Distinct from existing bead worker6-7gk6 (decoder nodes-array size in from_mapping).\n\nFile: python/src/lichen/coap/resources/presence.py PresenceCacheResource.record / snapshot / render_get",
+  "acceptance_criteria": "Cache has a documented max entry count and/or default TTL. record() evicts oldest or refuses beyond the cap. GET payload stays bounded. Tests cover overflow and purge.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:21:14.123584Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:19:06.733681Z",
+  "closed_at": "2026-08-27T16:19:06.733681Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-k208",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.18.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:21:14.476036Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-worker6-1kex",
+  "title": "DeadDrop OSCORE identity ignores live security_context",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py\nPerspective: correctness (security impact on POST gate and private ACL)\n\nSpec 18.9: writes MUST be OSCORE-protected; rate limits and private/group ACL are per OSCORE context. _request_context_id() / _bound_oscore_identity() only accept request.oscore_context, request.oscore_context_id, and the same names on request.remote. Strings, non-empty bytes, or durable_context_id() count.\n\nThe live aiocoap stack does not set those attributes. After successful unprotect, request.remote is aiocoap.transports.oscore.OSCOREAddress(security_context, underlying_address). ConfessionsResource already reads recipient_id/kid on the context object.\n\nEvidence:\n- _request_context_id never reads remote.security_context or recipient_id (deaddrop.py ~59-98).\n- python/tests/coap/test_deaddrop_resource.py _protected() sets request.oscore_context_id by hand. Stack tests only cover unprotected and spoofed option -\u003e 4.01; there is no live unprotect POST that succeeds.\n- lichen.crypto.oscore.MemorySecurityContext.durable_context_id() is _sender_context_id(), which hashes master_secret+salt+id_context+sender_id and omits recipient_id. If oscore_context were the live MemorySecurityContext, every pairwise peer would share one rate-limit and private-drop ACL.\n\nThis is not a refile of worker6-ex47 (spoofed option-as-auth, fixed). After that fix the gate still cannot see the identity the stack actually binds, so legitimate OSCORE POSTs return 4.01 oscore_required, and wiring durable_context_id() naively would collapse peers.\n\nImpact:\n- Python /deaddrop cannot accept real OSCORE writes on the live stack.\n- Private/group ACL and 6/hour quota cannot be per-peer even if the attribute were later set to MemorySecurityContext.\n\nOracle: ConfessionsResource recipient_id/kid; aiocoap OSCOREAddress.security_context after unprotect.\n",
+  "acceptance_criteria": "A request unprotected by the live stack (request.remote is aiocoap OSCOREAddress with security_context, or MemorySecurityContext) is accepted for POST, rate-limited per peer recipient_id, and used as the private/group ACL key. Two pairwise peers must not share a bucket. Spoofed opt.oscore still returns 4.01. Tests must drive a real post-unprotect remote, not only request.oscore_context_id.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:14:10.345852Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T19:04:13.622683Z",
+  "started_at": "2026-08-26T18:59:42.598008Z",
+  "closed_at": "2026-08-26T19:04:13.622683Z",
+  "close_reason": "Bound DeadDrop authorization, private/group ACL, and per-peer quota state to the live post-unprotect remote.security_context recipient_id/KID, preferring authenticated peer identity over local sender/durable context IDs and failing closed when live peer identity is absent. Added live MemorySecurityContext regressions for peer role, durable-ID collision/per-peer buckets, reconstructed-context quota replay, spoof fallback, missing identity, and private ACL isolation. 140 focused DeadDrop/secure CoAP/OSCORE tests, Ruff lint/format, scoped strict mypy, and diff check pass.",
+  "labels": [
+    "codereview",
+    "python"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1kex",
+      "depends_on_id": "project-LICHEN-worker6-3n9o",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:14:10.751378Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

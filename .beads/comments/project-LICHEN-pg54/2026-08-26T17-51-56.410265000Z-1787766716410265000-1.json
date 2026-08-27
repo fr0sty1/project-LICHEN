@@ -1,0 +1,7 @@
+{
+  "id": "1787766716410265000-1",
+  "issue_id": "project-LICHEN-pg54",
+  "author": "Mark Atwood",
+  "text": "DTS pin swap verification complete - pins ALREADY CORRECT at HEAD, no edit needed. Commit 37223ccd59 already applied swap vs original e3a3ef9d93 (which had TX=P1.09/RX=P1.08). Verified current t_echo-pinctrl.dtsi uart1_default+uart1_sleep: UART_TX=(1,8)=P1.08 [nRF-\u003eGNSS RXD net], UART_RX=(1,9)=P1.09 [GNSS TXD-\u003enRF net], bias-pull-up correctly on RX input. Cross-checked Meshtastic master variants/nrf52840/t-echo/variant.h: PIN_SERIAL1_RX=GPS_RX_PIN=32+9=P1.09, PIN_SERIAL1_TX=GPS_TX_PIN=32+8=P1.08 - matches LilyGO SerialGPS.setPins(RX=P1.09,TX=P1.08) and module-level L76K TXD-\u003eP1.09 / RXD-\u003eP1.08 mapping. Comment in dtsi matches psels. Build validation NOT run: macOS host lacks configured west workspace (zephyr manifest import fails, 'west build' extension absent) and Zephyr SDK, so native_sim/devicetree compile check impossible here; NMEA/command smoke validation pending physical board.",
+  "created_at": "2026-08-26T17:51:56.410265Z"
+}

@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.7.2.6",
   "title": "Zephyr: Packet Too Big",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:47.945758Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:45:47.945758Z",
+  "updated_at": "2026-08-26T20:51:17.489359Z",
+  "started_at": "2026-08-26T20:41:41.504136Z",
+  "closed_at": "2026-08-26T20:51:17.489359Z",
+  "close_reason": "Implemented RFC 4443 Packet Too Big construction with authenticated invoking-packet validation, extension-header inspection, error/Redirect/non-unique-source/congestion suppression, PTB multicast and link multicast/broadcast exceptions, exact code/MTU/checksum wire output, 1280-byte IPv6 minimum-MTU quote cap, and no-partial-output invalid/boundary handling. Added canonical shared-vector, suppression, malformed, maximum-quote, standalone C, and Zephyr tests. Green: qemu_x86 28/28, strict standalone C, clang-tidy, cppcheck, Python ICMPv6/vector parity 6/6, Rust PTB parity 3/3, Rust no_std check.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.7.2.6",

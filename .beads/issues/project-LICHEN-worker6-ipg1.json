@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-ipg1",
+  "title": "Huge finite Decimal ttl yields DEFAULT_TTL while equally-huge int clamps MAX_TTL",
+  "description": "python/src/lichen/coap/resources/deaddrop.py:171 area. float(Decimal('1e999')) returns inf WITHOUT OverflowError so suppress() blocks untouched, ttl stays None, falls to DEFAULT (24h) instead of MAX_TTL(7d) like huge-int path. Fail-safe direction (\u003c requested retention), wire-unreachable (codec finiteness 400s). Align by treating inf/nan-after-conversion as \u003e=MAX clamp per docstring claim.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T21:02:11.848514Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T21:19:43.576412Z",
+  "started_at": "2026-08-26T21:04:13.454117Z",
+  "closed_at": "2026-08-26T21:19:43.576412Z",
+  "close_reason": "Fixed _extract_ttl post-conversion non-finite handling: +inf-\u003eMAX_TTL, -inf/nan-\u003e0 (deaddrop.py). Docstring updated. Note: premise corrected - huge int ttl ALSO collapsed to DEFAULT before; both now clamp at 7d in parity. sNaN gated by is_finite() pre-check (never reaches conversion; falls to default, no crash) - covered. 9 parametrized unit cases added; all 79 deaddrop module tests pass (isolation harness: concurrent worker's mid-save lichen/schc fragment/session_manager IndentationError+circular import blocks any tests/coap collection in shared tree; unrelated files untouched; ruff clean on both modified files).",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ipg1",
+      "depends_on_id": "project-LICHEN-worker6-y4ad",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T21:02:12.25051Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

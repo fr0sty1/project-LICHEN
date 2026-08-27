@@ -54,5 +54,6 @@ zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../l2)
 # Include SCHC headers for compression/decompression
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../schc/include)
 
-# Include shared crypto headers for Schnorr-48 and AES-CCM MIC computation
+# Include shared crypto headers for Schnorr-48 signatures (Monocypher).
+# AES-CCM is not used by the link layer; encrypted frames (E=1) are rejected.
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../crypto)

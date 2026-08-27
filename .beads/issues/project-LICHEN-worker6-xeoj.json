@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-xeoj",
   "title": "[review] ble.py:397: Unhandled QueueFull in _o",
   "description": "The _on_disconnect callback calls self._packets.put_nowait(None) without handling asyncio.QueueFull. Since the queue is bounded (maxsize=8), if full at disconnect time this raises an exception and fails to deliver the sentinel None. This causes packets() to hang indefinitely instead of terminating cleanly. The close() method at lines 302-311 has proper handling for this case that should be replicated here.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T04:28:37.855603Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T04:28:37.855603Z",
+  "updated_at": "2026-08-26T17:04:30.359627Z",
+  "closed_at": "2026-08-26T17:04:30.359627Z",
+  "close_reason": "Bug does not exist: Queue is unbounded (asyncio.Queue() with no maxsize arg = infinite). QueueFull can never be raised from put_nowait() on an unbounded queue.",
   "labels": [
     "review"
   ]

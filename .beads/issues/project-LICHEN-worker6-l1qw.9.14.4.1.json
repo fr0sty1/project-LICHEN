@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.14.4.1",
   "title": "Python: Diagnostic Resources oracle implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:48.608024Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:48.608024Z",
+  "updated_at": "2026-08-26T16:48:26.721569Z",
+  "started_at": "2026-08-26T16:43:21.769914Z",
+  "closed_at": "2026-08-26T16:48:26.721569Z",
+  "close_reason": "Python diagnostic-resources oracle already complete: GET /diag, GET/PUT /diag/raw/rx with TTL arming, Observe /diag/raw/rx/events, POST /diag/raw/tx with 1s rate limit and 255-byte max frame. Spec 17.5.4 MUST defaults (disabled, finite TTL, rate-limit, reject oversize) implemented in python/src/lichen/coap/resources/raw_rx.py, raw_tx.py, and raw_diag.py. pytest 17/17 on test_raw_rx_resource.py + test_raw_tx_resource.py + test_raw_diag_ttl_vectors.py; ruff clean; disabled-status CBOR matches test/vectors/lci_raw_diag.json byte-exact.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.14.4.1",

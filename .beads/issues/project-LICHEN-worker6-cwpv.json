@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-cwpv",
+  "title": "presence cache accepts old timestamps that overwrite newer data",
+  "description": "In PresenceCacheResource.record(), past timestamps are accepted without checking if a newer entry exists. While future timestamps are correctly capped (line 262), the comparison at lines 274-276 only checks for identical entries, not timestamp ordering. An attacker replaying old presence announcements could overwrite fresh presence with stale data or age entries for early eviction. Fix: before updating, check if existing entry has a newer timestamp and skip if so.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:44:17.899529Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:09:14.724693Z",
+  "closed_at": "2026-08-27T17:09:14.724693Z",
+  "close_reason": "Closed"
+}

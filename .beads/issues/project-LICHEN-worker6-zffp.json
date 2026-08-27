@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-zffp",
+  "title": "messaging.py body size check uses character count, not bytes",
+  "description": "Line 388 in python/src/lichen/coap/resources/messaging.py checks `len(body[\"body\"]) \u003e MESSAGES_MAX_BODY_SIZE` but len() on a string counts characters, not bytes. The constant MESSAGES_MAX_BODY_SIZE is defined as 'max message body/text size in bytes' (line 27). A message with 1024 multi-byte UTF-8 characters (e.g., emoji or CJK text) would pass the check but could be up to 4KB when encoded, exceeding the intended 1024-byte limit. Fix: use `len(body[\"body\"].encode(\"utf-8\")) \u003e MESSAGES_MAX_BODY_SIZE`",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:44:23.196187Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:44:23.196187Z"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-wqdm",
+  "title": "Early INVALID_PARAM return in oscore_ctx_get skips *ctx_out=NULL sentinel",
+  "description": "File: lichen/subsys/lichen/oscore/oscore_ctx.c:697-701. The recipient_id NULL+len\u003e0 check returns before setting sentinel; sibling get_by_eui64 sets after combined check. Move *ctx_out=NULL directly after ctx_out NULL check completing worker6-x3bc intent.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:21.718894Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:18:29.545303Z",
+  "started_at": "2026-08-26T19:06:42.687617Z",
+  "closed_at": "2026-08-26T19:18:29.545303Z",
+  "close_reason": "oscore_ctx_get(): *ctx_out=NULL hoisted directly after ctx_out NULL check so the recipient_id INVALID_PARAM early return now leaves the sentinel set; mirrors get_by_eui64 ordering. Note: HEAD had no sentinel at all; a concurrent working-tree edit had added it after the second check which still skipped it on that path - completed as true hoist.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-wqdm",
+      "depends_on_id": "project-LICHEN-worker6-x3bc",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:22.648326Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

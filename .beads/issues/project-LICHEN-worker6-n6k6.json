@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-n6k6",
+  "title": "make_link_local accepts zone string 0 that integer path rejects",
+  "description": "## Problem\n\npython/src/lichen/ipv6/addr.py _normalize_zone_id() documents that zero cannot identify an owning interface. Integer 0 and negatives raise AddrError. The string path only rejects empty, '%', and whitespace.\n\nVerified against stdlib IPv6Address:\n\n- make_link_local(bytes(8), zone_id=0) -\u003e AddrError\n- make_link_local(bytes(8), zone_id='0') -\u003e IPv6Address('fe80::%0')\n- make_link_local(bytes(8), zone_id='00') -\u003e IPv6Address('fe80::%00')\n- make_link_local(bytes(8), zone_id='-1') -\u003e IPv6Address('fe80::%-1')\n- make_link_local(bytes(8), zone_id='\\\\x00') -\u003e IPv6Address with a NUL scope_id\n\nRFC 4007 zone index 0 is the unspecified/default zone. Callers that stringify an ifindex (str(0)) bypass the guard. test_assignment_rejects_invalid_zones covers 0 and -1 as ints, not their decimal strings.\n\n## Why it matters\n\nZone is local send metadata (hhfc). A default-zone or NUL zone on a link-local used for LCI bind/send is not an owning interface. The public boundary claims to reject that and does not.\n\n## Where\n\npython/src/lichen/ipv6/addr.py:128-148 _normalize_zone_id\npython/src/lichen/ipv6/addr.py:151-171 make_link_local\npython/tests/ipv6/test_link_local_assignment.py:74-77",
+  "design": "_normalize_zone_id should treat the decimal spelling of a rejected index the same as the integer. After the string-type check, reject zone_id that is all ASCII digits and int(zone_id) \u003c= 0 (covers '0', '00', '-1'). Also reject ASCII control characters (ord \u003c 32 or 127), matching the existing %/whitespace filter. Keep real interface names ('lci0', 'eth0') and positive indexes.",
+  "acceptance_criteria": "make_link_local(iid, zone_id=0), zone_id='0', zone_id='00', and zone_id='-1' all raise AddrError. zone_id='\\x00' raises AddrError. zone_id=7, '7', 'lci0' still attach that scope_id and do not change .packed. Existing test_assignment_rejects_invalid_zones cases stay green.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:13:27.101384Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:19:12.139338Z",
+  "closed_at": "2026-08-27T16:19:12.139338Z",
+  "close_reason": "Closed",
+  "labels": [
+    "ipv6",
+    "python"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-n6k6",
+      "depends_on_id": "project-LICHEN-worker6-hhfc",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:13:27.534567Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

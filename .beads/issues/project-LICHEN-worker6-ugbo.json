@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-ugbo",
   "title": "python/src/lichen/ccp.py: select_channel returns invalid channel indices for n_channels \u003c 3",
   "description": "The formula `n = max(n_channels - 1, 2)` forces n to be at least 2, so the function returns channels 1 or 2 regardless of n_channels. With n_channels=2, it can return channel 2 which doesn't exist. With n_channels=1 or 0, it returns channels 1-2 when no data channels exist at all.\n\nFix suggestion: Add validation: `if n_channels \u003c 2: raise ValueError(\"n_channels must be at least 2\")` or return 0 (fallback to CH0) when n_channels \u003c 2.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T04:13:48.570095Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T04:13:48.570095Z",
+  "updated_at": "2026-08-26T17:02:04.841672Z",
+  "closed_at": "2026-08-26T17:02:04.841672Z",
+  "close_reason": "Not a bug - spec mandates N = MAX(NChannels, 3), so returning channels \u003e n_channels for n_channels\u003c3 is correct per spec",
   "labels": [
     "bug",
     "codereview"

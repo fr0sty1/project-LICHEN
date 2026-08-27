@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-sq1j",
   "title": "channel.py:134: OverflowError on negative or large epoch value",
   "description": "epoch.to_bytes(4, 'little') raises OverflowError if epoch \u003c 0 or epoch \u003e= 2^32. The epoch parameter comes from caller with no validation. Fix: Mask the value like sfn is masked: (epoch \u0026 0xFFFFFFFF).to_bytes(4, 'little')",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T04:22:28.532297Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T04:22:28.532297Z",
+  "updated_at": "2026-08-26T17:00:13.468001Z",
+  "closed_at": "2026-08-26T17:00:13.468001Z",
+  "close_reason": "Bug already fixed: select_channel() masks epoch with \u0026 0xFFFFFFFF at line 135, preventing OverflowError.",
   "labels": [
     "bug",
     "codereview"

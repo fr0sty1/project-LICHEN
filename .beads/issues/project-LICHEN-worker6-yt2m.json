@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-worker6-yt2m",
+  "title": "LCI routing_table on-link fe80::/10 drops zone_id",
+  "description": "## Problem\n\npython/src/lichen/client/addressing.py LciAddressAssignment.routing_table() always returns LciRoute(prefix=fe80::/10, via=None). zone_id is applied to client and node IPv6Address values and therefore to the default route via, but not to the on-link prefix.\n\nIPv6Network has no scope_id. A phone LCI client is multi-homed (Wi-Fi/cellular plus USB/BLE). Installing the oracle table as-is treats all fe80::/10 as on-link with no device, which breaks ND on other interfaces. The oracle has the zone (client.scope_id / node.scope_id) and does not put it on the on-link entry.\n\nSpec 11 section 17.4 table is the product of this function. Zone support was added as local metadata; the routing table is only half-zoned.\n\n## Where\n\npython/src/lichen/client/addressing.py:50-63 LciRoute\npython/src/lichen/client/addressing.py:84-89 routing_table\npython/src/lichen/client/addressing.py:99-105 static_assignment",
+  "design": "IPv6Network cannot carry a zone. Add interface/zone on LciRoute, or document and return a scoped on-link entry. Installing unscoped fe80::/10 on a phone (Wi-Fi + USB/BLE LCI) hijacks other link-local interfaces.",
+  "acceptance_criteria": "When static_assignment or eui64_assignment is given zone_id, routing_table() on-link fe80::/10 is bound to that zone/interface (LciRoute field or equivalent). Default ::/0 via remains the zoned node address. Unzoned assignments stay spec 17.4 unzoned. A multi-interface consumer can install the on-link prefix on the LCI iface only.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:22:23.272188Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:36:03.474113Z",
+  "closed_at": "2026-08-27T16:36:03.474113Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "lci",
+    "ipv6"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yt2m",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.13.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:22:23.637965Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

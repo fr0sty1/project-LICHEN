@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-h5t1",
   "title": "test_channel_plan.py: Hash assertion uses computed value as fallback, making it tautological",
   "description": "Line 223: `expected_hash = out.get(\"hash_32\", h)` defaults to the computed hash `h` when the key is missing. The assertion `h == expected_hash` then always passes. Malformed test vectors without `hash_32` keys will silently pass validation. Fix: require the key explicitly or fail the test when expected value is missing.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T16:06:22.37721Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T16:06:22.37721Z",
+  "updated_at": "2026-08-26T17:15:07.729695Z",
+  "closed_at": "2026-08-26T17:15:07.729695Z",
+  "close_reason": "Closed",
   "labels": [
     "bug",
     "codereview"

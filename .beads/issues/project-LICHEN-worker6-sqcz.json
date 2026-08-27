@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-sqcz",
+  "title": "Python coordinator RELEASE ignores DAOSequence",
+  "description": "Dual-impl of project-LICHEN-worker6-m557. python/src/lichen/link/address_assignment.py ShortAddressCoordinator.process() uses _last_sequence_by_eui only on ALLOCATE. RELEASE deletes the live mapping with no RFC 6550 wrapping freshness check, so ALLOCATE seq=1, RELEASE seq=2, ALLOCATE seq=3, then retransmitted RELEASE seq=2 still drops the seq=3 assignment. Apply the same rule as rust/lichen-rpl/src/address_assignment.rs: same sequence = idempotent copy, newer = new request, older/incomparable = ignore before mutating. Keep last sequence after RELEASE so a later stale RELEASE cannot clobber a newer allocation. Tests should cover that scenario plus stale ALLOCATE not renewing a lease.",
+  "notes": "Implemented Python RFC 6550 Section 7.2 DAOSequence freshness before allocation/release mutation. Same-sequence retries are idempotent only when operation matches current state; older/incomparable requests cannot release or renew. RELEASE retains/persists the last sequence using backward-compatible SAT3 state tombstones (SAT2/SAA1 remain readable), including release-on-unmapped updates, atomic save failure, restart, wrap/window and deterministic concurrency coverage. Rust state-machine freshness matches, but its SAT2 tombstone restart gap is already tracked by open project-LICHEN-worker6-emcr; no C/Zephyr short-address coordinator analogue was found (C lollipop helpers exist in RPL only). Gates: address-assignment 48 passed; full Python link 804 passed, 11 skipped; Ruff and mypy clean; git diff --check clean.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:51:25.472617Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T19:07:10.53117Z",
+  "started_at": "2026-08-26T19:02:54.142429Z",
+  "closed_at": "2026-08-26T19:07:10.53117Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-sqcz",
+      "depends_on_id": "project-LICHEN-worker6-m557",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:51:26.05606Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

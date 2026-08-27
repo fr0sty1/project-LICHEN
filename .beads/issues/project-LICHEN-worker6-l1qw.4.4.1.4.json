@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.4.4.1.4",
   "title": "Zephyr: link-local from IID",
-  "status": "open",
+  "notes": "Implemented alias-safe Zephyr link-local construction: lichen_make_link_local snapshots the 8-byte IID before writing fe80::/64, so IID input may alias either half of struct in6_addr. Added direct byte-exact vectors from ipv6-addresses.json shapes, verified U/L-set IIDs are copied without a second mutation, tested leading/trailing aliases, and asserted NULL IID leaves output unchanged. Validation: host C/UBSan CMake build + CTest pubkey_to_iid 1/1; Python cross-implementation address vectors 7/7; Rust ipv6_address_vectors 4/4. Native 0200::/8 behavior and short_addr_iid untouched.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:21.891126Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:21.891126Z",
+  "updated_at": "2026-08-27T17:41:07.219249Z",
+  "started_at": "2026-08-27T17:38:52.91046Z",
+  "closed_at": "2026-08-27T17:41:07.219249Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.4.4.1.4",

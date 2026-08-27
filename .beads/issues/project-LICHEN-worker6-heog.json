@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-heog",
   "title": "Implement broadcast rate limiting and consume broadcast_rate_limiting.json",
   "description": "test/vectors/broadcast_rate_limiting.json (spec/04-network.md section 6.3.3) unconsumed: no hop-limit/window limiter implemented in python or rust link layers. Implement + consumer.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T00:12:51.671544Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T00:12:51.671544Z",
+  "updated_at": "2026-08-27T17:43:29.497933Z",
+  "closed_at": "2026-08-27T17:43:29.497933Z",
+  "close_reason": "Closed",
   "labels": [
     "human"
   ],

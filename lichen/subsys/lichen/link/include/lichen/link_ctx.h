@@ -56,6 +56,13 @@ extern "C" {
 /** Retained legacy link-key length; encrypted link frames are unsupported */
 #define LICHEN_LINK_KEY_LEN 16
 
+#ifdef CONFIG_LICHEN_TDMA
+/* struct lichen_tdma_ctx lives here. Must sit after the length macros above:
+ * link.h pulls in replay.h, which re-enters this header via its include
+ * guard and needs LICHEN_EUI64_LEN/LICHEN_PK_LEN already defined. */
+#include <lichen/link.h>
+#endif
+
 /**
  * @brief LICHEN link layer context
  *
@@ -79,6 +86,25 @@ struct lichen_link_ctx {
 	pthread_mutex_t seq_lock; /**< Protects TX epoch/sequence allocation */
 #endif
 	struct tx_queue tx_queue; /**< TX queue with priority and deadline support */
+#ifdef CONFIG_LICHEN_TDMA
+	/* Per-context TDMA schedule state (spec/02a §2a.2 slot mapping).
+	 * lichen_link_tx() consults and lazily initializes this instance;
+	 * keeping it in the context scopes the TX gate to one context and
+	 * lets CCP code sync it directly via lichen_link_set_slot(ctx,
+	 * &ctx->tdma, ...). The latch pair guarantees at most one
+	 * lichen_tdma_init() per (context, epoch), always after
+	 * lichen_link_load_key() succeeded (see AGENTS.md init graph).
+	 * That guarantee holds per single-threaded context owner: the
+	 * latch is checked/updated by lichen_link_tx() outside seq_lock,
+	 * so concurrent TX vs lichen_link_load_key()/cleanup() on the
+	 * SAME context is caller-error (see lichen_link_cleanup() thread
+	 * safety). Such races are currently idempotent and fail open
+	 * (worst case a redundant lichen_tdma_init() or one ungated TX,
+	 * matching HEAD statics); they are not serialized. */
+	struct lichen_tdma_ctx tdma;   /**< Schedule used by the TX gate */
+	uint8_t tdma_epoch_seen;       /**< ctx->epoch at last lichen_tdma_init() */
+	bool tdma_init_done;           /**< tdma initialized for tdma_epoch_seen */
+#endif
 };
 
 /** Atomic signing identity snapshot. Clear immediately after use. */

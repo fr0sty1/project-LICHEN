@@ -23,9 +23,11 @@ Observable resources (RFC 7641):
   :meth:`~SenMLLocationResource.update`. ``/location`` remains a compatibility
   alias.
 
-* :class:`PresenceResource` — ``/presence`` — CBOR list of recently-heard
-  neighbour nodes; updated by calling :meth:`~PresenceResource.seen` whenever a
-  beacon arrives from a mesh peer.
+* :class:`PresenceResource` — ``/presence`` — own presence GET/PUT (status,
+  activity, msg, battery, ts); updated by PUT or automatic status (spec 18.5).
+
+* :class:`PresenceCacheResource` — ``/presence/cache`` — CBOR map of known
+  neighbour presence with ``age_s``; updated by :meth:`PresenceCacheResource.record`.
 
 * :class:`SosResource` — ``/sos`` — emergency beacon.  POST activates SOS;
   DELETE cancels; GET and Observe let any node monitor the state.
@@ -85,6 +87,8 @@ from lichen.coap.resources.emergency import (
 from lichen.coap.resources.keys import KeyResource, KeyStoreResource
 from lichen.coap.resources.messaging import (
     _MESSAGES_MAX,
+    MESSAGES_MAX_BODY_SIZE,
+    CannedMessagesResource,
     LegacyMessagesAliasResource,
     MessageReceiptsResource,
     MessagesResource,
@@ -100,7 +104,7 @@ from lichen.coap.resources.node_resources import (
     StatusResource,
 )
 from lichen.coap.resources.position import PositionCacheResource
-from lichen.coap.resources.presence import PresenceResource
+from lichen.coap.resources.presence import PresenceCacheResource, PresenceResource
 from lichen.coap.resources.proxy import ProxyResource, _is_mesh_uri
 from lichen.coap.resources.rangetest import (
     DEFAULT_INTERVAL_MS,
@@ -166,6 +170,7 @@ __all__ = [
     # Position
     "PositionCacheResource",
     # Presence
+    "PresenceCacheResource",
     "PresenceResource",
     # Emergency
     "CHECKIN_STATUS_VALUES",
@@ -175,6 +180,8 @@ __all__ = [
     "SosResource",
     # Messaging
     "_MESSAGES_MAX",
+    "MESSAGES_MAX_BODY_SIZE",
+    "CannedMessagesResource",
     "LegacyMessagesAliasResource",
     "MessageReceiptsResource",
     "MessagesResource",

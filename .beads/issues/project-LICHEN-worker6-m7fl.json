@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-m7fl",
+  "title": "_rrep_seen dict never gets periodic pruning in discovery.py: Unlike _seen which is pruned every 16 RREQ checks via _prune_seen(), the _rrep_seen replay cache only prunes on overflow at 1024 entries. This resource management inconsistency could lead to higher memory usage for RREP-heavy traffic. Line 413-415 should also prune _rrep_seen.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:17:29.510051Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T17:17:29.510051Z",
+  "labels": [
+    "bug"
+  ]
+}

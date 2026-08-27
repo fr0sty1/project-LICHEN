@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-eb2f",
+  "title": "max_sessions parameter not validated: zero or negative values cause immediate RuntimeError on all session creation (provisioning.py:177)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:19:21.688087Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:28:57.500966Z",
+  "started_at": "2026-08-26T19:22:33.073799Z",
+  "closed_at": "2026-08-26T19:28:57.500966Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug"
+  ]
+}

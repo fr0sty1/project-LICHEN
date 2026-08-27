@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-mc2h",
+  "title": "Admin inviter can mint admin-role invitations; owner-only promotion unenforced",
+  "description": "Files: python/src/lichen/group_membership.py:140-141 (can_invite ignores requested role), groups_invite.py:54 (no role context), groups_collection.py:339-341 (role stored verbatim), :546-549 (_join_key auto-appends invitee to admins[]). Chain: admin sends signed invitation role=admin -\u003e invitee becomes admin. Spec/12-apps.md:1129-1143 reserves promotion to owner exclusively (can_remove correctly implements analogous rule; can_invite does not). Test enshrines owner-issued case only. Fix: plumb requested role through can_invite enforcing owner-minted admin invites; negative test.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:38.95538Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:22:18.17198Z",
+  "started_at": "2026-08-26T19:06:45.725082Z",
+  "closed_at": "2026-08-26T19:22:18.17198Z",
+  "close_reason": "Fixed: GroupRoster.can_invite now takes requested_role (admin mints member-role only; admin-role invitations owner-only per spec 18.8.2 L1129-1143); groups_invite passes invitation.role through the gate; join_key promotion therefore only ever sees roles minted by authorized inviters. Tests: test_groups_invite.py::test_admin_may_only_mint_admin_invitations end-to-end (admin-minted-admin 4.03, admin-minted-member accepted + joins as member-only), test_owner_minted_admin_invitation_joins_as_admin (owner invite promotes via join_key), plus unit matrix in tests/test_group_membership.py::test_roster_authority.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-mc2h",
+      "depends_on_id": "project-LICHEN-worker6-gyfo",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:39.756006Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-ze7h",
+  "title": "Race condition in invitation methods: concurrent modification without lock",
+  "description": "groups_collection.py: record_invitation (lines 467-487) and consume_invitation (lines 496-507) modify invitations and consumed_invitations dicts without _mutation_lock. rekey() modifies these same structures under the lock at lines 357-373. Result: invitation state corruption or lost burn markers, potentially allowing revoked enrollments to resurrect.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:43:42.676844Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:43:42.676844Z"
+}

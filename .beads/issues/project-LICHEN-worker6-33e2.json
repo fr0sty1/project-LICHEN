@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-33e2",
   "title": "[review] dao_manager.py:801: Thread-unsafe snapshot me",
   "description": "route_state_snapshot() reads multiple shared state variables (_freshness, _candidate_map, _descriptors, _candidate_timing, _parent_map, routing_table) without acquiring _lock. Since _apply_dao_at_unlocked assigns these variables sequentially (lines 717-724), a concurrent DAO processing thread could update some but not all state between reads, causing either inconsistent snapshot data or KeyError if a target exists in _freshness but not yet in _candidate_map or _candidate_timing (line 815 accesses _candidate_timing[(target, candidate.parent)] for each candidate). The same issue affects routing_table_snapshot() at line 862.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T17:05:40.966664Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T17:05:40.966664Z",
+  "updated_at": "2026-08-26T17:03:29.804435Z",
+  "closed_at": "2026-08-26T17:03:29.804435Z",
+  "close_reason": "Fixed thread-unsafe snapshot access. Added lock acquisition to route_state_snapshot() and routing_table_snapshot(). Both methods now acquire _lock before reading shared state, preventing race conditions with concurrent DAO processing.",
   "labels": [
     "review"
   ]

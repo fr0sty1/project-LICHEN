@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-hlnb",
+  "title": "slot_claim.py: signature_valid field is unusable - frozen dataclass + init=False means cache can never be set, resolve_slot_conflict always re-verifies",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:20:20.668532Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T17:25:17.802064Z",
+  "closed_at": "2026-08-26T17:25:17.802064Z",
+  "close_reason": "Fixed: removed unusable signature_valid field (frozen dataclass + init=False meant cache could never be set). resolve_slot_conflict now directly verifies signatures.",
+  "labels": [
+    "bug"
+  ]
+}

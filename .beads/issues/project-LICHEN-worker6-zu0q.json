@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-zu0q",
+  "title": "GET /confessions rate_remaining is not the requester quota",
+  "description": "File: python/src/lichen/coap/resources/confessions.py\nPerspective: correctness\n\nSpec 18.10.7: rate_remaining and rate_reset_s let clients display\nrate-limit status for POSTs to this board.\n\n_collection_body (lines 385-389) uses self._node_iid if set, else\nhard-codes rate_remaining=CONFESSION_HOURLY_MAX (12) and\nrate_reset_s=3600. Default constructor has node_iid=None.\n\nEvidence: after a successful POST, GET /confessions still reports\nrate_remaining=12 and rate_reset_s=3600. The poster is identified\nonly on POST via SenML bn, which GET never consults.\n\nIf node_iid is set to the host, remote GET sees the host posting\nquota, not the client's remaining 12/hour.\n\nAcceptance: rate_info MUST be for the requesting client using the\nsame identity as the POST rate limiter. If the requester cannot be\nidentified, omit rate_remaining/rate_reset_s rather than advertising\na full quota.\n",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:23:09.982199Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T16:35:57.643748Z",
+  "closed_at": "2026-08-27T16:35:57.643748Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-zu0q",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.23.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:23:10.340904Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

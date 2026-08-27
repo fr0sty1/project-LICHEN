@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-77w5",
+  "title": "Integer overflow in CBOR length validation bypasses bounds check",
+  "description": "In presence.rs lines 114-119, 154, 170: the calculation `new_pos + length as usize` can overflow when a malicious CBOR payload claims a very large length. If length = usize::MAX - 5 and new_pos = 10, the wrapping result is 4, which may pass the `end \u003e payload.len()` check if payload is longer than 4 bytes. This causes the scanner to return incorrect positions (potentially backwards), bypassing the security validation. Fix: use checked_add() and reject payloads where the addition would overflow.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:06:07.36658Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:35:36.478867Z",
+  "closed_at": "2026-08-27T16:35:36.478867Z",
+  "close_reason": "Closed"
+}

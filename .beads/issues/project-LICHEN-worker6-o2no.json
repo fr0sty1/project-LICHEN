@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-o2no",
+  "title": "forwarding_buffer.py: dequeue() empty queue check at line 262 returns None without cleaning up zombie entry from _buffer and _source_order, causing slot exhaustion if invariant violated",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:19:32.59166Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:43:25.807039Z",
+  "closed_at": "2026-08-27T17:43:25.807039Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug"
+  ]
+}

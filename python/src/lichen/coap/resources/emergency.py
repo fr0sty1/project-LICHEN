@@ -106,7 +106,7 @@ class SosResource(resource.ObservableResource):
         now = self._time_func()
         cutoff = now - 3600  # 1 hour
         self._request_times[source_hex] = [
-            ts for ts in self._request_times[source_hex] if ts > cutoff
+            ts for ts in self._request_times[source_hex] if ts >= cutoff
         ]
         timestamps = self._request_times[source_hex]
         if not timestamps:
@@ -403,7 +403,11 @@ class RollcallResource(resource.ObservableResource):
         # Reject far-future timestamps that would never expire; allow 60s clock skew
         if started < 0 or started > now + 60 or not 0 < timeout_s <= MAX_ROLLCALL_TIMEOUT_S:
             return Message(code=aiocoap.BAD_REQUEST)
-        roll_id = str(data["id"])
+        # Validate id type: only str or int allowed (null/bytes/list/dict rejected)
+        raw_id = data["id"]
+        if raw_id is None or isinstance(raw_id, bool) or not isinstance(raw_id, (str, int)):
+            return Message(code=aiocoap.BAD_REQUEST)
+        roll_id = str(raw_id)
         self._prune_expired()
         if roll_id not in self._rollcalls and len(self._rollcalls) >= MAX_ROLLCALLS:
             return Message(code=aiocoap.SERVICE_UNAVAILABLE)
@@ -419,6 +423,7 @@ class RollcallResource(resource.ObservableResource):
 
     async def render_get(self, request: Message) -> Message:
         """GET /rollcall/{id} or /rollcall returns status. Uses SenML via profiles for position."""
+        self._prune_expired()
         roll_id = None
         if request.opt.uri_path and len(request.opt.uri_path) > 1:
             roll_id = request.opt.uri_path[-1]
@@ -430,6 +435,18 @@ class RollcallResource(resource.ObservableResource):
         msg = Message(code=CONTENT, payload=payload)
         msg.opt.content_format = CBOR
         return msg
+
+    async def render_delete(self, request: Message) -> Message:
+        """DELETE /rollcall/{id} removes a rollcall entry."""
+        self._prune_expired()
+        roll_id = None
+        if request.opt.uri_path and len(request.opt.uri_path) > 1:
+            roll_id = request.opt.uri_path[-1]
+        if not roll_id or roll_id not in self._rollcalls:
+            return Message(code=aiocoap.NOT_FOUND)
+        del self._rollcalls[roll_id]
+        self.updated_state()
+        return Message(code=aiocoap.DELETED)
 
 
 class CheckInResource(resource.Resource):
@@ -505,20 +522,25 @@ class CheckInResource(resource.Resource):
         if not isinstance(status, str) or status not in CHECKIN_STATUS_VALUES:
             return Message(code=aiocoap.BAD_REQUEST)
 
-        # Validate optional fields: lat/lon
+        # Validate optional fields: lat/lon per the SOS/checkin coordinate
+        # contract (spec 18.4.2, mirrored from lichen/subsys/lichen/coap/
+        # sos_alert.c): latitude [-90, 90] and longitude [-180, 180]
+        # INCLUSIVE; non-finite values are rejected the same way. Values
+        # that were previously accepted stay accepted (pairs within the
+        # documented ranges, integer coordinates, -0.0). Location is
+        # all-or-none: exactly one half of the pair is invalid input.
         lat = data.get("lat")
         lon = data.get("lon")
-        if lat is not None and (
-            isinstance(lat, bool)
-            or not isinstance(lat, (int, float))
-            or (isinstance(lat, float) and not math.isfinite(lat))
-        ):
-            return Message(code=aiocoap.BAD_REQUEST)
-        if lon is not None and (
-            isinstance(lon, bool)
-            or not isinstance(lon, (int, float))
-            or (isinstance(lon, float) and not math.isfinite(lon))
-        ):
+        for value, limit in ((lat, 90), (lon, 180)):
+            if value is None:
+                continue
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                return Message(code=aiocoap.BAD_REQUEST)
+            if isinstance(value, float) and not math.isfinite(value):
+                return Message(code=aiocoap.BAD_REQUEST)
+            if value < -limit or value > limit:
+                return Message(code=aiocoap.BAD_REQUEST)
+        if (lat is None) != (lon is None):
             return Message(code=aiocoap.BAD_REQUEST)
 
         # Validate optional field: msg

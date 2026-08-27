@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-zhr9",
+  "title": "WKC advertises private deaddrop IDs unauthenticated defeating new ACL",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py:593-599 (+ site.py:245 aggregation). Confirmed empirically: get_resources_as_linkheader lists /deaddrop/{id} for privacy='private' drops; any unauth client enumerates existence+IDs then probes 4.03 per ID. Privacy field introduced by y4ad diff undermines its own feature. Fix: filter linkheader to public drops or emit no per-drop links.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:26.258068Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:06:50.339392Z",
+  "started_at": "2026-08-26T19:05:24.958081Z",
+  "closed_at": "2026-08-26T19:06:50.339392Z",
+  "close_reason": "Removed per-drop DeadDrop links from unauthenticated WKC because aiocoap's discovery hook has no request/OSCORE context; the /deaddrop collection remains advertised. Added public/private/group anonymous discovery, authenticated owner-vs-anonymous detail ACL, and cache-stability regressions. C/Zephyr advertises only the static /deaddrop resource and has no dynamic-ID analog. 79 focused DeadDrop/discovery tests, Ruff lint/format, scoped strict mypy, and diff check pass.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-zhr9",
+      "depends_on_id": "project-LICHEN-worker6-y4ad",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:27.06557Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

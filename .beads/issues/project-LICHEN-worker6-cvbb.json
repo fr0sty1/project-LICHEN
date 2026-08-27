@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-cvbb",
+  "title": "with_store freezes clock at 0 so persisted SAT2 leases never expire",
+  "description": "File: rust/lichen-rpl/src/address_assignment.rs\nPerspective: correctness (dual-impl)\n\nShortAddressCoordinator::with_store() calls build(store, None, SHORT_POOL_SIZE, None, unix_zero). unix_zero always returns 0 and lease_seconds is None.\n\nOn load, decode_table_state() restores SAT2 expiries, then prune_expired() runs with now=0. Deadlines such as 160 are not \u003c= 0, so expired rows stay in by_short/by_eui. Because lease_seconds is None, later process() never refreshes or honors those deadlines either.\n\nPython ShortAddressCoordinator(store=store) defaults clock to time.time() and prunes persisted expiries on construct even when lease_seconds is None. Rust with_store is the obvious restart constructor and silently immortalizes leased assignments. Lease restart tests avoid this by using with_lease() plus an injected clock, so the divergence is untested.\n\nFix: with_store must take (or default to) a real clock and prune with current time; loading SAT2 with expiries must not depend on with_lease being used. Align with the Python constructor.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:22:47.600168Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T18:04:32.704061Z",
+  "started_at": "2026-08-26T17:48:21.550688Z",
+  "closed_at": "2026-08-26T18:04:32.704061Z",
+  "close_reason": "with_store now prunes SAT2 expiries against unix_now (Python time.time default). unix_now fails closed on pre-epoch clocks instead of returning 0. Regression: canonical expiry 160 is kept by a frozen clock at 0 and dropped by with_store; cargo test -p lichen-rpl --features std --lib address_assignment:: (13 passed) and --test address_assignment_vectors (13 passed).",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-cvbb",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.1.8.1.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:22:47.950132Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

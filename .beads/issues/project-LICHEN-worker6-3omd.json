@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-3omd",
+  "title": "presence: unbounded msg string length enables DoS",
+  "description": "_optional_msg (line 67-72) validates msg is a string but has no length limit. A presence payload with a multi-megabyte msg field could exhaust memory. Add a MAX_MSG_LEN constant (e.g., 256 bytes per spec conventions) and reject longer messages.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:06:08.430134Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:35:40.309072Z",
+  "closed_at": "2026-08-27T16:35:40.309072Z",
+  "close_reason": "Closed"
+}

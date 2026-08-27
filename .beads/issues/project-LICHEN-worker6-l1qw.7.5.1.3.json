@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.5.1.3",
   "title": "Zephyr: PLI encode/decode",
-  "status": "open",
+  "notes": "Implemented isolated Zephyr Compact CoT PLI codec and Kconfig/CMake wiring. Codec is bounded/allocation-free, emits/accepts exact 17-byte big-endian wire format, supports subtypes 0x02..0x05, validates latitude +/-90e6, longitude +/-180e6, and course \u003c=35999, preserves full int16 altitude/uint16 speed/team/role ranges, rejects NULL/short/trailing/reserved input, and leaves encode/decode outputs unchanged on every error. Temporary local encoding/decoding also makes overlapping input/output safe. Focused host C test consumes all 8 canonical positive vectors and malformed/boundary cases; strict -Wall/-Wextra/-Werror + UBSan CTest passed 1/1. cppcheck C11 and git diff-check passed. Shared Python Compact CoT suite passed 87/87; Rust canonical vector suite passed 4/4.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:41.943807Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:41.943807Z",
+  "updated_at": "2026-08-27T17:47:47.834163Z",
+  "started_at": "2026-08-27T17:42:21.727202Z",
+  "closed_at": "2026-08-27T17:47:47.834163Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.5.1.3",

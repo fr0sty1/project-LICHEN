@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.11.1.5",
   "title": "Cross-validate: same key → same address in all impls",
-  "status": "open",
+  "notes": "2026-08-26 read-only three-implementation re-audit: Python canonical consumer is green (python/tests/ipv6/test_key_address_cross_impl_vectors.py: 7 passed). Rust canonical consumers are green (lichen-core ipv6_address_vectors: 4 passed; yggdrasil_addr_vectors: 3 passed). BLOCKER remains Zephyr C: lichen/subsys/lichen/link/include/lichen/link_ctx.h declares lichen_identity_ygg_addr_from_ed25519(), and callers exist in l2/ipv6_addr.c and app_identity/app_identity.c, but repository-wide C search finds no function definition. lichen/tests/link_crypto/src/main.c has three hard-coded yggdrasil-derivation cases calling lichen_yggdrasil_addr(), whose production wrapper calls that undefined identity function, so it is not a passing independent C consumer. This duplicates the still-open blocker documented on project-LICHEN-worker6-l1qw.4.4.2.7. No C/Zephyr or shared-file edits were authorized; leave this bead open/unclaimed until the production C derivation exists and its vector test builds/runs green. No files modified.\n2026-08-27 convergence: this is a duplicate acceptance node for project-LICHEN-worker6-l1qw.4.4.2.7, not a distinct profile. The parent epic's legacy '200::/7' wording is superseded by the canonical exact 0200::/8 native profile in spec/03-addressing.md, spec/04-network.md, AGENTS.md, and test/vectors/ipv6-addresses.json. Fresh evidence from the immediately preceding parity run: Python test_key_address_cross_impl_vectors.py 7/7 PASS; Rust ipv6_address_vectors 4/4 PASS and yggdrasil_addr_vectors 3/3 PASS; Zephyr/C pubkey_to_iid Werror+UBSan host suite 1/1 PASS. Same zero, SHA-empty anchor, and asymmetric RFC8032 keys produced identical IID/link-local/native bytes. The prior missing C production function blocker is resolved. No files modified; short_addr_iid untouched.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:29.461941Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:29.461941Z",
+  "updated_at": "2026-08-27T17:08:50.914636Z",
+  "started_at": "2026-08-27T17:08:48.356825Z",
+  "closed_at": "2026-08-27T17:08:50.914636Z",
+  "close_reason": "Duplicate parity acceptance satisfied by fresh canonical Python/Rust/Zephyr-C validation",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.11.1.5",

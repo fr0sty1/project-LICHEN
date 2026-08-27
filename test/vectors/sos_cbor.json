@@ -132,6 +132,84 @@
       }
     },
     {
+      "name": "sos_lat_f16_nan",
+      "description": "Latitude encoded as IEEE 754 binary16 NaN (exp=31, frac!=0); decoders must reject non-finite coordinates.",
+      "encoding_note": "lat: 0xf97e00 (binary16 NaN)",
+      "cbor_hex": "a6647479706563736f73646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174f97e00636c6f6efb00000000000000006373657101",
+      "cbor_length": 89,
+      "expected": {
+        "decode_success": false,
+        "error": "non_finite_coordinate"
+      }
+    },
+    {
+      "name": "sos_lon_f16_inf",
+      "description": "Longitude encoded as IEEE 754 binary16 +Infinity (exp=31, frac=0); decoders must reject non-finite coordinates.",
+      "encoding_note": "lon: 0xf97c00 (binary16 +Infinity)",
+      "cbor_hex": "a6647479706563736f73646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb0000000000000000636c6f6ef97c006373657101",
+      "cbor_length": 89,
+      "expected": {
+        "decode_success": false,
+        "error": "non_finite_coordinate"
+      }
+    },
+    {
+      "name": "sos_lat_f32_inf_neg",
+      "description": "Latitude encoded as IEEE 754 binary32 -Infinity; decoders must reject non-finite coordinates.",
+      "encoding_note": "lat: 0xfaff800000 (float32 -Infinity)",
+      "cbor_hex": "a6647479706563736f73646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174faff800000636c6f6efb00000000000000006373657101",
+      "cbor_length": 91,
+      "expected": {
+        "decode_success": false,
+        "error": "non_finite_coordinate"
+      }
+    },
+    {
+      "name": "sos_lon_f64_nan",
+      "description": "Longitude encoded as IEEE 754 binary64 quiet NaN; decoders must reject non-finite coordinates.",
+      "encoding_note": "lon: 0xfb7ff8000000000000 (float64 qNaN)",
+      "cbor_hex": "a6647479706563736f73646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb0000000000000000636c6f6efb7ff80000000000006373657101",
+      "cbor_length": 95,
+      "expected": {
+        "decode_success": false,
+        "error": "non_finite_coordinate"
+      }
+    },
+    {
+      "name": "sos_lat_above_max",
+      "description": "Finite latitude beyond +90; decoders must enforce the documented range.",
+      "cbor_payload": {
+        "type": "sos",
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lat": 91.0,
+        "seq": 1
+      },
+      "cbor_hex": "a5647479706563736f73646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4056c000000000006373657101",
+      "cbor_length": 82,
+      "expected": {
+        "decode_success": false,
+        "error": "coordinate_out_of_range"
+      }
+    },
+    {
+      "name": "sos_lon_below_min",
+      "description": "Finite longitude below -180; decoders must enforce the documented range.",
+      "cbor_payload": {
+        "type": "sos",
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lon": -181.0,
+        "seq": 1
+      },
+      "cbor_hex": "a5647479706563736f73646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6f6efbc066a000000000006373657101",
+      "cbor_length": 82,
+      "expected": {
+        "decode_success": false,
+        "error": "coordinate_out_of_range"
+      }
+    },
+    {
       "name": "sos_node_format",
       "description": "Node field is full IPv6 address in colon-hex notation.",
       "valid_node_examples": [

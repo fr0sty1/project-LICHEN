@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.13.3.2",
   "title": "Session resumption",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:47.992343Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:42:47.992343Z",
+  "updated_at": "2026-08-26T16:32:25.06009Z",
+  "started_at": "2026-08-26T16:32:00.756734Z",
+  "closed_at": "2026-08-26T16:32:25.06009Z",
+  "close_reason": "Closed as superseded/not normative in the current LICHEN EDHOC profile; no code changes required. spec/06-security.md §8.9 defines only the RFC 9528 three-message EDHOC exchange and explicitly requires periodic refresh by re-running EDHOC every 24 hours or at OSCORE sequence exhaustion. It defines no ticket, PSK binder, 0-RTT, abbreviated handshake, wire format, state machine, replay policy, or test oracle for \"session resumption.\" Repository-wide searches of the Python EDHOC implementation, in-repo Rust wrapper, vectors, and the dirty external Rust oscore dependency found no resumption API/format. Durable OSCORE context continuity is separate: Python MemorySecurityContext.from_edhoc supports restoring a persisted sender sequence, and Rust Context::restore_existing restores authoritative sender state; that preserves nonce/replay safety after reboot but is not EDHOC session resumption. Key refresh is separately owned by 13.4.2. Adding an ad-hoc resumption protocol would violate interoperability and expand beyond RFC 9528/current spec. The stale Python/Rust/Zephyr/vector resumption beads 6.8.10-.13 should be reconciled separately rather than used as an implementation oracle.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.13.3.2",

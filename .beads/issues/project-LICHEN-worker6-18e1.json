@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-18e1",
+  "title": "create_fragment_sender maps all SCHC decode failures to InvalidPeerEvidence",
+  "description": "File: rust/lichen-schc/src/link.rs create_fragment_sender\n\nCanonical-packet validation does:\n\n  decode_rule255(..., SCHC_FRAG_MAX_PACKET_SIZE).ok()\n  or peer.decompress(..., MAX_SINGLE_FRAME_SCHC_PACKET).ok()\n  then if None { return Err(FragmentError::InvalidPeerEvidence) }\n\nTwo defects:\n\n1. Every failure becomes InvalidPeerEvidence ('stale or foreign peer evidence'), including TooShort, InvalidPacket, UnknownRuleId, and BufferTooSmall. Python raises 'fragmented packet must be a canonical complete SCHC packet'. Callers that treat InvalidPeerEvidence as 're-admit DIO / drop peer' will mis-handle truncated or unknown-rule payloads.\n\n2. Rule 255 is decoded into a [u8; SCHC_MAX_DECOMPRESSED] (1500) stack buffer while the profile limit passed in is SCHC_FRAG_MAX_PACKET_SIZE (22554). A valid uncompressed packet with IPv6 \u003e 1500 and payload.len() \u003c= receiver_limit therefore fails closed as InvalidPeerEvidence instead of being fragmented. FragmentSender::new already enforces receiver_limit and MAX_PACKET_SIZE.\n\nPreserve the real SchcError/FragmentError (or map packet errors to EmptyPacket/PacketTooLarge/UnsupportedRule). Decode into a buffer of min(receiver_limit, SCHC_FRAG_MAX_PACKET_SIZE) or skip materializing IPv6 beyond validate_full_ipv6 / decompress into caller-sized storage.",
+  "acceptance_criteria": "Malformed or truncated SCHC payloads return a packet/rule error, not InvalidPeerEvidence, and do not reserve a sender. A canonical Rule 255 packet with IPv6 larger than 1500 and within receiver_limit/SCHC_FRAG_MAX_PACKET_SIZE creates a sender. Stale/foreign peer evidence still returns InvalidPeerEvidence via FragmentSender::new.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:20:55.080239Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T17:09:33.231403Z",
+  "closed_at": "2026-08-27T17:09:33.231403Z",
+  "close_reason": "Closed",
+  "labels": [
+    "rust",
+    "schc"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-18e1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.3.7.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:20:55.44222Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

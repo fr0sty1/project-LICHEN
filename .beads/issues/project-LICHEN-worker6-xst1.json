@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-xst1",
+  "title": "FIXME now_ms=0 + exact-window semantics make synced gate schedule-dependent (document before time source lands)",
+  "description": "lichen/subsys/lichen/link/lichen_link_tx.c:76: with now_ms=0 the new exact window [start,start+d-g) makes synced configs EBUSY except slot_start==0 case, flipping HEAD's fail-closed. Latent (no production set_slot caller yet) but will bite when real clock wired. Add comment documenting expected integration requirement (now_ms must be real uptime) at FIXME.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:14:37.122391Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T17:13:14.953897Z",
+  "started_at": "2026-08-27T16:15:36.573364Z",
+  "closed_at": "2026-08-27T17:13:14.953897Z",
+  "close_reason": "FIXME comment at lichen_link_tx.c (tdma_tx_allowed(\u0026ctx-\u003etdma, 0) site) expanded to document the integration hazard: exact data window [slot_start, slot_start+d-g) makes the synced gate schedule-dependent; constant now_ms=0 is only correct while ctx-\u003etdma.synced is false (unsynced gate passes unconditionally); once synced, now_ms=0 maps every nonzero schedule position to a huge modular offset -\u003e gate fails with -EBUSY, sole exception being the slot_start==0 special case (superframe==0 AND slot==0) whose window [0, d-g) contains 0 and alone stays open; a real monotonic clock source is REQUIRED before enabling synced operation. Comment-only change, no behavior edit. Verified: clang -fsyntax-only -Wall -Wextra exit 0 on lichen_link_tx.c; ASan/UBSan harness (real tdma.c/link_ctx.c/tx_queue.c) ALL CHECKS PASSED.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-xst1",
+      "depends_on_id": "project-LICHEN-worker6-kyn9",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T16:14:37.55695Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

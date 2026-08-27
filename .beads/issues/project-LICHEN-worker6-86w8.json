@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-86w8",
+  "title": "/groups/invite returns 2.04 Changed even when record_invitation silently drops document",
+  "description": "File: python/src/lichen/coap/resources/groups_invite.py:60-66 discards record_invitation bool; expired-beyond-local-clock/bad-node cases yield CHANGED with nothing recorded; client discovers later as opaque 4.03 at join_key. Return 4.03 declined per spec 18.8.2 response semantics.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T19:04:43.457777Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T19:22:42.176749Z",
+  "started_at": "2026-08-26T19:06:50.346732Z",
+  "closed_at": "2026-08-26T19:22:42.176749Z",
+  "close_reason": "Fixed: groups_invite propagates record_invitation False as 4.03 Forbidden instead of 2.04 Changed, and only appends accepted invitations after successful recording. Tests: test_groups_invite_replay.py::test_clock_skew_returns_declined_not_changed (server-clock-past expiry declined with aligned-clock contrast case returning CHANGED) and ::test_unknown_group_document_returns_declined.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-86w8",
+      "depends_on_id": "project-LICHEN-worker6-gyfo",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T19:04:44.254026Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

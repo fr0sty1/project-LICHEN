@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-9kak",
+  "title": "group_multicast_from_id leaks UnicodeEncodeError",
+  "description": "## Problem\n\npython/src/lichen/ipv6/addr.py group_multicast_from_id() documents AddrError for bad group ids and already rejects non-str and empty. The 16-bit group field is SHA-256(UTF-8(id))[0:2].\n\nA Python str with unpaired surrogates is type str and non-empty, so it passes the guard, then:\n\n  group_id.encode('utf-8')  # UnicodeEncodeError: surrogates not allowed\n\nVerified: group_multicast_from_id('\\\\ud800') raises UnicodeEncodeError, not AddrError. Every other public helper in this file maps stdlib value errors to AddrError (to_ipv6, make_link_local zone parse, native_address_from_pubkey).\n\n## Why it matters\n\nCallers (CoAP /groups) catch AddrError. A lone surrogate in a group name escapes that handler and becomes a 5.00 instead of 4.00.\n\n## Where\n\npython/src/lichen/ipv6/addr.py:254-268 group_multicast_from_id\npython/src/lichen/coap/resources/groups_collection.py:121-123 mcast_from_id",
+  "design": "Keep SHA-256(UTF-8(id)) as specified. Catch UnicodeEncodeError from group_id.encode('utf-8') and raise AddrError from it, same as to_ipv6 wrapping ValueError. Do not NFC-normalize unless the spec adds that; this issue is only the exception type at the public boundary. Empty/non-str already raise AddrError.",
+  "acceptance_criteria": "group_multicast_from_id('\\ud800') raises AddrError (not UnicodeEncodeError). group_multicast_from_id('team-alpha') still matches the pinned SHA-256 high-16 oracle 0x29c4. Existing empty/non-str tests still raise AddrError.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:13:28.879119Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T18:13:28.879119Z",
+  "labels": [
+    "ipv6",
+    "python"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9kak",
+      "depends_on_id": "project-LICHEN-worker6-hhfc",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:13:29.290585Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

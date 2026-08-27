@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.13.1",
   "title": "Python: Client IPv6 Address oracle implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:01.811824Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:01.811824Z",
+  "updated_at": "2026-08-26T17:07:24.624811Z",
+  "started_at": "2026-08-26T16:59:42.998641Z",
+  "closed_at": "2026-08-26T17:07:24.624811Z",
+  "close_reason": "Python LCI 17.4 addressing oracle: static fe80::2/fe80::1 neighbor pair, RFC 4291 MAC/EUI-64 derivation, client routing table fe80::/10 on-link and ::/0 via node. Validation: 230 pytest passed; ruff and mypy clean.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.13.1",

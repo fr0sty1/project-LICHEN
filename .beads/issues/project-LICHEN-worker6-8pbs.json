@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-8pbs",
+  "title": "Race condition in provision_node: session can be replaced during await points, causing use of wiped crypto session and key material leak (provisioning.py:578,592-597,633-635)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:19:20.440608Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T17:25:42.324967Z",
+  "closed_at": "2026-08-26T17:25:42.324967Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug"
+  ]
+}

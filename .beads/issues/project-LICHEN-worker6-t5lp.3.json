@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-t5lp.3",
+  "title": "Extract LinkLayer SCHC handling to link/schc_handler.py",
+  "description": "Extract create_fragment_sender, compress_schc_for_peer, accept_authenticated_schc_* methods (~300 lines)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T20:30:23.217457Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T20:40:23.394558Z",
+  "started_at": "2026-08-26T20:34:26.365737Z",
+  "closed_at": "2026-08-26T20:40:23.394558Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-t5lp.3",
+      "depends_on_id": "project-LICHEN-worker6-t5lp",
+      "type": "parent-child",
+      "created_at": "2026-08-26T20:30:23.615425Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

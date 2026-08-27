@@ -1,0 +1,7 @@
+{
+  "id": "1787771367190887000-1",
+  "issue_id": "project-LICHEN-worker6-l1qw.8.17.6",
+  "author": "spinbead",
+  "text": "exception: Client error '404 Not Found' for url 'http://heft:4000/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+  "created_at": "2026-08-26T19:09:27.190887Z"
+}

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-wz5u",
+  "title": "msg POST lacks OSCORE-or-admin gate",
+  "description": "File: python/src/lichen/coap/resources/messaging.py\n\nCorrectness/security: MessagesResource.render_post (line 191, mounted at /msg/inbox), LegacyMessagesAliasResource.render_post (line 400, /messages), and MessageReceiptsResource.render_post (line 344, /msg/ack) accept unauthenticated POSTs.\n\nFirmware contract (lichen/subsys/lichen/coap/coap_server.c:312, coap_msg.c:393 and 860) and test/vectors/coap_lci_auth.json vector inbox_mesh_peer_unauthorized require OSCORE or lichen_coap_is_local_admin; otherwise 4.01 Unauthorized. Dead-drop already implements this via _request_context_id.\n\nImpact: any CoAP peer can inject inbox and sent records, fire Observe, spoof /msg/ack receipts, persist read=True to hide from unread_count, and POST id=2^64-1 to pin _next_id and fail-close auto-id (5.03) for the process lifetime.\n\nSentMessagesResource.render_post (line 277) is the only path that checks _peer_is_local_admin; inbox and ack do not.",
+  "acceptance_criteria": "POST /msg/inbox, POST /messages, and POST /msg/ack from a non-loopback, non-OSCORE peer return 4.01 and do not mutate inbox, sent, receipts, or _next_id. Loopback and OSCORE-protected peers still succeed per coap_lci_auth.json. Match firmware: oscore.is_protected || is_local_admin.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "grok",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:21:27.007946Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:53:49.79538Z",
+  "started_at": "2026-08-26T17:41:59.299735Z",
+  "closed_at": "2026-08-26T17:53:49.79538Z",
+  "close_reason": "Inbox/ack/legacy POST now require bound OSCORE identity or loopback admin before any mutation. Unauthenticated mesh POSTs return 4.01 and leave inbox, sent, receipts, and _next_id unchanged. Loopback and OSCORE-protected peers still succeed. pytest 391 passed, 179 skipped.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-wz5u",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.14.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:21:27.384365Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

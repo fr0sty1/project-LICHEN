@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-pvqw",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/coap/coap_status.c:445 lichen_coap_encode_neighbors_cbor returns 0 instead of -ENOB",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T15:08:19.324122Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T15:08:19.324122Z",
+  "updated_at": "2026-08-26T18:26:55.990586Z",
+  "started_at": "2026-08-26T17:47:32.817552Z",
+  "closed_at": "2026-08-26T18:26:55.990586Z",
+  "close_reason": "lichen_coap_encode_neighbors_cbor buf_size\u003c2 path now returns -ENOBUFS (was 0). See project-LICHEN-worker6-f5uc for full sibling-audit and verification notes: third identical latent occurrence in lichen_coap_encode_status_cbor:318 also fixed; clang -fsyntax-only verified with real Kconfig-default autoconf vs Zephyr 4.1 headers on macOS, all BUILD_ASSERTs pass at COAP_SERVER_MESSAGE_SIZE=896, only remaining diagnostic is pre-existing Mach-O/ELF logging artifact at :50 unrelated to change; west build blocked pre-compile by pre-existing Kconfig dependency loop (workspace zephyr 4.1.0 vs pinned v3.7.0).",
   "labels": [
     "codereview",
     "wave-fix"

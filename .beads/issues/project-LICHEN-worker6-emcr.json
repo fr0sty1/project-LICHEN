@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-emcr",
+  "title": "SAT2 cannot persist DAOSequence after RELEASE; restart rebinds on replayed ALLOCATE",
+  "description": "File: rust/lichen-rpl/src/address_assignment.rs\nPerspective: robustness / correctness\n\nm557 made process() keep last_sequence_by_eui after RELEASE so a stale RELEASE cannot drop a newer allocation. That floor is not durable.\n\nencode_table_state() / encode_records() emit one SAT2 row per live assignment only (short, eui, expiry, sequence). After a successful RELEASE, commit() passes a sequences map that still contains the released EUI, but the encoder never writes a row without a short address. decode_table_state() therefore restores last_sequence_by_eui as empty for that EUI.\n\nRELEASE of an EUI with no current mapping also inserts last_sequence_by_eui in memory and returns Success without commit(), so a store-backed coordinator already diverges from disk before restart.\n\nAfter ALLOCATE seq=1, RELEASE seq=2, coordinator restart:\n- SAT2 has no row and no sequence tombstone\n- replayed ALLOCATE seq=1 is treated as a first request and rebinds the address\n- in-memory, the same replay is Invalid because last_sequence is 2\n\nlifecycle.release_survives_restart in test/vectors/short_addr_assignment.json is not covered by a restart-then-replay ALLOCATE test. Origin-signature replay (spec 8.6) can block this only if the caller used handle_origin_validated_dao and the origin floor survived; process()/handle_dao are public and do not.\n\nFix: persist a RELEASE tombstone (sequence without a live short), or keep sequence-only records in SAT2, and commit the unmapped-RELEASE path through the store. prune_expired() dropping sequence with the row is a related lease-expiry replay hole.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:16:41.387554Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T17:25:25.21063Z",
+  "closed_at": "2026-08-27T17:25:25.21063Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-emcr",
+      "depends_on_id": "project-LICHEN-worker6-m557",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:16:41.878405Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

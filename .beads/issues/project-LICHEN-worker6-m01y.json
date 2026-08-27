@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-m01y",
+  "title": "tx_queue.py:591 - signal_all_pending() silently clears queue (self._entries = []) which is undocumented; function name and docstring suggest it only signals reservations, but packets are lost if caller expects entries to remain for retry",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:19:08.392725Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-26T17:19:08.392725Z",
+  "labels": [
+    "bug"
+  ]
+}

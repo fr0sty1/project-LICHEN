@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-f5uc",
   "title": "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/coap/coap_status.c:513 lichen_coap_encode_routes_cbor returns 0 instead of -ENOBUFS",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T15:08:26.801981Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T15:08:26.801981Z",
+  "updated_at": "2026-08-26T18:26:43.223477Z",
+  "started_at": "2026-08-26T17:47:31.946337Z",
+  "closed_at": "2026-08-26T18:26:43.223477Z",
+  "close_reason": "lichen_coap_encode_routes_cbor buf_size\u003c2 path now returns -ENOBUFS per documented header contract (-ENOBUFS if buffer too small). Sibling audit of coap_status.c found a THIRD identical latent bug and fixed it too: lichen_coap_encode_status_cbor:318 returned 0 on same condition; also fixed lichen_coap_encode_neighbors_cbor:445. No other occurrences in file (remaining return 0s are legitimate success paths in lichen_coap_format_ipv6/lichen_coap_status_init). Out-of-file note: sos_alert.c static cbor_*_encode helpers and apps/gateway status_cbor.c use size_t contracts by design, NOT this bug pattern. Callers audited: status_get/status_notify/neighbors_get/neighbors_notify check len\u003c0; routes_notify checks \u003c=0; all safe with negative returns now possible from the guarded paths (they were already reachable via other -ENOBUFS paths). Verification: clang -fsyntax-only on macOS against Zephyr 4.1 headers with autoconf synthesized from real Kconfig defaults (MAX_NEIGHBORS/MAX_ROUTES=8, COAP_SERVER_MESSAGE_SIZE=896 per lichen/apps/gateway/prj.conf): full include chain resolves (kernel/logging/net_ip/socket/fdtable/net_if/coap_service/lichen headers), all BUILD_ASSERTs pass at 896; sole remaining diagnostic is a Mach-O section-specifier error at LOG_MODULE_REGISTER coap_status.c:50 - an ELF-targeted-Zephyr-on-Apple-clang artifact unrelated to and pre-existing for any TU using logging here. west build attempted and blocked pre-compile by pre-existing Kconfig dependency loop (LICHEN_COAP_KEYS imply ZCBOR vs ZEPHYR_ZCBOR_MODULE; workspace is zephyr 4.1.0 but project pins v3.7.0) - out of scope, not caused by this change. Pre-existing gaps noted for tracker (not fixed, out of scope): CONFIG_LICHEN_COAP_STATUS_MAX_TXQ/MAX_FWD referenced by BUILD_ASSERT but defined in no Kconfig.",
   "labels": [
     "codereview",
     "wave-fix"

@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.14.1.1",
   "title": "Python: Discovery oracle implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:30.206872Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:30.206872Z",
+  "updated_at": "2026-08-26T17:08:07.8876Z",
+  "started_at": "2026-08-26T16:59:45.879309Z",
+  "closed_at": "2026-08-26T17:08:07.8876Z",
+  "close_reason": "Python discovery oracle is live: build_site mounts WKCResource at /.well-known/core. Spec 17.5.1 always-on links (config, config/radio, config/identity, status+obs, status/neighbors+obs, status/routes) advertised with rt/obs; keys/msg/deaddrop advertise when mounted. Independent-oracle tests in python/tests/coap/test_discovery.py (spec table + second link-format parser + parse_link_format cross-check + RFC 6690 rt= filter). site.py not edited. /diag and /confessions exist but are not wired into build_site. 3x review (correctness/security/robustness): no P0-P3. pytest 22 passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.14.1.1",

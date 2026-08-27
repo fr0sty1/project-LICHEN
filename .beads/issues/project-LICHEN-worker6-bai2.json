@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-bai2",
+  "title": "DeadDrop rate-limit buckets never reap idle identities",
+  "description": "File: python/src/lichen/coap/resources/deaddrop.py\nPerspective: robustness\n\nSpec 18.9: 6 POSTs per hour per OSCORE context. _prune_old_requests(context_id) only walks that one key, and only when check_rate_limit/record runs for it (deaddrop.py ~261-271). Empty lists are deleted; idle keys with old timestamps stay until that same identity posts again.\n\nConfessionsResource explicitly reaps stale rate buckets. DeadDropResource does not.\n\nEvidence: N distinct bound identities each POST once. _request_times holds N keys forever (until process restart), even after every timestamp is older than 3600s, because no later check_rate_limit(context_id) is invoked for those ids.\n\nImpact: rate-limit state grows with the number of OSCORE peers (and with test-injected ids) rather than with the 1-hour window. On a long-lived node this is unbounded RAM versus the 8KB/32KB drop budget.\n\nOracle: spec window is 1 hour; idle buckets must be reclaimable. See confessions.py _reap_stale_rate_buckets.\n",
+  "acceptance_criteria": "Idle per-context timestamp lists older than the 1-hour window are dropped without waiting for that context to POST again. A sequence of distinct OSCORE identities each posting once must not grow _request_times without bound. ConfessionsResource._reap_stale_rate_buckets is a template.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:14:12.205845Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T18:14:12.205845Z",
+  "labels": [
+    "codereview",
+    "python"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-bai2",
+      "depends_on_id": "project-LICHEN-worker6-3n9o",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:14:12.596308Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

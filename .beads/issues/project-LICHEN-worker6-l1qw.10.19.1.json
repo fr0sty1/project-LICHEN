@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.19.1",
   "title": "Python: Check-In / Roll Call oracle implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:45.244309Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:45.244309Z",
+  "updated_at": "2026-08-26T17:01:37.750591Z",
+  "started_at": "2026-08-26T16:59:39.361339Z",
+  "closed_at": "2026-08-26T17:01:37.750591Z",
+  "close_reason": "CheckInResource and RollcallResource already implemented in python/src/lichen/coap/resources/emergency.py (spec 18.6). emergency.py not dirty. Tests pass: 51 in tests/coap/test_sos_resource.py (CheckIn/Rollcall). /config/checkin is tracked separately as 10.9.3.1.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.19.1",

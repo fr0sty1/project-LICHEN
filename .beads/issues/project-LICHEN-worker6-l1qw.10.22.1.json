@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.22.1",
   "title": "Python: Dead Drop oracle implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "grok",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:59.831025Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:25:59.831025Z",
+  "updated_at": "2026-08-26T16:55:11.974324Z",
+  "started_at": "2026-08-26T16:43:30.099735Z",
+  "closed_at": "2026-08-26T16:55:11.974324Z",
+  "close_reason": "Python DeadDropResource oracle implements spec 18.9 (OSCORE POST gate, 6/hour, 1536 B, 8/32 KB, TTL clamp, FIFO eviction, query filters, private 4.03, Observe). Tests in python/tests/coap/test_deaddrop_resource.py pass (32) plus existing deaddrop vector/auth tests.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.22.1",

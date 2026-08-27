@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-q5mh",
+  "title": "MessagesStore sent row is still the unsanitized caller map",
+  "description": "File: rust/lichen-client/src/msg.rs (MessagesStore::post_inbox_from, get_sent, get_sent_id)\n\nnqes allowlisted the inbox document. The sent HashMap still does sent.insert(assigned_id, Value::Map(map)) on the decoded caller map after from-rebind, canned expansion, and id assign.\n\nGET /msg/sent and GET /msg/sent/{id} therefore echo untrusted extra keys and untyped optional fields. Spec 18.1.1 types: to tstr, ack bool, priority uint 0..2, reply_to uint, ttl uint, ts uint. post_inbox_from only type-checks body/text (tstr), canned (known uint), and id (uint unique). ack=1, priority=99, ttl=-1 (as a CBOR integer stored verbatim), to as a nested map, and arbitrary extra keys are stored and returned.\n\nThis is a first-vs-schema split vs spec 18.1.1 and vs the inbox path that now persist only {id, from, ts, body}. Python MessagesResource also keeps the caller dict for sent; spec is the arbiter.\n\nFix: persist an allowlisted sent record (spec 18.1.1 keys only). Type-check optional fields and reject (4.00) mismatches, including priority outside 0..2. Drop unknown keys.\n\nPerspectives: security, correctness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T18:15:06.151343Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-27T17:43:22.343236Z",
+  "closed_at": "2026-08-27T17:43:22.343236Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-q5mh",
+      "depends_on_id": "project-LICHEN-worker6-nqes",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T18:16:22.303124Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}

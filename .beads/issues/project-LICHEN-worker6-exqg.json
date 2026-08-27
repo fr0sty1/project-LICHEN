@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-exqg",
   "title": "[review] tx_queue.py:501: complete() signals success",
   "description": "reservation.set_result(True) is called on lines 501-502 BEFORE checking if entry is still at queue front on line 505. If entry was expired/removed between reserve() and complete(), the reservation incorrectly signals success for a dropped packet. The set_result call should be inside the 'if self._entries and self._entries[0] is entry' block.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T04:28:25.348328Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T04:28:25.348328Z",
+  "updated_at": "2026-08-26T17:06:44.15012Z",
+  "closed_at": "2026-08-26T17:06:44.15012Z",
+  "close_reason": "Duplicate of project-LICHEN-worker6-1fu6 - fixed in same change: complete() now removes entry wherever it is and always signals reservation",
   "labels": [
     "review"
   ]

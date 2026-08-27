@@ -5,11 +5,11 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:48:35.769783Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T17:45:23.393537Z",
+  "updated_at": "2026-08-27T16:34:14.003053Z",
+  "started_at": "2026-08-27T16:33:53.236377Z",
   "closed_at": "2026-07-06T17:45:23.393537Z",
   "close_reason": "Closed",
   "labels": [

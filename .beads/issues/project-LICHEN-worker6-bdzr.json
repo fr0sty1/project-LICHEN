@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-bdzr",
+  "title": "Stale grounded state after parent switch in select_parent()",
+  "description": "In dodag.py select_parent(), when switching preferred parent due to link metric changes, gateway_centric is updated (line 613) but grounded is not. ParentCandidate stores gateway_centric but not grounded, so there is no source for the correct value during parent switch. grounded is only updated when receiving a DIO from the current preferred_parent (line 359), but after select_parent() changes preferred_parent, the check self.preferred_parent == neighbor_id fails if the DIO that triggered reselection came from a different neighbor. This causes stale grounded advertisement until next DIO from new parent. Fix: store grounded in ParentCandidate and update it in select_parent() alongside gateway_centric.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T16:58:38.124259Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T16:58:38.124259Z"
+}

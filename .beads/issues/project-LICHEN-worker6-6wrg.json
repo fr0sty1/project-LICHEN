@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-worker6-6wrg",
+  "title": "inbox POST drops from, never rebinds peer",
+  "description": "File: python/src/lichen/coap/resources/messaging.py\n\nCorrectness/security: render_post (lines 201-203) pops client-supplied 'from' (anti-spoof) but never writes sender identity from request.remote. The comment claims the transport layer sets sender identity; nothing in this module does.\n\nSpec 18.1.1 requires from as sender IPv6. Stored inbox/sent maps therefore omit from. GET /msg/inbox and Observe notifications cannot attribute the sender. python/tests/coap/test_messages_resource.py::TestMessagesObserve.test_observe_notified_on_post asserts inbox[0]['from'] == _TO_A after POSTing _MSG2, which is inconsistent with the strip-and-forget path.\n\nConfirmed: POST {from, to, body} yields inbox [{to, body, id}] with from absent.",
+  "acceptance_criteria": "After POST /msg/inbox, stored inbox and sent records have from bound to the request peer identity (not the payload). Client-supplied from is still ignored. GET/Observe include that bound from. A unit test covers strip-plus-rebind without using the resource as its own oracle.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-26T17:21:27.839202Z",
+  "created_by": "grok",
+  "updated_at": "2026-08-26T17:55:06.788074Z",
+  "started_at": "2026-08-26T17:48:04.852616Z",
+  "closed_at": "2026-08-26T17:55:06.788074Z",
+  "close_reason": "render_post (messaging.py:249-252) strips client-supplied 'from' and rebinds it to request.remote.hostinfo, matching the request.remote.hostinfo peer-binding convention used by provisioning.py/edhoc.py/senml.py. Stored inbox (_inbox), sent (_sent) and detail records all carry the bound identity; GET /msg/inbox, GET /msg/sent, GET /msg/sent/{id} and Observe notifications expose it. Old test_observe_notified_on_post asserting inbox[0]['from'] == _TO_A encoded the bug (payload-trusted attribution); corrected to exact equality against the server-side constructed peer authority. Added strip-plus-rebind tests: full-transport rebind of _MSG2 spoofed 'from' to known peer '[::1]' across inbox/sent/detail/observe, plus render-level test proving OSCORE-bound non-loopback peer overrides payload spoof. 116 passed tests/coap/test_messages_resource.py; 141 passed broader -k messages subset (2 collection errors are pre-existing local missing optional deps jsonschema/defusedxml). ruff check+format clean.",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6wrg",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.10.14.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-26T17:21:28.222946Z",
+      "created_by": "grok",
+      "metadata": "{}"
+    }
+  ]
+}
