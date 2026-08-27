@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-dlxh",
+  "title": "Unpinned git dependency in pyproject.toml",
+  "description": "Line 27 of python/pyproject.toml specifies lora-medium without a commit hash, tag, or version constraint:\n\n```\nlora-medium @ git+https://github.com/MarkAtwood/lora-medium.git\n```\n\n**Impact:** Supply chain security risk. Any change to the upstream repo's default branch silently changes what gets installed. If the repo is compromised, all builds are affected. Reproducible builds are impossible.\n\n**Fix:** Pin to a specific commit hash:\n```\nlora-medium @ git+https://github.com/MarkAtwood/lora-medium.git@\u003ccommit-sha\u003e\n```\n\nOr use a tagged release if available.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T22:55:32.3866Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T22:59:29.691996Z",
+  "closed_at": "2026-08-27T22:59:29.691996Z",
+  "close_reason": "Pinned lora-medium dependency to commit 5ddc92bdda141b3f90920abbe0f259e84b37b211",
+  "labels": [
+    "security",
+    "supply-chain"
+  ]
+}

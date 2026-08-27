@@ -1,14 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.4.1.3",
   "title": "Zephyr: Schnorr48 sign (link/schnorr48.c)",
-  "notes": "Already implemented",
-  "status": "open",
+  "notes": "Already implemented\nVerified complete without edits. Core schnorr48_sign is correctly separate from LINK-v1 framing and follows draft-lichen-schnorr-00 Appendix A: SHA-512(privkey||msg) deterministic nonce reduced mod L, R=rB, 16-byte truncated challenge extended little-endian with 16 zero bytes, and crypto_eddsa_mul_add canonical response. It wipes nonce_hash, r_scalar, R, e_hash, e_extended, and SHA-512 context before return. Existing focused C tests cover all six valid canonical corpus signatures (including empty/binary/frame-like/determinism), repeated byte-exact signing, malformed NULL-message failure with zeroed output, and sign/verify roundtrip. Validation: fresh UBSan C ctest 1/1 and schnorr48_test 9/9; corrected LINK-v1/SIID C interop ctest 1/1; Python test_schnorr48 10 passed; Rust schnorr48_vectors 2/2 passed. Scoped file mtimes remained unchanged; no files modified by this leaf.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:03.033015Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:03.033015Z",
+  "updated_at": "2026-08-27T22:42:29.784445Z",
+  "started_at": "2026-08-27T22:41:20.734147Z",
+  "closed_at": "2026-08-27T22:42:29.784445Z",
+  "close_reason": "Verified complete against Appendix-A Schnorr48 corpus",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.4.1.3",

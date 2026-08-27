@@ -1142,6 +1142,36 @@ Response: 2.04 Changed
 
 Only owner can promote/demote admins.
 
+**Trust Boundaries:**
+
+Invitation consumption ledgers, revocation markers, and retired epoch lists
+are process-lifetime state. A node restart clears this state. Implementations
+MUST NOT persist these ledgers.
+
+Implications:
+- Restart constitutes a new trust context; prior revocations do not survive
+- An owner who recreates a group with the same name after restart creates a
+  fresh group with no memory of prior membership or revocations
+- Deployments requiring durable revocation MUST use unique group identifiers
+  (e.g., UUID suffix) or an external enrollment system
+
+This boundary reflects LICHEN's target deployment on constrained mesh nodes
+where restart is common and groups are often session-scoped.
+
+**Delegation Revocation:**
+
+When an admin is removed or demoted, outstanding invitations minted by that
+admin remain valid until their natural expiry. Removal of a grantor does NOT
+cascade to revoke invitations they issued.
+
+Rationale: Tracking `minted_by` on every invitation adds persistent state and
+complexity unsuited to constrained nodes. The simpler model places revocation
+responsibility on the owner.
+
+Compensating control: To revoke access granted by a removed admin, the owner
+MUST explicitly remove each affected member or rekey the group (which
+invalidates all outstanding invitations).
+
 #### 18.8.3. Group Multicast Addressing
 
 Per RFC 7390 and RFC 3306 (unicast-prefix-based multicast). With 02xx primary addresses, use the /64 of the 02xx prefix:

@@ -2,15 +2,16 @@
   "id": "project-LICHEN-worker6-vi7d",
   "title": "Fix tests/test_node.py import of nonexistent PEER_DB_MAX_SIZE from lichen.node",
   "description": "python/tests/test_node.py:49 imports PEER_DB_MAX_SIZE from lichen.node, but the symbol does not exist in python/src/lichen/node.py. Entire module fails pytest collection, which blocks any repo-wide 'pytest -k' run (discovered 2026-08-27 while running the W2-CHANNEL gate: 'pytest tests -k channel or medium or rendezvous' aborted with 1 collection error). Either re-add the constant or update the test to the current peer-db API. Unrelated to the vhvj hop-channel cluster; pre-existing on the working tree before W2-CHANNEL edits.",
-  "status": "in_progress",
+  "notes": "Already satisfied by the completed PeerDatabase extraction (project-LICHEN-worker6-sd3b.4): python/src/lichen/peers.py owns PEER_DB_MAX_SIZE and python/src/lichen/node.py deliberately re-exports it for API compatibility, so python/tests/test_node.py collects without changing the stale accumulated hunks. Read-only validation: uv run pytest tests/test_node.py -q =\u003e 125 passed; uv run pytest tests --collect-only -q =\u003e 11,602 tests collected with no collection errors (2 unrelated warnings); uv run ruff check src/lichen/node.py src/lichen/peers.py tests/test_node.py =\u003e All checks passed. No files modified by vi7d. Related open bead project-LICHEN-worker6-43b7 appears to duplicate this stale collection report; left untouched for central orchestration.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-27T19:59:38.736985Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-27T22:28:51.74603Z",
+  "updated_at": "2026-08-27T22:30:09.196981Z",
   "started_at": "2026-08-27T22:28:51.74603Z",
-  "lease_expires_at": "2026-08-27T22:33:51.74603Z",
-  "heartbeat_at": "2026-08-27T22:28:51.74603Z"
+  "closed_at": "2026-08-27T22:30:09.196981Z",
+  "close_reason": "Closed"
 }

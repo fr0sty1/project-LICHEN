@@ -251,11 +251,18 @@ async def test_rekey_and_invitation_records_do_not_lose_writes() -> None:
 
 @pytest.mark.asyncio
 async def test_rekey_rebuild_does_not_drop_concurrent_join_key_member() -> None:
-    """A join racing a rotation still ends up on the roster (no lost append).
+    """A join racing a rotation is lock-ordered; both outcomes are coherent.
 
-    Whatever the interleave, the lock orders the join's membership append
-    against rekey's locked rebuild: the newcomer is present afterwards, the
-    invitation is consumed exactly once, and the rotation still lands.
+    Spec 18.8.2 (Delegation Revocation): a rotation invalidates ALL
+    outstanding invitations. So whichever way the lock orders the interleave,
+    the result must be consistent:
+
+    - join first: CONTENT, newcomer appended (no lost append), invitation
+      consumed exactly once, rotation still lands;
+    - rekey first: the rotation burned the outstanding invitation, so the
+      join is 4.03 FORBIDDEN and the newcomer is absent (no torn append).
+
+    Either way the rotation lands and the roster is never torn.
     """
     collection = GroupsCollectionResource(owner=OWNER, clock=lambda: T0)
     item = GroupsItemResource(collection)
@@ -274,11 +281,16 @@ async def test_rekey_rebuild_does_not_drop_concurrent_join_key_member() -> None:
         rotated = rotation.result()
 
     assert rotated == {"key_id": f"key-{group_id}-002", "key_epoch": 2}
-    assert grant.code == aiocoap.CONTENT
     state = collection.groups[group_id]
-    assert NEWCOMER in state["members"]
     assert OWNER in state["members"]
-    assert collection.invitation_consumed(group_id, NEWCOMER) is True
+    if grant.code == aiocoap.CONTENT:
+        # Join won the race: append survived the rebuild, single consumption.
+        assert NEWCOMER in state["members"]
+        assert collection.invitation_consumed(group_id, NEWCOMER) is True
+    else:
+        # Rotation won the race: spec-mandated burn refused the join.
+        assert grant.code == aiocoap.FORBIDDEN
+        assert NEWCOMER not in state["members"]
 
 
 @pytest.mark.asyncio

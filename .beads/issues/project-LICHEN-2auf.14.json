@@ -2,16 +2,18 @@
   "id": "project-LICHEN-2auf.14",
   "title": "Complete debug toggle test isolation",
   "description": "Ensure the module-level simulation debug toggle is restored even when the integration test fails, and cover instance/global isolation without relying on private fields. Keep tests deterministic and warning/lint clean.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-15T05:46:05.274317Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-15T05:47:36.239621Z",
-  "closed_at": "2026-07-15T05:47:36.239621Z",
-  "close_reason": "Restored debug state with an autouse finally-based fixture, added public API isolation coverage, and passed focused pytest and Ruff checks.",
+  "updated_at": "2026-08-27T22:57:46.890798Z",
+  "closed_at": "2026-08-27T22:57:46.890798Z",
+  "close_reason": "Closed",
+  "labels": [
+    "owner-reserved"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.14",
@@ -19,8 +21,5 @@
       "type": "parent-child",
       "created_at": "2026-07-15T05:46:05.275133Z"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }

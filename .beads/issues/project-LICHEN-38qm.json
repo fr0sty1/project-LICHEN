@@ -2,12 +2,15 @@
   "id": "project-LICHEN-38qm",
   "title": "Persist OSCORE recipient replay windows",
   "description": "Context::load_existing restores sender sequence state but recipient and response replay windows reset after restart, allowing previously accepted authenticated requests to repeat side effects. Define durable replay-window storage and crash-safe commit semantics. Found reviewing convergence OSCORE slice; outside frozen ledger.",
-  "status": "deferred",
+  "notes": "DECIDED: Ephemeral, consistent with hbx2. Spec amended: 06-security.md 15.3 OSCORE Replay Window section added -- restart clears OSCORE replay state, implementations MUST NOT persist. No code changes needed.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-21T02:14:38.043709578Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-21T02:14:53.583977201Z",
+  "updated_at": "2026-08-27T22:53:06.539283Z",
+  "closed_at": "2026-08-27T22:53:06.539283Z",
+  "close_reason": "Spec amended: documented as process-lifetime state, consistent with group trust boundaries (hbx2)",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-38qm",

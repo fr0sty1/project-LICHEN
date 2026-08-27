@@ -2,13 +2,16 @@
   "id": "project-LICHEN-worker6-50w9",
   "title": "Pending invitations minted by later-removed admin remain spendable (no delegator revocation cascade)",
   "description": "groups_collection.py:310-365 rekey pops/burns ONLY removed_member's own invitation identity; documents minted BY removed admin for others stay valid until expiry and grant CURRENT-epoch keys post-rotation. Spec 18.8.2 silent on outstanding grants; compensating control = owner individually removes each delegatee. Spec-owner decision required (cascade burn vs accept-with-documentation).",
-  "status": "open",
+  "notes": "DECIDED: Manual. Spec amended: 18.8.2 Delegation Revocation added -- grantor removal does not cascade, owner must explicitly remove affected members. No code changes needed.",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T21:02:13.61825Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T21:02:13.61825Z",
+  "updated_at": "2026-08-27T22:44:58.765841Z",
+  "closed_at": "2026-08-27T22:44:58.765841Z",
+  "close_reason": "Spec amended: documented owner compensating control, no cascade logic required",
   "labels": [
     "codereview",
     "human"

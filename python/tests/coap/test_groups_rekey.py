@@ -451,6 +451,99 @@ async def test_invite_acceptance_records_usable_invitation() -> None:
 
 
 @pytest.mark.asyncio
+async def test_rekey_invalidates_all_outstanding_invitations() -> None:
+    """Spec 18.8.2 (Delegation Revocation): rekeying the group invalidates
+    ALL outstanding invitations, not just the removed member's. Every
+    identity is burned into the consumption ledger so replaying an
+    outstanding signed document cannot join against the rotated epoch; the
+    owner's compensating control is re-issuing the invitation.
+    """
+    collection = GroupsCollectionResource(owner=OWNER, clock=lambda: 1716742800)
+    item = GroupsItemResource(collection)
+    created = await collection.render_post(
+        _pairwise_post({"name": "Team Alpha", "encrypted": True})
+    )
+    group_id = cbor2.loads(created.payload)["id"]
+
+    owner_identity = Identity.from_seed(b"\x06" * 32)
+    draft = parse_invitation(
+        {
+            "group_id": group_id,
+            "group_name": "Team Alpha",
+            "mcast": "ff35:0040::1",
+            "inviter": OWNER,
+            "role": "member",
+            "expires": 1716742800 + 600,
+            "signature": b"\x00" * 48,
+        }
+    )
+    signature = sign(owner_identity.privkey, owner_identity.pubkey, invitation_preimage(draft))
+
+    def _invites_for(invitee: str) -> GroupsInviteResource:
+        return GroupsInviteResource(
+            roster=GroupRoster(owner=OWNER),
+            pubkeys={OWNER: owner_identity.pubkey},
+            collection=collection,
+            invitee=invitee,
+        )
+
+    joined_member = "0200::3333"
+    pending_peer = "0200::4444"
+    for invitee in (joined_member, pending_peer):
+        invited = await _invites_for(invitee).render_post(
+            Message(
+                code=aiocoap.POST,
+                payload=cbor2.dumps({**draft.to_map(), "signature": signature}),
+            )
+        )
+        assert invited.code == aiocoap.CHANGED
+
+    # Both outstanding invitations carry tracked identities pre-rotation.
+    invitations = collection.groups[group_id]["invitations"]
+    assert len(invitations) == 2
+
+    grant = await item.render_post(
+        _pairwise_post(
+            {"request": "join_key", "node": joined_member},
+            path=(group_id, "key"),
+            context=joined_member,
+        )
+    )
+    assert grant.code == aiocoap.CONTENT
+    pending_identity = collection.groups[group_id]["invitations"][pending_peer]["identity"]
+    assert collection.groups[group_id]["invitations"][pending_peer].get("consumed") is not True
+
+    # Owner's compensating control: rotate keys while removing the joined
+    # member. The rotation must also invalidate the still-pending
+    # invitation minted before the rotation (spec 18.8.2).
+    result = collection.rekey(group_id, removed_member=joined_member)
+    assert result is not None and result["key_epoch"] == 2
+    assert collection.groups[group_id]["invitations"] == {}
+    burned = collection.groups[group_id]["consumed_invitations"]
+    assert burned.get(pending_identity) is True
+    assert joined_member not in collection.groups[group_id]["members"]
+
+    denied = await item.render_post(
+        _pairwise_post(
+            {"request": "join_key", "node": pending_peer},
+            path=(group_id, "key"),
+            context=pending_peer,
+        )
+    )
+    assert denied.code == aiocoap.FORBIDDEN
+
+    # Replaying the identical signed document is refused: its identity was
+    # burned by the rotation, so the owner must re-issue a fresh invitation.
+    replay = await _invites_for(pending_peer).render_post(
+        Message(
+            code=aiocoap.POST,
+            payload=cbor2.dumps({**draft.to_map(), "signature": signature}),
+        )
+    )
+    assert replay.code == aiocoap.FORBIDDEN
+
+
+@pytest.mark.asyncio
 async def test_rekey_on_member_removal() -> None:
     document = json.loads(REKEY.read_text(encoding="utf-8"))
     assert document["grace_s"] == REKEY_GRACE_S

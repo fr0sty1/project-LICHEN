@@ -2,16 +2,18 @@
   "id": "project-LICHEN-2auf.23",
   "title": "Synchronize link protocol documentation",
   "description": "Update stale spec/physical-link and packet timing documentation, public protocol comments, and the active link draft examples to match current MIC placement, unsigned no-MIC semantics, elided addressing, and signed-encrypted rejection.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-15T06:12:59.226084Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-15T06:18:15.217383Z",
-  "closed_at": "2026-07-15T06:18:15.217383Z",
-  "close_reason": "Updated link protocol specs, examples, and public comments; verification passed",
+  "updated_at": "2026-08-27T22:53:26.671912Z",
+  "closed_at": "2026-08-27T22:53:26.671912Z",
+  "close_reason": "Documentation is already synchronized. Verified that spec/02-physical-link.md, spec/09-packets-timing.md, and spec/drafts/draft-lichen-link-01.md all correctly describe: (1) MIC placement at end of frame, 48B when signed, 0B when unsigned; (2) Unsigned no-MIC semantics where S and SI bits must match; (3) Elided addressing with AddrMode=3; (4) Signed-encrypted rejection with E=1. All tests pass.",
+  "labels": [
+    "owner-reserved"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.23",
@@ -19,8 +21,5 @@
       "type": "parent-child",
       "created_at": "2026-07-15T06:12:59.226593Z"
     }
-  ],
-  "labels": [
-    "owner-reserved"
   ]
 }

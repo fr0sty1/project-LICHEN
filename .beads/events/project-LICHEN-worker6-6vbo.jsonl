@@ -1,0 +1,4 @@
+{"id":"01a0457a-e3b0-785c-8608-c1956e39e648","issue_id":"project-LICHEN-worker6-6vbo","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-27T23:07:56.720551Z"}
+{"id":"01a0457a-e3d9-7da0-809b-bd7b369bb1ed","issue_id":"project-LICHEN-worker6-6vbo","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: spec","created_at":"2026-08-27T23:07:56.761894Z"}
+{"id":"01a0457a-e3ed-735f-a9b1-14d1f1e9f7c7","issue_id":"project-LICHEN-worker6-6vbo","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: groups","created_at":"2026-08-27T23:07:56.781221Z"}
+{"id":"01a0457a-ef8b-71f4-ad1e-ad523f711cdc","issue_id":"project-LICHEN-worker6-6vbo","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Implemented: rekey burns all outstanding invitation identities + clears outstanding set; probe suite covers deny/replay paths; 1788 tests green","created_at":"2026-08-27T23:07:59.755129Z"}

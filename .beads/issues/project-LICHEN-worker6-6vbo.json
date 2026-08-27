@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-6vbo",
+  "title": "Implement spec 18.8.2 amendment: rekey invalidates ALL outstanding invitations",
+  "description": "Spec/12-apps.md SS18.8.2 amended (Trust Boundaries + Delegation Revocation). Python reference rekey() now burns every outstanding invitation identity into the consumption ledger (replay refusal via existing 4u1a machinery) and clears the outstanding set; rust gateway Group.rekey tracks no invitation ledger so the sentence is trivially satisfied there. Tests: rekey-invalidates-all (join-A/rekey/B-denied/replay-refused) + mutation-lock race probe updated to both-outcomes-are-coherent per new semantics. Spec amendment authored by Mark.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:07:56.664178Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:07:59.699428Z",
+  "closed_at": "2026-08-27T23:07:59.699428Z",
+  "close_reason": "Implemented: rekey burns all outstanding invitation identities + clears outstanding set; probe suite covers deny/replay paths; 1788 tests green",
+  "labels": [
+    "spec",
+    "groups"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6vbo",
+      "depends_on_id": "project-LICHEN-worker6-50w9",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T23:07:57.395643Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

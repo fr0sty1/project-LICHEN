@@ -1,13 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.6.5.2.3",
   "title": "Zephyr: Relay verifies, mutates, re-signs",
-  "status": "open",
+  "notes": "Implemented canonical SIID-aware signed TX/RX and an authenticate/replay-check-before-re-sign relay pipeline. lichen_link_relay_frame preflights output without state mutation, verifies the complete incoming transcript, commits replay state, preserves authenticated payload bytes, and emits a fresh destination/epoch/sequence/canonical SIID/signature from the relay key. RX rejects peer-key/SIID aliases; failures leave caller output and local TX nonce unchanged when rejected before relay signing. Validation: qemu_x86 Zephyr 4.1 link_relay 3/3 PASS (approved gate-only -Wno-error=duplicated-branches for Zephyr logging macro); host frame 1/1 PASS; host C schnorr48_interop 1/1 PASS; Python Schnorr/frame 145 PASS, 10 skipped; Rust canonical Schnorr vectors 2/2 PASS. Added isolated tests for success/destination mutation/payload preservation/relayer SIID, tamper, wrong key, replay, small buffer atomicity, and a cryptographically valid but noncanonical SIID. Local pinned v3.7 tree is unavailable per AGENTS; 4.1 smoke used local SDK.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:43:56.753409Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-25T03:43:56.753409Z",
+  "updated_at": "2026-08-27T23:03:24.003489Z",
+  "started_at": "2026-08-27T22:49:55.424816Z",
+  "closed_at": "2026-08-27T23:03:24.003489Z",
+  "close_reason": "Complete: authenticated relay re-signing implemented and focused/cross-language validation passes",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.6.5.2.3",

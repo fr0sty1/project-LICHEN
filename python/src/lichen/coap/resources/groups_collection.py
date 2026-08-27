@@ -337,6 +337,11 @@ class GroupsCollectionResource(resource.Resource):
         stay available for unprotect until REKEY_GRACE_S elapses; the owner is
         never stripped from members (spec 18.8.2: Owner is always a member);
         the removed member's invitation is revoked.
+
+        Spec 18.8.2 (Delegation Revocation): rekeying invalidates ALL
+        outstanding invitations, not just any removed member's — every
+        identity is burned into the consumption ledger so replaying a
+        still-signed document cannot join against the rotated epoch.
         """
         # Rekey is also the authoritative roster transition. Serialize it so
         # concurrent removals cannot rotate from the same epoch, and prepare
@@ -371,6 +376,18 @@ class GroupsCollectionResource(resource.Resource):
                         identity = popped.get("identity")
                         if type(identity) is str and identity:
                             burned[identity] = True
+
+            # Spec 18.8.2 (Delegation Revocation): rekeying the group
+            # invalidates ALL outstanding invitations. Burn each identity so
+            # the consumption ledger refuses replays against the new epoch,
+            # then clear the outstanding set.
+            if invitations:
+                for entry in list(invitations.values()):
+                    if isinstance(entry, dict):
+                        identity = entry.get("identity")
+                        if type(identity) is str and identity:
+                            burned[identity] = True
+                invitations = {}
 
             retired = list(self._live_retired(item, stamp))
             retired.append(
