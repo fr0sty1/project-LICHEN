@@ -10,7 +10,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-29T18:18:38.325652Z",
   "labels": [
-    "renode"
+    "renode",
+    "needs-linux"
   ],
   "dependencies": [
     {
