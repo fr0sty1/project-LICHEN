@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:42:28.221164Z",
   "created_by": "Mark Atwood",
@@ -13,6 +12,7 @@
   "closed_at": "2026-07-13T00:19:08.274618Z",
   "close_reason": "Fixed: Implemented LRU eviction policy - when peer table is full, evict least-recently-updated peer instead of returning ENOMEM. Added last_updated_ticks tracking and find_lru_peer_locked() helper.",
   "labels": [
-    "owner-reserved"
+    "owner-reserved",
+    "local-ok"
   ]
 }
