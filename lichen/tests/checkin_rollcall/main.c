@@ -466,6 +466,33 @@ static int test_checkin_duplicate_node_updates(void)
 	return 1;
 }
 
+static int test_checkin_zero_capacity_store(void)
+{
+	static struct lichen_rollcall rollcalls[1];
+	struct lichen_checkin_service svc;
+	struct lichen_checkin c;
+	uint8_t wire[LICHEN_CHECKIN_CBOR_MAX];
+	size_t wire_len;
+	enum lichen_checkin_error detail = LICHEN_CHECKIN_OK;
+
+	/* checkins=NULL with cap 0 is documented-legal (checkin.h);
+	 * the post must fail closed instead of indexing the NULL store. */
+	lichen_checkin_service_init(&svc, NULL, 0U, rollcalls, 1U);
+	lichen_checkin_service_set_time(&svc, 1716742800U);
+
+	memset(&c, 0, sizeof(c));
+	strcpy(c.node, "0200:0000:0000:0000:0011:2233:4455:6677");
+	c.ts = 1716742800U;
+	c.status = LICHEN_CHECKIN_STATUS_OK;
+	ASSERT_EQ(lichen_checkin_to_cbor(&c, wire, sizeof(wire), &wire_len),
+		  0, "encode");
+
+	ASSERT_EQ(lichen_checkin_post(&svc, wire, wire_len, &detail),
+		  LICHEN_CHECKIN_CODE_UNAVAILABLE, "cap-0 post 5.03");
+	ASSERT_EQ(svc.checkin_count, 0U, "count stays zero");
+	return 1;
+}
+
 static int test_rollcall_capacity_unavailable(void)
 {
 	static struct lichen_checkin_entry checkins[1];
@@ -783,6 +810,7 @@ int main(void)
 	RUN_TEST(test_vector_service_codes);
 	RUN_TEST(test_checkin_capacity_prune_oldest);
 	RUN_TEST(test_checkin_duplicate_node_updates);
+	RUN_TEST(test_checkin_zero_capacity_store);
 	RUN_TEST(test_rollcall_capacity_unavailable);
 	RUN_TEST(test_rollcall_expiry_and_defaults);
 	RUN_TEST(test_track_capacity_full);

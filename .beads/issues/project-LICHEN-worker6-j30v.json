@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-j30v",
+  "title": "lichen_checkin_post: cap==0 NULL deref + size_t underflow on documented-legal config",
+  "description": "lichen/subsys/lichen/coap/checkin.c:1550-1564. checkin.h:443 documents checkins=NULL with checkin_cap=0 as legal; first POST then takes 0\u003e=0 eviction branch: entry=\u0026svc-\u003echeckins[0] on NULL (UB), checkin_count-- wraps 0-\u003eSIZE_MAX, memmove gets wrapped length. rollcall side fails closed with 5.03 for same config (checkin.c:1638-1640) - asymmetry confirms oversight. Kconfig range 1..256 protects only the resource instance, not public API. Fix: early return BAD_REQUEST/5.03 when checkin_cap==0 before eviction block; add host-suite regression with cap-0 store.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:11.96029Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:07:15.645583Z",
+  "started_at": "2026-08-28T07:04:55.114199Z",
+  "closed_at": "2026-08-28T07:07:15.645583Z",
+  "close_reason": "lichen_checkin_post now returns 5.03 LICHEN_CHECKIN_CODE_UNAVAILABLE when checkin_cap==0 before the eviction block (checkin.c, mirrors rollcall 5.03 policy at checkin.c:1646-1648), so the documented-legal NULL/cap-0 store (checkin.h:443) can no longer form \u0026checkins[0] on NULL or wrap checkin_count to SIZE_MAX. Header @return doc updated. Regression test_checkin_zero_capacity_store added to host suite. Evidence: lichen/tests/checkin_rollcall 15/15 pass under ASan/UBSan (was 14 tests); cppcheck findings identical to untouched tree (5 pre-existing literalWithCharPtrCompare in main.c, none new); clang-tidy parity (no compile db, pre-existing)."
+}

@@ -1547,6 +1547,13 @@ uint8_t lichen_checkin_post(struct lichen_checkin_service *svc,
 		}
 	}
 
+	if (entry == NULL && svc->checkin_cap == 0U) {
+		/* NULL store with cap 0 is documented-legal (checkin.h);
+		 * fail closed like the roll-call capacity policy (5.03)
+		 * instead of indexing a NULL store. */
+		return LICHEN_CHECKIN_CODE_UNAVAILABLE;
+	}
+
 	if (entry == NULL && svc->checkin_count >= svc->checkin_cap) {
 		/* Evict the entry with the smallest ts (first minimal). */
 		for (size_t i = 1U; i < svc->checkin_count; i++) {

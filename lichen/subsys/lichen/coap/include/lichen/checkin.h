@@ -463,10 +463,13 @@ void lichen_checkin_service_set_time(struct lichen_checkin_service *_Nonnull svc
  * Stores at most checkin_cap entries; when a NEW node arrives at capacity,
  * the entry with the smallest ts is evicted first (vector prune_policy
  * "remove_oldest_by_ts"). Re-posting an existing node updates in place
- * without eviction.
+ * without eviction. A store provisioned with checkin_cap == 0 (NULL array)
+ * accepts no entries: posts fail closed with 5.03, matching the roll-call
+ * table-full policy.
  *
  * @param[out] detail Codec/validation error, may be NULL
- * @return CoAP code byte: 2.04 Changed or 4.00 Bad Request
+ * @return CoAP code byte: 2.04 Changed, 4.00 Bad Request, or 5.03
+ *         Service Unavailable (zero-capacity store)
  */
 uint8_t lichen_checkin_post(struct lichen_checkin_service *_Nonnull svc,
 			    const uint8_t *_Nonnull buf, size_t len,
