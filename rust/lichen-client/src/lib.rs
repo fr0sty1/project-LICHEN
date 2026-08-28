@@ -15,6 +15,7 @@
 
 pub mod checkin;
 pub mod config;
+pub mod confessions;
 pub mod deaddrop;
 pub mod identity;
 pub mod keys;
@@ -45,6 +46,13 @@ pub use deaddrop::{
     Clock, DeadDropStore, DropFilter, DropView, GetResponse, PickupOutcome, PostOutcome,
     PostRequest, Privacy, SenmlRecord, StorageInfo, DEFAULT_TTL, MAX_DROP_SIZE, MAX_TTL,
     POSTS_PER_HOUR, STORAGE_BR, STORAGE_LEAF,
+};
+pub use confessions::{
+    is_confession_id, code as confession_code, AddConfessionParams, ConfessionEntry,
+    ConfessionListing, ConfessionPayload, ConfessionQuery, ConfessionStore, EntryDetail,
+    ListingEntry, RateDecision, RateLimitReason, CONFESSION_COOLDOWN_S, CONFESSION_HOURLY_MAX,
+    CONFESSION_MAX_SIZE, CONFESSION_MAX_TTL, CONFESSION_STORAGE_BR, CONFESSION_STORAGE_LEAF,
+    TTL_EXPIRED,
 };
 pub use identity::{IdentityAddresses, NodeIdentity};
 #[cfg(feature = "tokio")]
