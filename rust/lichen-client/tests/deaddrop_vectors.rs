@@ -23,8 +23,8 @@ use std::sync::Arc;
 
 use lichen_client::deaddrop::{
     code, is_drop_id, AddDropParams, DeadDropStore, DropFilter, GetResponse, PickupOutcome,
-    PostOutcome, PostRequest, SenmlRecord, DEFAULT_TTL, MAX_DROP_SIZE, MAX_TTL, POSTS_PER_HOUR,
-    STORAGE_BR, STORAGE_LEAF,
+    PostOutcome, PostRequest, SenmlRecord, DEFAULT_TTL, MAX_DROP_SIZE, MAX_RECORDS_PER_PACK,
+    MAX_TTL, POSTS_PER_HOUR, STORAGE_BR, STORAGE_LEAF,
 };
 use serde_json::Value;
 use std::fs;
@@ -962,6 +962,34 @@ fn generated_drop_ids_are_canonical_and_unique() {
         ids.len(),
         "store rejects duplicate IDs, so minted IDs are unique: {ids:?}"
     );
+}
+
+#[test]
+fn pack_record_cap_bounds_heap_amplification() {
+    let clock = TestClock::new();
+    let mut s = store(STORAGE_LEAF, &clock);
+    // 32 minimal records are accepted...
+    let at_cap = vec![SenmlRecord::text("c", "x"); MAX_RECORDS_PER_PACK];
+    assert!(
+        s.add_drop(&at_cap, "ctx-a", &AddDropParams::default()).is_some(),
+        "pack at the record cap is admitted"
+    );
+    // ...while 33 records are rejected without touching the store.
+    let over_cap = vec![SenmlRecord::text("c", "x"); MAX_RECORDS_PER_PACK + 1];
+    assert!(over_cap.len() < MAX_DROP_SIZE, "size gate would not catch this");
+    assert_eq!(
+        s.add_drop(&over_cap, "ctx-b", &AddDropParams::default()),
+        None,
+        "over-cap pack rejected"
+    );
+    let body = senml_body(&over_cap);
+    assert!(body.len() <= MAX_DROP_SIZE);
+    assert_eq!(
+        post(&mut s, Some("ctx-b"), None, body),
+        PostOutcome::BadRequest,
+        "over-cap POST is 4.00"
+    );
+    assert_eq!(s.storage_info().drop_count, 1, "store unchanged");
 }
 
 #[test]

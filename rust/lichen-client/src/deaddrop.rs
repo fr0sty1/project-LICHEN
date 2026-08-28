@@ -21,7 +21,11 @@
 //!
 //! Rate limits and budgets (spec 18.9): 6 POSTs/hour/context, max drop size
 //! 1536 B, storage 8 KB (leaf) / 32 KB (BR), default retention 24 h (max
-//! 7 d). Eviction is expired-first, then oldest (FIFO).
+//! 7 d). Eviction is expired-first, then oldest (FIFO). Packs are capped at
+//! [`MAX_RECORDS_PER_PACK`] records: storage is charged by wire size, so an
+//! unbounded record count would let tiny wire packs pin large decoded heap
+//! (a deliberate, documented divergence from the Python reference, which has
+//! no such cap).
 //!
 //! Conformance vectors: `test/vectors/deaddrop.json`.
 
@@ -39,6 +43,16 @@ use crate::Error;
 pub const POSTS_PER_HOUR: u32 = 6;
 /// Maximum drop size in bytes (spec 18.9).
 pub const MAX_DROP_SIZE: usize = 1536;
+/// Maximum SenML records accepted in one submitted pack.
+///
+/// Spec 18.9 charges storage by wire size, but each decoded record carries
+/// a fixed owned-struct overhead, so a pack of minimal records amplifies
+/// tens of times on decode while charged only its wire length. Capping at
+/// 32 records bounds the amplification of any stored drop to roughly an
+/// order of magnitude of its 1536 B wire charge. Insert-time only: listing
+/// packs assembled by [`DeadDropStore::render_get`] may legitimately hold
+/// more records.
+pub const MAX_RECORDS_PER_PACK: usize = 32;
 /// Total storage budget for leaf nodes in bytes (spec 18.9).
 pub const STORAGE_LEAF: usize = 8 * 1024;
 /// Total storage budget for border routers in bytes (spec 18.9).
@@ -1008,7 +1022,7 @@ impl DeadDropStore {
     ) -> Option<String> {
         let encoded = encode_senml_pack(payload).ok()?;
         let size = encoded.len();
-        if size > MAX_DROP_SIZE {
+        if size > MAX_DROP_SIZE || payload.len() > MAX_RECORDS_PER_PACK {
             return None;
         }
         let ttl = match params.ttl {
@@ -1076,6 +1090,9 @@ impl DeadDropStore {
             Ok(records) => records,
             Err(_) => return PostOutcome::BadRequest,
         };
+        if records.len() > MAX_RECORDS_PER_PACK {
+            return PostOutcome::BadRequest;
+        }
         let (allowed, retry_after) = self.check_rate_limit(&context_id);
         if !allowed {
             return PostOutcome::TooManyRequests { retry_after };

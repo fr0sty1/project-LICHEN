@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-134k",
+  "title": "deaddrop: wire-size storage charge vs ~40-90x decoded heap amplification",
+  "description": "deaddrop.rs:1053 charges storage by wire size but retains decoded value (:1066 :1014): a 1536B pack of minimal records decodes to hundreds of owned SenmlRecords (~100KB heap) while charged 1536B - the 8KB leaf budget can hold ~700KB live heap. Gateway-side, not firmware. Fix: cap records per pack (e.g. \u003c=32) or store raw bytes and decode on read.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:22.712069Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:43:26.549939Z",
+  "started_at": "2026-08-28T07:43:26.549939Z",
+  "lease_expires_at": "2026-08-28T07:48:26.549939Z",
+  "heartbeat_at": "2026-08-28T07:43:26.549939Z"
+}
