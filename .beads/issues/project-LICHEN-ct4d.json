@@ -18,7 +18,8 @@
     "link",
     "no-hardware",
     "owner-reserved",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
