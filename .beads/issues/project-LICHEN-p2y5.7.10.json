@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-p2y5.7.10",
+  "title": "Write integration tests for bidirectional message flow",
+  "description": "Write integration tests demonstrating bidirectional message flow between LICHEN and IRC. Tests should cover: LICHEN message appears in mapped IRC channel with correct provenance; IRC message reaches LICHEN recipient through native messaging; unauthorized IRC users are rejected; rate limits and queue bounds are enforced; duplicates are suppressed across reconnect; store-and-forward works across simulated outages; malformed content and oversized messages are rejected. Use the simulator with at least two LICHEN nodes and a mock IRC server. Document test scenarios and expected behavior.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:51.075264Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:51.075264Z",
+  "labels": [
+    "core",
+    "gateway",
+    "python",
+    "tests",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.7.10",
+      "depends_on_id": "project-LICHEN-p2y5.7",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:54.42002Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

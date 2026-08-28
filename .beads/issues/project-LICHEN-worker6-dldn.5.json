@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dldn.5",
+  "title": "Implement health/medical characteristic mappings (K.3.3)",
+  "description": "Add to gatt_ipso.c static table, health/medical characteristics:\n\n- Heart Rate Measurement 0x2A37 -\u003e 3346/5700, /min\n- Temperature Measurement 0x2A1C -\u003e 3303/5700, Cel\n- Intermediate Temperature 0x2A1E -\u003e 3303/5700, Cel\n- Weight Measurement 0x2A9D -\u003e 3322/5700, kg\n- Body Fat Percentage 0x2A9B -\u003e 26250/5700, %\n- Body Mass Index 0x2A9C -\u003e 26250/5701, kg/m2\n- Blood Pressure Measurement 0x2A35 -\u003e 3323/5700, Pa (with mmHg-\u003ePa conversion)\n- Glucose Measurement 0x2A18 -\u003e 3325/5700, kg/L\n- SpO2 0x2A5F -\u003e 3325/5701, %\n- VO2 Max 0x2A96 -\u003e 26258/5700, mL/kg/min\n- Resting Heart Rate 0x2A92 -\u003e 3346/5701, /min\n- Aerobic Threshold HR 0x2A7F -\u003e 3346/5702, /min\n- Anaerobic Threshold HR 0x2A83 -\u003e 3346/5703, /min\n\n~13 entries. Reference: spec/appendix-gatt-ipso.md K.3.3",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:53:42.319673Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:53:42.319673Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dldn.5",
+      "depends_on_id": "project-LICHEN-worker6-dldn",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:53:42.988755Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

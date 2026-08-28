@@ -1,0 +1,26 @@
+{
+  "id": "lora-ipv6-mesh-7an.4",
+  "title": "Desktop GUI application (lichen-desktop)",
+  "description": "Desktop GUI application for LICHEN using Electron or Tauri.\n\nFeatures:\n- CoAP client for node communication over IPv6\n- Contact management with TOFU key pinning\n- Message composition and history\n- Waypoint management and map display\n- Node status and diagnostics\n- Cross-platform (macOS, Windows, Linux)\n\nTechnology options:\n- Electron: Web tech, larger bundle, mature ecosystem\n- Tauri: Rust backend, smaller footprint, native feel\n\nDepends on Local Client Interface (Phase 6) being defined.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:39.674585Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:39.674585Z",
+  "labels": [
+    "defer-external",
+    "owner-reserved"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-7an.4",
+      "depends_on_id": "lora-ipv6-mesh-7an",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:42.738186Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

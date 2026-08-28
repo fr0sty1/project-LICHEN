@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-wqaa.2.3",
+  "title": "Research Shuttleworth Foundation requirements and past fellows for alignment patterns",
+  "description": "Review Shuttleworth Foundation application requirements, criteria, and timeline. Study 3-5 past fellows in adjacent domains (mesh networking, open hardware, privacy tech) to identify successful framing patterns. Document key themes: open knowledge commitment, social change focus, fellowship vs grant distinction. Output: research notes with concrete alignment opportunities.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:50:24.095656Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:50:24.095656Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.2.3",
+      "depends_on_id": "project-LICHEN-wqaa.2",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:50:26.804887Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -9,7 +9,7 @@
 / {
 	chosen {
 		zephyr,lora      = &lora;
-		zephyr,uart-pipe = &cdc_acm_uart0;
+		lichen,slip-uart = &cdc_acm_uart0;
 	};
 };
 

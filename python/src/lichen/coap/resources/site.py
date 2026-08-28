@@ -17,10 +17,13 @@ from lichen.coap.params import (
     congestion_service_unavailable,
 )
 from lichen.coap.resources.base import NodeInfo
+from lichen.coap.resources.confessions import ConfessionsDetailsResource, ConfessionsResource
+from lichen.coap.resources.deaddrop import DeadDropDetailsResource, DeadDropResource
 from lichen.coap.resources.edhoc import EdhocResource
 from lichen.coap.resources.emergency import CheckInResource, RollcallResource, SosResource
 from lichen.coap.resources.keys import KeyResource
 from lichen.coap.resources.messaging import (
+    CannedMessagesResource,
     LegacyMessagesAliasResource,
     MessageReceiptsResource,
     MessagesResource,
@@ -36,7 +39,7 @@ from lichen.coap.resources.node_resources import (
     StatusResource,
 )
 from lichen.coap.resources.position import PositionCacheResource
-from lichen.coap.resources.presence import PresenceResource
+from lichen.coap.resources.presence import PresenceCacheResource, PresenceResource
 from lichen.coap.resources.proxy import ProxyResource
 from lichen.coap.resources.resource_directory import ResourceDirectoryResource
 from lichen.coap.resources.senml import (
@@ -139,11 +142,14 @@ def build_site(
     position_cache_resource: PositionCacheResource | None = None,
     metrics_resource: SenMLMetricsResource | None = None,
     presence_resource: PresenceResource | None = None,
+    presence_cache_resource: PresenceCacheResource | None = None,
     messages_resource: MessagesResource | None = None,
     message_receipts_resource: MessageReceiptsResource | None = None,
     sos_resource: SosResource | None = None,
     rollcall_resource: RollcallResource | None = None,
     checkin_resource: CheckInResource | None = None,
+    deaddrop_resource: DeadDropResource | None = None,
+    confessions_resource: ConfessionsResource | None = None,
     resource_directory: bool = False,
     edhoc_resource: EdhocResource | None = None,
     endpoint_policy: EndpointPolicy | None = None,
@@ -155,10 +161,12 @@ def build_site(
 
     Pass pre-constructed observable resources to expose ``/sensors``,
     ``/sensors/location`` (plus the historical ``/location`` alias), ``/metrics``,
-    ``/presence``, ``/msg/inbox``, ``/msg/ack``, ``/sos``, ``/rollcall``, and/or
-    ``/checkin`` for conference demo (messaging, presence, rollcall, check-in,
-    position beacons with SenML). Callers hold references and call update()
-    methods to push LCI notifications. Pass ``rollcall_resource`` to enable
+    ``/presence``, ``/presence/cache``, ``/msg/inbox``, ``/msg/canned``,
+    ``/msg/ack``, ``/sos``, ``/rollcall``, ``/checkin``, ``/deaddrop``,
+    and/or ``/confessions`` for conference demo (messaging, presence, rollcall,
+    check-in, position beacons with SenML, dead drop, confessions). Callers hold
+    references and call update() methods to push LCI notifications. Pass
+    ``rollcall_resource`` to enable
     conference rollcall demo using LCI and SenML per spec 18.
 
     Pass ``neighbors_resource`` to hold a reference for calling
@@ -209,6 +217,8 @@ def build_site(
         site.add_resource(["metrics"], metrics_resource)
     if presence_resource is not None:
         site.add_resource(["presence"], presence_resource)
+    if presence_cache_resource is not None:
+        site.add_resource(["presence", "cache"], presence_cache_resource)
     if messages_resource is not None:
 
         def register_sent_detail(msg_id: str, message: dict[str, Any]) -> None:
@@ -220,6 +230,7 @@ def build_site(
         site.add_resource(["msg", "inbox"], messages_resource)
         site.add_resource(["msg", "sent"], SentMessagesResource(messages_resource))
         site.add_resource(["msg", "sent"], SentMessageDetailsResource(messages_resource))
+        site.add_resource(["msg", "canned"], CannedMessagesResource(messages_resource))
         site.add_resource(["messages"], legacy_messages)
     if message_receipts_resource is not None:
         site.add_resource(["msg", "ack"], message_receipts_resource)
@@ -229,6 +240,12 @@ def build_site(
         site.add_resource(["rollcall"], rollcall_resource)
     if checkin_resource is not None:
         site.add_resource(["checkin"], checkin_resource)
+    if deaddrop_resource is not None:
+        site.add_resource(["deaddrop"], deaddrop_resource)
+        site.add_resource(["deaddrop"], DeadDropDetailsResource(deaddrop_resource))
+    if confessions_resource is not None:
+        site.add_resource(["confessions"], confessions_resource)
+        site.add_resource(["confessions"], ConfessionsDetailsResource(confessions_resource))
     if resource_directory:
 
         def remove_rd_registration(reg_id: str) -> None:

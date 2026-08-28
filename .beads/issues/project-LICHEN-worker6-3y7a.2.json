@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-3y7a.2",
+  "title": "task",
+  "description": "Parse BLE advertisement data: iBeacon format (UUID, major, minor), Eddystone UUID frames, generic manufacturer data extraction. Decode service UUIDs from advertisement payload.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:52:35.625146Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:52:35.625146Z",
+  "labels": [
+    "zephyr",
+    "c",
+    "needs-linux"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-3y7a.2",
+      "depends_on_id": "project-LICHEN-worker6-3y7a",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:52:36.426738Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

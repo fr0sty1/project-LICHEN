@@ -66,10 +66,11 @@ int lichen_rpl_srh_parse(struct lichen_rpl_srh *srh,
 		return LICHEN_RPL_ERR_BAD_RT;
 	}
 
-	/* SECURITY: Reject compressed SRHs (CmprI/CmprE > 0 per RFC 6554 Section 3).
-	 * We only support uncompressed addresses (16 bytes each). Compressed SRHs
-	 * would be parsed incorrectly, leading to misrouted packets. */
-	if (data[2] != 0 || data[3] != 0) {
+	/* SECURITY: Reject compressed or padded SRHs.  This profile supports
+	 * full 16-byte addresses only, so CmprI, CmprE, and Pad must be zero.
+	 * RFC 6554 Section 3 requires receivers to ignore the low reserved nibble
+	 * of data[3] and both reserved octets data[4..6]. */
+	if (data[2] != 0 || (data[3] & 0xf0u) != 0) {
 		return LICHEN_RPL_ERR_BAD_RT;
 	}
 
@@ -113,4 +114,73 @@ int lichen_rpl_srh_check_nonstoring(const struct lichen_rpl_srh *srh,
 		return LICHEN_RPL_ERR_BAD_RT;
 	}
 	return LICHEN_RPL_OK;
+}
+
+static bool srh_addr_is_multicast(const uint8_t addr[16])
+{
+	return addr[0] == 0xffu;
+}
+
+int lichen_rpl_srh_advance(struct lichen_rpl_srh *srh,
+			   const uint8_t *source_addr,
+			   uint8_t *destination,
+			   uint8_t *hop_limit,
+			   uint8_t *next_hop)
+{
+	uint8_t current_destination[16];
+	uint8_t selected_next_hop[16];
+	size_t next_index;
+
+	if (srh == NULL || source_addr == NULL || destination == NULL ||
+	    hop_limit == NULL || next_hop == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (srh->num_addresses > LICHEN_RPL_MAX_HOPS ||
+	    srh->segments_left > srh->num_addresses || *hop_limit == 0) {
+		return LICHEN_RPL_ERR_BAD_RT;
+	}
+	if (srh_addr_is_multicast(source_addr) ||
+	    srh_addr_is_multicast(destination) ||
+	    rpl_addr_eq(source_addr, destination)) {
+		return LICHEN_RPL_ERR_BAD_RT;
+	}
+
+	/* Validate every address before mutation.  Already-visited entries hold
+	 * prior IPv6 Destinations because RFC 6554 swaps each consumed segment. */
+	for (size_t i = 0; i < srh->num_addresses; i++) {
+		const uint8_t *addr = srh->addresses[i];
+
+		if (srh_addr_is_multicast(addr) || rpl_addr_eq(addr, source_addr) ||
+		    rpl_addr_eq(addr, destination)) {
+			return LICHEN_RPL_ERR_BAD_RT;
+		}
+		for (size_t j = 0; j < i; j++) {
+			if (rpl_addr_eq(addr, srh->addresses[j])) {
+				return LICHEN_RPL_ERR_BAD_RT;
+			}
+		}
+	}
+
+	if (srh->segments_left == 0) {
+		return LICHEN_RPL_SRH_COMPLETE;
+	}
+	/* LICHEN's profile requires enough Hop Limit for all remaining segments.
+	 * This also prevents decrementing a forwarding packet to zero. */
+	if (srh->segments_left >= *hop_limit) {
+		return LICHEN_RPL_ERR_BAD_RT;
+	}
+
+	next_index = (size_t)srh->num_addresses - srh->segments_left;
+	memcpy(current_destination, destination, sizeof(current_destination));
+	memcpy(selected_next_hop, srh->addresses[next_index],
+	       sizeof(selected_next_hop));
+
+	/* Commit only after all validation and copies have succeeded. */
+	memcpy(srh->addresses[next_index], current_destination,
+	       sizeof(current_destination));
+	memcpy(destination, selected_next_hop, sizeof(selected_next_hop));
+	*hop_limit = (uint8_t)(*hop_limit - 1u);
+	srh->segments_left--;
+	memcpy(next_hop, selected_next_hop, sizeof(selected_next_hop));
+	return LICHEN_RPL_SRH_FORWARD;
 }

@@ -1,17 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for the GNSS NMEA feeder tool."""
+"""Tests for the GNSS NMEA module and GnssStub."""
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-# Add tools directory to path so we can import the feeder
-TOOLS_DIR = Path(__file__).parent.parent.parent / "tools"
-sys.path.insert(0, str(TOOLS_DIR))
-
-from gnss_nmea_feeder import make_gga, make_rmc, nmea_checksum  # noqa: E402
+from lichen.sim.gnss import (
+    GnssStub,
+    NmeaSentences,
+    make_gga,
+    make_rmc,
+    nmea_checksum,
+)
 
 
 class TestNmeaChecksum:
@@ -160,3 +159,88 @@ class TestLatLonConversion:
         gga = make_gga(0.0, 0.0)
         fields = gga.split(",")
         assert fields[4].startswith("000")
+
+
+class TestNmeaSentences:
+    """Tests for the NmeaSentences dataclass."""
+
+    def test_generate_returns_both_sentences(self) -> None:
+        """Generate should return both GGA and RMC sentences."""
+        sentences = NmeaSentences.generate(lat=37.7749, lon=-122.4194)
+        assert sentences.gga.startswith("$GPGGA,")
+        assert sentences.rmc.startswith("$GPRMC,")
+
+    def test_generate_with_no_fix(self) -> None:
+        """Generate with fix_quality=0 should produce invalid sentences."""
+        sentences = NmeaSentences.generate(lat=37.7749, lon=-122.4194, fix_quality=0)
+        # GGA fix quality field
+        gga_fields = sentences.gga.split(",")
+        assert gga_fields[6] == "0"
+        # RMC status field
+        rmc_fields = sentences.rmc.split(",")
+        assert rmc_fields[2] == "V"
+
+    def test_as_bytes(self) -> None:
+        """as_bytes should return ASCII-encoded sentences."""
+        sentences = NmeaSentences.generate(lat=37.7749, lon=-122.4194)
+        data = sentences.as_bytes()
+        assert isinstance(data, bytes)
+        assert b"$GPGGA," in data
+        assert b"$GPRMC," in data
+
+    def test_utc_is_recorded(self) -> None:
+        """UTC timestamp should be stored in the dataclass."""
+        import datetime
+
+        utc = datetime.datetime(2024, 6, 15, 12, 30, 45, tzinfo=datetime.UTC)
+        sentences = NmeaSentences.generate(lat=0.0, lon=0.0, utc=utc)
+        assert sentences.utc == utc
+
+
+class TestGnssStub:
+    """Tests for the GnssStub class."""
+
+    def test_default_position(self) -> None:
+        """Default position should be San Francisco."""
+        stub = GnssStub()
+        assert stub.lat == 37.7749
+        assert stub.lon == -122.4194
+        assert stub.has_fix is True
+
+    def test_set_position(self) -> None:
+        """set_position should update lat/lon."""
+        stub = GnssStub()
+        stub.set_position(lat=51.5074, lon=-0.1278, alt=20.0)
+        assert stub.lat == 51.5074
+        assert stub.lon == -0.1278
+        assert stub.alt == 20.0
+
+    def test_set_fix(self) -> None:
+        """set_fix should update fix status."""
+        stub = GnssStub()
+        stub.set_fix(False)
+        assert stub.has_fix is False
+
+    def test_generate_sentences(self) -> None:
+        """generate_sentences should return NmeaSentences."""
+        stub = GnssStub(lat=47.6062, lon=-122.3321)
+        sentences = stub.generate_sentences()
+        assert isinstance(sentences, NmeaSentences)
+        # Seattle coordinates
+        assert "N" in sentences.gga
+        assert "W" in sentences.gga
+
+    def test_generate_sentences_no_fix(self) -> None:
+        """generate_sentences with has_fix=False should return invalid fix."""
+        stub = GnssStub(has_fix=False)
+        sentences = stub.generate_sentences()
+        gga_fields = sentences.gga.split(",")
+        assert gga_fields[6] == "0"
+
+    def test_feed_once(self) -> None:
+        """feed_once should return NMEA bytes."""
+        stub = GnssStub()
+        data = stub.feed_once()
+        assert isinstance(data, bytes)
+        assert b"$GPGGA," in data
+        assert b"$GPRMC," in data

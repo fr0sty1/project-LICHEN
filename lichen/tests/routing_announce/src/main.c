@@ -10,7 +10,8 @@
 #include <zephyr/ztest.h>
 #include <zephyr/sys/util.h>
 
-#include <tinycrypt/sha256.h>
+#include <monocypher.h>
+#include <monocypher-ed25519.h>
 
 #include <lichen/l2_payload.h>
 #include <lichen/routing/announce.h>
@@ -37,6 +38,30 @@ static const uint8_t seed_b[32] = {
 	0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f
 };
 
+/* announce_signed_data.json:announce_signed_data_transcript */
+static const uint8_t canonical_seed[32] = {
+	0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+	0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+	0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+	0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+};
+
+static const uint8_t canonical_announce_frame[97] = {
+	0x01, 0x03, 0x00, 0x12, 0x34, 0x71, 0x59, 0xbd,
+	0x63, 0x3b, 0x2e, 0x91, 0x20, 0x20, 0x7a, 0x06,
+	0x78, 0x92, 0x82, 0x1e, 0x25, 0xd7, 0x70, 0xf1,
+	0xfb, 0xa0, 0xc4, 0x7c, 0x11, 0xff, 0x4b, 0x81,
+	0x3e, 0x54, 0x16, 0x2e, 0xce, 0x9e, 0xb8, 0x39,
+	0xe0, 0x76, 0x23, 0x1a, 0xb6, 0x8f, 0xb8, 0x02,
+	0x65, 0x60, 0x20, 0x5a, 0x28, 0x14, 0x05, 0xca,
+	0x54, 0x47, 0x42, 0xaa, 0xb4, 0x1f, 0x72, 0xff,
+	0x9e, 0xbb, 0xbc, 0xc6, 0x1f, 0xd4, 0x93, 0xf0,
+	0xa4, 0xad, 0x72, 0x64, 0x83, 0x91, 0x49, 0xea,
+	0x51, 0xca, 0x84, 0x2e, 0xf1, 0xbf, 0x82, 0x3c,
+	0x24, 0xdf, 0xfa, 0x5e, 0x0d, 0xde, 0xad, 0xbe,
+	0xef,
+};
+
 static void put_be32(uint8_t *buf, uint32_t value)
 {
 	buf[0] = (uint8_t)(value >> 24);
@@ -47,14 +72,12 @@ static void put_be32(uint8_t *buf, uint32_t value)
 
 static void pubkey_to_iid(const uint8_t pubkey[32], uint8_t iid[8])
 {
-	struct tc_sha256_state_struct sha_state;
-	uint8_t hash[TC_SHA256_DIGEST_SIZE];
+	uint8_t hash[64];
 
-	(void)tc_sha256_init(&sha_state);
-	(void)tc_sha256_update(&sha_state, pubkey, 32U);
-	(void)tc_sha256_final(hash, &sha_state);
+	crypto_sha512(hash, pubkey, 32U);
 	memcpy(iid, hash, 8U);
 	iid[0] &= (uint8_t)~0x02U;
+	crypto_wipe(hash, sizeof(hash));
 }
 
 static void build_coords(uint8_t app_data[9], int32_t lat_e7, int32_t lon_e7)
@@ -74,23 +97,29 @@ static size_t build_signed_announce(uint8_t *buf, size_t cap,
 	uint8_t signed_data[256];
 	uint8_t signature[48];
 	size_t signed_len;
+	static const uint8_t signing_domain[] = "LICHEN-ANNOUNCE-v1";
 
 	zassert_true(cap >= LICHEN_ANNOUNCE_MIN_LEN + app_data_len);
-	zassert_true(sizeof(signed_data) >= 43U + app_data_len);
+	zassert_equal(sizeof(signing_domain), 19U);
+	zassert_true(sizeof(signed_data) >= 64U + app_data_len);
 	zassert_true(rx_channel < 8U);
+	zassert_true(app_data_len <= LICHEN_ANNOUNCE_MAX_APP_DATA_LEN);
 
 	schnorr48_derive_keypair(seed, privkey, pubkey);
 	pubkey_to_iid(pubkey, &buf[5]);
 
-	memcpy(&signed_data[0], &buf[5], 8U);
-	memcpy(&signed_data[8], pubkey, sizeof(pubkey));
-	signed_data[40] = (uint8_t)(seq_num >> 8);
-	signed_data[41] = (uint8_t)seq_num;
-	signed_data[42] = rx_channel; /* rx_channel in flags, signed per CCP-9 */
+	memcpy(&signed_data[0], signing_domain, sizeof(signing_domain));
+	memcpy(&signed_data[19], &buf[5], 8U);
+	memcpy(&signed_data[27], pubkey, sizeof(pubkey));
+	signed_data[59] = (uint8_t)(seq_num >> 8);
+	signed_data[60] = (uint8_t)seq_num;
+	signed_data[61] = rx_channel; /* rx_channel in flags, signed per CCP-9 */
+	signed_data[62] = (uint8_t)(app_data_len >> 8);
+	signed_data[63] = (uint8_t)app_data_len;
 	if (app_data_len > 0U) {
-		memcpy(&signed_data[43], app_data, app_data_len);
+		memcpy(&signed_data[64], app_data, app_data_len);
 	}
-	signed_len = 43U + app_data_len;
+	signed_len = 64U + app_data_len;
 	zassert_ok(schnorr48_sign(privkey, pubkey, signed_data, signed_len,
 				  signature));
 
@@ -154,6 +183,87 @@ ZTEST(routing_announce, test_parse_accepts_minimal_and_app_data)
 	zassert_mem_equal(view.signature, &announce[45], 48U);
 	zassert_mem_equal(view.app_data, app_data, sizeof(app_data));
 	zassert_equal(view.app_data_len, sizeof(app_data));
+}
+
+ZTEST(routing_announce, test_canonical_vector_encode_decode)
+{
+	static const uint8_t app_data[] = { 0xde, 0xad, 0xbe, 0xef };
+	uint8_t built[sizeof(canonical_announce_frame)];
+	uint8_t encoded[sizeof(canonical_announce_frame)];
+	struct lichen_announce_view view;
+	size_t len;
+
+	len = build_signed_announce(built, sizeof(built), canonical_seed,
+				    0x1234U, 3U, app_data, sizeof(app_data));
+	zassert_equal(len, sizeof(canonical_announce_frame));
+	zassert_mem_equal(built, canonical_announce_frame,
+			  sizeof(canonical_announce_frame));
+
+	zassert_ok(lichen_announce_parse(canonical_announce_frame,
+					 sizeof(canonical_announce_frame), &view));
+	zassert_equal(view.rx_channel, 3U);
+	zassert_equal(view.hop_count, 0U);
+	zassert_equal(view.wire_seq_num, 0x1234U);
+	zassert_mem_equal(view.app_data, app_data, sizeof(app_data));
+	zassert_equal(lichen_announce_encode(&view, encoded, sizeof(encoded)),
+		      sizeof(encoded));
+	zassert_mem_equal(encoded, canonical_announce_frame, sizeof(encoded));
+
+	/* This also verifies the canonical domain-separated signature transcript. */
+	zassert_ok(lichen_announce_ingest_authenticated(
+		canonical_announce_frame, sizeof(canonical_announce_frame), NULL));
+}
+
+ZTEST(routing_announce, test_encode_decode_profile_boundaries)
+{
+	uint8_t iid[LICHEN_ANNOUNCE_IID_LEN] = { 0 };
+	uint8_t pubkey[LICHEN_ANNOUNCE_PUBKEY_LEN] = { 0 };
+	uint8_t signature[LICHEN_ANNOUNCE_SIGNATURE_LEN] = { 0 };
+	uint8_t app_data[LICHEN_ANNOUNCE_MAX_APP_DATA_LEN + 1U] = { 0 };
+	uint8_t wire[LICHEN_ANNOUNCE_MAX_LEN + 1U] = { 0 };
+	struct lichen_announce_view decoded;
+	struct lichen_announce_view announce = {
+		.hop_count = LICHEN_ANNOUNCE_MAX_HOPS,
+		.rx_channel = 7U,
+		.wire_seq_num = UINT16_MAX,
+		.seq_num = UINT16_MAX,
+		.originator_iid = iid,
+		.pubkey = pubkey,
+		.signature = signature,
+		.app_data = app_data,
+		.app_data_len = LICHEN_ANNOUNCE_MAX_APP_DATA_LEN,
+	};
+
+	zassert_equal(lichen_announce_encode(&announce, wire,
+					     LICHEN_ANNOUNCE_MAX_LEN),
+		      LICHEN_ANNOUNCE_MAX_LEN);
+	zassert_ok(lichen_announce_parse(wire, LICHEN_ANNOUNCE_MAX_LEN,
+					 &decoded));
+	zassert_equal(decoded.app_data_len, LICHEN_ANNOUNCE_MAX_APP_DATA_LEN);
+	zassert_equal(decoded.hop_count, LICHEN_ANNOUNCE_MAX_HOPS);
+	zassert_equal(decoded.rx_channel, 7U);
+	zassert_equal(decoded.wire_seq_num, UINT16_MAX);
+
+	zassert_equal(lichen_announce_encode(&announce, wire,
+					     LICHEN_ANNOUNCE_MAX_LEN - 1U),
+		      -ENOMEM);
+	announce.app_data_len = LICHEN_ANNOUNCE_MAX_APP_DATA_LEN + 1U;
+	zassert_equal(lichen_announce_encode(&announce, wire, sizeof(wire)),
+		      -EMSGSIZE);
+	announce.app_data_len = 0U;
+	announce.rx_channel = 8U;
+	zassert_equal(lichen_announce_encode(&announce, wire, sizeof(wire)),
+		      -EINVAL);
+	announce.rx_channel = 0U;
+	announce.hop_count = LICHEN_ANNOUNCE_MAX_HOPS + 1U;
+	zassert_equal(lichen_announce_encode(&announce, wire, sizeof(wire)),
+		      -EINVAL);
+
+	wire[0] = LICHEN_ANNOUNCE_TYPE;
+	wire[1] = 0U;
+	wire[2] = 0U;
+	zassert_equal(lichen_announce_parse(wire, sizeof(wire), &decoded),
+		      -EMSGSIZE);
 }
 
 ZTEST(routing_announce, test_ingest_invokes_observer_with_meta_and_extended_seq)

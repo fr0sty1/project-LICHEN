@@ -22,7 +22,7 @@ from enum import Enum
 from functools import total_ordering
 from ipaddress import IPv6Address
 
-from lichen.ipv6 import to_ipv6
+from lichen.ipv6 import routing_key
 
 MAX_ENTRIES = 64
 GRADIENT_TIMEOUT_MS = 600_000  # announce/rrep gradients (spec section 9)
@@ -100,8 +100,8 @@ class GradientEntry:
     coords: tuple[float, float] | None = None  # (lat, lon) from app_data (spec 9.7)
 
     def __post_init__(self) -> None:
-        self.destination = to_ipv6(self.destination)
-        self.next_hop = to_ipv6(self.next_hop)
+        self.destination = routing_key(self.destination)
+        self.next_hop = routing_key(self.next_hop)
 
     def _rank(self) -> tuple[int, SeqNum, int]:
         # Larger is better: priority, then freshness (RFC 1982), then fewer hops.
@@ -121,7 +121,7 @@ class GradientTable:
         self, destination: IPv6Address | str, now: int | None = None
     ) -> GradientEntry | None:
         """Return the gradient for ``destination`` (None if absent or expired)."""
-        dest = to_ipv6(destination)
+        dest = routing_key(destination)
         entry = self._entries.get(dest)
         if entry is None:
             return None
@@ -163,11 +163,11 @@ class GradientTable:
 
     def remove(self, destination: IPv6Address | str) -> None:
         """Remove the gradient for ``destination`` if present."""
-        self._entries.pop(to_ipv6(destination), None)
+        self._entries.pop(routing_key(destination), None)
 
     def remove_via(self, next_hop: IPv6Address | str) -> list[IPv6Address]:
         """Remove every gradient routing through ``next_hop``; return their dsts."""
-        nh = to_ipv6(next_hop)
+        nh = routing_key(next_hop)
         dests = [d for d, e in self._entries.items() if e.next_hop == nh]
         for dest in dests:
             del self._entries[dest]
@@ -188,7 +188,7 @@ class GradientTable:
         return len(self._entries)
 
     def __contains__(self, destination: IPv6Address | str) -> bool:
-        return to_ipv6(destination) in self._entries
+        return routing_key(destination) in self._entries
 
     def entries(self) -> list[GradientEntry]:
         """Return a list of all gradient entries (public iteration API)."""

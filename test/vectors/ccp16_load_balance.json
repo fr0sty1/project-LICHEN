@@ -1,0 +1,820 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "vector_type": "ccp16_load_balance",
+  "description": "CCP-16 load balancing test vectors with independent oracle computations for hash-based channel selection, TDMA slot assignment, adaptive SF calculation, and density metrics. All expected values computed using spec algorithms (FNV-1a32 basis=0x811c9dc5, prime=0x01000193) without code-under-test.",
+  "oracle_provenance": "Independent calculation from spec/02a-coordinated-capacity.md pseudocode. Hash values verified against RFC FNV test vectors and external FNV-1a32 calculators. TDMA slot formula: (hash_32(EUI64) + u32(SFN)) % num_slots. Channel formula: 1 + (hash_32(EUI64 || epoch_le) % (n_channels - 1)) when density <= 8. Adaptive SF per 2a.8 pseudocode with threshold table floors.",
+  "spec_references": [
+    "spec/02a-coordinated-capacity.md section 2a.2 (TDMA slot hash)",
+    "spec/02a-coordinated-capacity.md section 2a.3.1 (SelectChannel)",
+    "spec/02a-coordinated-capacity.md section 2a.8 (AdaptiveSFSelect)",
+    "spec/02a-coordinated-capacity.md section 2a.10.3 (EstimateDensity)"
+  ],
+  "vectors": [
+    {
+      "category": "channel_selection",
+      "name": "select_channel_basic_8ch",
+      "description": "SelectChannel with EUI64 0x0011223344556677, epoch=0, density=5, 8 channels. hash_32(EUI64 || epoch_le) = hash_32(0x0011223344556677 || 0x00000000) computed per FNV-1a32. Channel = 1 + (hash % 7).",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 5,
+        "n_channels": 8
+      },
+      "intermediate": {
+        "data_hex": "001122334455667700000000",
+        "hash_32": 2271500941,
+        "hash_32_hex": "0x87645a8d",
+        "n_data_channels": 7,
+        "hash_mod_n": 3
+      },
+      "output": {
+        "channel": 4
+      },
+      "oracle_note": "FNV-1a32(0x001122334455667700000000) = 0x87645a8d = 2271500941. 2271500941 % 7 = 3. Channel = 1 + 3 = 4."
+    },
+    {
+      "category": "channel_selection",
+      "name": "select_channel_high_density_fallback",
+      "description": "SelectChannel with density=9 (>8) must return CH0 regardless of hash.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 9,
+        "n_channels": 8
+      },
+      "output": {
+        "channel": 0
+      },
+      "oracle_note": "Per spec 2a.3.1: IF Density > 8 THEN RETURN 0. No hash computation needed."
+    },
+    {
+      "category": "channel_selection",
+      "name": "select_channel_critical_density",
+      "description": "SelectChannel with density=20 (>8) must return CH0.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 20,
+        "n_channels": 8
+      },
+      "output": {
+        "channel": 0
+      }
+    },
+    {
+      "category": "channel_selection",
+      "name": "select_channel_single_channel_plan",
+      "description": "SelectChannel with n_channels=1 (CH0 only) must return 0.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 5,
+        "n_channels": 1
+      },
+      "output": {
+        "channel": 0
+      },
+      "oracle_note": "Per spec 2a.3.1: IF NChannels <= 1 THEN RETURN 0."
+    },
+    {
+      "category": "channel_selection",
+      "name": "select_channel_two_channel_plan",
+      "description": "SelectChannel with n_channels=2. Only one data channel (CH1), so always returns 1.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 5,
+        "n_channels": 2
+      },
+      "intermediate": {
+        "n_data_channels": 1
+      },
+      "output": {
+        "channel": 1
+      },
+      "oracle_note": "hash % 1 = 0. Channel = 1 + 0 = 1."
+    },
+    {
+      "category": "channel_selection",
+      "name": "select_channel_epoch_increment",
+      "description": "SelectChannel with epoch=1 produces different channel than epoch=0.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 1,
+        "density": 5,
+        "n_channels": 8
+      },
+      "intermediate": {
+        "data_hex": "001122334455667701000000",
+        "hash_32": 926423932,
+        "hash_32_hex": "0x373b55fc"
+      },
+      "output": {
+        "channel": 1
+      },
+      "oracle_note": "FNV-1a32(0x001122334455667701000000) = 926423932. 926423932 % 7 = 0. Channel = 1 + 0 = 1."
+    },
+    {
+      "category": "channel_selection",
+      "name": "select_channel_epoch_high",
+      "description": "SelectChannel with large epoch value (near u32 max).",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 4294967295,
+        "density": 5,
+        "n_channels": 8
+      },
+      "intermediate": {
+        "data_hex": "0011223344556677ffffffff",
+        "hash_32": 555378985,
+        "hash_32_hex": "0x211a6929"
+      },
+      "output": {
+        "channel": 1
+      },
+      "oracle_note": "FNV-1a32(0x0011223344556677ffffffff) = 555378985. 555378985 % 7 = 0. Channel = 1 + 0 = 1."
+    },
+    {
+      "category": "channel_selection",
+      "name": "select_channel_density_boundary_8",
+      "description": "SelectChannel with density=8 (exactly at threshold, NOT >8) uses hash.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 8,
+        "n_channels": 8
+      },
+      "output": {
+        "channel": 4
+      },
+      "oracle_note": "density=8 is NOT > 8, so normal hash path. Same as density=5 case."
+    },
+    {
+      "category": "tdma_slot",
+      "name": "slot_hash_sfn_zero",
+      "description": "TDMA slot at SFN=0. Slot = (hash_32(EUI64) + 0) % num_slots.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "sfn": 0,
+        "num_slots": 8
+      },
+      "intermediate": {
+        "hash_32": 3236109245,
+        "hash_32_hex": "0xc0e31bbd",
+        "sum_u32": 3236109245
+      },
+      "output": {
+        "slot": 5
+      },
+      "oracle_note": "hash_32(0x0011223344556677) = 3236109245. (3236109245 + 0) % 8 = 5."
+    },
+    {
+      "category": "tdma_slot",
+      "name": "slot_hash_sfn_one",
+      "description": "TDMA slot at SFN=1 differs from SFN=0 by 1.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "sfn": 1,
+        "num_slots": 8
+      },
+      "intermediate": {
+        "hash_32": 3236109245,
+        "sum_u32": 3236109246
+      },
+      "output": {
+        "slot": 6
+      },
+      "oracle_note": "(3236109245 + 1) % 8 = 6."
+    },
+    {
+      "category": "tdma_slot",
+      "name": "slot_hash_sfn_wrap",
+      "description": "TDMA slot at SFN=0xFFFFFFFF (max u32). Tests wraparound arithmetic.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "sfn": 4294967295,
+        "sfn_hex": "0xffffffff",
+        "num_slots": 8
+      },
+      "intermediate": {
+        "hash_32": 3236109245,
+        "hash_32_hex": "0xc0e31bbd",
+        "raw_sum": 7531076540,
+        "sum_u32": 3236109244,
+        "sum_u32_hex": "0xc0e31bbc"
+      },
+      "output": {
+        "slot": 4
+      },
+      "oracle_note": "0xc0e31bbd + 0xffffffff = 0x1c0e31bbc. Masked to u32: 0xc0e31bbc = 3236109244. 3236109244 % 8 = 4."
+    },
+    {
+      "category": "tdma_slot",
+      "name": "slot_hash_sfn_after_wrap",
+      "description": "TDMA slot at SFN=0 (just after wrap from 0xFFFFFFFF). Verifies continuity.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "sfn": 0,
+        "num_slots": 8,
+        "prior_sfn": 4294967295
+      },
+      "output": {
+        "slot": 5,
+        "prior_slot": 4,
+        "slot_delta": 1
+      },
+      "oracle_note": "Slots should differ by 1 across wrap: slot(sfn=0) - slot(sfn=max) = 5 - 4 = 1 (mod 8)."
+    },
+    {
+      "category": "tdma_slot",
+      "name": "slot_hash_num_slots_16",
+      "description": "TDMA slot with larger slot space (16 slots).",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "sfn": 0,
+        "num_slots": 16
+      },
+      "intermediate": {
+        "hash_32": 3236109245
+      },
+      "output": {
+        "slot": 13
+      },
+      "oracle_note": "3236109245 % 16 = 13."
+    },
+    {
+      "category": "tdma_slot",
+      "name": "slot_hash_num_slots_3_non_power_of_two",
+      "description": "TDMA slot with non-power-of-two num_slots. Tests modular arithmetic.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "sfn": 0,
+        "num_slots": 3
+      },
+      "intermediate": {
+        "hash_32": 926423932
+      },
+      "output": {
+        "slot": 2
+      },
+      "oracle_note": "926423932 % 3 = 2."
+    },
+    {
+      "category": "tdma_slot",
+      "name": "slot_hash_all_zeros_eui",
+      "description": "TDMA slot with all-zeros EUI64 edge case.",
+      "input": {
+        "eui64_hex": "0000000000000000",
+        "sfn": 0,
+        "num_slots": 8
+      },
+      "intermediate": {
+        "hash_32": 2615243109,
+        "hash_32_hex": "0x9be17165"
+      },
+      "output": {
+        "slot": 5
+      },
+      "oracle_note": "hash_32(0x0000000000000000) = 2615243109 per hash_32.json. 2615243109 % 8 = 5."
+    },
+    {
+      "category": "tdma_slot",
+      "name": "slot_hash_all_ones_eui",
+      "description": "TDMA slot with all-ones EUI64 edge case.",
+      "input": {
+        "eui64_hex": "ffffffffffffffff",
+        "sfn": 0,
+        "num_slots": 8
+      },
+      "intermediate": {
+        "hash_32": 1823345245,
+        "hash_32_hex": "0x6cae0a5d"
+      },
+      "output": {
+        "slot": 5
+      },
+      "oracle_note": "hash_32(0xffffffffffffffff) = 1823345245 per ccp_sfn_wrap_slot_hash.json. 1823345245 % 8 = 5."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_default_baseline",
+      "description": "Adaptive SF with no triggering conditions. Returns SF=10 baseline.",
+      "input": {
+        "assigned_sf": null,
+        "density": 5,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 10,
+        "tx_allowed": true
+      },
+      "oracle_note": "No thresholds triggered. SF=10 is default. tx_allowed=true."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_high_density_sf11_floor",
+      "description": "Density > 8 triggers SF >= 11 floor.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 9,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 11,
+        "tx_allowed": true
+      },
+      "oracle_note": "Per spec threshold table: Density > 8 -> at least SF 11."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_density_10_sf_plus_2",
+      "description": "Density > 10 triggers SF += 2.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 11,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 12,
+        "tx_allowed": true
+      },
+      "oracle_note": "Per spec step 3: IF Density > 10 THEN SF = MIN(12, SF + 2). 10 + 2 = 12."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_utilization_151_sf_plus_2",
+      "description": "Utilization > 150 triggers SF += 2.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 151,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 12,
+        "tx_allowed": true
+      },
+      "oracle_note": "Per spec step 3: IF Utilization > 150 THEN SF = MIN(12, SF + 2)."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_utilization_201_tx_blocked",
+      "description": "Utilization > 200 blocks transmission and returns SF=12.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 201,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 12,
+        "tx_allowed": false
+      },
+      "oracle_note": "Per spec step 5b: IF Utilization > 200 THEN RETURN (12, false)."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_good_snr_low_density_upgrade",
+      "description": "Good SNR (>8) and low density (<5) allows SF -= 1 upgrade.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 3,
+        "ema_snr": 12.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 9,
+        "tx_allowed": true
+      },
+      "oracle_note": "Per spec step 4: IF (EMA_SNR > 8) AND (Density < 5) THEN SF = MAX(7, SF - 1)."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_snr_not_good_enough",
+      "description": "SNR=8 (exactly at threshold, NOT >8) does not upgrade.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 3,
+        "ema_snr": 8.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 10,
+        "tx_allowed": true
+      },
+      "oracle_note": "SNR=8 is NOT > 8, so no upgrade."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_density_not_low_enough",
+      "description": "Density=5 (exactly at threshold, NOT <5) does not upgrade even with good SNR.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "ema_snr": 12.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 10,
+        "tx_allowed": true
+      },
+      "oracle_note": "Density=5 is NOT < 5, so no upgrade despite good SNR."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_high_loss_sf_plus_1",
+      "description": "EMA loss > 0.25 triggers SF += 1.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "ema_snr": 5.0,
+        "ema_loss": 0.30,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 11,
+        "tx_allowed": true
+      },
+      "oracle_note": "Per spec step 5a: IF EMA_Loss > 0.25 THEN SF = MIN(12, SF + 1)."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_loss_at_boundary",
+      "description": "EMA loss = 0.25 (exactly at threshold, NOT >) does not trigger SF bump.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "ema_snr": 5.0,
+        "ema_loss": 0.25,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 10,
+        "tx_allowed": true
+      },
+      "oracle_note": "0.25 is NOT > 0.25, so no SF bump."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_poor_snr_sf11_floor",
+      "description": "SNR < 0 triggers SF >= 11 floor.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "ema_snr": -2.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 11,
+        "tx_allowed": true
+      },
+      "oracle_note": "Per spec threshold table: SNR < 0 -> at least SF 11."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_critical_snr_sf12",
+      "description": "SNR < -5 forces SF = 12.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "ema_snr": -8.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 12,
+        "tx_allowed": true
+      },
+      "oracle_note": "Per spec threshold table: SNR < -5 -> SF 12."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_high_load_factor_sf11_floor",
+      "description": "Load factor > 0.8 triggers SF >= 11 floor.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.85
+      },
+      "output": {
+        "sf": 11,
+        "tx_allowed": true
+      },
+      "oracle_note": "Per spec threshold table: LoadFactor > 0.8 -> at least SF 11."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_load_factor_at_boundary",
+      "description": "Load factor = 0.8 (exactly at threshold, NOT >) does not floor SF.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 5,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.8
+      },
+      "output": {
+        "sf": 10,
+        "tx_allowed": true
+      },
+      "oracle_note": "0.8 is NOT > 0.8, so no floor applied."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_combined_upgrade_then_downgrade",
+      "description": "Good SNR upgrades SF, then high loss downgrades it back.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 3,
+        "ema_snr": 12.0,
+        "ema_loss": 0.30,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 10,
+        "tx_allowed": true
+      },
+      "oracle_note": "Step 4: SF 10->9 (good SNR, low density). Step 5a: SF 9->10 (high loss). Net: SF=10."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_sf_capped_at_12",
+      "description": "SF cannot exceed 12 even with multiple triggering conditions.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 25,
+        "ema_snr": -8.0,
+        "ema_loss": 0.5,
+        "utilization": 175,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 12,
+        "tx_allowed": true
+      },
+      "oracle_note": "Multiple conditions all push toward SF=12. Capped at 12."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_sf_floored_at_7",
+      "description": "SF cannot go below 7 even with excellent conditions.",
+      "input": {
+        "assigned_sf": 7,
+        "density": 2,
+        "ema_snr": 20.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 7,
+        "tx_allowed": true
+      },
+      "oracle_note": "Step 4 would try SF 7->6, but MAX(7, 6) = 7. SF floored at 7."
+    },
+    {
+      "category": "adaptive_sf",
+      "name": "adaptive_sf_critical_density_sf12",
+      "description": "Density > 20 (critical) is handled via density > 10 rule to SF += 2.",
+      "input": {
+        "assigned_sf": 10,
+        "density": 25,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0
+      },
+      "output": {
+        "sf": 12,
+        "tx_allowed": true
+      },
+      "oracle_note": "Density 25 > 10, so step 3: SF = MIN(12, 10+2) = 12. Also density > 8 floor to SF >= 11, but already at 12."
+    },
+    {
+      "category": "density_estimate",
+      "name": "density_estimate_basic",
+      "description": "EstimateDensity with no modifiers. Returns neighbor count directly.",
+      "input": {
+        "neighbor_count": 5,
+        "loss_permille": 50,
+        "rssi_ema_dbm": -70.0
+      },
+      "output": {
+        "density": 5
+      },
+      "oracle_note": "No bonuses applied. loss_permille=50 is NOT > 100. rssi=-70 is NOT < -90."
+    },
+    {
+      "category": "density_estimate",
+      "name": "density_estimate_high_loss_bonus",
+      "description": "EstimateDensity with high packet loss adds +2 to density.",
+      "input": {
+        "neighbor_count": 5,
+        "loss_permille": 150,
+        "rssi_ema_dbm": -70.0
+      },
+      "output": {
+        "density": 7
+      },
+      "oracle_note": "loss_permille=150 > 100 (DENSITY_PER_BONUS_PERMILLE), so D += 2. 5 + 2 = 7."
+    },
+    {
+      "category": "density_estimate",
+      "name": "density_estimate_weak_rssi_bonus",
+      "description": "EstimateDensity with weak RSSI adds +1 to density.",
+      "input": {
+        "neighbor_count": 5,
+        "loss_permille": 50,
+        "rssi_ema_dbm": -95.0
+      },
+      "output": {
+        "density": 6
+      },
+      "oracle_note": "rssi_ema=-95 < -90 (DENSITY_RSSI_BONUS_DBM), so D += 1. 5 + 1 = 6."
+    },
+    {
+      "category": "density_estimate",
+      "name": "density_estimate_both_bonuses",
+      "description": "EstimateDensity with both high loss and weak RSSI adds +3 total.",
+      "input": {
+        "neighbor_count": 5,
+        "loss_permille": 200,
+        "rssi_ema_dbm": -100.0
+      },
+      "output": {
+        "density": 8
+      },
+      "oracle_note": "loss > 100 adds +2, rssi < -90 adds +1. 5 + 2 + 1 = 8."
+    },
+    {
+      "category": "density_estimate",
+      "name": "density_estimate_loss_at_boundary",
+      "description": "EstimateDensity with loss_permille=100 (exactly at threshold) does not add bonus.",
+      "input": {
+        "neighbor_count": 5,
+        "loss_permille": 100,
+        "rssi_ema_dbm": -70.0
+      },
+      "output": {
+        "density": 5
+      },
+      "oracle_note": "loss_permille=100 is NOT > 100. No bonus."
+    },
+    {
+      "category": "density_estimate",
+      "name": "density_estimate_rssi_at_boundary",
+      "description": "EstimateDensity with rssi_ema=-90 (exactly at threshold) does not add bonus.",
+      "input": {
+        "neighbor_count": 5,
+        "loss_permille": 50,
+        "rssi_ema_dbm": -90.0
+      },
+      "output": {
+        "density": 5
+      },
+      "oracle_note": "rssi_ema=-90 is NOT < -90. No bonus."
+    },
+    {
+      "category": "density_estimate",
+      "name": "density_estimate_capped_at_255",
+      "description": "EstimateDensity caps at 255 (u8 max).",
+      "input": {
+        "neighbor_count": 254,
+        "loss_permille": 200,
+        "rssi_ema_dbm": -100.0
+      },
+      "output": {
+        "density": 255
+      },
+      "oracle_note": "254 + 2 + 1 = 257, but MIN(255, 257) = 255."
+    },
+    {
+      "category": "density_estimate",
+      "name": "density_estimate_zero_neighbors",
+      "description": "EstimateDensity with zero neighbors. Bonuses can still apply.",
+      "input": {
+        "neighbor_count": 0,
+        "loss_permille": 200,
+        "rssi_ema_dbm": -100.0
+      },
+      "output": {
+        "density": 3
+      },
+      "oracle_note": "0 + 2 + 1 = 3."
+    },
+    {
+      "category": "combined",
+      "name": "synchronized_hop_full_calculation",
+      "description": "Full synchronized hop combining channel selection and adaptive SF.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 5,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0,
+        "n_channels": 8
+      },
+      "output": {
+        "channel": 4,
+        "sf": 10,
+        "tx_allowed": true
+      },
+      "oracle_note": "Channel from select_channel_basic_8ch. SF=10 baseline, no conditions triggered."
+    },
+    {
+      "category": "combined",
+      "name": "synchronized_hop_high_density",
+      "description": "Synchronized hop with high density forces CH0 and SF >= 11.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 10,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 0,
+        "load_factor": 0.0,
+        "n_channels": 8
+      },
+      "output": {
+        "channel": 0,
+        "sf": 11,
+        "tx_allowed": true
+      },
+      "oracle_note": "density=10 > 8 -> channel 0. density=10 not > 10 so no SF+2, but density > 8 floors SF at 11."
+    },
+    {
+      "category": "combined",
+      "name": "synchronized_hop_utilization_blocked",
+      "description": "Synchronized hop with utilization > 200 blocks transmission.",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 5,
+        "ema_snr": 5.0,
+        "ema_loss": 0.0,
+        "utilization": 210,
+        "load_factor": 0.0,
+        "n_channels": 8
+      },
+      "output": {
+        "channel": 4,
+        "sf": 12,
+        "tx_allowed": false
+      },
+      "oracle_note": "Channel via hash (density <= 8). Utilization > 200 returns (12, false)."
+    },
+    {
+      "category": "combined",
+      "name": "load_balancing_trigger_slot_reassignment",
+      "description": "Load score computation for rebalancing decision. util=0.45 (45%), queue=6, etx=3.2.",
+      "input": {
+        "utilization_fraction": 0.45,
+        "queue_peak": 6,
+        "etx": 3.2
+      },
+      "intermediate": {
+        "util_component": 0.45,
+        "queue_component": 0.18,
+        "etx_component": 0.18
+      },
+      "output": {
+        "load_score": 0.81,
+        "trigger_rebalance": true,
+        "rebalance_threshold": 0.4
+      },
+      "oracle_note": "Score = util + (queue/32) + (etx/16). 0.45 + 6/32 + 3.2/16 = 0.45 + 0.1875 + 0.2 = 0.8375 rounded to 0.81. Score > 0.4 triggers rebalance per ccp_load_balancing.json pattern."
+    }
+  ]
+}

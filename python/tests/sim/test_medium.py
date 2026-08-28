@@ -779,7 +779,7 @@ class TestRendezvous:
             num_channels=8,
         )
         assert result.mechanism == RendezvousMechanism.HASH_BASED
-        assert 1 <= result.channel <= 8
+        assert 1 <= result.channel < 8
 
     def test_hash_based_deterministic(self) -> None:
         """Hash-based rendezvous is deterministic for same inputs."""

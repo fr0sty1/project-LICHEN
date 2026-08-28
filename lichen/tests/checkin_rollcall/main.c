@@ -925,6 +925,38 @@ static int test_maximal_entry_within_bound(void)
 	return 1;
 }
 
+/* Pins LICHEN_ROLLCALL_RENDER_MAX to the encoder: the build-time
+ * CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX relation relies on this bound. */
+static int test_maximal_rollcall_render_within_bound(void)
+{
+	struct lichen_rollcall_status st;
+	uint8_t wire[LICHEN_ROLLCALL_STATUS_CBOR_MAX];
+	size_t len = 0U;
+
+	memset(&st, 0, sizeof(st));
+	strcpy(st.id, "01234567890123456789012345678901");
+	st.started = UINT64_MAX;
+	st.timeout_s = LICHEN_ROLLCALL_TIMEOUT_MAX_S;
+	st.responded_count = LICHEN_ROLLCALL_TRACK_MAX;
+	st.missing_count = LICHEN_ROLLCALL_TRACK_MAX;
+	for (size_t i = 0; i < LICHEN_ROLLCALL_TRACK_MAX; i++) {
+		make_node(st.responded[i].node,
+			  sizeof(st.responded[i].node), (unsigned)i);
+		st.responded[i].ts = UINT64_MAX;
+		st.responded[i].status = LICHEN_CHECKIN_STATUS_DELAYED;
+		make_node(st.missing[i].node, sizeof(st.missing[i].node),
+			  (unsigned)(i + LICHEN_ROLLCALL_TRACK_MAX));
+		st.missing[i].ts = UINT64_MAX;
+		st.missing[i].status = LICHEN_CHECKIN_STATUS_DELAYED;
+	}
+	ASSERT_EQ(lichen_rollcall_status_to_cbor(&st, wire, sizeof(wire),
+						 &len),
+		  0, "maximal status render");
+	ASSERT_EQ(len <= LICHEN_ROLLCALL_RENDER_MAX, 1,
+		  "status render within documented worst-case bound");
+	return 1;
+}
+
 /* --- buffer bounds --- */
 
 static int test_buffer_too_small(void)
@@ -961,6 +993,7 @@ int main(void)
 	RUN_TEST(test_config_codec_and_due);
 	RUN_TEST(test_due_clock_step_back);
 	RUN_TEST(test_maximal_entry_within_bound);
+	RUN_TEST(test_maximal_rollcall_render_within_bound);
 	RUN_TEST(test_buffer_too_small);
 
 	printf("%d/%d tests passed\n", tests_passed, tests_run);

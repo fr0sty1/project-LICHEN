@@ -80,14 +80,14 @@ def test_native_module_exports_public_api() -> None:
     diag = DiagnosticRow("name", "value")
     assert diag.name == "name"
 
-    # Verify widget classes exist
-    assert NativeClientApp
-    assert NativeStatusBar
-    assert CommandBar
-    assert ModeNav
-    assert ActivePane
-    assert MessageList
-    assert MessagingPanel
-    assert ConfigTable
-    assert LogPanel
-    assert DiagnosticsPanel
+    # Verify widget classes exist and are classes
+    assert isinstance(NativeClientApp, type)
+    assert isinstance(NativeStatusBar, type)
+    assert isinstance(CommandBar, type)
+    assert isinstance(ModeNav, type)
+    assert isinstance(ActivePane, type)
+    assert isinstance(MessageList, type)
+    assert isinstance(MessagingPanel, type)
+    assert isinstance(ConfigTable, type)
+    assert isinstance(LogPanel, type)
+    assert isinstance(DiagnosticsPanel, type)

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-253m.13",
+  "title": "Packet reception path",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:50.87053Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:50.87053Z",
+  "labels": [
+    "c",
+    "linklayer",
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-253m.13",
+      "depends_on_id": "project-LICHEN-253m",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:54.452275Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

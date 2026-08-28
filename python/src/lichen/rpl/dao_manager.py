@@ -29,7 +29,7 @@ from typing import Any, cast
 from lichen.crypto.identity import Identity, yggdrasil_address
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
-from lichen.ipv6 import to_ipv6
+from lichen.ipv6 import routing_key
 from lichen.rpl.dao_origin import (
     DAO_ORIGIN_SIGNATURE_TYPE,
     DaoOriginRejectReason,
@@ -41,6 +41,7 @@ from lichen.rpl.dao_origin import (
 )
 from lichen.rpl.dao_paths import build_routes, contains_cycle, path_control_rank, select_path
 from lichen.rpl.dao_persistence import DaoPersistence
+from lichen.rpl.dao_refresh import DaoRefreshScheduler
 from lichen.rpl.dao_state import compute_active_parents, make_freshness_room
 from lichen.rpl.dao_types import (
     DEFAULT_FRESHNESS_RETENTION_SECONDS,
@@ -55,6 +56,7 @@ from lichen.rpl.dao_types import (
     sequence_relation,
 )
 from lichen.rpl.messages import DAO, DAOAck, RplError, RplOptionType, _exact_received_dao_wire
+from lichen.rpl.route_table import RouteTable
 from lichen.rpl.routing import RouteTarget, RoutingTable
 
 # Map DaoOriginRejectReason to DaoError reason strings for consistency
@@ -127,11 +129,12 @@ class DaoManager:
     _edge_expiry: dict[tuple[IPv6Address, IPv6Address], float | None] = field(default_factory=dict)
     _rx_floors: dict[bytes, tuple[int, bytes]] = field(default_factory=dict)
     _tx_recovery_error: DaoError | None = field(default=None, init=False, repr=False)
-    _last_now_seconds: float | None = field(default=None, init=False, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
+    _scheduler: DaoRefreshScheduler = field(init=False, repr=False)
+    _route_table: RouteTable = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        self.node_address = to_ipv6(self.node_address)
+        self.node_address = routing_key(self.node_address)
         if type(self.is_root) is not bool:
             raise ValueError("is_root must be an exact boolean")
         if type(self.require_crash_safety) is not bool:
@@ -139,7 +142,7 @@ class DaoManager:
         if type(self.allow_tx_bootstrap) is not bool:
             raise ValueError("allow_tx_bootstrap must be an exact boolean")
         if self.dodag_id is not None:
-            self.dodag_id = to_ipv6(self.dodag_id)
+            self.dodag_id = routing_key(self.dodag_id)
         if type(self.rpl_instance_id) is not int or not 0 <= self.rpl_instance_id <= 0xFF:
             raise ValueError("RPL instance ID must fit in u8")
         if type(self.pcs) is not int or not 0 <= self.pcs <= 7:
@@ -241,6 +244,13 @@ class DaoManager:
                     "these must be the same object (spec 8.6 replay floor consistency)",
                     reason="replay_store_mismatch",
                 )
+        # Initialize helper instances for delegation
+        self._scheduler = DaoRefreshScheduler(
+            lifetime_unit_seconds=self.lifetime_unit_seconds,
+            freshness_retention_seconds=self.freshness_retention_seconds,
+            clock=self.clock,
+        )
+        self._route_table = RouteTable(_routing_table=self.routing_table)
         # SECURITY: Restore TX state from persistence if available.
         # Per spec section 8.6, missing/corrupt state is a hard failure;
         # the node must not transmit until valid state is restored.
@@ -248,42 +258,21 @@ class DaoManager:
             self._restore_tx_state()
 
     def _validate_now(self, value: object) -> float:
-        if type(value) not in (int, float):
-            raise DaoError("DAO time sample must be finite and non-negative", reason="invalid_time")
-        numeric_value = cast(int | float, value)
-        try:
-            now = float(numeric_value)
-        except OverflowError:
-            raise DaoError(
-                "DAO time sample must be finite and non-negative", reason="invalid_time"
-            ) from None
-        if not math.isfinite(now) or now < 0:
-            raise DaoError("DAO time sample must be finite and non-negative", reason="invalid_time")
-        if self._last_now_seconds is not None and now < self._last_now_seconds:
-            raise DaoError("DAO time moved backwards", reason="invalid_time")
-        return now
+        """Validate a time sample is finite, non-negative, and non-regressing."""
+        return self._scheduler.validate_now(value)
 
     @staticmethod
     def _checked_time_sum(base: float, delta: float) -> float:
-        result = base + delta
-        if not math.isfinite(result):
-            raise DaoError("DAO time arithmetic overflow", reason="invalid_time")
-        return result
+        """Add two time values with overflow checking."""
+        return DaoRefreshScheduler.checked_time_sum(base, delta)
 
     def _candidate_deadline(self, lifetime: int, now: float) -> float | None:
-        if lifetime == 255:
-            return None
-        delta = lifetime * self.lifetime_unit_seconds
-        if not math.isfinite(delta):
-            raise DaoError("DAO time arithmetic overflow", reason="invalid_time")
-        return self._checked_time_sum(now, delta)
+        """Calculate when a candidate expires based on its lifetime."""
+        return self._scheduler.candidate_deadline(lifetime, now)
 
     def _clock_now(self) -> float:
-        try:
-            value = self.clock()
-        except BaseException as exc:
-            raise DaoError("DAO clock failed", reason="invalid_time") from exc
-        return self._validate_now(value)
+        """Get the current time from the configured clock."""
+        return self._scheduler.clock_now()
 
     def _restore_tx_state(self) -> None:
         """Restore TX state from persistence after reboot.
@@ -503,7 +492,7 @@ class DaoManager:
                     "authenticated DAO origination requires origin_identity",
                     reason="origin_identity_required",
                 )
-        parent = to_ipv6(parent_address)
+        parent = routing_key(parent_address)
         logical_update = (parent, path_lifetime)
         if not advance_path_sequence and logical_update != self._last_logical_update:
             raise DaoError("DAO copy does not match the last logical update")
@@ -637,7 +626,7 @@ class DaoManager:
 
         See validate_and_process_dao for the full validation order.
         """
-        source_addr = to_ipv6(source_address)
+        source_addr = routing_key(source_address)
         provenance = _exact_received_dao_wire(dao)
         if provenance is None:
             raise DaoError(
@@ -972,11 +961,8 @@ class DaoManager:
                     self.max_targets,
                     incoming.keys(),
                 )
-                freshness[target] = Freshness(
-                    sequence,
-                    None,
-                    self._checked_time_sum(now_seconds, self.freshness_retention_seconds),
-                    now_seconds,
+                freshness[target] = self._scheduler.create_initial_freshness(
+                    sequence, now_seconds
                 )
             candidates[target] = snapshot
             retained_descriptors[target] = descriptors[target]
@@ -1010,12 +996,8 @@ class DaoManager:
                     active_until = max(active_until, deadline)
             if active:
                 parents[target] = tuple(sorted(active))
-            retain_base = now_seconds if active_until is None else max(now_seconds, active_until)
-            freshness[target] = Freshness(
-                sequences[target],
-                active_until,
-                self._checked_time_sum(retain_base, self.freshness_retention_seconds),
-                now_seconds,
+            freshness[target] = self._scheduler.create_active_freshness(
+                sequences[target], active_until, now_seconds
             )
 
         if len(path_sequences) > self.max_targets:
@@ -1050,7 +1032,7 @@ class DaoManager:
         # Otherwise, fall back to address-based keying for backward compatibility
         # with the legacy path (no origin validation).
         if self.persistence is not None:
-            self._last_now_seconds = now_seconds
+            self._scheduler.record_time(now_seconds)
             dao_bytes = dao.to_bytes()
             dao_digest = compute_dao_digest(dao_bytes)
 
@@ -1093,7 +1075,7 @@ class DaoManager:
                 for origin_key, seq, digest in floors_to_commit:
                     self._rx_floors[origin_key] = (seq, digest)
 
-        self._last_now_seconds = now_seconds
+        self._scheduler.record_time(now_seconds)
         self._parent_map = parents
         self._candidate_map = candidates
         self._descriptors = retained_descriptors
@@ -1110,11 +1092,8 @@ class DaoManager:
     def _merge_prefix_routes(
         self, host_routes: dict[RouteTarget, list[IPv6Address]]
     ) -> dict[RouteTarget, list[IPv6Address]]:
-        merged = dict(host_routes)
-        for rt, entry in self.routing_table._routes.items():
-            if rt.prefix_len < 128 and entry.is_usable():
-                merged[rt] = list(entry.path)
-        return merged
+        """Merge host routes with existing prefix routes."""
+        return self._route_table.merge_prefix_routes(host_routes)
 
     def expire_routes(self, now_seconds: float | None = None) -> bool:
         """Remove expired active edges and routes while retaining snapshot tombstones.
@@ -1141,7 +1120,7 @@ class DaoManager:
             or routes != self.routing_table.routes()
         )
         self._parent_map = parents
-        self._last_now_seconds = now
+        self._scheduler.record_time(now)
         self._edge_expiry = expiry
         self.routing_table.replace_routes(routes)
         return changed
@@ -1156,7 +1135,7 @@ class DaoManager:
 
     def _remove_edge_unlocked(self, target: IPv6Address | str) -> bool:
         """Internal implementation of remove_edge. Caller must hold _lock."""
-        target = to_ipv6(target)
+        target = routing_key(target)
         if target not in self._parent_map:
             return False
         now = self._clock_now()
@@ -1171,18 +1150,20 @@ class DaoManager:
         self.routing_table.replace_routes(routes)
         current = self._freshness.get(target)
         if current is not None:
-            self._freshness[target] = Freshness(
-                current.sequence,
-                now,
-                self._checked_time_sum(now, self.freshness_retention_seconds),
-                now,
-            )
-        self._last_now_seconds = now
+            self._freshness[target] = self._scheduler.update_freshness_on_withdrawal(current, now)
+        self._scheduler.record_time(now)
         return True
 
     def route_state_snapshot(self, sequence_authority: IPv6Address | str) -> dict[str, Any]:
         """Return canonical retained route state in route-vector form."""
-        authority = to_ipv6(sequence_authority).packed.hex()
+        with self._lock:
+            return self._route_state_snapshot_unlocked(sequence_authority)
+
+    def _route_state_snapshot_unlocked(
+        self, sequence_authority: IPv6Address | str
+    ) -> dict[str, Any]:
+        """Internal implementation of route_state_snapshot. Caller must hold _lock."""
+        authority = routing_key(sequence_authority).packed.hex()
         targets: list[dict[str, Any]] = []
         for target in sorted(self._freshness):
             snapshot = self._candidate_map[target]
@@ -1247,10 +1228,8 @@ class DaoManager:
 
     def routing_table_snapshot(self) -> dict[str, list[str]]:
         """Return exact installed complete paths keyed by target hex."""
-        return {
-            rt.prefix.packed.hex(): [hop.packed.hex() for hop in path]
-            for rt, path in sorted(self.routing_table.routes().items())
-        }
+        with self._lock:
+            return self._route_table.snapshot()
 
     def build_dao_ack(self, dao: DAO, status: int = 0) -> DAOAck:
         return DAOAck(
@@ -1305,13 +1284,7 @@ class DaoManager:
             for target, descriptor in targets:
                 for transit in transits.values():
                     parent = transit.parent_address
-                    if parent is None:
-                        if dao.dodag_id is None:
-                            raise DaoError(
-                                "Transit without parent address and no DODAG ID",
-                                reason="malformed_group",
-                            )
-                        parent = dao.dodag_id
+                    assert parent is not None  # enforced by the profile codec
                     updates.append(
                         Update(
                             target,
@@ -1368,13 +1341,7 @@ class DaoManager:
                 descriptor_allowed = False
                 parsed_transit = TransitInformation.from_option(opt)
                 transit_parent = parsed_transit.parent_address
-                if transit_parent is None:
-                    if dao.dodag_id is None:
-                        raise DaoError(
-                            "Transit without parent address and no DODAG ID",
-                            reason="malformed_group",
-                        )
-                    transit_parent = dao.dodag_id
+                assert transit_parent is not None  # enforced before any state mutation
                 existing = transits.get(transit_parent)
                 if existing is not None and existing != parsed_transit:
                     raise DaoError(

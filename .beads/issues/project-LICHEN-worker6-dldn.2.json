@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dldn.2",
+  "title": "Implement service-level GATT-to-IPSO lookup table (K.2)",
+  "description": "Implement in lichen/subsys/lichen/gatt_ipso.c:\n\nStatic const table mapping GATT Service UUIDs to IPSO Object IDs per K.2:\n- Environmental Sensing 0x181A\n- Heart Rate 0x180D -\u003e 3346\n- Health Thermometer 0x1809 -\u003e 3303\n- Weight Scale 0x181D -\u003e 3322\n- Blood Pressure 0x1810 -\u003e 3323\n- Glucose 0x1808 -\u003e 3325\n- Body Composition 0x181B -\u003e 26250\n- Running Speed \u0026 Cadence 0x1814\n- Cycling Speed \u0026 Cadence 0x1816\n- Cycling Power 0x1818 -\u003e 3328\n- Location \u0026 Navigation 0x1819 -\u003e 3336\n- Indoor Positioning 0x1821 -\u003e 3337\n- Battery Service 0x180F -\u003e 26251\n- Automation IO 0x1815 -\u003e 3200\n- User Data 0x181C -\u003e 26252\n- Device Information 0x180A -\u003e 3\n\n~15 entries. Reference: spec/appendix-gatt-ipso.md K.2",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:53:29.347982Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:53:29.347982Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dldn.2",
+      "depends_on_id": "project-LICHEN-worker6-dldn",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:53:31.051842Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

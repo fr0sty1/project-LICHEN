@@ -552,8 +552,95 @@ mod tests {
     }
 
     #[test]
-    fn serializer_rejects_partial_signer_on_unsigned_frame() {
-        let frame = LichenFrame {
+    fn signature_bit_without_signer_bit_is_rejected() {
+        // Mirror of the SI-only case above: signed frames MUST set both
+        // the S and SI bits (spec 4.2), so S alone is the same mismatch.
+        let wire = [4, SIGNATURE_BIT, 0, 0, 0];
+        assert_eq!(
+            LichenFrame::from_bytes(&wire),
+            Err(FrameError::SignatureSignerMismatch)
+        );
+    }
+
+    #[test]
+    fn parser_rejects_256_byte_wire() {
+        // LENGTH declares a legal 254-byte body, but 256 bytes are present.
+        let mut wire = vec![0u8; 256];
+        wire[0] = MAX_FRAME_BODY as u8;
+        assert_eq!(
+            LichenFrame::from_bytes(&wire),
+            Err(FrameError::FrameTooLarge)
+        );
+    }
+
+    #[test]
+    fn write_body_length_boundaries_254_255() {
+        let base = LichenFrame {
+            epoch: 0,
+            seqnum: LinkSeqNum::new(0),
+            dst_addr: &[],
+            signer_eui64: &[],
+            payload: &[],
+            mic: &[],
+            addr_mode: AddrMode::None,
+            mic_length: MicLength::Bits32,
+            signature: Signature::Absent,
+            encryption: Encryption::Plaintext,
+        };
+        let mut buf = [0u8; 300];
+
+        // 254-byte body (250-byte unsigned payload) is the exact maximum.
+        let max_unsigned = LichenFrame {
+            payload: &[0xaa; 250][..],
+            ..base
+        };
+        let n = max_unsigned.write_to(&mut buf).unwrap();
+        assert_eq!(n, 255);
+        assert_eq!(buf[0], 254);
+        let parsed = LichenFrame::from_bytes(&buf[..n]).unwrap();
+        assert_eq!(parsed.payload.len(), 250);
+
+        // 255-byte body (251-byte unsigned payload) is one byte over.
+        let over_unsigned = LichenFrame {
+            payload: &[0xaa; 251][..],
+            ..base
+        };
+        assert_eq!(
+            over_unsigned.write_to(&mut buf),
+            Err(FrameError::FrameTooLarge)
+        );
+
+        // Signed broadcast: 8-byte SIID + 48-byte signature, so the exact
+        // maximum payload is 194 bytes (body 254).
+        let max_signed = LichenFrame {
+            payload: &[0xaa; 194][..],
+            signer_eui64: &[0u8; 8][..],
+            mic: &[0u8; 48][..],
+            signature: Signature::Present,
+            ..base
+        };
+        let n = max_signed.write_to(&mut buf).unwrap();
+        assert_eq!(n, 255);
+        assert_eq!(buf[0], 254);
+        assert_eq!(
+            buf[1] & (SIGNATURE_BIT | SIGNER_EUI64_BIT),
+            SIGNATURE_BIT | SIGNER_EUI64_BIT
+        );
+
+        // 195-byte signed payload pushes the body to 255: reject.
+        let over_signed = LichenFrame {
+            payload: &[0xaa; 195][..],
+            ..max_signed
+        };
+        assert_eq!(
+            over_signed.write_to(&mut buf),
+            Err(FrameError::FrameTooLarge)
+        );
+    }
+
+    #[test]
+    fn serializer_rejects_signature_signer_mismatch_atomically() {
+        let si_only = LichenFrame {
             epoch: 0,
             seqnum: LinkSeqNum::new(0),
             dst_addr: &[],
@@ -565,10 +652,25 @@ mod tests {
             signature: Signature::Absent,
             encryption: Encryption::Plaintext,
         };
+        let mut output = [0x5au8; 64];
+        let original = output;
         assert_eq!(
-            frame.write_to(&mut [0; 64]),
+            si_only.write_to(&mut output),
             Err(FrameError::SignatureSignerMismatch)
         );
+        assert_eq!(output, original, "SI-only rejection changed output");
+
+        let s_only = LichenFrame {
+            signer_eui64: &[],
+            mic: &[0u8; 48],
+            signature: Signature::Present,
+            ..si_only
+        };
+        assert_eq!(
+            s_only.write_to(&mut output),
+            Err(FrameError::SignatureSignerMismatch)
+        );
+        assert_eq!(output, original, "S-only rejection changed output");
     }
 
     #[test]

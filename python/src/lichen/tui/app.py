@@ -85,7 +85,7 @@ def format_payload(data: bytes) -> str:
     return hex_str
 
 
-class ConnectionStatus(Static):  # type: ignore[misc]  # textual lacks py.typed
+class ConnectionStatus(Static):
     """Widget showing connection status."""
 
     DEFAULT_CSS = """
@@ -132,7 +132,7 @@ class ConnectionStatus(Static):  # type: ignore[misc]  # textual lacks py.typed
         self.add_class("disconnected")
 
 
-class SimTimeDisplay(Static):  # type: ignore[misc]  # textual lacks py.typed
+class SimTimeDisplay(Static):
     """Widget showing current simulation time."""
 
     DEFAULT_CSS = """
@@ -152,7 +152,7 @@ class SimTimeDisplay(Static):  # type: ignore[misc]  # textual lacks py.typed
         self.update(f"Sim Time: {format_time_us(time_us)}")
 
 
-class SimNodeApp(App[None]):  # type: ignore[misc]  # textual lacks py.typed
+class SimNodeApp(App[None]):
     """TUI application for a simulated LICHEN node.
 
     Connects to a simulator server and provides an interactive interface
@@ -350,7 +350,7 @@ class SimNodeApp(App[None]):  # type: ignore[misc]  # textual lacks py.typed
 
         log.write(f"[{color}][{timestamp}] {escape(message)}[/{color}]")
 
-    @work(exclusive=True, group="connect")  # type: ignore[untyped-decorator]
+    @work(exclusive=True, group="connect")
     async def _connect_to_sim(self) -> None:
         """Connect to the simulator server (async worker)."""
         self._log_event("info", f"Connecting to {self._host}:{self._port}...")
@@ -389,7 +389,7 @@ class SimNodeApp(App[None]):  # type: ignore[misc]  # textual lacks py.typed
                     await self._radio.close()
             self._radio = None
 
-    @work(exclusive=True, group="connect")  # type: ignore[untyped-decorator]
+    @work(exclusive=True, group="connect")
     async def _disconnect(self) -> None:
         """Disconnect from the simulator (async worker)."""
         if self._radio is None:
@@ -436,7 +436,7 @@ class SimNodeApp(App[None]):  # type: ignore[misc]  # textual lacks py.typed
         self._transmit(payload)
         tx_input.value = ""
 
-    @work(exclusive=True, group="tx")  # type: ignore[untyped-decorator]
+    @work(exclusive=True, group="tx")
     async def _transmit(self, payload: bytes) -> None:
         """Transmit a payload (async worker).
 
@@ -478,7 +478,7 @@ class SimNodeApp(App[None]):  # type: ignore[misc]  # textual lacks py.typed
 
         self._receive(timeout_ms)
 
-    @work(exclusive=True, group="rx")  # type: ignore[untyped-decorator]
+    @work(exclusive=True, group="rx")
     async def _receive(self, timeout_ms: int) -> None:
         """Receive a packet (async worker).
 

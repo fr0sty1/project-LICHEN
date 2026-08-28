@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <limits.h>
 #include <string.h>
 #include <zephyr/sys/byteorder.h>
 
@@ -19,12 +20,194 @@
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 
 /* Division rounding up */
-static size_t div_ceil(size_t a, size_t b)
+/* ── DIS ───────────────────────────────────────────────────────────────────── */
+
+int lichen_rpl_solicited_info_parse(struct lichen_rpl_solicited_info *info,
+				    const uint8_t *data, size_t len)
 {
-	return (a + b - 1) / b;
+	if (info == NULL || data == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (len != LICHEN_RPL_SOLICITED_INFO_DATA_LEN) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
+
+	struct lichen_rpl_solicited_info parsed = {
+		.rpl_instance_id = data[0],
+		.flags = data[1],
+		.version = data[18],
+	};
+	memcpy(parsed.dodag_id, &data[2], sizeof(parsed.dodag_id));
+	*info = parsed;
+	return LICHEN_RPL_OK;
+}
+
+int lichen_rpl_solicited_info_write(
+	const struct lichen_rpl_solicited_info *info, uint8_t *buf, size_t len)
+{
+	if (info == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (len < LICHEN_RPL_SOLICITED_INFO_LEN) {
+		return LICHEN_RPL_ERR_BUF_SMALL;
+	}
+
+	uint8_t encoded[LICHEN_RPL_SOLICITED_INFO_LEN];
+	encoded[0] = LICHEN_RPL_OPT_SOLICITED_INFO;
+	encoded[1] = LICHEN_RPL_SOLICITED_INFO_DATA_LEN;
+	encoded[2] = info->rpl_instance_id;
+	encoded[3] = info->flags;
+	memcpy(&encoded[4], info->dodag_id, sizeof(info->dodag_id));
+	encoded[20] = info->version;
+	memcpy(buf, encoded, sizeof(encoded));
+	return LICHEN_RPL_SOLICITED_INFO_LEN;
+}
+
+static int validate_dis_options(const uint8_t *options, size_t options_len)
+{
+	struct lichen_rpl_opt_iter it;
+	struct lichen_rpl_raw_opt opt;
+	struct lichen_rpl_solicited_info info;
+	bool have_solicited_info = false;
+	int ret;
+
+	if (options == NULL && options_len != 0U) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	lichen_rpl_opt_iter_init(&it, options, options_len);
+	while ((ret = lichen_rpl_opt_iter_next(&it, &opt)) == LICHEN_RPL_OK) {
+		if (opt.opt_type == LICHEN_RPL_OPT_SOLICITED_INFO) {
+			if (have_solicited_info ||
+			    lichen_rpl_solicited_info_parse(&info, opt.data,
+						      opt.data_len) != LICHEN_RPL_OK) {
+				return LICHEN_RPL_ERR_BAD_OPT;
+			}
+			have_solicited_info = true;
+		}
+	}
+	return ret == 1 ? LICHEN_RPL_OK : ret;
+}
+
+int lichen_rpl_dis_parse(struct lichen_rpl_dis *dis,
+			 const uint8_t *data, size_t len)
+{
+	if (dis == NULL || data == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (len < LICHEN_RPL_DIS_BASE_LEN) {
+		return LICHEN_RPL_ERR_TOO_SHORT;
+	}
+	if (data[1] != 0 ||
+	    validate_dis_options(len > LICHEN_RPL_DIS_BASE_LEN ?
+				 &data[LICHEN_RPL_DIS_BASE_LEN] : NULL,
+				 len - LICHEN_RPL_DIS_BASE_LEN) != LICHEN_RPL_OK) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
+
+	struct lichen_rpl_dis parsed = {
+		.flags = data[0],
+		.reserved = data[1],
+	};
+	*dis = parsed;
+	return LICHEN_RPL_OK;
+}
+
+int lichen_rpl_dis_write_with_options(const struct lichen_rpl_dis *dis,
+				      const uint8_t *options,
+				      size_t options_len,
+				      uint8_t *buf, size_t len)
+{
+	if (dis == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (dis->reserved != 0 ||
+	    options_len > (size_t)INT_MAX - LICHEN_RPL_DIS_BASE_LEN) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
+	int ret = validate_dis_options(options, options_len);
+	if (ret != LICHEN_RPL_OK) {
+		return ret;
+	}
+	size_t needed = LICHEN_RPL_DIS_BASE_LEN + options_len;
+	if (len < needed) {
+		return LICHEN_RPL_ERR_BUF_SMALL;
+	}
+
+	if (options_len != 0U) {
+		memmove(&buf[LICHEN_RPL_DIS_BASE_LEN], options, options_len);
+	}
+	buf[0] = dis->flags;
+	buf[1] = 0U;
+	return (int)needed;
+}
+
+int lichen_rpl_dis_write(const struct lichen_rpl_dis *dis,
+			 uint8_t *buf, size_t len)
+{
+	return lichen_rpl_dis_write_with_options(dis, NULL, 0U, buf, len);
+}
+
+const uint8_t *lichen_rpl_dis_options(const uint8_t *data, size_t len)
+{
+	if (data == NULL) {
+		return NULL;
+	}
+	if (len > LICHEN_RPL_DIS_BASE_LEN) {
+		return &data[LICHEN_RPL_DIS_BASE_LEN];
+	}
+	return NULL;
 }
 
 /* ── DIO ───────────────────────────────────────────────────────────────────── */
+
+static int validate_dio_options(const uint8_t *options, size_t options_len)
+{
+	struct lichen_rpl_opt_iter it;
+	struct lichen_rpl_raw_opt opt;
+	struct lichen_rpl_dodag_config config;
+	struct lichen_rpl_schc_rule_version version;
+	bool have_config = false;
+	bool have_schc_version = false;
+	int ret;
+
+	if (options == NULL && options_len != 0U) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	lichen_rpl_opt_iter_init(&it, options, options_len);
+	while ((ret = lichen_rpl_opt_iter_next(&it, &opt)) == LICHEN_RPL_OK) {
+		switch (opt.opt_type) {
+		case LICHEN_RPL_OPT_DODAG_CONFIG:
+			if (have_config ||
+			    lichen_rpl_dodag_config_parse(&config, opt.data,
+						   opt.data_len) != LICHEN_RPL_OK) {
+				return LICHEN_RPL_ERR_BAD_OPT;
+			}
+			have_config = true;
+			break;
+		case LICHEN_RPL_OPT_SCHC_RULE_VERSION:
+			if (have_schc_version ||
+			    lichen_rpl_schc_rule_version_parse(&version, opt.data,
+							 opt.data_len) != LICHEN_RPL_OK) {
+				return LICHEN_RPL_ERR_BAD_OPT;
+			}
+			have_schc_version = true;
+			break;
+		default:
+			break;
+		}
+	}
+	return ret == 1 ? LICHEN_RPL_OK : LICHEN_RPL_ERR_BAD_OPT;
+}
+
+static int validate_dio_fields(const struct lichen_rpl_dio *dio)
+{
+	if (dio->rpl_instance_id >= 0xc0U || dio->mode_of_operation > 7U ||
+	    dio->preference > 7U ||
+	    (dio->flags & ~LICHEN_RPL_DIO_FLAG_GATEWAY_CENTRIC) != 0U) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	return LICHEN_RPL_OK;
+}
 
 int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
 			 const uint8_t *data, size_t len)
@@ -37,47 +220,73 @@ int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
 	}
 
 	uint8_t gmop = data[4];
-
-	dio->rpl_instance_id = data[0];
-	dio->version = data[1];
-	dio->rank = sys_get_be16(&data[2]);
-	dio->grounded = (gmop >> 7) & 1;
-	dio->mode_of_operation = (gmop >> 3) & 0x7;
-	dio->preference = gmop & 0x7;
-	dio->dtsn = data[5];
-	dio->flags = data[6];
-	if (data[7] != 0) {
+	if (data[0] >= 0xc0U || (gmop & 0x40U) != 0U ||
+	    (data[6] & ~LICHEN_RPL_DIO_FLAG_GATEWAY_CENTRIC) != 0U ||
+	    data[7] != 0U ||
+	    validate_dio_options(len > LICHEN_RPL_DIO_BASE_LEN ?
+				 &data[LICHEN_RPL_DIO_BASE_LEN] : NULL,
+				 len - LICHEN_RPL_DIO_BASE_LEN) != LICHEN_RPL_OK) {
 		return LICHEN_RPL_ERR_BAD_OPT;
 	}
-	memcpy(dio->dodag_id, &data[8], 16);
+
+	struct lichen_rpl_dio parsed = {
+		.rpl_instance_id = data[0],
+		.version = data[1],
+		.rank = sys_get_be16(&data[2]),
+		.grounded = ((gmop >> 7) & 1U) != 0U,
+		.mode_of_operation = (gmop >> 3) & 0x7U,
+		.preference = gmop & 0x7U,
+		.dtsn = data[5],
+		.flags = data[6],
+	};
+	memcpy(parsed.dodag_id, &data[8], sizeof(parsed.dodag_id));
+	*dio = parsed;
 
 	return LICHEN_RPL_OK;
+}
+
+int lichen_rpl_dio_write_with_options(const struct lichen_rpl_dio *dio,
+				      const uint8_t *options, size_t options_len,
+				      uint8_t *buf, size_t len)
+{
+	if (dio == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (validate_dio_fields(dio) != LICHEN_RPL_OK ||
+	    options_len > (size_t)INT_MAX - LICHEN_RPL_DIO_BASE_LEN) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	int ret = validate_dio_options(options, options_len);
+	if (ret != LICHEN_RPL_OK) {
+		return ret;
+	}
+	size_t needed = LICHEN_RPL_DIO_BASE_LEN + options_len;
+	if (len < needed) {
+		return LICHEN_RPL_ERR_BUF_SMALL;
+	}
+
+	uint8_t base[LICHEN_RPL_DIO_BASE_LEN];
+	base[0] = dio->rpl_instance_id;
+	base[1] = dio->version;
+	sys_put_be16(dio->rank, &base[2]);
+	base[4] = (uint8_t)(((dio->grounded ? 1U : 0U) << 7U) |
+			    (dio->mode_of_operation << 3U) | dio->preference);
+	base[5] = dio->dtsn;
+	base[6] = dio->flags;
+	base[7] = 0U;
+	memcpy(&base[8], dio->dodag_id, sizeof(dio->dodag_id));
+
+	if (options_len != 0U) {
+		memmove(&buf[LICHEN_RPL_DIO_BASE_LEN], options, options_len);
+	}
+	memcpy(buf, base, sizeof(base));
+	return (int)needed;
 }
 
 int lichen_rpl_dio_write(const struct lichen_rpl_dio *dio,
 			 uint8_t *buf, size_t len)
 {
-	if (dio == NULL || buf == NULL) {
-		return LICHEN_RPL_ERR_INVALID;
-	}
-	if (len < LICHEN_RPL_DIO_BASE_LEN) {
-		return LICHEN_RPL_ERR_BUF_SMALL;
-	}
-
-	uint8_t gmop = ((dio->grounded ? 1 : 0) << 7)
-		     | ((dio->mode_of_operation & 0x7) << 3)
-		     | (dio->preference & 0x7);
-
-	buf[0] = dio->rpl_instance_id;
-	buf[1] = dio->version;
-	sys_put_be16(dio->rank, &buf[2]);
-	buf[4] = gmop;
-	buf[5] = dio->dtsn;
-	buf[6] = dio->flags;
-	buf[7] = 0; /* reserved */
-	memcpy(&buf[8], dio->dodag_id, 16);
-
-	return LICHEN_RPL_DIO_BASE_LEN;
+	return lichen_rpl_dio_write_with_options(dio, NULL, 0U, buf, len);
 }
 
 const uint8_t *lichen_rpl_dio_options(const uint8_t *data, size_t len)
@@ -93,18 +302,60 @@ const uint8_t *lichen_rpl_dio_options(const uint8_t *data, size_t len)
 
 /* ── DAO ───────────────────────────────────────────────────────────────────── */
 
-/** DAO base without DODAGID (D=0) is 4 bytes */
-#define DAO_BASE_NO_DODAGID  4
+static int validate_dao_options(const uint8_t *data, size_t len, size_t base_len)
+{
+	bool have_signature = false;
+	size_t pos = base_len;
 
-/* Provisional LICHEN DAO Origin Signature Option (type 0x12) per
- * draft-lichen-rpl-lora-00.md §7.5. MUST be exactly one terminal option
- * with Data Length=56 (8B origin_sequence + 48B Schnorr48). Used for
- * replay floor (high-water seq + signed-DAO digest), idempotent detection
- * (§7.3), and DAO-ACK gating. Root MUST persist floor before success ACK
- * for newly-accepted ack_requested DAOs. Exact transcript for digest.
- * Matches Rust. Reference project-LICHEN-et78.2 */
-#define LICHEN_RPL_OPT_DAO_ORIGIN_SIGNATURE 0x12
-#define LICHEN_RPL_DAO_ORIGIN_SIGNATURE_DATA_LEN 56
+	while (pos < len) {
+		uint8_t type = data[pos];
+
+		if (type == LICHEN_RPL_OPT_PAD1) {
+			if (have_signature) {
+				return LICHEN_RPL_ERR_BAD_OPT;
+			}
+			pos++;
+			continue;
+		}
+		if (pos + 2U > len) {
+			return LICHEN_RPL_ERR_BAD_OPT;
+		}
+		size_t data_len = data[pos + 1U];
+		size_t end = pos + 2U + data_len;
+		if (end > len || have_signature) {
+			return LICHEN_RPL_ERR_BAD_OPT;
+		}
+
+		switch (type) {
+		case LICHEN_RPL_OPT_RPL_TARGET:
+			if (data_len != LICHEN_RPL_TARGET_DATA_LEN || data[pos + 2U] != 0U) {
+				return LICHEN_RPL_ERR_BAD_OPT;
+			}
+			break;
+		case LICHEN_RPL_OPT_TRANSIT_INFO:
+			if (data_len != LICHEN_RPL_TRANSIT_INFO_DATA_LEN ||
+			    (data[pos + 2U] & 0x7fU) != 0U) {
+				return LICHEN_RPL_ERR_BAD_OPT;
+			}
+			break;
+		case LICHEN_RPL_OPT_RPL_TARGET_DESCRIPTOR:
+			if (data_len != 4U) {
+				return LICHEN_RPL_ERR_BAD_OPT;
+			}
+			break;
+		case LICHEN_RPL_OPT_DAO_ORIGIN_SIGNATURE:
+			if (data_len != LICHEN_RPL_DAO_ORIGIN_SIGNATURE_DATA_LEN || end != len) {
+				return LICHEN_RPL_ERR_BAD_OPT;
+			}
+			have_signature = true;
+			break;
+		default:
+			return LICHEN_RPL_ERR_BAD_OPT;
+		}
+		pos = end;
+	}
+	return LICHEN_RPL_OK;
+}
 
 int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
 			 const uint8_t *data, size_t len)
@@ -113,7 +364,7 @@ int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	/* Minimum: 4 bytes base without DODAGID */
-	if (len < DAO_BASE_NO_DODAGID) {
+	if (len < LICHEN_RPL_DAO_BASE_NO_DODAGID_LEN) {
 		return LICHEN_RPL_ERR_TOO_SHORT;
 	}
 
@@ -128,16 +379,23 @@ int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
 		return LICHEN_RPL_ERR_TOO_SHORT;
 	}
 
-	dao->rpl_instance_id = data[0];
-	dao->ack_requested = (kd >> 7) & 1;
-	dao->flags = kd & 0x3F;
-	dao->dao_sequence = data[3];
+	size_t base_len = d_flag ? LICHEN_RPL_DAO_BASE_LEN :
+		LICHEN_RPL_DAO_BASE_NO_DODAGID_LEN;
+	if (validate_dao_options(data, len, base_len) != LICHEN_RPL_OK) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
+	struct lichen_rpl_dao parsed = {
+		.rpl_instance_id = data[0],
+		.ack_requested = (kd >> 7) & 1,
+		.has_dodag_id = d_flag,
+		.flags = 0,
+		.dao_sequence = data[3],
+	};
 
 	if (d_flag) {
-		memcpy(dao->dodag_id, &data[4], 16);
-	} else {
-		memset(dao->dodag_id, 0, 16);
+		memcpy(parsed.dodag_id, &data[4], sizeof(parsed.dodag_id));
 	}
+	*dao = parsed;
 
 	return LICHEN_RPL_OK;
 }
@@ -151,22 +409,26 @@ int lichen_rpl_dao_write(const struct lichen_rpl_dao *dao,
 	if (dao->flags != 0) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-	if (len < LICHEN_RPL_DAO_BASE_LEN) {
+	size_t base_len = dao->has_dodag_id ? LICHEN_RPL_DAO_BASE_LEN :
+		LICHEN_RPL_DAO_BASE_NO_DODAGID_LEN;
+	if (len < base_len) {
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
 
-	/* K=ack_requested, D=1 (always include DODAGID) */
+	/* K=ack_requested; D follows the explicit DODAGID presence bit. */
 	uint8_t kd = ((dao->ack_requested ? 1 : 0) << 7)
-		   | (1 << 6)  /* D-flag always set */
+		   | ((dao->has_dodag_id ? 1 : 0) << 6)
 		   | (dao->flags & 0x3F);
 
 	buf[0] = dao->rpl_instance_id;
 	buf[1] = kd;
 	buf[2] = 0; /* reserved */
 	buf[3] = dao->dao_sequence;
-	memcpy(&buf[4], dao->dodag_id, 16);
+	if (dao->has_dodag_id) {
+		memcpy(&buf[4], dao->dodag_id, sizeof(dao->dodag_id));
+	}
 
-	return LICHEN_RPL_DAO_BASE_LEN;
+	return (int)base_len;
 }
 
 const uint8_t *lichen_rpl_dao_options(const uint8_t *data, size_t len)
@@ -175,13 +437,14 @@ const uint8_t *lichen_rpl_dao_options(const uint8_t *data, size_t len)
 		return NULL;
 	}
 
-	if (len < DAO_BASE_NO_DODAGID) {
+	if (len < LICHEN_RPL_DAO_BASE_NO_DODAGID_LEN) {
 		return NULL;
 	}
 
 	uint8_t kd = data[1];
 	bool d_flag = (kd >> 6) & 1;
-	size_t base_len = d_flag ? LICHEN_RPL_DAO_BASE_LEN : DAO_BASE_NO_DODAGID;
+	size_t base_len = d_flag ? LICHEN_RPL_DAO_BASE_LEN :
+		LICHEN_RPL_DAO_BASE_NO_DODAGID_LEN;
 
 	if (len > base_len) {
 		return &data[base_len];
@@ -200,22 +463,38 @@ int lichen_rpl_dao_ack_parse(struct lichen_rpl_dao_ack *ack,
 	}
 
 	uint8_t d_byte = data[1];
-	bool d_flag = (d_byte >> 7) & 1;
+	bool d_flag = (d_byte & 0x80U) != 0U;
+	size_t expected_len = d_flag ? 20U : 4U;
 
-	if (d_flag && len < 20) {
+	if (len < expected_len) {
 		return LICHEN_RPL_ERR_TOO_SHORT;
 	}
-
-	ack->rpl_instance_id = data[0];
-	ack->flags = d_byte & 0x7F;
-	ack->dao_sequence = data[2];
-	ack->status = data[3];
-
-	if (d_flag) {
-		memcpy(ack->dodag_id, &data[4], 16);
-	} else {
-		memset(ack->dodag_id, 0, 16);
+	if ((d_byte & 0x7fU) != 0U) {
+		return LICHEN_RPL_ERR_BAD_OPT;
 	}
+
+	struct lichen_rpl_opt_iter it;
+	struct lichen_rpl_raw_opt raw;
+	lichen_rpl_opt_iter_init(&it, &data[expected_len], len - expected_len);
+	int opt_ret;
+	do {
+		opt_ret = lichen_rpl_opt_iter_next(&it, &raw);
+	} while (opt_ret == LICHEN_RPL_OK);
+	if (opt_ret != 1) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
+
+	struct lichen_rpl_dao_ack parsed = {
+		.rpl_instance_id = data[0],
+		.flags = 0,
+		.dao_sequence = data[2],
+		.status = data[3],
+		.has_dodag_id = d_flag,
+	};
+	if (d_flag) {
+		memcpy(parsed.dodag_id, &data[4], sizeof(parsed.dodag_id));
+	}
+	*ack = parsed;
 
 	return LICHEN_RPL_OK;
 }
@@ -226,13 +505,16 @@ int lichen_rpl_dao_ack_write(const struct lichen_rpl_dao_ack *ack,
 	if (ack == NULL || buf == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-	bool d_flag = true;
-	size_t base_len = d_flag ? 20 : 4;
+	if (ack->flags != 0U) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	bool d_flag = ack->has_dodag_id;
+	size_t base_len = d_flag ? 20U : 4U;
 	if (len < base_len) {
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
 
-	uint8_t d_byte = (d_flag ? 0x80 : 0) | (ack->flags & 0x7F);
+	uint8_t d_byte = d_flag ? 0x80U : 0U;
 
 	buf[0] = ack->rpl_instance_id;
 	buf[1] = d_byte;
@@ -247,14 +529,10 @@ int lichen_rpl_dao_ack_write(const struct lichen_rpl_dao_ack *ack,
 
 const uint8_t *lichen_rpl_dao_ack_options(const uint8_t *data, size_t len)
 {
-	if (data == NULL || len < 4) {
+	if (data == NULL || len < 4U) {
 		return NULL;
 	}
-
-	uint8_t d_byte = data[1];
-	bool d_flag = (d_byte >> 7) & 1;
-	size_t base_len = d_flag ? 20 : 4;
-
+	size_t base_len = (data[1] & 0x80U) != 0U ? 20U : 4U;
 	if (len > base_len) {
 		return &data[base_len];
 	}
@@ -269,6 +547,8 @@ void lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *cfg)
 		return;
 	}
 	cfg->min_hop_rank_increase = 256;
+	cfg->pcs = 0;
+	cfg->authentication_enabled = false;
 	cfg->max_rank_increase = 2048;
 	cfg->ocp = 1;  /* MRHOF */
 	cfg->def_lifetime = 0xFF;
@@ -285,10 +565,15 @@ int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *cfg,
 	if (cfg == NULL || data == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-	if (len < LICHEN_RPL_DODAG_CONFIG_DATA_LEN) {
-		return LICHEN_RPL_ERR_TOO_SHORT;
+	if (len != LICHEN_RPL_DODAG_CONFIG_DATA_LEN) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
+	if ((data[0] & 0x70U) != 0U || data[10] != 0U) {
+		return LICHEN_RPL_ERR_BAD_OPT;
 	}
 
+	cfg->pcs = data[0] & 0x07U;
+	cfg->authentication_enabled = (data[0] & 0x08U) != 0U;
 	cfg->gateway_centric = (data[0] & 0x80) != 0;
 	cfg->dio_int_doublings = data[1];
 	cfg->dio_int_min = data[2];
@@ -296,7 +581,6 @@ int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *cfg,
 	cfg->max_rank_increase = sys_get_be16(&data[4]);
 	cfg->min_hop_rank_increase = sys_get_be16(&data[6]);
 	cfg->ocp = sys_get_be16(&data[8]);
-	/* data[10] = reserved */
 	cfg->def_lifetime = data[11];
 	cfg->lifetime_unit = sys_get_be16(&data[12]);
 
@@ -310,13 +594,17 @@ int lichen_rpl_dodag_config_write(const struct lichen_rpl_dodag_config *cfg,
 	if (cfg == NULL || buf == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
+	if (cfg->pcs > 7U) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
 	if (len < needed) {
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
 
 	buf[0] = LICHEN_RPL_OPT_DODAG_CONFIG;
 	buf[1] = LICHEN_RPL_DODAG_CONFIG_DATA_LEN;
-	buf[2] = cfg->gateway_centric ? 0x80 : 0;  /* GATEWAY_CENTRIC bit 7 */
+	buf[2] = (cfg->gateway_centric ? 0x80U : 0U) |
+		 (cfg->authentication_enabled ? 0x08U : 0U) | cfg->pcs;
 	buf[3] = cfg->dio_int_doublings;
 	buf[4] = cfg->dio_int_min;
 	buf[5] = cfg->dio_redundancy_const;
@@ -338,30 +626,15 @@ int lichen_rpl_target_parse(struct lichen_rpl_target *target,
 	if (target == NULL || data == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-	if (len < 2) {
-		return LICHEN_RPL_ERR_TOO_SHORT;
+	if (len != LICHEN_RPL_TARGET_DATA_LEN) {
+		return LICHEN_RPL_ERR_BAD_OPT;
 	}
-
-	/* data[0] = flags, skipped */
-	uint8_t prefix_len = data[1];
-
-	/*
-	 * IPv6 prefix must be 1-128 bits. prefix_len=0 would mean no target,
-	 * which is invalid for routing purposes (RFC 6550 does not define
-	 * a "default route" semantic for RPL Target options).
-	 */
-	if (prefix_len == 0 || prefix_len > 128) {
+	if (data[0] != 0 || data[1] != 128U) {
 		return LICHEN_RPL_ERR_BAD_OPT;
 	}
 
-	size_t nbytes = div_ceil(prefix_len, 8);
-	if (len < 2 + nbytes) {
-		return LICHEN_RPL_ERR_TOO_SHORT;
-	}
-
-	target->prefix_len = prefix_len;
-	memset(target->prefix, 0, 16);
-	memcpy(target->prefix, &data[2], nbytes);
+	target->prefix_len = 128U;
+	memcpy(target->prefix, &data[2], sizeof(target->prefix));
 
 	return LICHEN_RPL_OK;
 }
@@ -372,23 +645,21 @@ int lichen_rpl_target_write(const struct lichen_rpl_target *target,
 	if (target == NULL || buf == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-	if (target->prefix_len == 0 || target->prefix_len > 128) {
+	if (target->prefix_len != 128U) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 
-	size_t nbytes = div_ceil(target->prefix_len, 8);
-	size_t data_len = 2 + nbytes;
-	size_t needed = 2 + data_len;
+	size_t needed = 2U + LICHEN_RPL_TARGET_DATA_LEN;
 
 	if (len < needed) {
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
 
 	buf[0] = LICHEN_RPL_OPT_RPL_TARGET;
-	buf[1] = (uint8_t)data_len;
+	buf[1] = LICHEN_RPL_TARGET_DATA_LEN;
 	buf[2] = 0;  /* flags */
 	buf[3] = target->prefix_len;
-	memcpy(&buf[4], target->prefix, nbytes);
+	memcpy(&buf[4], target->prefix, sizeof(target->prefix));
 
 	return (int)needed;
 }
@@ -401,14 +672,13 @@ int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *ti,
 	if (ti == NULL || data == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-	if (len < LICHEN_RPL_TRANSIT_INFO_DATA_LEN) {
-		return LICHEN_RPL_ERR_TOO_SHORT;
+	if (len != LICHEN_RPL_TRANSIT_INFO_DATA_LEN) {
+		return LICHEN_RPL_ERR_BAD_OPT;
 	}
-	/* data[0] holds flags with E bit (0x80 = parent present per RFC 6550 6.7.8);
-	 * LICHEN contract requires E=1 for this struct. */
-	if (data[0] != 0x80) {
-		return LICHEN_RPL_ERR_INVALID;
+	if ((data[0] & 0x7fU) != 0U) {
+		return LICHEN_RPL_ERR_BAD_OPT;
 	}
+	ti->external = (data[0] & 0x80U) != 0U;
 	ti->path_control = data[1];
 	ti->path_sequence = data[2];
 	ti->path_lifetime = data[3];
@@ -430,7 +700,7 @@ int lichen_rpl_transit_info_write(const struct lichen_rpl_transit_info *ti,
 
 	buf[0] = LICHEN_RPL_OPT_TRANSIT_INFO;
 	buf[1] = LICHEN_RPL_TRANSIT_INFO_DATA_LEN;
-	buf[2] = 0x80;  /* E=1 (parent present) per RFC 6550 6.7.8 + vector alignment */
+	buf[2] = ti->external ? 0x80U : 0U;
 	buf[3] = ti->path_control;
 	buf[4] = ti->path_sequence;
 	buf[5] = ti->path_lifetime;

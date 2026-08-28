@@ -502,7 +502,9 @@ async def test_generation_overflow_raises_on_put() -> None:
 
     # Next put should raise overflow error
     with pytest.raises(GenerationOverflowError, match="maximum.*re-key via EDHOC"):
-        await store.put("peer", make_context(b"b" * 16), b"peer-key", expected_generation=MAX_OSCORE_GENERATION)
+        await store.put(
+            "peer", make_context(b"b" * 16), b"peer-key", expected_generation=MAX_OSCORE_GENERATION
+        )
 
 
 def test_generation_overflow_raises_on_put_sync() -> None:
@@ -517,7 +519,9 @@ def test_generation_overflow_raises_on_put_sync() -> None:
 
     # Next put_sync should raise overflow error
     with pytest.raises(GenerationOverflowError, match="maximum.*re-key via EDHOC"):
-        store.put_sync("peer", make_context(b"b" * 16), b"peer-key", expected_generation=MAX_OSCORE_GENERATION)
+        store.put_sync(
+            "peer", make_context(b"b" * 16), b"peer-key", expected_generation=MAX_OSCORE_GENERATION
+        )
 
 
 @pytest.mark.asyncio
@@ -556,7 +560,9 @@ async def test_sqlite_generation_overflow_raises_on_put(tmp_path: Path) -> None:
 
     # Next put should raise overflow error
     with pytest.raises(GenerationOverflowError, match="maximum.*re-key via EDHOC"):
-        await store.put("peer", make_context(b"b" * 16), b"peer-key", expected_generation=MAX_OSCORE_GENERATION)
+        await store.put(
+            "peer", make_context(b"b" * 16), b"peer-key", expected_generation=MAX_OSCORE_GENERATION
+        )
 
 
 @pytest.mark.asyncio

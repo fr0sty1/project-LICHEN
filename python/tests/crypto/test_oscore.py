@@ -6,7 +6,7 @@ import pytest
 
 from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
 from lichen.crypto.identity import Identity
-from lichen.crypto.oscore import MemorySecurityContext
+from lichen.crypto.oscore import MAX_OSCORE_SEQUENCE_NUMBER, MemorySecurityContext
 
 
 class TestMemorySecurityContext:
@@ -106,12 +106,16 @@ class TestMemorySecurityContext:
             recipient_id=b"\x01",
         )
 
-        # Set sequence number to max (2^40 - 1)
-        ctx.sender_sequence_number = (1 << 40) - 1
+        # Set sequence number to MAX - 1 to verify boundary behavior
+        ctx.sender_sequence_number = MAX_OSCORE_SEQUENCE_NUMBER - 1
 
-        # Last valid sequence number should succeed
+        # Second-to-last valid sequence number should succeed
         seqno = ctx.new_sequence_number()
-        assert seqno == (1 << 40) - 1
+        assert seqno == MAX_OSCORE_SEQUENCE_NUMBER - 1
+
+        # Last valid sequence number should also succeed
+        seqno = ctx.new_sequence_number()
+        assert seqno == MAX_OSCORE_SEQUENCE_NUMBER
 
         # Next call should raise (would exceed 5-byte limit)
         with pytest.raises(OverflowError, match="sequence number exhausted"):
@@ -150,16 +154,15 @@ class TestMemorySecurityContext:
 
     def test_starting_sequence_number_exceeds_max_raises(self) -> None:
         """starting_sequence_number exceeding RFC 8613 limit raises ValueError."""
-        max_seq = (1 << 40) - 1
         # Value at max should succeed
         ctx = MemorySecurityContext(
             master_secret=b"0" * 16,
             master_salt=b"1" * 8,
             sender_id=b"\x00",
             recipient_id=b"\x01",
-            starting_sequence_number=max_seq,
+            starting_sequence_number=MAX_OSCORE_SEQUENCE_NUMBER,
         )
-        assert ctx.sender_sequence_number == max_seq
+        assert ctx.sender_sequence_number == MAX_OSCORE_SEQUENCE_NUMBER
 
         # Value exceeding max should fail
         with pytest.raises(ValueError, match="exceeds RFC 8613 limit"):
@@ -168,7 +171,7 @@ class TestMemorySecurityContext:
                 master_salt=b"1" * 8,
                 sender_id=b"\x00",
                 recipient_id=b"\x01",
-                starting_sequence_number=max_seq + 1,
+                starting_sequence_number=MAX_OSCORE_SEQUENCE_NUMBER + 1,
             )
 
     def test_get_persisted_sequence_number(self) -> None:

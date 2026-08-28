@@ -271,8 +271,12 @@ def _select_channel_index(eui64: bytes, epoch: int, density: int, n_channels: in
     """Implement CCP-12 hash selection for an explicitly bounded plan.
 
     ``n_channels`` must be positive; callers cannot select from an empty or
-    nonsensical negative-size plan. The one- and two-channel branches prevent
-    the spec's minimum-three modulo domain from producing a nonexistent CH2.
+    nonsensical negative-size plan. CH0 occupies the first plan entry, so only
+    the remaining ``n_channels - 1`` entries participate in the modulus.
+
+    Per spec 02a-coordinated-capacity.md Section 2a.3.1:
+      N = NChannels - 1
+      RETURN 1 + (Hash MOD N)
     """
     if type(n_channels) is not int or n_channels <= 0:
         raise ValueError("n_channels must be a positive integer")
@@ -282,7 +286,7 @@ def _select_channel_index(eui64: bytes, epoch: int, density: int, n_channels: in
         return 1
     data = eui64 + (epoch & 0xFFFFFFFF).to_bytes(4, "little")
     h = hash_32(data)
-    return 1 + (h % n_channels)
+    return 1 + (h % (n_channels - 1))
 
 
 def select_channel(

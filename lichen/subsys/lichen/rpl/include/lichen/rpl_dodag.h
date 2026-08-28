@@ -9,8 +9,8 @@
  * - Node starts UNJOINED; on hearing a usable DIO it elects a preferred
  *   parent and becomes JOINED.
  * - Rank = preferred_parent.rank + round(link_etx * MinHopRankIncrease)
- * - Hysteresis: switch parent only if candidate improves path cost by
- *   more than PARENT_SWITCH_THRESHOLD.
+ * - Hysteresis: switch parent when the candidate improves path cost by
+ *   at least PARENT_SWITCH_THRESHOLD.
  * - MaxRankIncrease: reject candidates that would take rank above the
  *   lowest rank we have ever held plus max_rank_increase.
  */
@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <lichen/rpl_messages.h>
+#include <lichen/rpl_trickle.h>
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
@@ -110,6 +111,8 @@ struct lichen_rpl_dodag {
 	uint16_t min_hop_rank_increase;
 	uint16_t max_rank_increase;
 	uint16_t parent_switch_threshold;
+	/** DIO consistency timer, committed atomically with routing state. */
+	struct lichen_trickle trickle;
 
 	/* Parent candidates */
 	struct lichen_rpl_parent parents[CONFIG_LICHEN_RPL_MAX_PARENTS];
@@ -180,11 +183,11 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *_No
  * @note All RPL control messages MUST be received over an authenticated link
  *       (S=1 per LICHEN link-layer spec). Unauthenticated DIOs are rejected.
  *
- * DODAGVersionNumber is scoped to (RPLInstanceID, DODAGID). A JOINED node
- * ignores a DIO with a different instance or DODAGID (no version compare).
- * An UNJOINED node may first-join a foreign (instance, DODAGID) without
- * comparing leftover version bytes. Incomparable lollipop versions are
- * ignored, not treated as same-version. Roots ignore all DIOs.
+ * DODAGVersionNumber is scoped to (RPLInstanceID, DODAGID). Every node
+ * ignores a DIO with a different configured instance or DODAGID (no version
+ * compare). Incomparable or older lollipop versions are ignored, not treated
+ * as same-version. A newer version requires the separately authorized API;
+ * the ordinary API fails closed. Roots ignore all DIOs.
  *
  * The DODAG Configuration option's gateway_centric flag is accepted only
  * from the adopted root (sender address == DODAGID); any other value is
@@ -204,6 +207,19 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nullable d,
 				  bool authenticated);
 
 /**
+ * Process a DIO with separately verified root-owned version authorization.
+ * The ordinary API above passes false and therefore cannot advance the DODAG
+ * version. All routing and Trickle changes are staged and committed together.
+ */
+int lichen_rpl_dodag_process_dio_authorized(
+	struct lichen_rpl_dodag *_Nullable d,
+	const struct lichen_rpl_dio *_Nullable dio,
+	const struct lichen_rpl_dodag_config *_Nullable config,
+	const uint8_t *_Nullable neighbor_addr,
+	uint16_t link_etx, uint8_t load_factor, uint32_t now,
+	bool authenticated, bool version_authorized);
+
+/**
  * @brief Parse a received DIO from wire bytes and process it.
  *
  * @param d             DODAG state
@@ -215,8 +231,10 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nullable d,
  * @param now           Current timestamp for lifetime tracking
  * @param authenticated True if the DIO was received with a valid frame signature
  *
- * Parses a DODAG Configuration option if present and forwards it to
- * lichen_rpl_dodag_process_dio(). Unauthenticated DIOs are rejected.
+ * Strictly validates the complete option chain, requires the current SCHC
+ * Rule Version option, and parses a DODAG Configuration option if present.
+ * Unauthenticated DIOs are rejected. Parse, policy, routing, and Trickle
+ * state changes are committed atomically.
  *
  * @return 0 or 1 from lichen_rpl_dodag_process_dio() on success,
  *         LICHEN_RPL_ERR_INVALID if d, dio_bytes, or neighbor_addr is NULL,
@@ -231,6 +249,14 @@ int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *_Nullable d,
 					uint8_t load_factor,
 					uint32_t now,
 					bool authenticated);
+
+/** Wire receive variant for a separately verified version authorization. */
+int lichen_rpl_dodag_process_dio_bytes_authorized(
+	struct lichen_rpl_dodag *_Nullable d,
+	const uint8_t *_Nullable dio_bytes, size_t dio_len,
+	const uint8_t *_Nullable neighbor_addr,
+	uint16_t link_etx, uint8_t load_factor, uint32_t now,
+	bool authenticated, bool version_authorized);
 
 /**
  * @brief Drop a neighbor (e.g., link failure) and re-select parent.
@@ -280,7 +306,10 @@ static inline bool rpl_time_expired(uint32_t now, uint32_t last_updated,
 				     uint32_t max_age)
 {
 	uint32_t deadline = last_updated + max_age;
-	return (int32_t)(now - deadline) >= 0;
+	/* A parent exactly max_age old is still usable; it becomes stale on
+	 * the first tick after the deadline. The signed comparison is safe for
+	 * configured lifetimes shorter than half the 32-bit timer range. */
+	return (int32_t)(now - deadline) > 0;
 }
 
 int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *_Nullable d,
@@ -291,19 +320,18 @@ int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *_Nullable d,
  * RFC 6550 Section 7.2 lollipop comparison (host-test hook).
  *
  * @return 1 if @p a is newer, -1 if older, 0 if equal, 2 if incomparable.
- *         Same-region comparisons use RFC 1982 serial arithmetic on the
- *         low 7 bits with SEQUENCE_WINDOW=16; cross-region pairs are
- *         always comparable (RFC 6550 Section 7.2 rule 3.1). Matches
- *         rust/lichen-rpl/src/routing.rs seq_is_newer(); see
- *         lichen/tests/rpl_dao_sequence/sweep.c for the exhaustive check.
+ *         Same-region comparisons first require an absolute difference no
+ *         greater than SEQUENCE_WINDOW=16; cross-region pairs are always
+ *         comparable (RFC 6550 Section 7.2 rules 3.1 and 3.2). See
+ *         lichen/tests/rpl_dodag/main.c for the exhaustive check.
  */
 int lichen_rpl_lollipop_cmp(uint8_t a, uint8_t b);
 
 /**
  * True if @p new_ver is strictly newer than @p old_ver.
  *
- * Serial-arithmetic restarts: 0 after 127 and 0 after 255 are newer; the
- * reverse pairs are stale.
+ * The DODAG state machine preserves the explicitly observed adjacent 127->0
+ * restart; all other relationships come from lichen_rpl_lollipop_cmp().
  */
 bool lichen_rpl_version_is_newer(uint8_t new_ver, uint8_t old_ver);
 #endif /* LICHEN_RPL_TEST */

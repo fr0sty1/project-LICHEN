@@ -66,6 +66,14 @@ _RULE_MQTT_SN = 7
 _MQTT_SN_LINK_LOCAL_RESIDUE_BYTES = 20
 _MQTT_SN_FULL_RESIDUE_BYTES = 36
 _MAX_IPV6_PACKET_SIZE = HEADER_LENGTH + 0xFFFF
+_IPV6_MAX_PAYLOAD = 0xFFFF
+
+# Validate that protocol overhead values fit within IPv6 max payload.
+# These assertions catch future misconfigurations at module load time.
+assert _ICMPV6_HEADER + _DIO_BASE <= _IPV6_MAX_PAYLOAD, "DIO overhead too large"
+assert _ICMPV6_HEADER + _DAO_BASE_WITH_DODAGID <= _IPV6_MAX_PAYLOAD, "DAO overhead too large"
+assert _ICMPV6_ECHO_BASE <= _IPV6_MAX_PAYLOAD, "ICMPv6 Echo overhead too large"
+assert UDP_HEADER_LENGTH + _COAP_FIXED_HEADER <= _IPV6_MAX_PAYLOAD, "CoAP overhead too large"
 
 
 def _is_link_local(addr: int) -> bool:
@@ -242,30 +250,30 @@ def _coap_oscore_status(coap: bytes) -> bool | None:
 
         if delta == 13:
             if offset + 1 > len(coap):
-                return False
+                return None
             delta = coap[offset] + 13
             offset += 1
         elif delta == 14:
             if offset + 2 > len(coap):
-                return False
+                return None
             delta = int.from_bytes(coap[offset : offset + 2], "big") + 269
             offset += 2
         elif delta == 15:
-            return False
+            return None
 
         # Parse option length
         if length == 13:
             if offset + 1 > len(coap):
-                return False
+                return None
             length = coap[offset] + 13
             offset += 1
         elif length == 14:
             if offset + 2 > len(coap):
-                return False
+                return None
             length = int.from_bytes(coap[offset : offset + 2], "big") + 269
             offset += 2
         elif length == 15:
-            return False
+            return None
 
         option_number += delta
 
@@ -277,9 +285,6 @@ def _coap_oscore_status(coap: bytes) -> bool | None:
                 return None
             oscore_found = True
 
-        # Skip option value, checking bounds first
-        if offset + length > len(coap):
-            return False  # Malformed: declared length exceeds remaining bytes
         offset += length
 
     # Valid end of options without payload marker: per RFC 7252, 0xFF is only
@@ -327,13 +332,19 @@ class PacketProfile(ABC):
     rule: Rule
 
     @abstractmethod
-    def matches(self, raw: bytes) -> bool: ...
+    def matches(self, raw: bytes) -> bool:
+        """Return True if raw packet bytes match this profile's structure."""
+        ...
 
     @abstractmethod
-    def parse(self, raw: bytes) -> tuple[dict[str, int], bytes]: ...
+    def parse(self, raw: bytes) -> tuple[dict[str, int], bytes]:
+        """Parse raw packet into (field_dict, variable_tail) for SCHC compression."""
+        ...
 
     @abstractmethod
-    def build(self, fields: dict[str, int | None], tail: bytes) -> bytes: ...
+    def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
+        """Reconstruct raw packet bytes from decompressed fields and tail."""
+        ...
 
 
 class _CoapUdpProfile(PacketProfile):
@@ -637,10 +648,14 @@ class _RplProfile(PacketProfile):
         return header.to_bytes() + icmpv6
 
     @abstractmethod
-    def _parse_base(self, base: bytes) -> dict[str, int]: ...
+    def _parse_base(self, base: bytes) -> dict[str, int]:
+        """Parse the fixed-length RPL base fields into a field dict."""
+        ...
 
     @abstractmethod
-    def _build_base(self, fields: dict[str, int | None]) -> bytes: ...
+    def _build_base(self, fields: dict[str, int | None]) -> bytes:
+        """Serialize the RPL base fields from a field dict."""
+        ...
 
 
 class RplDioProfile(_RplProfile):

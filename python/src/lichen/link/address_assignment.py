@@ -35,8 +35,10 @@ _REQUEST_LENGTH: Final[int] = 13
 _ACK_LENGTH: Final[int] = 14
 _STATE_MAGIC: Final[bytes] = b"SAA1"
 _STATE_RECORD_LENGTH: Final[int] = 10
-_TABLE_STATE_MAGIC: Final[bytes] = b"SAT2"
+_TABLE_STATE_MAGIC: Final[bytes] = b"SAT3"
+_TABLE_STATE_V2_MAGIC: Final[bytes] = b"SAT2"
 _TABLE_STATE_RECORD_LENGTH: Final[int] = 20
+_TABLE_STATE_TOMBSTONE_LENGTH: Final[int] = 9
 _NO_EXPIRY: Final[int] = (1 << 64) - 1
 _NO_SEQUENCE: Final[int] = 256
 _FIRST_SHORT: Final[int] = 1
@@ -109,6 +111,30 @@ def _one_assignment_option(options: list[RplOption]) -> RplOption:
     if len(matches) != 1:
         raise AssignmentProtocolError("message must contain exactly one short-address option")
     return matches[0]
+
+
+def _dao_sequence_is_newer(new_sequence: int, old_sequence: int) -> bool:
+    """Compare RFC 6550 Section 7.2 lollipop counters with window 16.
+
+    RFC 6550 defines two regions:
+    - Linear (0-127): strict comparison, new must be greater than old
+    - Circular (128-255): modular comparison with wrap-around
+    """
+    both_linear = new_sequence < 128 and old_sequence < 128
+    both_circular = new_sequence >= 128 and old_sequence >= 128
+    if both_linear:
+        # Linear region: strict comparison, no wrap-around
+        difference = new_sequence - old_sequence
+        return 1 <= difference <= 16
+    if both_circular:
+        # Circular region: modular comparison within 128-value range
+        difference = (new_sequence - old_sequence) & 0x7F
+        return 1 <= difference <= 16
+    if new_sequence < 128:
+        # new in linear, old in circular: wrap from 255->128->...->0->new
+        return 256 + new_sequence - old_sequence <= 16
+    # new in circular, old in linear: new is newer if old near end of linear
+    return 256 + old_sequence - new_sequence > 16
 
 
 @dataclass(frozen=True)
@@ -341,14 +367,33 @@ def _encode_table_state(
         records.extend(eui64)
         records.extend(expiry.to_bytes(8, "big"))
         records.extend(sequence.to_bytes(2, "big"))
-    body = _TABLE_STATE_MAGIC + len(assignments).to_bytes(2, "big") + bytes(records)
+    tombstones = bytearray()
+    tombstone_euis = sorted(set(sequences) - seen_euis)
+    if len(tombstone_euis) > _SHORT_POOL_SIZE:
+        raise AssignmentProtocolError("too many released-peer sequence tombstones")
+    for raw_eui64 in tombstone_euis:
+        eui64 = _check_eui64(raw_eui64)
+        sequence = sequences[eui64]
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or not 0 <= sequence <= 0xFF:
+            raise AssignmentProtocolError("last DAO sequence is invalid")
+        tombstones.extend(eui64)
+        tombstones.append(sequence)
+    body = (
+        _TABLE_STATE_MAGIC
+        + len(assignments).to_bytes(2, "big")
+        + len(tombstone_euis).to_bytes(2, "big")
+        + bytes(records)
+        + bytes(tombstones)
+    )
     return body + binascii.crc32(body).to_bytes(4, "big")
 
 
 def _decode_table_state(
     state: bytes,
 ) -> tuple[dict[int, bytes], dict[bytes, int], dict[bytes, int]]:
-    if not state.startswith(_TABLE_STATE_MAGIC):
+    if state.startswith(_TABLE_STATE_MAGIC):
+        return _decode_table_state_v3(state)
+    if not state.startswith(_TABLE_STATE_V2_MAGIC):
         return decode_assignment_state(state), {}, {}
     if len(state) < 10:
         raise AssignmentProtocolError("invalid coordinator table state header")
@@ -385,6 +430,66 @@ def _decode_table_state(
             expiries[eui64] = expiry
         if sequence != _NO_SEQUENCE:
             sequences[eui64] = sequence
+    return assignments, expiries, sequences
+
+
+def _decode_table_state_v3(
+    state: bytes,
+) -> tuple[dict[int, bytes], dict[bytes, int], dict[bytes, int]]:
+    if len(state) < 12:
+        raise AssignmentProtocolError("invalid coordinator table state header")
+    count = int.from_bytes(state[4:6], "big")
+    tombstone_count = int.from_bytes(state[6:8], "big")
+    expected_length = (
+        8
+        + count * _TABLE_STATE_RECORD_LENGTH
+        + tombstone_count * _TABLE_STATE_TOMBSTONE_LENGTH
+        + 4
+    )
+    if len(state) != expected_length:
+        raise AssignmentProtocolError("coordinator table state length mismatch")
+    if binascii.crc32(state[:-4]).to_bytes(4, "big") != state[-4:]:
+        raise AssignmentProtocolError("coordinator table state checksum mismatch")
+    assignments: dict[int, bytes] = {}
+    expiries: dict[bytes, int] = {}
+    sequences: dict[bytes, int] = {}
+    seen_euis: set[bytes] = set()
+    previous_short = 0
+    offset = 8
+    for _ in range(count):
+        short_addr = int.from_bytes(state[offset : offset + 2], "big")
+        eui64 = bytes(state[offset + 2 : offset + 10])
+        expiry = int.from_bytes(state[offset + 10 : offset + 18], "big")
+        sequence = int.from_bytes(state[offset + 18 : offset + 20], "big")
+        offset += _TABLE_STATE_RECORD_LENGTH
+        _check_short(short_addr)
+        _check_eui64(eui64)
+        if short_addr <= previous_short:
+            raise AssignmentProtocolError("coordinator table records are not strictly sorted")
+        if eui64 in seen_euis:
+            raise AssignmentProtocolError("coordinator table contains duplicate EUI-64")
+        if sequence > _NO_SEQUENCE:
+            raise AssignmentProtocolError("persisted DAO sequence is invalid")
+        previous_short = short_addr
+        seen_euis.add(eui64)
+        assignments[short_addr] = eui64
+        if expiry != _NO_EXPIRY:
+            expiries[eui64] = expiry
+        if sequence != _NO_SEQUENCE:
+            sequences[eui64] = sequence
+    previous_eui: bytes | None = None
+    for _ in range(tombstone_count):
+        eui64 = bytes(state[offset : offset + 8])
+        sequence = state[offset + 8]
+        offset += _TABLE_STATE_TOMBSTONE_LENGTH
+        _check_eui64(eui64)
+        if previous_eui is not None and eui64 <= previous_eui:
+            raise AssignmentProtocolError("sequence tombstones are not strictly sorted")
+        if eui64 in seen_euis:
+            raise AssignmentProtocolError("sequence tombstone duplicates an active peer")
+        previous_eui = eui64
+        seen_euis.add(eui64)
+        sequences[eui64] = sequence
     return assignments, expiries, sequences
 
 
@@ -538,6 +643,27 @@ class ShortAddressCoordinator:
             now = int(self._clock())
             self.prune_expired(now)
             current = self._by_eui.get(request.eui64)
+            last_sequence = self._last_sequence_by_eui.get(request.eui64)
+            if last_sequence is not None and not _dao_sequence_is_newer(
+                dao_sequence, last_sequence
+            ):
+                already_matches = (
+                    current is None
+                    if request.operation is AssignmentOperation.RELEASE
+                    else current is not None
+                )
+                return AddressAssignmentAck(
+                    request.eui64,
+                    request.operation,
+                    AssignmentStatus.SUCCESS if already_matches else AssignmentStatus.INVALID,
+                    (
+                        current
+                        if already_matches
+                        and request.operation is AssignmentOperation.ALLOCATE
+                        else None
+                    ),
+                    dao_sequence,
+                )
             if request.operation is AssignmentOperation.RELEASE:
                 if current is not None:
                     updated = dict(self._by_short)
@@ -545,8 +671,14 @@ class ShortAddressCoordinator:
                     expiries = dict(self._expires_by_eui)
                     expiries.pop(request.eui64, None)
                     sequences = dict(self._last_sequence_by_eui)
-                    sequences.pop(request.eui64, None)
+                    sequences[request.eui64] = dao_sequence
                     self._commit(updated, expiries, sequences)
+                else:
+                    sequences = dict(self._last_sequence_by_eui)
+                    sequences[request.eui64] = dao_sequence
+                    self._commit(
+                        dict(self._by_short), dict(self._expires_by_eui), sequences
+                    )
                 return AddressAssignmentAck(
                     request.eui64,
                     request.operation,
@@ -580,7 +712,7 @@ class ShortAddressCoordinator:
                 sequences = dict(self._last_sequence_by_eui)
                 sequences[request.eui64] = dao_sequence
                 self._commit(updated, expiries, sequences)
-            elif self._last_sequence_by_eui.get(request.eui64) != dao_sequence:
+            else:
                 expiries = dict(self._expires_by_eui)
                 if self._lease_seconds is not None:
                     expiries[request.eui64] = now + self._lease_seconds
@@ -629,7 +761,7 @@ class ShortAddressAssignmentClient:
             return False
         if result.eui64 != self.eui64:
             return False
-        fingerprint = ack.to_bytes()
+        fingerprint = result.to_option().data
         if self._last_ack is not None and self._last_sequence == result.dao_sequence:
             if fingerprint == self._last_ack:
                 return True

@@ -10,10 +10,13 @@
 #include <lichen/link.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
+#ifdef CONFIG_LICHEN_LINK_REPLAY_PERSIST
+#include <lichen/replay_persist.h>
+#endif
 #include <string.h>
 #include <stdbool.h>
 
-#ifdef CONFIG_NVS
+#if defined(CONFIG_NVS) && !defined(CONFIG_LICHEN_APP_IDENTITY_PERSIST)
 #include <zephyr/device.h>
 #include <zephyr/fs/nvs.h>
 #include <zephyr/storage/flash_map.h>
@@ -45,7 +48,7 @@ LICHEN_LOG_MODULE(link_ctx, LOG_LEVEL_WRN);
 static bool stub_warned_load_key = false;
 #endif
 
-#ifdef CONFIG_NVS
+#if defined(CONFIG_NVS) && !defined(CONFIG_LICHEN_APP_IDENTITY_PERSIST)
 /* Link tuple persistence using NVS on storage_partition (no dynamic alloc, statics, C11).
  * Persists EUI, keys, epoch/seq tuple + exhaustion + placeholder replay counter.
  * Follows nvs_persistence test and meshcore record-with-crc pattern for atomicity
@@ -200,7 +203,7 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	ctx->tdma_init_done = false;
 #endif
 
-#ifdef CONFIG_NVS
+#if defined(CONFIG_NVS) && !defined(CONFIG_LICHEN_APP_IDENTITY_PERSIST)
 	/* Initialization-only restore of persisted tuple (EUI, keys, replay counters,
 	 * epoch/seq tuple + exhaustion). Prevents reuse of previously signed tuple
 	 * across reboot. Falls back to random epoch if no persisted state. */
@@ -286,7 +289,7 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 	ctx->epoch = new_epoch;
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
-#ifdef CONFIG_NVS
+#if defined(CONFIG_NVS) && !defined(CONFIG_LICHEN_APP_IDENTITY_PERSIST)
 	(void)save_tuple(ctx); /* persist new key + reset tuple; ignore errors to not block boot */
 #endif
 	(void)seq_unlock(ctx);
@@ -418,6 +421,14 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 			LOG_WRN("nonce exhausted at epoch 255, TX blocked until key rotation\n");
 		} else {
 			uint8_t next_epoch = (uint8_t)(ctx->epoch + 1U);
+#ifdef CONFIG_LICHEN_LINK_REPLAY_PERSIST
+			int persist_rc = lichen_replay_settings_reserve_tx_epoch(
+				ctx->epoch, &next_epoch);
+			if (persist_rc != 0) {
+				(void)seq_unlock(ctx);
+				return persist_rc;
+			}
+#endif
 #ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
 			/* Durable state must advance before the live tuple state does. */
 			int persist_rc = lichen_link_epoch_persist(next_epoch);
@@ -619,7 +630,7 @@ int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
 	}
 
 	/* spec/02a-coordinated-capacity.md:121 — Density > 8 returns control channel 0 */
-	if (density > 8) {
+	if (density > 8 || num_channels <= 1U) {
 		*channel = 0;
 		return 0;
 	}
@@ -634,8 +645,8 @@ int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
 	/* spec/02a-coordinated-capacity.md:123 — Hash = FNV1A32(Data) basis 0x811c9dc5 */
 	hash = lichen_hash_32(data, sizeof(data));
 
-	/* spec/02a-coordinated-capacity.md:124-125 — N = MAX(NChannels, 3); RETURN 1 + (Hash MOD N) */
-	n = (num_channels < 3) ? 3 : num_channels;
+	/* NChannels includes reserved CH0; hash only across data channels. */
+	n = num_channels - 1U;
 	*channel = 1 + (uint8_t)(hash % n);
 	return 0;
 }
@@ -653,6 +664,10 @@ int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
 	if (eui64 == NULL || channel == NULL) {
 		return -EINVAL;
 	}
+	if (num_channels <= 1U) {
+		*channel = 0U;
+		return 0;
+	}
 
 	memcpy(&data[0], eui64, LICHEN_EUI64_LEN);
 	data[8] = (uint8_t)(epoch & 0xff);
@@ -662,7 +677,7 @@ int lichen_link_channel_select(const uint8_t eui64[LICHEN_EUI64_LEN],
 
 	hash = lichen_hash_32(data, sizeof(data));
 
-	n = (num_channels < 3) ? 3 : num_channels;
+	n = num_channels - 1U;
 	*channel = 1 + (uint8_t)(hash % n);
 	return 0;
 }

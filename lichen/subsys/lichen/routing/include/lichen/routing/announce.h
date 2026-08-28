@@ -27,6 +27,9 @@ extern "C" {
 
 #define LICHEN_ANNOUNCE_TYPE 0x01U
 #define LICHEN_ANNOUNCE_MIN_LEN 93U
+#define LICHEN_ANNOUNCE_MAX_LEN 193U
+#define LICHEN_ANNOUNCE_MAX_APP_DATA_LEN \
+	(LICHEN_ANNOUNCE_MAX_LEN - LICHEN_ANNOUNCE_MIN_LEN)
 #define LICHEN_ANNOUNCE_MAX_HOPS 15U
 #define LICHEN_ANNOUNCE_IID_LEN 8U
 #define LICHEN_ANNOUNCE_PUBKEY_LEN 32U
@@ -80,6 +83,24 @@ typedef int (*lichen_announce_app_data_fn)(
 
 int lichen_announce_parse(const uint8_t *_Nonnull data, size_t len,
 			  struct lichen_announce_view *_Nonnull announce);
+
+/**
+ * @brief Encode an Announce message in the canonical wire format.
+ *
+ * The encoder writes the 93-byte fixed portion followed by optional
+ * authenticated application data. It does not add the L2 routing dispatch;
+ * callers that send a complete L2 payload prepend LICHEN_L2_DISPATCH_ROUTING.
+ *
+ * @param[in]  announce Parsed/builder view. wire_seq_num is serialized.
+ * @param[out] buf      Output buffer.
+ * @param[in]  buf_len  Output buffer capacity.
+ * @return Bytes written, -EINVAL for invalid fields/pointers, -EMSGSIZE when
+ *         app_data exceeds the 100-byte link profile limit, or -ENOMEM when
+ *         the output buffer is too small.
+ */
+int lichen_announce_encode(
+	const struct lichen_announce_view *_Nonnull announce,
+	uint8_t *_Nonnull buf, size_t buf_len);
 
 /**
  * @brief Check if an announce should be relayed.

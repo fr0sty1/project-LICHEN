@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-wqaa.10",
+  "title": "Evaluate eligibility criteria against LICHEN project scope",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:23.657098Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:23.657098Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.10",
+      "depends_on_id": "project-LICHEN-wqaa",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:26.542643Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

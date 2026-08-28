@@ -17,6 +17,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/** Canonical LICHEN RPL Trickle profile (packets-timing.json). */
+#define LICHEN_RPL_TRICKLE_IMIN_MS 4000U
+#define LICHEN_RPL_TRICKLE_IMAX_DOUBLINGS 8U
+#define LICHEN_RPL_TRICKLE_IMAX_MS 1024000U
+#define LICHEN_RPL_TRICKLE_K 10U
+
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
 #define __has_feature(x) 0
@@ -66,49 +72,62 @@ struct lichen_trickle {
 	uint32_t counter;        /**< Consistency counter (c) */
 	uint32_t interval_start; /**< Start time of current interval */
 	uint32_t transmit_time;  /**< Scheduled transmit time */
+	bool initialized;        /**< Configuration passed validation */
+	bool active;             /**< An interval has been started */
 	bool transmitted;        /**< Whether transmit point has passed */
 };
 
 /**
  * @brief Initialize a Trickle timer.
  *
- * @pre imin_ms > 0 (0 causes divide-by-zero or infinite loop in next_event/expire polling)
- *
  * @param t              Timer to initialize
- * @param imin_ms        Minimum interval in milliseconds
+ * @param imin_ms        Minimum interval in milliseconds (at least 2)
  * @param imax_doublings Number of times imin is doubled to reach max
- * @param k              Redundancy constant
+ * @param k              Redundancy constant (greater than zero)
+ * @return 0, -EINVAL for an invalid pointer/value, or -ERANGE when Imax
+ *         cannot be represented safely by the wrapping 32-bit clock
  */
-void lichen_trickle_init(struct lichen_trickle *_Nonnull t,
-			 uint32_t imin_ms,
-			 uint32_t imax_doublings,
-			 uint32_t k);
+int lichen_trickle_init(struct lichen_trickle *_Nullable t,
+			uint32_t imin_ms,
+			uint32_t imax_doublings,
+			uint32_t k);
+
+/** Initialize the canonical LICHEN RPL Trickle profile. */
+static inline int lichen_trickle_init_profile(struct lichen_trickle *_Nullable t)
+{
+	return lichen_trickle_init(t, LICHEN_RPL_TRICKLE_IMIN_MS,
+				   LICHEN_RPL_TRICKLE_IMAX_DOUBLINGS,
+				   LICHEN_RPL_TRICKLE_K);
+}
 
 /**
  * @brief Begin the first interval (RFC 6206 step 1-2).
  *
  * @param t           Timer
  * @param now         Current time in ms
- * @param rand_offset Random value in [0, imin/2) for transmit scheduling
+ * @param rand_offset Uniform random value in [0, floor(imin/2))
+ * @return true if the interval was started; false for invalid state/input
  */
-void lichen_trickle_start(struct lichen_trickle *_Nonnull t,
-			  uint32_t now,
-			  uint32_t rand_offset);
+bool lichen_trickle_start(struct lichen_trickle *_Nullable t,
+			 uint32_t now,
+			 uint32_t rand_offset);
 
 /**
  * @brief Get the absolute time when the current interval ends.
  *
- * Uses saturating addition to handle time wraparound after ~49.7 days.
- * When saturated, returns UINT32_MAX to avoid scheduling events in the past.
+ * The result uses normal uint32_t modular arithmetic, like Zephyr's
+ * k_uptime_get_32().  All validated intervals are at most INT32_MAX, so the
+ * usual signed-difference test remains unambiguous across clock wrap.
  */
 static inline uint32_t lichen_trickle_interval_end(const struct lichen_trickle *_Nonnull t)
 {
-	uint32_t end = t->interval_start + t->interval;
-	/* Saturate on overflow: if result < start, we wrapped */
-	if (end < t->interval_start) {
-		return UINT32_MAX;
-	}
-	return end;
+	return t->interval_start + t->interval;
+}
+
+/** Wrap-safe test for a 32-bit millisecond deadline. */
+static inline bool lichen_trickle_time_reached(uint32_t now, uint32_t deadline)
+{
+	return (int32_t)(now - deadline) >= 0;
 }
 
 /**
@@ -119,7 +138,7 @@ static inline uint32_t lichen_trickle_interval_end(const struct lichen_trickle *
  */
 static inline void lichen_trickle_heard_consistent(struct lichen_trickle *_Nonnull t)
 {
-	if (t->counter < UINT32_MAX) {
+	if (t->active && t->counter < UINT32_MAX) {
 		t->counter++;
 	}
 }
@@ -129,7 +148,7 @@ static inline void lichen_trickle_heard_consistent(struct lichen_trickle *_Nonnu
  */
 static inline bool lichen_trickle_should_transmit(const struct lichen_trickle *_Nonnull t)
 {
-	return t->counter < t->k;
+	return t->active && t->counter < t->k;
 }
 
 /**
@@ -138,7 +157,7 @@ static inline bool lichen_trickle_should_transmit(const struct lichen_trickle *_
  * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @return true if a DIO should be sent (counter < k)
  */
-bool lichen_trickle_fire_transmit(struct lichen_trickle *_Nonnull t);
+bool lichen_trickle_fire_transmit(struct lichen_trickle *_Nullable t);
 
 /**
  * @brief End the current interval: double (capped) and start the next (step 5).
@@ -146,38 +165,41 @@ bool lichen_trickle_fire_transmit(struct lichen_trickle *_Nonnull t);
  * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @param t           Timer
  * @param now         Current time in ms
- * @param rand_offset Random value in [0, new_interval/2) for transmit scheduling
+ * @param rand_offset Uniform random value in [0, floor(new_interval/2))
+ * @return true if the next interval was started; false for invalid state/input
  */
-void lichen_trickle_expire(struct lichen_trickle *_Nonnull t,
-			   uint32_t now,
-			   uint32_t rand_offset);
+bool lichen_trickle_expire(struct lichen_trickle *_Nullable t,
+			  uint32_t now,
+			  uint32_t rand_offset);
 
 /**
  * @brief Handle an inconsistency: shrink to imin and restart (RFC 6206 step 6).
  *
- * Starts if stopped (transmit_time==0) or interval != imin; no-op if already
- * at imin and running (RFC 6206 §4.2). Matches Rust TrickleTimer::try_reset
- * and reset_from_stopped_starts_timer test.
+ * This API represents a LICHEN-authorized external reset event.  Every call
+ * atomically restarts Imin and samples a fresh transmit point, as required by
+ * the canonical repeated-inconsistency vectors.  Callers decide which
+ * received messages are authorized to invoke it.
  *
  * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @param t           Timer
  * @param now         Current time in ms
- * @param rand_offset Random value in [0, imin/2) for transmit scheduling
+ * @param rand_offset Uniform random value in [0, floor(imin/2))
+ * @return true if reset; false for invalid state/input
  */
-void lichen_trickle_reset(struct lichen_trickle *_Nonnull t,
-			  uint32_t now,
-			  uint32_t rand_offset);
+bool lichen_trickle_reset(struct lichen_trickle *_Nullable t,
+			 uint32_t now,
+			 uint32_t rand_offset);
 
 
 /**
  * @brief Get the next scheduled event.
  *
- * @pre t and out must be non-NULL; t must be initialized via lichen_trickle_init()
  * @param t   Timer
  * @param out Event to populate
+ * @return true when an active timer has an event; false otherwise
  */
-void lichen_trickle_next_event(const struct lichen_trickle *_Nonnull t,
-			       struct lichen_trickle_event *_Nonnull out);
+bool lichen_trickle_next_event(const struct lichen_trickle *_Nullable t,
+			      struct lichen_trickle_event *_Nullable out);
 
 #ifdef __cplusplus
 }

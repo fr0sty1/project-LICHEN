@@ -362,6 +362,36 @@ def build_document() -> dict[str, object]:
         }
     )
 
+    # --- Deadline expiry boundary: now_ms == deadline_ms ---
+
+    oracle = ForwardingBufferOracle()
+    oracle.try_buffer("pkt_boundary", iid(1), now_ms=0, deadline_ms=100)
+    oracle.try_buffer("pkt_after", iid(1), now_ms=1, deadline_ms=101)
+
+    before_state = oracle.snapshot()
+    expired = oracle.expire_old(now_ms=100)
+
+    vectors.append(
+        {
+            "name": "deadline_expiry_boundary",
+            "description": (
+                "Packet expires exactly when now_ms == deadline_ms. "
+                "Spec requires deadline_ms <= now_ms triggers expiry."
+            ),
+            "operation": "expire_old",
+            "precondition": {
+                "description": "Two packets: deadline 100ms (boundary) and 101ms",
+                "state": before_state,
+            },
+            "inputs": {"now_ms": 100},
+            "expected": {
+                "expired_count": expired,
+                "remaining_count": oracle.count_for_source(iid(1)),
+                "state": oracle.snapshot(),
+            },
+        }
+    )
+
     # --- Expiry cleans up empty sources ---
 
     oracle = ForwardingBufferOracle()

@@ -338,6 +338,14 @@ int lichen_peer_add(const uint8_t *eui64,
 	 * The evicted peer can re-join via EDHOC handshake if still active.
 	 */
 	if (slot < 0) {
+#ifdef CONFIG_LICHEN_LINK_REPLAY_PERSIST
+		/* SECURITY: Durable replay history is trust lineage. Automatic LRU
+		 * eviction would authorize captured frames from the evicted key after
+		 * it rejoins. A protected table therefore requires an explicit
+		 * administrative peer removal before admitting another identity. */
+		k_mutex_unlock(&rx_mutex);
+		return -ENOSPC;
+#else
 		slot = peer_find_oldest_locked();
 		if (slot < 0) {
 			/* Should not happen: table full but no oldest entry found */
@@ -354,9 +362,16 @@ int lichen_peer_add(const uint8_t *eui64,
 		 * sequence numbers fall within the old window.
 		 * (project-LICHEN-0li1.53)
 		 */
-		lichen_replay_remove(&replay_table, peer_table[slot].pubkey);
+		int replay_ret = lichen_replay_remove(&replay_table,
+						 peer_table[slot].pubkey);
+		if (replay_ret != 0) {
+			LOG_ERR("replay state eviction persist failed (%d)", replay_ret);
+			k_mutex_unlock(&rx_mutex);
+			return replay_ret;
+		}
 		LOG_INF("lichen_l2: peer table full, evicting ..%02x:%02x",
 			peer_table[slot].eui64[6], peer_table[slot].eui64[7]);
+#endif
 	}
 
 	memcpy(peer_table[slot].eui64, eui64, LICHEN_EUI64_LEN);
@@ -442,7 +457,12 @@ int lichen_peer_remove(const uint8_t *eui64)
 	 * (if the peer reconnects and the attacker replays old frames).
 	 * (project-LICHEN-tvfm.45)
 	 */
-	lichen_replay_remove(&replay_table, entry->pubkey);
+	ret = lichen_replay_remove(&replay_table, entry->pubkey);
+	if (ret != 0) {
+		LOG_ERR("replay state removal persist failed (%d)", ret);
+		k_mutex_unlock(&rx_mutex);
+		return ret;
+	}
 
 	/* SECURITY: Zero pubkey before marking inactive */
 	secure_zero(entry->pubkey, sizeof(entry->pubkey));

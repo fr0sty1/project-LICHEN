@@ -57,16 +57,18 @@ extern "C" {
  */
 enum lichen_msg_status {
 	LICHEN_MSG_STATUS_QUEUED = 0,    /**< Message queued for sending */
-	LICHEN_MSG_STATUS_SENDING = 1,   /**< Message being transmitted */
+	LICHEN_MSG_STATUS_SENT = 1,      /**< Message handed to transport */
+	LICHEN_MSG_STATUS_SENDING = LICHEN_MSG_STATUS_SENT, /**< Legacy alias */
 	LICHEN_MSG_STATUS_DELIVERED = 2, /**< Message delivered (ACK received) */
 	LICHEN_MSG_STATUS_FAILED = 3,    /**< Delivery failed */
+	LICHEN_MSG_STATUS_READ = 4,      /**< Message read by recipient */
 };
 
 /**
  * @brief Message structure for inbox/sent queues
  */
 struct lichen_msg {
-	uint32_t id;                      /**< Unique message ID */
+	uint64_t id;                      /**< Unique message ID */
 	uint8_t peer_addr[16];            /**< Peer IPv6 address (from/to) */
 	char body[LICHEN_MSG_MAX_BODY_LEN]; /**< Message body (UTF-8) */
 	size_t body_len;                  /**< Body length */
@@ -74,6 +76,9 @@ struct lichen_msg {
 	enum lichen_msg_status status;    /**< Message status */
 	bool ack_requested;               /**< ACK requested for sent messages */
 	bool acknowledged;                /**< ACK received/sent */
+	bool receipt_present;             /**< A delivery receipt was applied */
+	uint32_t receipt_timestamp;       /**< Receipt Unix timestamp */
+	uint32_t status_timestamp;        /**< Latest local/receipt transition time */
 };
 
 /**
@@ -97,7 +102,7 @@ int lichen_msg_init(void);
  */
 int lichen_msg_send(const uint8_t *_Nonnull to_addr,
 		    const char *_Nonnull body, size_t body_len,
-		    bool ack, uint32_t *_Nullable msg_id);
+		    bool ack, uint64_t *_Nullable msg_id);
 
 /**
  * @brief Add a received message to inbox
@@ -120,7 +125,50 @@ int lichen_msg_receive(const uint8_t *_Nonnull from_addr,
  * @param[in] msg_id Message ID to acknowledge
  * @return 0 on success, -ENOENT if message not found
  */
-int lichen_msg_ack(uint32_t msg_id);
+int lichen_msg_ack(uint64_t msg_id);
+
+/**
+ * @brief Atomically apply a delivery receipt to a sent message
+ *
+ * Only messages that requested an acknowledgment accept receipts. Remote
+ * receipts are bound to the destination identity by comparing the IPv6 IID;
+ * a trusted local administrator may override this ownership check. Exact
+ * duplicate receipts are idempotent. Stale, conflicting, or terminal-state
+ * regressions return -EALREADY without mutating the message.
+ *
+ * @param[in] msg_id        Sent message identifier
+ * @param[in] status        DELIVERED, READ, or FAILED
+ * @param[in] timestamp     Receipt Unix timestamp
+ * @param[in] peer_addr     Authenticated peer IPv6 address (16 bytes), or NULL
+ * @param[in] local_admin   Whether the request came from the local admin path
+ * @return 0 on success/idempotent duplicate, -ENOENT if unknown, -EACCES on
+ *         authorization failure, -EALREADY on replay/conflict, or -ENODEV
+ */
+int lichen_msg_receipt_apply(uint64_t msg_id,
+			     enum lichen_msg_status status,
+			     uint32_t timestamp,
+			     const uint8_t *_Nullable peer_addr,
+			     bool local_admin);
+
+/**
+ * @brief Atomically propagate a local transport status transition
+ *
+ * Permits QUEUED -> SENT and QUEUED/SENT -> FAILED. Exact duplicates are
+ * idempotent; stale, conflicting, or terminal regressions return -EALREADY.
+ * State is intentionally RAM-resident and resets on reboot; durable delivery
+ * queues must replay their authoritative state through this API after boot.
+ */
+int lichen_msg_sent_status_update(uint64_t msg_id,
+				  enum lichen_msg_status status,
+				  uint32_t timestamp);
+
+/** Notify registered /msg/sent observers after a committed status change. */
+void lichen_msg_sent_notify(void);
+
+/** Optional platform hook invoked after a committed sent-status change. */
+void lichen_msg_status_changed(uint64_t msg_id,
+			       enum lichen_msg_status status,
+			       uint32_t timestamp);
 
 /**
  * @brief Get sent message by ID
@@ -129,7 +177,7 @@ int lichen_msg_ack(uint32_t msg_id);
  * @param[out] msg    Message structure (copied)
  * @return 0 on success, -ENOENT if not found
  */
-int lichen_msg_sent_get(uint32_t msg_id, struct lichen_msg *_Nonnull msg);
+int lichen_msg_sent_get(uint64_t msg_id, struct lichen_msg *_Nonnull msg);
 
 /**
  * @brief Get inbox message count
@@ -159,10 +207,15 @@ void lichen_msg_inbox_notify(void);
  *
  * Queue an outbound message. CBOR payload format:
  * {
+ *   "id": <optional uint64 idempotency key>,
  *   "to": "<IPv6 address string>",
  *   "body": "<message text>",
  *   "ack": true/false
  * }
+ *
+ * Direct writes to the sent archive require local administrative authority.
+ * An exact repeated explicit ID is idempotent; conflicting reuse returns
+ * 4.09 Conflict.
  *
  * Response: 2.01 Created with Location-Path: /msg/sent/<id>
  */
@@ -173,7 +226,8 @@ int lichen_msg_sent_post(struct coap_resource *_Nonnull resource,
 /**
  * @brief CoAP handler for GET /msg/sent/<id>
  *
- * Get status of a sent message.
+ * Get status of a sent message. Sent-record details require local
+ * administrative authority and use canonical decimal uint64 path IDs.
  */
 int lichen_msg_sent_id_get(struct coap_resource *_Nonnull resource,
 			   struct coap_packet *_Nonnull request,
@@ -203,15 +257,19 @@ int lichen_msg_sent_get_handler(struct coap_resource *_Nonnull resource,
 /**
  * @brief CoAP handler for GET /msg/inbox
  *
- * Retrieve inbound messages. Supports Observe (RFC 7641).
+ * Retrieve the private local inbox. Supports RFC 7641 Observe and bounded
+ * pagination with canonical `offset=0..8` and `limit=1..8` URI queries.
  * CBOR response format:
  * {
+ *   "next": <next offset, or 0 at end>,
+ *   "unread": <count>,
  *   "messages": [
  *     {
  *       "id": <uint>,
  *       "from": "<IPv6 address string>",
  *       "body": "<message text>",
- *       "received": "<ISO 8601 timestamp>"
+ *       "status": "unread"|"read",
+ *       "received": <Unix timestamp>
  *     },
  *     ...
  *   ]
@@ -222,17 +280,33 @@ int lichen_msg_inbox_get_handler(struct coap_resource *_Nonnull resource,
 				 struct sockaddr *_Nonnull addr, socklen_t addr_len);
 
 /**
+ * @brief CoAP handler for GET /msg/inbox/<id>
+ *
+ * Returns one private inbox record and atomically marks it read. Canonical
+ * decimal uint64 IDs are required; unknown or non-canonical paths return 4.04.
+ */
+int lichen_msg_inbox_id_get(struct coap_resource *_Nonnull resource,
+			    struct coap_packet *_Nonnull request,
+			    struct sockaddr *_Nonnull addr, socklen_t addr_len);
+
+/**
  * @brief CoAP Observe notify callback for /msg/inbox
  */
 void lichen_msg_inbox_notify_cb(struct coap_resource *_Nonnull resource,
 				struct coap_observer *_Nonnull observer);
+
+/** CoAP Observe notify callback for /msg/sent status changes. */
+void lichen_msg_sent_notify_cb(struct coap_resource *_Nonnull resource,
+			      struct coap_observer *_Nonnull observer);
 
 /**
  * @brief CoAP handler for POST /msg/ack
  *
  * Acknowledge receipt of a message. CBOR payload format:
  * {
- *   "id": <message id>
+ *   "id": <uint64 message id>,
+ *   "status": "delivered" / "read" / "failed",
+ *   "ts": <uint32 Unix timestamp>
  * }
  *
  * Response: 2.04 Changed

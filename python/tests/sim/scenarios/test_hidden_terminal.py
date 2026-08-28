@@ -35,9 +35,6 @@ class TestHiddenTerminalBasic:
         # A-B distance: 8km < max_range (~16km), in range
         # B-C distance: 8km < max_range, in range
         # A-C distance: 16km ~= max_range, at edge/just out
-        pos_a = (0.0, 0.0, 0.0)
-        pos_b = (8000.0, 0.0, 0.0)
-        pos_c = (16000.0, 0.0, 0.0)
 
         # Verify A can reach B
         assert model.can_decode(14, 8000.0, sensitivity_dbm=SENSITIVITY_SF10)
@@ -98,8 +95,9 @@ class TestHiddenTerminalBasic:
         assert len(candidates) == 2, "B should see two candidates"
 
         # RSSI should be similar (A-B and C-B are same distance)
-        rssi_a = candidates[0].rssi if candidates[0].transmission.source_node_id == "node_a" else candidates[1].rssi
-        rssi_c = candidates[1].rssi if candidates[1].transmission.source_node_id == "node_c" else candidates[0].rssi
+        c0_is_a = candidates[0].transmission.source_node_id == "node_a"
+        rssi_a = candidates[0].rssi if c0_is_a else candidates[1].rssi
+        rssi_c = candidates[1].rssi if c0_is_a else candidates[0].rssi
         rssi_diff = abs(rssi_a - rssi_c)
 
         # Equal distance means equal RSSI (within floating point tolerance)
@@ -173,7 +171,6 @@ class TestHiddenTerminalBasic:
         # Use larger separation so A-C is clearly out of range
         # Max range at SF10 is ~16km, so 20km A-C separation ensures no reception
         pos_a = (0.0, 0.0, 0.0)
-        pos_b = (10000.0, 0.0, 0.0)  # 10km from A
         pos_c = (20000.0, 0.0, 0.0)  # 20km from A
 
         payload_c = b"message from C"
@@ -203,7 +200,6 @@ class TestHiddenTerminalBasic:
         """Verify B can receive C's transmission."""
         medium = Medium()
 
-        pos_a = (0.0, 0.0, 0.0)
         pos_b = (10000.0, 0.0, 0.0)  # 10km from A, 10km from C
         pos_c = (20000.0, 0.0, 0.0)  # 20km from A
 

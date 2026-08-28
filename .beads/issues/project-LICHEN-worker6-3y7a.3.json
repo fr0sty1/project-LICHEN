@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-3y7a.3",
+  "title": "task",
+  "description": "Implement /ble/scan CoAP resource. GET returns scan status and recent devices. PUT enables/disables scanning. Support JSON payload with enabled, scan_interval_ms, rssi_min_dbm, allowlist, denylist fields per spec.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:52:37.888428Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:52:37.888428Z",
+  "labels": [
+    "zephyr",
+    "c",
+    "needs-linux"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-3y7a.3",
+      "depends_on_id": "project-LICHEN-worker6-3y7a",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:52:38.911134Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

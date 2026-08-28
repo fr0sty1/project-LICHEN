@@ -142,20 +142,36 @@ def safe_float(value: object | None) -> float | None:
     """Safely convert to float or None on parse failure."""
     if value is None:
         return None
-    try:
-        return float(value)
-    except (ValueError, TypeError, OverflowError):
-        return None
+    if isinstance(value, int | float):
+        try:
+            return float(value)
+        except OverflowError:
+            return None
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except (ValueError, OverflowError):
+            return None
+    return None
 
 
 def safe_int(value: object | None, default: int = 0) -> int:
     """Safely convert to int, returning default on parse failure."""
     if value is None:
         return default
-    try:
-        return int(float(value))
-    except (ValueError, TypeError, OverflowError):
-        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        try:
+            return int(value)
+        except (ValueError, OverflowError):
+            return default
+    if isinstance(value, str):
+        try:
+            return int(float(value))
+        except (ValueError, OverflowError):
+            return default
+    return default
 
 
 def _is_sensitive_display_name(name: str) -> bool:

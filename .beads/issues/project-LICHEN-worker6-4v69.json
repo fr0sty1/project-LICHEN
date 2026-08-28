@@ -2,15 +2,15 @@
   "id": "project-LICHEN-worker6-4v69",
   "title": "deaddrop: encode failures masked via unwrap_or_default to silent empty 2.05",
   "description": "deaddrop.rs:1136 :1164 encode_senml_pack(...).unwrap_or_default() turns an invariant violation into a silent 2.05 with empty body. Currently unreachable (records validated at insert) but invariant-dependent. Fix: return an error outcome or debug_assert!.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-28T06:53:25.429601Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-28T07:29:37.793122Z",
+  "updated_at": "2026-08-28T07:34:51.306185Z",
   "started_at": "2026-08-28T07:29:37.793122Z",
-  "lease_expires_at": "2026-08-28T07:34:37.793122Z",
-  "heartbeat_at": "2026-08-28T07:29:37.793122Z"
+  "closed_at": "2026-08-28T07:34:51.306185Z",
+  "close_reason": "render_get now returns Result\u003cGetResponse, Error\u003e (payload encoding failure surfaces as Err, not a silent empty listing) and get_by_id returns the new PickupOutcome::InternalError (5.00, code::INTERNAL_SERVER_ERROR = 160) instead of masking an invariant violation as empty 2.05 Content. Both sites are unreachable while store invariants hold (records are decode-validated at insert, so re-encode cannot fail) — docs state this and the outcomes exist to keep the API honest when the invariant breaks. Chose error-outcome over debug_assert! because a debug-only assert still masks in release. Grep-verified render_get/get_by_id/PickupOutcome have no callers outside lichen-client + its test, so the signature/enum changes are contained. New pin test internal_error_outcome_maps_to_500 (response_code == 160). Verified: cargo test -p lichen-client --lib 130 passed, deaddrop_vectors 25 passed. Commit + bd flat files."
 }

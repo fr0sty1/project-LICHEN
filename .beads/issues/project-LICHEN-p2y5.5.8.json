@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-p2y5.5.8",
+  "title": "Define struct lichen_backhaul vtable interface with init/send/status callbacks",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:48.894644Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:48.894644Z",
+  "labels": [
+    "core",
+    "abstraction",
+    "gateway",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.5.8",
+      "depends_on_id": "project-LICHEN-p2y5.5",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:52.390687Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

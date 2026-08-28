@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <lichen_generated_tx_queue_vectors.h>
 
 /* Disable nonnull warnings for tests that intentionally pass NULL */
 #if defined(__clang__)
@@ -107,6 +108,117 @@ static int test_push_rejects_oversized(void)
 	ASSERT_EQ(tx_queue_push(&queue, data, TX_QUEUE_MAX_PACKET_SIZE + 1,
 				TX_PRIORITY_BULK, 1000),
 		  -EINVAL, "push rejects oversized packet");
+	return 1;
+}
+
+static int test_push_rejects_invalid_priority_without_mutation(void)
+{
+	struct tx_queue queue;
+	uint8_t data[4] = {0};
+	struct tx_queue_stats stats;
+
+	tx_queue_test_set_time(1000);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, data, sizeof(data), TX_PRIORITY_COUNT, 60000),
+		  -EINVAL, "explicit push rejects invalid priority");
+	ASSERT_EQ(tx_queue_push_default_deadline(&queue, data, sizeof(data), UINT8_MAX),
+		  -EINVAL, "default push rejects invalid priority");
+	ASSERT_EQ(tx_queue_count(&queue), 0, "invalid priority does not enqueue");
+	ASSERT_EQ(tx_queue_stats_get(&queue, &stats), 0, "stats read succeeds");
+	ASSERT_EQ(stats.packets_queued, 0, "invalid priority does not mutate stats");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
+	return 1;
+}
+
+static int test_shared_vector_constants(void)
+{
+	ASSERT_EQ(TX_QUEUE_SIZE, VECTOR_TX_QUEUE_CAPACITY,
+		  "queue capacity matches shared vectors");
+	ASSERT_EQ(TX_PRIORITY_SOS, VECTOR_PRIORITY_SOS, "SOS priority matches vectors");
+	ASSERT_EQ(TX_PRIORITY_ROUTING, VECTOR_PRIORITY_ROUTING,
+		  "routing priority matches vectors");
+	ASSERT_EQ(TX_PRIORITY_ACK, VECTOR_PRIORITY_ACK, "ACK priority matches vectors");
+	ASSERT_EQ(TX_PRIORITY_URGENT, VECTOR_PRIORITY_URGENT,
+		  "urgent priority matches vectors");
+	ASSERT_EQ(TX_PRIORITY_NORMAL, VECTOR_PRIORITY_NORMAL,
+		  "normal priority matches vectors");
+	ASSERT_EQ(TX_PRIORITY_BULK, VECTOR_PRIORITY_BULK,
+		  "bulk priority matches vectors");
+	ASSERT_EQ(TX_PRIORITY_COUNT, VECTOR_PRIORITY_BULK + 1,
+		  "priority count covers canonical values");
+	ASSERT_EQ(TX_DEADLINE_SOS_MS, VECTOR_DEADLINE_SOS_MS,
+		  "SOS deadline matches vectors");
+	ASSERT_EQ(TX_DEADLINE_ROUTING_MS, VECTOR_DEADLINE_ROUTING_MS,
+		  "routing deadline matches vectors");
+	ASSERT_EQ(TX_DEADLINE_ACK_MS, VECTOR_DEADLINE_ACK_MS,
+		  "ACK deadline matches vectors");
+	ASSERT_EQ(TX_DEADLINE_URGENT_MS, VECTOR_DEADLINE_URGENT_MS,
+		  "urgent deadline matches vectors");
+	ASSERT_EQ(TX_DEADLINE_NORMAL_MS, VECTOR_DEADLINE_NORMAL_MS,
+		  "normal deadline matches vectors");
+	ASSERT_EQ(TX_DEADLINE_BULK_MS, VECTOR_DEADLINE_BULK_MS,
+		  "bulk deadline matches vectors");
+	ASSERT_EQ(-ENOBUFS, VECTOR_ENOBUFS, "backpressure errno matches vectors");
+	return 1;
+}
+
+static int test_push_validates_absolute_deadline_range(void)
+{
+	struct tx_queue queue;
+	uint8_t data = 0xa5;
+	struct tx_queue_stats stats;
+	const uint32_t now = 1000U;
+
+	tx_queue_test_set_time(now);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL, now),
+		  -EINVAL, "deadline at now is rejected");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL, now - 1U),
+		  -EINVAL, "past deadline is rejected");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL,
+				now + UINT32_C(0x80000000)),
+		  -EINVAL, "ambiguous half-range deadline is rejected");
+	ASSERT_EQ(tx_queue_count(&queue), 0, "invalid deadlines do not enqueue");
+	ASSERT_EQ(tx_queue_stats_get(&queue, &stats), 0, "stats read succeeds");
+	ASSERT_EQ(stats.packets_queued, 0, "invalid deadlines do not mutate stats");
+
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL,
+				now + (uint32_t)INT32_MAX),
+		  0, "largest unambiguous future deadline is accepted");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
+
+	/* A small future delta remains valid when the absolute timestamp wraps. */
+	tx_queue_test_set_time(UINT32_MAX - 100U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "wrap queue init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL, 99U),
+		  0, "future deadline across uptime wrap is accepted");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "wrap queue destroy succeeds");
+	return 1;
+}
+
+static int test_invalid_incoming_deadline_expires_stale_first(void)
+{
+	struct tx_queue queue;
+	uint8_t stale = 1U;
+	uint8_t incoming = 2U;
+	struct tx_queue_stats stats;
+
+	tx_queue_test_set_time(100U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &stale, 1U, TX_PRIORITY_BULK, 200U),
+		  0, "stale candidate is queued");
+	tx_queue_test_set_time(300U);
+	ASSERT_EQ(tx_queue_push(&queue, &incoming, 1U, TX_PRIORITY_SOS, 300U),
+		  -EINVAL, "invalid incoming deadline is rejected");
+	ASSERT_EQ(tx_queue_count(&queue), 0, "stale entry expired before rejection");
+	ASSERT_EQ(tx_queue_stats_get(&queue, &stats), 0, "stats read succeeds");
+	ASSERT_EQ(stats.packets_dropped_deadline, 1,
+		  "deadline-drop statistic records stale expiry");
+	ASSERT_EQ(stats.packets_dropped_full, 0,
+		  "invalid incoming packet does not count as backpressure");
+	ASSERT_EQ(stats.packets_preempted, 0,
+		  "invalid incoming packet does not preempt");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
 	return 1;
 }
 
@@ -216,39 +328,186 @@ static int test_priority_preemption(void)
 static int test_priority_order(void)
 {
 	struct tx_queue queue;
-	uint8_t data0[1] = {0};
-	uint8_t data1[1] = {1};
-	uint8_t data2[1] = {2};
-	uint8_t data3[1] = {3};
+	const uint8_t push_data[] = {
+		VECTOR_ALIAS_PUSH_0_DATA, VECTOR_ALIAS_PUSH_1_DATA,
+		VECTOR_ALIAS_PUSH_2_DATA, VECTOR_ALIAS_PUSH_3_DATA,
+	};
+	const uint8_t push_priorities[] = {
+		VECTOR_ALIAS_PUSH_0_PRIORITY, VECTOR_ALIAS_PUSH_1_PRIORITY,
+		VECTOR_ALIAS_PUSH_2_PRIORITY, VECTOR_ALIAS_PUSH_3_PRIORITY,
+	};
+	const uint8_t expected_pop[] = {
+		VECTOR_ALIAS_POP_0_DATA, VECTOR_ALIAS_POP_1_DATA,
+		VECTOR_ALIAS_POP_2_DATA, VECTOR_ALIAS_POP_3_DATA,
+	};
 	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
 	uint16_t out_len;
 
 	tx_queue_test_set_time(1000);
 	tx_queue_init(&queue);
 
-	/* Push in reverse priority order */
-	ASSERT_EQ(tx_queue_push(&queue, data3, 1, TX_PRIORITY_BULK, 60000), 0, "push bulk");
-	ASSERT_EQ(tx_queue_push(&queue, data2, 1, TX_PRIORITY_URGENT, 60000), 0, "push urgent");
-	ASSERT_EQ(tx_queue_push(&queue, data1, 1, TX_PRIORITY_ACK, 60000), 0, "push ack");
-	ASSERT_EQ(tx_queue_push(&queue, data0, 1, TX_PRIORITY_ROUTING, 60000), 0, "push routing");
+	for (size_t i = 0U; i < sizeof(push_data) / sizeof(push_data[0]); i++) {
+		ASSERT_EQ(tx_queue_push(&queue, &push_data[i], 1U,
+					push_priorities[i], 60000U),
+			  0, "vector-driven priority push succeeds");
+	}
+	for (size_t i = 0U; i < sizeof(expected_pop) / sizeof(expected_pop[0]); i++) {
+		out_len = sizeof(out_data);
+		ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0,
+			  "vector-driven priority pop succeeds");
+		ASSERT_EQ(out_data[0], expected_pop[i],
+			  "pop order matches priority vector");
+	}
 
-	/* Pop should return in priority order: routing, ack, urgent, bulk */
+	return 1;
+}
+
+static int test_same_priority_fifo_survives_slot_reuse(void)
+{
+	struct tx_queue queue;
+	uint8_t first = 1;
+	uint8_t second = 2;
+	uint8_t third = 3;
+	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len;
+
+	tx_queue_test_set_time(1000);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &first, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "push first");
+	ASSERT_EQ(tx_queue_push(&queue, &second, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "push second");
+
 	out_len = sizeof(out_data);
-	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop 1");
-	ASSERT_EQ(out_data[0], 0, "first pop is routing (priority 0)");
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop first");
+	ASSERT_EQ(out_data[0], first, "oldest packet pops first");
+	ASSERT_EQ(tx_queue_push(&queue, &third, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "push third into reused slot");
 
 	out_len = sizeof(out_data);
-	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop 2");
-	ASSERT_EQ(out_data[0], 1, "second pop is ack (priority 1)");
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop second");
+	ASSERT_EQ(out_data[0], second, "slot reuse preserves FIFO");
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop third");
+	ASSERT_EQ(out_data[0], third, "newest packet pops last");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
+	return 1;
+}
+
+static int test_same_priority_fifo_survives_sequence_wrap(void)
+{
+	struct tx_queue queue;
+	uint8_t before_wrap = 1;
+	uint8_t at_wrap = 2;
+	uint8_t after_wrap = 3;
+	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len;
+
+	tx_queue_test_set_time(1000);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	queue.next_enqueue_order = UINT64_MAX - 1U;
+	ASSERT_EQ(tx_queue_push(&queue, &before_wrap, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "push before wrap");
+	ASSERT_EQ(tx_queue_push(&queue, &at_wrap, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "push at wrap");
+	ASSERT_EQ(tx_queue_push(&queue, &after_wrap, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "push after wrap");
 
 	out_len = sizeof(out_data);
-	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop 3");
-	ASSERT_EQ(out_data[0], 2, "third pop is urgent (priority 2)");
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop before wrap");
+	ASSERT_EQ(out_data[0], before_wrap, "first pre-wrap packet remains oldest");
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop at wrap");
+	ASSERT_EQ(out_data[0], at_wrap, "second pre-wrap packet remains ordered");
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop after wrap");
+	ASSERT_EQ(out_data[0], after_wrap, "post-wrap packet remains newest");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
+	return 1;
+}
+
+static int test_preemption_order_survives_uint32_half_range_gap(void)
+{
+	struct tx_queue queue;
+	uint8_t oldest_bulk = 1U;
+	uint8_t newer_bulk = 2U;
+	uint8_t normal = 3U;
+	uint8_t sos = 4U;
+	uint8_t out[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len;
+
+	tx_queue_test_set_time(1000U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &oldest_bulk, 1U, TX_PRIORITY_BULK, 60000U),
+		  0, "push oldest bulk");
+	queue.next_enqueue_order = (uint64_t)UINT32_MAX + 1U;
+	ASSERT_EQ(tx_queue_push(&queue, &newer_bulk, 1U, TX_PRIORITY_BULK, 60000U),
+		  0, "push bulk after uint32 half-range");
+	ASSERT_EQ(tx_queue_push(&queue, &normal, 1U, TX_PRIORITY_NORMAL, 60000U),
+		  0, "push normal");
+	ASSERT_EQ(tx_queue_push(&queue, &normal, 1U, TX_PRIORITY_NORMAL, 60000U),
+		  0, "fill queue");
+	ASSERT_EQ(tx_queue_push(&queue, &sos, 1U, TX_PRIORITY_SOS, 60000U),
+		  0, "SOS preempts oldest lowest-priority entry");
+
+	out_len = sizeof(out);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), 0, "pop SOS");
+	ASSERT_EQ(out[0], sos, "SOS is first");
+	out_len = sizeof(out);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), 0, "pop first normal");
+	out_len = sizeof(out);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), 0, "pop second normal");
+	out_len = sizeof(out);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), 0, "pop remaining bulk");
+	ASSERT_EQ(out[0], newer_bulk, "oldest bulk was preempted across half-range gap");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
+	return 1;
+}
+
+static int test_preemption_evicts_oldest_same_lowest_priority(void)
+{
+	struct tx_queue queue;
+	uint8_t urgent = 10;
+	uint8_t bulk_oldest = 20;
+	uint8_t bulk_middle = 21;
+	uint8_t bulk_newer = 22;
+	uint8_t bulk_newest = 23;
+	uint8_t routing = 30;
+	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len;
+
+	tx_queue_test_set_time(1000);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &urgent, 1, TX_PRIORITY_URGENT, 60000), 0,
+		  "push urgent");
+	ASSERT_EQ(tx_queue_push(&queue, &bulk_oldest, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "push oldest bulk");
+	ASSERT_EQ(tx_queue_push(&queue, &bulk_middle, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "push middle bulk");
+	ASSERT_EQ(tx_queue_push(&queue, &bulk_newer, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "push newer bulk");
 
 	out_len = sizeof(out_data);
-	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop 4");
-	ASSERT_EQ(out_data[0], 3, "fourth pop is bulk (priority 3)");
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop urgent");
+	ASSERT_EQ(out_data[0], urgent, "urgent pops first");
+	ASSERT_EQ(tx_queue_push(&queue, &bulk_newest, 1, TX_PRIORITY_BULK, 60000), 0,
+		  "reuse lower slot for newest bulk");
+	ASSERT_EQ(tx_queue_push(&queue, &routing, 1, TX_PRIORITY_ROUTING, 60000), 0,
+		  "routing preempts bulk");
 
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop routing");
+	ASSERT_EQ(out_data[0], routing, "routing is never starved by bulk");
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop middle bulk");
+	ASSERT_EQ(out_data[0], bulk_middle, "oldest bulk was the preemption victim");
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop newer bulk");
+	ASSERT_EQ(out_data[0], bulk_newer, "remaining bulk preserves FIFO");
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0, "pop newest bulk");
+	ASSERT_EQ(out_data[0], bulk_newest, "reused-slot bulk remains newest");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
 	return 1;
 }
 
@@ -316,34 +575,140 @@ static int test_deadline_expiry_on_pop(void)
 	return 1;
 }
 
-static int test_default_deadlines(void)
+static int test_stale_deadline_not_resurrected_after_half_range(void)
 {
 	struct tx_queue queue;
-	uint8_t data[4] = {1, 2, 3, 4};
-
-	tx_queue_test_set_time(0);
-	tx_queue_init(&queue);
-
-	/* Push with default deadline - routing (5s) */
-	ASSERT_EQ(tx_queue_push_default_deadline(&queue, data, sizeof(data),
-						  TX_PRIORITY_ROUTING),
-		  0, "routing push succeeds");
-
-	/* Verify it expires after 5s but not before */
-	tx_queue_test_set_time(4999);
-	ASSERT_EQ(tx_queue_count(&queue), 1, "routing packet valid before 5s");
-
-	tx_queue_test_set_time(5001);
-	/* Push another packet to trigger expiry */
-	ASSERT_EQ(tx_queue_push_default_deadline(&queue, data, sizeof(data),
-						  TX_PRIORITY_BULK),
-		  0, "bulk push succeeds");
-
-	/* Should now have 1 packet (bulk) - routing expired */
+	uint8_t data = 0x5a;
+	uint8_t out[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len = sizeof(out);
 	struct tx_queue_stats stats;
-	tx_queue_stats_get(&queue, &stats);
-	ASSERT_EQ(stats.packets_dropped_deadline, 1, "routing packet expired");
 
+	tx_queue_test_set_time(1000U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL, 2000U),
+		  0, "packet with near deadline is queued");
+
+	/* Serviced exactly half a 32-bit range past the deadline: the
+	 * 32-bit signed difference wraps to "unexpired" here. */
+	tx_queue_test_set_time(2000U + UINT32_C(0x80000000));
+	out_len = sizeof(out);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), -EAGAIN,
+		  "deadline plus half range does not resurrect packet");
+	ASSERT_EQ(tx_queue_stats_get(&queue, &stats), 0, "stats read succeeds");
+	ASSERT_EQ(stats.packets_dropped_deadline, 1,
+		  "half-range service records deadline drop");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
+
+	tx_queue_test_set_time(1000U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "wrap queue init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL, 2000U),
+		  0, "wrap queue packet is queued");
+	tx_queue_test_set_time(2000U + UINT32_C(0x80000000) + 12345U);
+	out_len = sizeof(out);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), -EAGAIN,
+		  "past deadline plus half range and wrap stays expired");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "wrap queue destroy succeeds");
+
+	/* A deadline that is still legitimately far in the future survives
+	 * the same long jump without false expiry. */
+	tx_queue_test_set_time(1000U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "far deadline queue init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL,
+				1000U + (uint32_t)INT32_MAX),
+		  0, "far future deadline is queued");
+	tx_queue_test_set_time(1000U + (UINT32_C(1) << 30));
+	out_len = sizeof(out);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), 0,
+		  "packet before its far deadline survives long inactivity");
+	ASSERT_EQ(out[0], data, "surviving packet data is intact");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "far deadline queue destroy succeeds");
+	return 1;
+}
+
+static int test_default_deadlines(void)
+{
+	uint8_t data[4] = {1, 2, 3, 4};
+	const uint8_t priorities[] = {
+		TX_PRIORITY_SOS, TX_PRIORITY_ROUTING, TX_PRIORITY_URGENT,
+		TX_PRIORITY_NORMAL, TX_PRIORITY_BULK,
+	};
+	const uint32_t deadlines[] = {
+		VECTOR_DEADLINE_SOS_MS, VECTOR_DEADLINE_ROUTING_MS,
+		VECTOR_DEADLINE_URGENT_MS, VECTOR_DEADLINE_NORMAL_MS,
+		VECTOR_DEADLINE_BULK_MS,
+	};
+
+	for (size_t i = 0U; i < sizeof(priorities) / sizeof(priorities[0]); i++) {
+		struct tx_queue queue;
+		uint8_t out[TX_QUEUE_MAX_PACKET_SIZE];
+		uint16_t out_len = sizeof(out);
+
+		tx_queue_test_set_time(1000U);
+		ASSERT_EQ(tx_queue_init(&queue), 0, "queue init succeeds");
+		ASSERT_EQ(tx_queue_push_default_deadline(&queue, data, sizeof(data),
+							  priorities[i]),
+			  0, "default-deadline push succeeds");
+		tx_queue_test_set_time(1000U + deadlines[i] - 1U);
+		ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), 0,
+			  "packet remains valid before vector deadline");
+		ASSERT_EQ(tx_queue_destroy(&queue), 0, "queue destroy succeeds");
+
+		tx_queue_test_set_time(1000U);
+		ASSERT_EQ(tx_queue_init(&queue), 0, "queue re-init succeeds");
+		ASSERT_EQ(tx_queue_push_default_deadline(&queue, data, sizeof(data),
+							  priorities[i]),
+			  0, "second default-deadline push succeeds");
+		tx_queue_test_set_time(1000U + deadlines[i]);
+		out_len = sizeof(out);
+		ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), -EAGAIN,
+			  "packet expires exactly at vector deadline");
+		ASSERT_EQ(tx_queue_destroy(&queue), 0, "queue destroy after expiry succeeds");
+	}
+
+	/* ACK aliases routing for ordering; its 10-second deadline is explicit. */
+	struct tx_queue queue;
+	uint8_t out[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len = sizeof(out);
+	tx_queue_test_set_time(1000U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "ACK queue init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, data, sizeof(data), TX_PRIORITY_ACK,
+				1000U + TX_DEADLINE_ACK_MS),
+		  0, "explicit ACK deadline push succeeds");
+	tx_queue_test_set_time(1000U + VECTOR_DEADLINE_ACK_MS);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), -EAGAIN,
+		  "ACK expires exactly at explicit vector deadline");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "ACK queue destroy succeeds");
+
+	return 1;
+}
+
+static int test_shared_vector_expiry_boundary(void)
+{
+	struct tx_queue queue;
+	uint8_t data = 1U;
+	uint8_t out[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len = sizeof(out);
+
+	tx_queue_test_set_time(VECTOR_EXPIRY_ENQUEUE_MS);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "boundary queue init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL,
+				VECTOR_EXPIRY_DEADLINE_MS),
+		  0, "boundary packet push succeeds");
+	tx_queue_test_set_time(VECTOR_EXPIRY_BEFORE_MS);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), 0,
+		  "packet is live at vector time before deadline");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "boundary queue destroy succeeds");
+
+	tx_queue_test_set_time(VECTOR_EXPIRY_ENQUEUE_MS);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "exact queue init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL,
+				VECTOR_EXPIRY_DEADLINE_MS),
+		  0, "exact packet push succeeds");
+	tx_queue_test_set_time(VECTOR_EXPIRY_EXACT_MS);
+	out_len = sizeof(out);
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), -EAGAIN,
+		  "packet expires exactly at vector deadline");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "exact queue destroy succeeds");
 	return 1;
 }
 
@@ -427,11 +792,41 @@ static int test_latency_max_and_reset(void)
 	tx_queue_stats_get(&queue, &stats);
 	ASSERT_EQ(stats.max_latency_ms, 200, "max latency keeps worst case");
 
-	tx_queue_clear(&queue);
+	ASSERT_EQ(tx_queue_clear(&queue), 0, "clear succeeds");
 	tx_queue_stats_get(&queue, &stats);
 	ASSERT_EQ(stats.max_latency_ms, 0, "clear resets max latency");
 	ASSERT_EQ(stats.avg_latency_ms, 0, "clear resets avg latency");
 
+	return 1;
+}
+
+static int test_clear_release_failure_is_retryable(void)
+{
+	struct tx_queue queue;
+	uint8_t data = 0xa5;
+	struct lichen_frame_handle original;
+	int clear_ret;
+
+	tx_queue_test_set_time(1000U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL, 60000U),
+		  0, "push succeeds");
+	original = queue.entries[0].buffer;
+	queue.entries[0].buffer.generation++;
+	clear_ret = tx_queue_clear(&queue);
+	ASSERT_TRUE(clear_ret < 0, "clear propagates stale handle error");
+	ASSERT_TRUE(queue.entries[0].valid, "failed clear retains live entry");
+	ASSERT_EQ(lichen_frame_pool_in_use(&queue.pool), 1,
+		  "failed clear retains pool ownership");
+	ASSERT_EQ(tx_queue_destroy(&queue), clear_ret,
+		  "destroy propagates clear failure without destroying synchronization");
+
+	queue.entries[0].buffer = original;
+	ASSERT_EQ(tx_queue_clear(&queue), 0, "clear retry succeeds");
+	ASSERT_TRUE(!queue.entries[0].valid, "retry invalidates released entry");
+	ASSERT_EQ(lichen_frame_pool_in_use(&queue.pool), 0,
+		  "retry releases pool ownership");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy retry succeeds");
 	return 1;
 }
 
@@ -452,12 +847,64 @@ static int test_clear(void)
 	ASSERT_EQ(tx_queue_count(&queue), TX_QUEUE_SIZE, "queue is full");
 
 	/* Clear */
-	tx_queue_clear(&queue);
+	ASSERT_EQ(tx_queue_clear(&queue), 0, "clear succeeds");
 
 	ASSERT_TRUE(tx_queue_empty(&queue), "queue empty after clear");
 	tx_queue_stats_get(&queue, &stats);
 	ASSERT_EQ(stats.packets_queued, 0, "stats reset after clear");
 
+	return 1;
+}
+
+static int test_frame_pool_ownership_lifecycle(void)
+{
+	struct tx_queue queue;
+	uint8_t in_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len = sizeof(out_data);
+
+	memset(in_data, 0xa5, sizeof(in_data));
+	tx_queue_test_set_time(1000);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
+		ASSERT_EQ(tx_queue_push(&queue, in_data, sizeof(in_data),
+					TX_PRIORITY_BULK, 60000),
+			  0, "each queue entry acquires one buffer");
+	}
+	ASSERT_EQ(lichen_frame_pool_in_use(&queue.pool), TX_QUEUE_SIZE,
+		  "full queue owns exactly four buffers");
+	ASSERT_EQ(tx_queue_push(&queue, in_data, sizeof(in_data),
+				TX_PRIORITY_BULK, 60000),
+		  -ENOBUFS, "rejected packet acquires no buffer");
+	ASSERT_EQ(lichen_frame_pool_in_use(&queue.pool), TX_QUEUE_SIZE,
+		  "backpressure preserves pool ownership");
+
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0,
+		  "pop succeeds");
+	ASSERT_EQ(lichen_frame_pool_in_use(&queue.pool), TX_QUEUE_SIZE - 1,
+		  "pop releases its owned buffer");
+
+	ASSERT_EQ(tx_queue_clear(&queue), 0, "clear succeeds");
+	ASSERT_EQ(lichen_frame_pool_in_use(&queue.pool), 0,
+		  "clear releases every owned buffer");
+	for (int slot = 0; slot < TX_QUEUE_SIZE; slot++) {
+		for (size_t byte = 0U; byte < LICHEN_FRAME_BUFFER_SIZE; byte++) {
+			ASSERT_EQ(queue.pool.buffers[slot].data[byte], 0U,
+				  "clear zeroizes released storage");
+		}
+	}
+
+	ASSERT_EQ(tx_queue_push(&queue, in_data, 1U, TX_PRIORITY_BULK, 1500U),
+		  0, "expiring packet acquires a buffer");
+	ASSERT_EQ(lichen_frame_pool_in_use(&queue.pool), 1,
+		  "one queued packet owns one buffer");
+	tx_queue_test_set_time(1500U);
+	out_len = sizeof(out_data);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), -EAGAIN,
+		  "expired packet is not returned");
+	ASSERT_EQ(lichen_frame_pool_in_use(&queue.pool), 0,
+		  "expiry releases its owned buffer");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds after release");
 	return 1;
 }
 
@@ -526,6 +973,116 @@ static int test_clock_failure_preserves_queue(void)
 	return 1;
 }
 
+struct delayed_push_args {
+	struct tx_queue *queue;
+	int result;
+};
+
+struct delayed_pop_args {
+	struct tx_queue *queue;
+	int result;
+	uint8_t data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t len;
+};
+
+static void *delayed_expired_push(void *arg)
+{
+	struct delayed_push_args *args = arg;
+	uint8_t data = 0x5a;
+
+	args->result = tx_queue_push(args->queue, &data, 1U, TX_PRIORITY_SOS, 200U);
+	return NULL;
+}
+
+static void *delayed_expired_pop(void *arg)
+{
+	struct delayed_pop_args *args = arg;
+
+	args->result = tx_queue_pop(args->queue, args->data, &args->len, NULL);
+	return NULL;
+}
+
+static int test_push_samples_time_after_lock_acquisition(void)
+{
+	struct tx_queue queue;
+	struct delayed_push_args args = {.queue = &queue, .result = 0};
+	pthread_t thread;
+
+	tx_queue_test_set_time(100U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(pthread_mutex_lock(&queue.lock), 0, "test holds queue lock");
+	ASSERT_EQ(pthread_create(&thread, NULL, delayed_expired_push, &args), 0,
+		  "delayed push thread starts");
+	tx_queue_test_set_time(300U);
+	ASSERT_EQ(pthread_mutex_unlock(&queue.lock), 0, "test releases queue lock");
+	ASSERT_EQ(pthread_join(thread, NULL), 0, "delayed push thread joins");
+	ASSERT_EQ(args.result, -EINVAL,
+		  "deadline that passed while blocked is rejected");
+	ASSERT_EQ(tx_queue_count(&queue), 0, "stale incoming packet was not admitted");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
+	return 1;
+}
+
+static int test_pop_samples_time_after_lock_acquisition(void)
+{
+	struct tx_queue queue;
+	uint8_t data = 0x5a;
+	struct delayed_pop_args args = {
+		.queue = &queue,
+		.result = 0,
+		.len = TX_QUEUE_MAX_PACKET_SIZE,
+	};
+	struct tx_queue_stats stats;
+	pthread_t thread;
+
+	tx_queue_test_set_time(100U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL, 200U),
+		  0, "packet is queued before deadline");
+	ASSERT_EQ(pthread_mutex_lock(&queue.lock), 0, "test holds queue lock");
+	ASSERT_EQ(pthread_create(&thread, NULL, delayed_expired_pop, &args), 0,
+		  "delayed pop thread starts");
+	tx_queue_test_set_time(300U);
+	ASSERT_EQ(pthread_mutex_unlock(&queue.lock), 0, "test releases queue lock");
+	ASSERT_EQ(pthread_join(thread, NULL), 0, "delayed pop thread joins");
+	ASSERT_EQ(args.result, -EAGAIN,
+		  "packet that expired while blocked is not transmitted");
+	ASSERT_EQ(tx_queue_stats_get(&queue, &stats), 0, "stats read succeeds");
+	ASSERT_EQ(stats.packets_dropped_deadline, 1,
+		  "blocked pop records deadline expiry");
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "destroy succeeds");
+	return 1;
+}
+
+static int test_terminal_queue_rejects_operations(void)
+{
+	struct tx_queue queue;
+	uint8_t data = 1U;
+	uint8_t out[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len = sizeof(out);
+	struct tx_queue_stats stats;
+
+	tx_queue_test_set_time(100U);
+	ASSERT_EQ(tx_queue_init(&queue), 0, "init succeeds");
+	queue.terminal = true;
+	ASSERT_EQ(tx_queue_push(&queue, &data, 1U, TX_PRIORITY_NORMAL, 200U),
+		  -EIO, "terminal queue rejects explicit push");
+	ASSERT_EQ(tx_queue_push_default_deadline(&queue, &data, 1U,
+						  TX_PRIORITY_NORMAL),
+		  -EIO, "terminal queue rejects default push");
+	ASSERT_EQ(tx_queue_pop(&queue, out, &out_len, NULL), -EIO,
+		  "terminal queue rejects pop");
+	ASSERT_EQ(tx_queue_count(&queue), -EIO, "terminal queue rejects count");
+	ASSERT_TRUE(tx_queue_empty(&queue), "terminal queue reports no usable entries");
+	ASSERT_EQ(tx_queue_stats_get(&queue, &stats), -EIO,
+		  "terminal queue rejects stats");
+	ASSERT_EQ(tx_queue_clear(&queue), -EIO, "terminal queue rejects clear");
+	ASSERT_EQ(tx_queue_destroy(&queue), -EIO, "terminal queue rejects destroy retry");
+	queue.terminal = false;
+	ASSERT_EQ(tx_queue_destroy(&queue), 0, "test cleanup succeeds");
+	return 1;
+}
+
 static int test_concurrent_thread_safety(void)
 {
 	struct tx_queue queue;
@@ -580,12 +1137,19 @@ int main(void)
 	RUN_TEST(test_push_rejects_null_data);
 	RUN_TEST(test_push_rejects_zero_len);
 	RUN_TEST(test_push_rejects_oversized);
+	RUN_TEST(test_push_rejects_invalid_priority_without_mutation);
+	RUN_TEST(test_shared_vector_constants);
+	RUN_TEST(test_push_validates_absolute_deadline_range);
+	RUN_TEST(test_invalid_incoming_deadline_expires_stale_first);
 
 	printf("\nBasic push/pop tests:\n");
 	RUN_TEST(test_push_and_pop_single);
 	RUN_TEST(test_pop_empty_returns_eagain);
 	RUN_TEST(test_pop_buffer_too_small);
 	RUN_TEST(test_clock_failure_preserves_queue);
+	RUN_TEST(test_push_samples_time_after_lock_acquisition);
+	RUN_TEST(test_pop_samples_time_after_lock_acquisition);
+	RUN_TEST(test_terminal_queue_rejects_operations);
 
 	printf("\nBackpressure tests:\n");
 	RUN_TEST(test_queue_full_returns_enobufs);
@@ -593,17 +1157,25 @@ int main(void)
 	printf("\nPriority tests:\n");
 	RUN_TEST(test_priority_preemption);
 	RUN_TEST(test_priority_order);
+	RUN_TEST(test_same_priority_fifo_survives_slot_reuse);
+	RUN_TEST(test_same_priority_fifo_survives_sequence_wrap);
+	RUN_TEST(test_preemption_order_survives_uint32_half_range_gap);
+	RUN_TEST(test_preemption_evicts_oldest_same_lowest_priority);
 
 	printf("\nDeadline tests:\n");
 	RUN_TEST(test_deadline_expiry_on_push);
 	RUN_TEST(test_deadline_expiry_on_pop);
+	RUN_TEST(test_stale_deadline_not_resurrected_after_half_range);
 	RUN_TEST(test_default_deadlines);
+	RUN_TEST(test_shared_vector_expiry_boundary);
 
 	printf("\nStatistics and misc tests:\n");
 	RUN_TEST(test_stats_tracking);
 	RUN_TEST(test_latency_tracking);
 	RUN_TEST(test_latency_max_and_reset);
 	RUN_TEST(test_clear);
+	RUN_TEST(test_clear_release_failure_is_retryable);
+	RUN_TEST(test_frame_pool_ownership_lifecycle);
 
 	printf("\nConcurrency/TSAN tests:\n");
 	RUN_TEST(test_concurrent_thread_safety);

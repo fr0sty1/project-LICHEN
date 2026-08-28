@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config LICHEN_RTC_RX8130CE
+	bool "Epson RX8130CE RTC driver"
+	default y
+	depends on DT_HAS_LICHEN_RX8130CE_RTC_ENABLED
+	select RTC
+	help
+	  Out-of-tree RTC driver for the Epson RX8130CE I2C real-time clock.
+	  The pinned Zephyr v3.7.0 has no RX8130CE driver; this shim keeps
+	  R1 Neo (and other boards using the lichen,rx8130ce-rtc compatible)
+	  working until the LICHEN Zephyr pin moves past the upstream driver
+	  introduction. Implements get/set time and init only.

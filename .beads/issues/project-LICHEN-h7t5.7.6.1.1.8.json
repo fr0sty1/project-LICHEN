@@ -1,0 +1,43 @@
+{
+  "id": "project-LICHEN-h7t5.7.6.1.1.8",
+  "title": "Analyze LICHEN native client IPSP impact",
+  "description": "Assess how IPSP transport would affect the LICHEN native client implementation. Compare client-side complexity for IPSP (OS handles IPv6 over BLE) versus LCI SLIP (client manages SLIP framing over GATT). Consider cross-platform support, debugging visibility, and integration with existing native client CoAP stack.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:49:17.920398Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:49:17.920398Z",
+  "labels": [
+    "ble",
+    "ipsp",
+    "lci",
+    "native-interface",
+    "local-ok",
+    "board-support",
+    "bringup",
+    "coap",
+    "firmware",
+    "follow-up",
+    "hal",
+    "hardware",
+    "lilygo",
+    "owner-reserved",
+    "partner-handoff",
+    "serial",
+    "slip",
+    "t-deck",
+    "zephyr"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.1.1.8",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.1.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:49:21.347157Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

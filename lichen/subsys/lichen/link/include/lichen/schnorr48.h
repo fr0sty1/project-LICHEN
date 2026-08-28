@@ -65,8 +65,8 @@ extern "C" {
 /** Seed length for key derivation */
 #define SCHNORR48_SEED_LEN 32
 
-/** Maximum destination address + signer IID length for frame signing */
-#define SCHNORR48_MAX_ADDR_LEN 16
+/** Maximum canonical destination address length for frame signing */
+#define SCHNORR48_MAX_ADDR_LEN 8
 
 /**
  * @brief Apply Ed25519 clamping to a scalar.
@@ -120,31 +120,33 @@ void schnorr48_derive_keypair(const uint8_t *_Nonnull seed,
  * @return true if valid, false if invalid
  */
 [[nodiscard]] bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
-				    const uint8_t *_Nonnull msg, size_t msg_len,
+				    const uint8_t *_Nullable msg, size_t msg_len,
 				    const uint8_t *_Nonnull sig, size_t sig_len);
 
 /**
  * @brief Sign a LICHEN link-layer frame.
  *
- * Builds the signable data (length || LLSec || epoch || seqnum || dst_addr_len(1)
- * || dst_addr || signer_iid || payload) for domain separation and produces a
- * 48-byte signature. The signer IID is included in the signed data when present.
+ * Builds the versioned signable transcript (domain || length || LLSec || epoch
+ * || seqnum || dst_addr_len(1) || dst_addr || signer_iid || payload) and
+ * produces a 48-byte signature. This API accepts only canonical signed frames:
+ * S=SI=1, E=0, MIC selector 0 or 1, an address length matching the address mode,
+ * an 8-byte signer IID, and a LENGTH matching the complete signed frame body.
  *
  * @param[in]  length        Frame body length byte
  * @param[in]  llsec         Wire LLSec byte
  * @param[in]  epoch         Epoch byte
  * @param[in]  seqnum        Sequence number (big-endian in signable data)
  * @param[in]  dst_addr      Destination address (may be NULL if dst_addr_len is 0)
- * @param[in]  dst_addr_len  Address length (must be <= SCHNORR48_MAX_ADDR_LEN)
- * @param[in]  signer_iid    Signer IID (8 bytes, may be NULL if signer_iid_len is 0)
- * @param[in]  signer_iid_len Signer IID length (0 or 8)
+ * @param[in]  dst_addr_len  Canonical address length for the LLSec address mode
+ * @param[in]  signer_iid    Mandatory 8-byte signer EUI-64
+ * @param[in]  signer_iid_len Signer EUI-64 length (must be 8)
  * @param[in]  payload       Inner payload
  * @param[in]  payload_len   Payload length
  * @param[in]  privkey       32-byte private key
  * @param[in]  pubkey        32-byte public key
  * @param[out] sig           48-byte signature output
- * @return 0 on success, -EINVAL if dst_addr_len > SCHNORR48_MAX_ADDR_LEN
- *         or if NULL pointers are passed with nonzero lengths
+ * @return 0 on success, -EINVAL for a noncanonical profile, inconsistent
+ *         LENGTH, or invalid pointer/length pair
  */
 [[nodiscard]] int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 				       uint8_t epoch, uint16_t seqnum,
@@ -163,17 +165,17 @@ void schnorr48_derive_keypair(const uint8_t *_Nonnull seed,
  * @param[in] epoch        Epoch byte
  * @param[in] seqnum       Sequence number
  * @param[in] dst_addr     Destination address (may be NULL if dst_addr_len is 0)
- * @param[in] dst_addr_len Address length (must be <= SCHNORR48_MAX_ADDR_LEN)
- * @param[in] signer_iid   Signer IID (8 bytes, may be NULL if signer_iid_len is 0)
- * @param[in] signer_iid_len Signer IID length (0 or 8)
+ * @param[in] dst_addr_len Canonical address length for the LLSec address mode
+ * @param[in] signer_iid   Mandatory 8-byte signer EUI-64
+ * @param[in] signer_iid_len Signer EUI-64 length (must be 8)
  * @param[in] payload      Inner payload (may be NULL if payload_len is 0)
  * @param[in] payload_len  Inner payload length
  * @param[in] sig          48-byte signature from the MIC field
  * @param[in] sig_len      Signature length (must be SCHNORR48_SIG_LEN)
  * @param[in] pubkey       32-byte sender public key
  * @return 1 if valid, 0 if invalid signature,
- *         -EINVAL if dst_addr_len > SCHNORR48_MAX_ADDR_LEN or if NULL
- *         pointers passed with nonzero lengths, or if sig_len != SCHNORR48_SIG_LEN
+ *         -EINVAL for a noncanonical profile, inconsistent LENGTH, invalid
+ *         pointer/length pair, or sig_len != SCHNORR48_SIG_LEN
  */
 [[nodiscard]] int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 					 uint8_t epoch, uint16_t seqnum,

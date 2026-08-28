@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-253m.8",
+  "title": "SX1302 SPI register driver",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:52.418963Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:52.418963Z",
+  "labels": [
+    "c",
+    "hal",
+    "hardware",
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-253m.8",
+      "depends_on_id": "project-LICHEN-253m",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:56.089801Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

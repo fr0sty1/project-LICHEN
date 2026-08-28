@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-94ju.10",
+  "title": "Extract T-Echo board definition (.repl, .resc) to boards/t_echo/",
+  "description": "Extract the LilyGO T-Echo board definition from Meshtastic Renode support.\n\nSCOPE:\n- Create boards/t_echo/ directory\n- Add T-Echo .repl file (nRF52840 + SX1262)\n- Add T-Echo .resc script for simulation setup\n- Wire SX126x peripheral from phase 1\n- Document pin mappings and peripherals\n\nREFERENCE: Meshtastic T-Echo board definition",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:50:29.859103Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:50:29.859103Z",
+  "labels": [
+    "blocked:hardware",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-94ju.10",
+      "depends_on_id": "project-LICHEN-94ju",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:50:32.055006Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

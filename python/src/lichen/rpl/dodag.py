@@ -2,15 +2,17 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
 
+import logging
 import math
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from ipaddress import IPv6Address
 from typing import TYPE_CHECKING, Literal
 
-from lichen.ipv6 import to_ipv6
+from lichen.ipv6 import routing_key
 from lichen.ipv6.packet import IPv6Header
 from lichen.rpl.messages import DIO, DIO_FLAG_GATEWAY_CENTRIC
 from lichen.rpl.root_signature import verify_dodagid_binding
@@ -20,6 +22,8 @@ from lichen.schc.rules import RULE_SET_VERSION, SCHC_RULE_VERSION_TYPE, SchcRule
 if TYPE_CHECKING:
     from lichen.link.link_layer import LinkLayer, RxFrame
     from lichen.rpl.authenticated_dio import AuthenticatedDio
+
+logger = logging.getLogger(__name__)
 
 """RPL DODAG state machine and parent selection (RFC 6550, spec section 8).
 
@@ -45,6 +49,8 @@ MIN_HOP_RANK_INCREASE = 256
 MAX_RANK_INCREASE = 2048
 PARENT_SWITCH_THRESHOLD = 192
 ROOT_RANK = MIN_HOP_RANK_INCREASE
+DEFAULT_MAX_PARENT_AGE = 300.0  # seconds; 0 disables age-based eviction
+MAX_PARENTS = 16  # matches MAX_PARENT_CANDIDATES in rust/lichen-rpl dodag.rs
 
 
 def _require_finite_non_negative_etx(link_etx: float) -> None:
@@ -61,7 +67,7 @@ def _require_finite_non_negative_etx(link_etx: float) -> None:
 
 # DODAGVersionNumber is an 8-bit lollipop counter (RFC 6550 Section 7.2)
 SEQUENCE_WINDOW = 16
-_LOLLIPOP_LINEAR_START = 128  # Values below this are in the linear region
+_LOLLIPOP_LINEAR_START = 128  # Values below this are in the linear region (0-127)
 
 
 def lollipop_cmp(a: int, b: int) -> int | None:
@@ -80,15 +86,12 @@ def lollipop_cmp(a: int, b: int) -> int | None:
     a_linear = a < _LOLLIPOP_LINEAR_START
     b_linear = b < _LOLLIPOP_LINEAR_START
     if a_linear == b_linear:
-        # Serial arithmetic with mod-128 window per RFC 6550 Section 7.2.
-        # Matches rust/lichen-rpl routing.rs seq_is_newer formulation.
-        diff_a_minus_b = (a - b) & 0x7F
-        diff_b_minus_a = (b - a) & 0x7F
-        if 1 <= diff_a_minus_b <= SEQUENCE_WINDOW:
-            return 1
-        if 1 <= diff_b_minus_a <= SEQUENCE_WINDOW:
-            return -1
-        return None
+        # RFC 6550 Section 7.2 rule 3.2: test absolute magnitude before
+        # applying RFC 1982 ordering. Values more than SEQUENCE_WINDOW apart
+        # in the same region are incomparable.
+        if abs(a - b) > SEQUENCE_WINDOW:
+            return None
+        return 1 if a > b else -1
     if a_linear:
         wrap_distance = 256 - b + a
         return 1 if wrap_distance <= SEQUENCE_WINDOW else -1
@@ -134,8 +137,14 @@ class ParentCandidate:
     neighbor_id: IPv6Address
     rank: int
     link_etx: float
+    gateway_centric: bool = False
+    grounded: bool = False
+    last_heard: float = field(default_factory=time.monotonic)
 
     def __post_init__(self) -> None:
+        self.neighbor_id = routing_key(self.neighbor_id)
+        if not (0 <= self.rank <= INFINITE_RANK):
+            raise ValueError(f"rank must be in range [0, {INFINITE_RANK}]")
         _require_finite_non_negative_etx(self.link_etx)
 
     def path_cost(self, min_hop_rank_increase: int) -> int:
@@ -159,6 +168,100 @@ class ParentCandidate:
         return INFINITE_RANK if cost >= INFINITE_RANK else cost
 
 
+@dataclass(frozen=True)
+class _DodagSnapshot:
+    """Immutable snapshot of DODAG state for thread-safe decision making.
+
+    Used by _process_authenticated_dio_evidence_unlocked to capture state
+    atomically under the lock before the prepare/commit transaction, avoiding
+    TOCTOU races where state could change between prepare and commit phases.
+    """
+
+    rpl_instance_id: int
+    dodag_id: IPv6Address
+    role: DodagRole
+    node_address: IPv6Address | None
+    version: int
+    rank: int
+    lowest_rank: int
+    min_hop_rank_increase: int
+    max_rank_increase: int
+
+    def is_joined(self) -> bool:
+        return self.role in (DodagRole.JOINED, DodagRole.ROOT)
+
+
+def _would_accept_dio_with_snapshot(
+    snapshot: _DodagSnapshot,
+    dio: DIO,
+    neighbor_id: IPv6Address,
+    link_etx: float,
+) -> bool:
+    """Evaluate whether to accept a DIO using an atomic state snapshot.
+
+    This mirrors _would_accept_dio_unlocked but uses a snapshot of state
+    captured under the lock, avoiding TOCTOU races in the prepare phase
+    of authenticated DIO transactions.
+    """
+    _require_finite_non_negative_etx(link_etx)
+    if snapshot.role is DodagRole.ROOT:
+        return False
+    if snapshot.node_address is not None and neighbor_id == snapshot.node_address:
+        return False
+    foreign = (
+        dio.rpl_instance_id != snapshot.rpl_instance_id
+        or dio.dodag_id != snapshot.dodag_id
+    )
+    adopts = False
+    if snapshot.is_joined():
+        if foreign:
+            return False
+        if version_is_newer(dio.version, snapshot.version):
+            adopts = True
+        elif version_is_newer(snapshot.version, dio.version) or versions_incomparable(
+            dio.version, snapshot.version
+        ):
+            return False
+    elif foreign or version_is_newer(dio.version, snapshot.version):
+        adopts = True
+    elif version_is_newer(snapshot.version, dio.version) or versions_incomparable(
+        dio.version, snapshot.version
+    ):
+        return False
+    if dio.rank == INFINITE_RANK:
+        return False
+    effective_rank = INFINITE_RANK if adopts else snapshot.rank
+    effective_lowest = INFINITE_RANK if adopts else snapshot.lowest_rank
+    if effective_rank != INFINITE_RANK and dio.rank >= effective_rank:
+        return False
+    candidate = ParentCandidate(neighbor_id, dio.rank, link_etx)
+    if adopts:
+        mhri = snapshot.min_hop_rank_increase
+        cost = candidate.path_cost(mhri)
+        return (
+            mhri > 0
+            and cost < INFINITE_RANK
+            and candidate.rank >= mhri
+            and cost // mhri > candidate.rank // mhri
+        )
+    mhri = snapshot.min_hop_rank_increase
+    cost = candidate.path_cost(mhri)
+    if (
+        mhri == 0
+        or cost >= INFINITE_RANK
+        or candidate.rank < mhri
+        or cost // mhri <= candidate.rank // mhri
+    ):
+        return False
+    if effective_rank != INFINITE_RANK and candidate.rank // mhri >= effective_rank // mhri:
+        return False
+    return (
+        snapshot.max_rank_increase == 0
+        or effective_lowest >= INFINITE_RANK
+        or cost <= effective_lowest + snapshot.max_rank_increase
+    )
+
+
 @dataclass
 class DodagState:
     """RPL DODAG membership state for a single node.
@@ -179,7 +282,11 @@ class DodagState:
     parent_switch_threshold: int = PARENT_SWITCH_THRESHOLD
     gateway_centric: bool = False
     grounded: bool = False
+    max_parent_age: float = DEFAULT_MAX_PARENT_AGE
     _lowest_rank: int = INFINITE_RANK
+    _time_func: Callable[[], float] = field(
+        default=time.monotonic, repr=False, compare=False
+    )
     _lock: threading.RLock = field(
         default_factory=threading.RLock, init=False, repr=False, compare=False
     )
@@ -187,9 +294,9 @@ class DodagState:
     def __post_init__(self) -> None:
         """Make defensive copies of mutable arguments to prevent cross-state pollution."""
         self.parents = dict(self.parents)
-        self.dodag_id = to_ipv6(self.dodag_id)
+        self.dodag_id = routing_key(self.dodag_id)
         if self.node_address is not None:
-            self.node_address = to_ipv6(self.node_address)
+            self.node_address = routing_key(self.node_address)
         # RFC 6550 3.5.1: DAGRank(R) = floor(R / MinHopRankIncrease); MHRI of
         # 0 is undefined, and a negative MHRI inverts rank increase.
         if self.min_hop_rank_increase <= 0:
@@ -204,10 +311,10 @@ class DodagState:
         node_address: IPv6Address | str | None = None,
     ) -> DodagState:
         """Create a DODAG root (rank = MinHopRankIncrease)."""
-        addr = to_ipv6(node_address) if node_address is not None else None
+        addr = routing_key(node_address) if node_address is not None else None
         return cls(
             rpl_instance_id=rpl_instance_id,
-            dodag_id=to_ipv6(dodag_id),
+            dodag_id=routing_key(dodag_id),
             version=version,
             node_address=addr,
             role=DodagRole.ROOT,
@@ -246,23 +353,25 @@ class DodagState:
         """
         if type(reachable) is not bool:
             raise TypeError("reachable must be a bool")
-        if not self.is_root() or self.grounded is reachable:
-            return False
-        self.grounded = reachable
-        return True
+        with self._lock:
+            if not self.is_root() or self.grounded is reachable:
+                return False
+            self.grounded = reachable
+            return True
 
     def build_dio(self) -> DIO:
         """Build this node's canonical DIO reachability advertisement."""
-        return DIO(
-            rpl_instance_id=self.rpl_instance_id,
-            version=self.version,
-            rank=self.rank,
-            dtsn=0,
-            dodag_id=self.dodag_id,
-            grounded=self.grounded,
-            mode_of_operation=1,
-            flags=DIO_FLAG_GATEWAY_CENTRIC if self.gateway_centric else 0,
-        )
+        with self._lock:
+            return DIO(
+                rpl_instance_id=self.rpl_instance_id,
+                version=self.version,
+                rank=self.rank,
+                dtsn=0,
+                dodag_id=self.dodag_id,
+                grounded=self.grounded,
+                mode_of_operation=1,
+                flags=DIO_FLAG_GATEWAY_CENTRIC if self.gateway_centric else 0,
+            )
 
     def process_dio(self, dio: DIO, neighbor_id: IPv6Address | str, link_etx: float = 1.0) -> None:
         """Process a received DIO from ``neighbor_id`` and re-select a parent.
@@ -291,10 +400,14 @@ class DodagState:
             raise TypeError(
                 f"neighbor_id must be IPv6Address or str, got {type(neighbor_id).__name__}"
             )
-        neighbor_id = to_ipv6(neighbor_id)
+        neighbor_id = routing_key(neighbor_id)
         if self.role is DodagRole.ROOT:
             return
         if self.node_address is not None and neighbor_id == self.node_address:
+            logger.debug(
+                "dropped DIO from self (node_address=%s); may indicate reflected frame",
+                self.node_address,
+            )
             return
 
         foreign = dio.rpl_instance_id != self.rpl_instance_id or dio.dodag_id != self.dodag_id
@@ -318,7 +431,7 @@ class DodagState:
         ):
             return
 
-        if dio.rank >= INFINITE_RANK:
+        if dio.rank == INFINITE_RANK:
             # Poisoned route; drop this neighbour as a candidate.
             self.parents.pop(neighbor_id, None)
             self.select_parent()
@@ -333,16 +446,19 @@ class DodagState:
                 self.select_parent()
             return
 
-        candidate = ParentCandidate(neighbor_id, dio.rank, link_etx)
+        candidate = ParentCandidate(
+            neighbor_id, dio.rank, link_etx, dio.gateway_centric, dio.grounded, self._time_func()
+        )
         if not self._admissible(candidate):
             if neighbor_id in self.parents:
                 self.parents.pop(neighbor_id, None)
                 self.select_parent()
             return
-        self.parents[neighbor_id] = candidate
-        self.gateway_centric = dio.gateway_centric
-        self.grounded = dio.grounded
+        if neighbor_id in self.parents or self._make_room_for(candidate):
+            self.parents[neighbor_id] = candidate
         self.select_parent()
+        if self.preferred_parent == neighbor_id:
+            self.grounded = dio.grounded
 
     def _would_accept_dio_unlocked(
         self,
@@ -351,60 +467,18 @@ class DodagState:
         link_etx: float,
     ) -> bool:
         """Return whether ``process_dio`` would install this exact candidate."""
-        _require_finite_non_negative_etx(link_etx)
-        if self.role is DodagRole.ROOT:
-            return False
-        if self.node_address is not None and neighbor_id == self.node_address:
-            return False
-        foreign = dio.rpl_instance_id != self.rpl_instance_id or dio.dodag_id != self.dodag_id
-        adopts = False
-        if self.is_joined():
-            if foreign:
-                return False
-            if version_is_newer(dio.version, self.version):
-                adopts = True
-            elif version_is_newer(self.version, dio.version) or versions_incomparable(
-                dio.version, self.version
-            ):
-                return False
-        elif foreign or version_is_newer(dio.version, self.version):
-            adopts = True
-        elif version_is_newer(self.version, dio.version) or versions_incomparable(
-            dio.version, self.version
-        ):
-            return False
-        if dio.rank >= INFINITE_RANK:
-            return False
-        effective_rank = INFINITE_RANK if adopts else self.rank
-        effective_lowest = INFINITE_RANK if adopts else self._lowest_rank
-        if effective_rank != INFINITE_RANK and dio.rank >= effective_rank:
-            return False
-        candidate = ParentCandidate(neighbor_id, dio.rank, link_etx)
-        if adopts:
-            mhri = self.min_hop_rank_increase
-            cost = candidate.path_cost(mhri)
-            return (
-                mhri > 0
-                and cost < INFINITE_RANK
-                and candidate.rank >= mhri
-                and cost // mhri > candidate.rank // mhri
-            )
-        mhri = self.min_hop_rank_increase
-        cost = candidate.path_cost(mhri)
-        if (
-            mhri == 0
-            or cost >= INFINITE_RANK
-            or candidate.rank < mhri
-            or cost // mhri <= candidate.rank // mhri
-        ):
-            return False
-        if effective_rank != INFINITE_RANK and candidate.rank // mhri >= effective_rank // mhri:
-            return False
-        return (
-            self.max_rank_increase == 0
-            or effective_lowest >= INFINITE_RANK
-            or cost <= effective_lowest + self.max_rank_increase
+        snapshot = _DodagSnapshot(
+            rpl_instance_id=self.rpl_instance_id,
+            dodag_id=self.dodag_id,
+            role=self.role,
+            node_address=self.node_address,
+            version=self.version,
+            rank=self.rank,
+            lowest_rank=self._lowest_rank,
+            min_hop_rank_increase=self.min_hop_rank_increase,
+            max_rank_increase=self.max_rank_increase,
         )
+        return _would_accept_dio_with_snapshot(snapshot, dio, neighbor_id, link_etx)
 
     def process_authenticated_dio(
         self,
@@ -465,6 +539,22 @@ class DodagState:
         link_etx: float,
     ) -> None:
         """Validate and commit one LinkLayer-owned DIO issuance."""
+        # Snapshot state atomically under the lock before the prepare/commit
+        # transaction to avoid TOCTOU races. The prepare callback runs without
+        # the lock (for I/O validation), so it must use this snapshot rather
+        # than reading from self.
+        with self._lock:
+            snapshot = _DodagSnapshot(
+                rpl_instance_id=self.rpl_instance_id,
+                dodag_id=self.dodag_id,
+                role=self.role,
+                node_address=self.node_address,
+                version=self.version,
+                rank=self.rank,
+                lowest_rank=self._lowest_rank,
+                min_hop_rank_increase=self.min_hop_rank_increase,
+                max_rank_increase=self.max_rank_increase,
+            )
 
         def prepare_candidate(
             detached: object,
@@ -479,8 +569,8 @@ class DodagState:
                 raise ValueError("authenticated DIO source IID does not match signer")
             parsed = DIO.from_bytes(detached.dio_bytes)
             if (
-                parsed.rpl_instance_id != self.rpl_instance_id
-                or parsed.dodag_id != self.dodag_id
+                parsed.rpl_instance_id != snapshot.rpl_instance_id
+                or parsed.dodag_id != snapshot.dodag_id
             ):
                 raise ValueError(
                     "DODAG scope changed during authenticated DIO admission"
@@ -489,14 +579,15 @@ class DodagState:
                 detached.sender_pubkey, parsed.dodag_id
             ):
                 raise ValueError("authenticated root DODAGID does not match signer key")
-            version_options = [
-                option for option in detached.options if option.type == SCHC_RULE_VERSION_TYPE
-            ]
-            if len(version_options) != 1:
-                raise ValueError(
-                    "authenticated DIO must contain exactly one SCHC Rule Version option"
-                )
-            version_data = version_options[0].data
+            # SCHC Rule Version option cardinality (exactly one) is enforced by
+            # transact_authenticated_schc_dio before calling this prepare callback.
+            version_option = next(
+                (option for option in detached.options if option.type == SCHC_RULE_VERSION_TYPE),
+                None,
+            )
+            if version_option is None:
+                raise ValueError("missing required SCHC Rule Version option")
+            version_data = version_option.data
             version = SchcRuleVersionOption.from_bytes(
                 bytes((SCHC_RULE_VERSION_TYPE, len(version_data))) + version_data
             ).version
@@ -505,7 +596,7 @@ class DodagState:
                     f"incompatible SCHC rule version {version}; DODAG admission denied"
                 )
             neighbor_id = IPv6Address(b"\xfe\x80" + bytes(6) + detached.sender_iid)
-            if not self._would_accept_dio_unlocked(parsed, neighbor_id, link_etx):
+            if not _would_accept_dio_with_snapshot(snapshot, parsed, neighbor_id, link_etx):
                 return None
 
             def commit_candidate(peer: object) -> None:
@@ -524,7 +615,7 @@ class DodagState:
         )
 
     def _adopt_version(self, dio: DIO) -> None:
-        self.dodag_id = dio.dodag_id
+        self.dodag_id = routing_key(dio.dodag_id)
         self.rpl_instance_id = dio.rpl_instance_id
         self.version = dio.version
         self.parents.clear()
@@ -552,35 +643,83 @@ class DodagState:
             return True
         return cost <= self._lowest_rank + self.max_rank_increase
 
-    def select_parent(self) -> None:
-        """Choose the preferred parent via MRHOF with hysteresis."""
-        admissible = [c for c in self.parents.values() if self._admissible(c)]
-        if not admissible:
-            if self.role is not DodagRole.ROOT:
-                self.role = DodagRole.UNJOINED
-                self.preferred_parent = None
-                self.rank = INFINITE_RANK
+    def _prune_stale_parents(self) -> None:
+        """Remove parent entries older than max_parent_age.
+
+        Called during parent selection to bound memory growth from neighbors
+        that went silent. Does nothing if max_parent_age is 0 (disabled).
+        """
+        if self.max_parent_age <= 0:
             return
+        now = self._time_func()
+        cutoff = now - self.max_parent_age
+        stale = [nid for nid, c in self.parents.items() if c.last_heard < cutoff]
+        for nid in stale:
+            del self.parents[nid]
 
-        best = min(admissible, key=lambda c: c.path_cost(self.min_hop_rank_increase))
-        best_cost = best.path_cost(self.min_hop_rank_increase)
+    def _make_room_for(self, candidate: ParentCandidate) -> bool:
+        """Return whether ``candidate`` may be added without exceeding MAX_PARENTS.
 
-        current = self.parents.get(self.preferred_parent) if self.preferred_parent else None
-        if (
-            current is not None
-            and self._admissible(current)
-            and current.neighbor_id != best.neighbor_id
-        ):
-            current_cost = current.path_cost(self.min_hop_rank_increase)
-            # Hysteresis: stick with current unless improvement reaches threshold (RFC 6550 s3.6).
-            improvement = current_cost - best_cost
-            if improvement < self.parent_switch_threshold:
-                best, best_cost = current, current_cost
+        At capacity a candidate is admitted only by displacing the worst
+        non-preferred parent (highest ``path_cost``, the same ordering
+        ``select_parent`` uses to rank parents); an equal or worse candidate
+        is rejected so spoofed DIOs cannot churn the set. The preferred
+        parent is never evicted.
+        """
+        if len(self.parents) < MAX_PARENTS:
+            return True
+        mhri = self.min_hop_rank_increase
+        evictable = [
+            (c.path_cost(mhri), nid)
+            for nid, c in self.parents.items()
+            if nid != self.preferred_parent
+        ]
+        if not evictable:
+            return False
+        worst_cost, worst_nid = max(evictable)
+        if candidate.path_cost(mhri) >= worst_cost:
+            return False
+        del self.parents[worst_nid]
+        return True
 
-        self.preferred_parent = best.neighbor_id
-        self.rank = best_cost if best_cost < INFINITE_RANK else INFINITE_RANK - 1
-        self.role = DodagRole.JOINED
-        self._lowest_rank = min(self._lowest_rank, self.rank)
+    def select_parent(self) -> None:
+        """Choose the preferred parent via MRHOF with hysteresis.
+
+        Thread-safe: acquires internal lock. Safe to call from locked or
+        unlocked contexts since _lock is an RLock (reentrant).
+        """
+        with self._lock:
+            self._prune_stale_parents()
+            admissible = [c for c in self.parents.values() if self._admissible(c)]
+            if not admissible:
+                if self.role is not DodagRole.ROOT:
+                    self.role = DodagRole.UNJOINED
+                    self.preferred_parent = None
+                    self.rank = INFINITE_RANK
+                return
+
+            best = min(admissible, key=lambda c: c.path_cost(self.min_hop_rank_increase))
+            best_cost = best.path_cost(self.min_hop_rank_increase)
+
+            current = self.parents.get(self.preferred_parent) if self.preferred_parent else None
+            if (
+                current is not None
+                and self._admissible(current)
+                and current.neighbor_id != best.neighbor_id
+            ):
+                current_cost = current.path_cost(self.min_hop_rank_increase)
+                # Hysteresis: stick with current unless improvement exceeds threshold.
+                # RFC 6550 section 3.6.
+                improvement = current_cost - best_cost
+                if improvement < self.parent_switch_threshold:
+                    best, best_cost = current, current_cost
+
+            self.preferred_parent = best.neighbor_id
+            self.rank = best_cost  # Always < INFINITE_RANK: _admissible() filters
+            self.role = DodagRole.JOINED
+            self._lowest_rank = min(self._lowest_rank, self.rank)
+            self.gateway_centric = best.gateway_centric
+            self.grounded = best.grounded
 
     def remove_parent(self, neighbor_id: IPv6Address | str) -> None:
         """Drop a neighbour (e.g. on link failure) and re-select.
@@ -588,5 +727,5 @@ class DodagState:
         ``neighbor_id`` may be an IPv6Address or a string representation.
         """
         with self._lock:
-            self.parents.pop(to_ipv6(neighbor_id), None)
+            self.parents.pop(routing_key(neighbor_id), None)
             self.select_parent()

@@ -335,17 +335,34 @@ class DeadDropResource(resource.ObservableResource):
     def get_link_description(self) -> dict[str, Any]:
         return {"rt": "deaddrop", "ct": str(int(SENML_CBOR)), "obs": None}
 
-    def _prune_old_requests(self, context_id: str) -> None:
-        """Remove request timestamps older than 1 hour for rate limiting."""
-        if context_id not in self._request_times:
-            return
+    def _reap_stale_rate_buckets(self) -> None:
+        """Drop timestamps older than 1 hour from every rate bucket.
+
+        SECURITY: reaping is global. Abandoned keys (including idle contexts
+        that posted once and never returned) must not wait for that key to
+        return. Without global reaping, N distinct OSCORE identities each
+        posting once would grow _request_times without bound.
+        """
         now = self._rate_time_func()
         cutoff = now - 3600  # 1 hour
-        self._request_times[context_id] = [
-            ts for ts in self._request_times[context_id] if ts > cutoff
-        ]
-        if not self._request_times[context_id]:
-            del self._request_times[context_id]
+        stale: list[str] = []
+        for key, timestamps in self._request_times.items():
+            kept = [ts for ts in timestamps if ts > cutoff]
+            if kept:
+                self._request_times[key] = kept
+            else:
+                stale.append(key)
+        for key in stale:
+            del self._request_times[key]
+
+    def _prune_old_requests(self, context_id: str) -> None:
+        """Remove request timestamps older than 1 hour for rate limiting.
+
+        *context_id* is kept for call-site compatibility; every bucket is
+        reaped so stale identities do not accumulate.
+        """
+        del context_id
+        self._reap_stale_rate_buckets()
 
     def check_rate_limit(self, context_id: str) -> tuple[bool, int]:
         """Check if context is within rate limits.
@@ -368,6 +385,7 @@ class DeadDropResource(resource.ObservableResource):
 
     def _record_request(self, context_id: str) -> None:
         """Record a successful POST for rate limiting."""
+        self._reap_stale_rate_buckets()
         now = self._rate_time_func()
         if context_id not in self._request_times:
             self._request_times[context_id] = []
@@ -412,9 +430,7 @@ class DeadDropResource(resource.ObservableResource):
         if context_id == drop.get("context"):
             return True
         # "group": creator OR designated recipient can see
-        if privacy == "group" and context_id == drop.get("recipient"):
-            return True
-        return False
+        return privacy == "group" and context_id == drop.get("recipient")
 
     def _public_view(self, drop_id: str, drop: dict[str, Any]) -> dict[str, Any]:
         now = self._time_func()

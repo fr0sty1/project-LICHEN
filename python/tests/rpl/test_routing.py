@@ -54,6 +54,23 @@ def test_routing_table_accepts_string_addresses() -> None:
     assert table.lookup(DEST) == [A, DEST]
 
 
+def test_lookup_unzoned_finds_zoned_insert() -> None:
+    # Independent oracle: RFC 4291 zone is not in the 128-bit address.
+    packed = bytes.fromhex("fe800000000000000000000000000001")
+    zoned = IPv6Address("fe80::1%lci0")
+    unzoned = IPv6Address("fe80::1")
+    hop = IPv6Address("fe80::a%lci0")
+    assert zoned != unzoned
+    assert zoned.packed == unzoned.packed == packed
+
+    table = RoutingTable()
+    table.add_route(zoned, [hop, IPv6Address("fe80::1%eth0")])
+    assert table.lookup(unzoned) == [IPv6Address("fe80::a"), unzoned]
+    assert unzoned in table
+    assert zoned in table
+    assert table.lookup("fe80::1%lci0") == [IPv6Address("fe80::a"), unzoned]
+
+
 def test_routing_table_accepts_eight_hops_and_rejects_nine() -> None:
     hops: list[IPv6Address | str] = [IPv6Address(f"fd00::{index}") for index in range(1, 10)]
     table = RoutingTable()
@@ -162,7 +179,7 @@ def test_srh_accepts_eight_addresses_and_rejects_nine() -> None:
 
 
 def test_next_hop_upward_is_preferred_parent() -> None:
-    dodag = DodagState(rpl_instance_id=0, dodag_id="fd00::1", version=1)
+    dodag = DodagState(rpl_instance_id=0, dodag_id=IPv6Address("fd00::1"), version=1)
     assert next_hop_upward(dodag) is None
     dodag.preferred_parent = IPv6Address("fe80::1234")
     assert next_hop_upward(dodag) == IPv6Address("fe80::1234")
@@ -177,7 +194,7 @@ def test_insert_source_route_single_hop_no_srh() -> None:
 
 
 def test_insert_source_route_accepts_eight_hops_and_rejects_nine() -> None:
-    hops: list[IPv6Address | str] = [IPv6Address(f"fd00::{index}") for index in range(10, 19)]
+    hops = [IPv6Address(f"fd00::{index}") for index in range(10, 19)]
     packet = IPv6Packet(header=IPv6Header(ROOT, hops[7], NextHeader.UDP), payload=b"hi")
     routed, first_hop = insert_source_route(packet, hops[:8])
     assert first_hop == hops[0]
@@ -284,7 +301,8 @@ def test_insert_source_route_preserves_hop_by_hop_first() -> None:
         NextHeader.HOP_BY_HOP,
         NextHeader.ROUTING,
     ]
-    assert IPv6Packet.from_bytes(routed.to_bytes(), strict=True) == routed
+    reparsed = IPv6Packet.from_bytes(routed.to_bytes(), strict=True)
+    assert reparsed.to_bytes() == routed.to_bytes()
 
 
 def test_advance_source_route_rejects_segments_left_gte_hop_limit() -> None:

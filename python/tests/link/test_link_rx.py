@@ -654,7 +654,7 @@ class TestLinkLayerRoundTrip:
         assert await remote_link.send(payload)
         wire = remote_radio.tx_history[-1]
         mock_radio.queue_rx(wire)
-        assert await node_link.receive(100) == ReceiveError.REPLAY
+        assert await node_link.receive(100) == ReceiveError.CAPACITY_EXHAUSTED
         assert dict(node_link._pinned_keys) == original_pins
         assert node_link._key_generations == original_generations
         assert newcomer.pubkey not in node_link._key_generations

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dldn.10",
+  "title": "Implement lookup functions (gatt_to_ipso, gatt_service_to_ipso)",
+  "description": "Implement in gatt_ipso.c:\n\n1. gatt_to_ipso(uint16_t gatt_uuid) - binary search or linear scan of characteristic table\n2. gatt_service_to_ipso(uint16_t service_uuid) - lookup in service table\n\nBoth return const struct gatt_ipso_mapping* or NULL if not found.\n\nConsider:\n- Table must be sorted by UUID for binary search\n- Compile-time assertion on table size\n- Optional: count function for iteration\n\n~30 LOC. Reference: spec/appendix-gatt-ipso.md",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:53:57.523801Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:53:57.523801Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dldn.10",
+      "depends_on_id": "project-LICHEN-worker6-dldn",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:53:58.165502Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

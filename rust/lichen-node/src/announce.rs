@@ -663,7 +663,7 @@ mod tests {
         expected_dst[..8].copy_from_slice(&ula_prefix());
         expected_dst[8..].copy_from_slice(&identity.iid);
 
-        let entry = processor.gradient_table().lookup(&expected_dst, 1000);
+        let entry = processor.gradient_table_mut().lookup(&expected_dst, 1000);
         assert!(entry.is_some());
         let entry = entry.unwrap();
         assert_eq!(entry.next_hop, from_neighbor);

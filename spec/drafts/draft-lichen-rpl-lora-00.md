@@ -270,7 +270,7 @@ To prevent DIS storms:
 |-------|--------|
 | Initial DAO | Random 0-2s after parent selection |
 | DAO retry | 4, 8, 16 seconds (exponential backoff) |
-| DAO refresh | Every 30 minutes (before lifetime expires) |
+| DAO refresh | Every 15 minutes (half the 30-minute soft-state lifetime) |
 | DAO on parent change | Immediate (with jitter 0-500ms) |
 
 **DAO Source Address Model:** DAO packets use routable ULA source (DODAG-root derived prefix) for multi-hop forwarding. Relays preserve the original IPv6 source end-to-end (see spec/04-network.md and SCHC Rule 4). This satisfies security requirements for source binding.
@@ -279,11 +279,14 @@ To prevent DIS storms:
 
 ```
 Lifetime = DAO_LIFETIME_UNIT × DAO_LIFETIME
-         = 60 seconds × 60
-         = 3600 seconds = 1 hour
+         = 60 seconds × 30
+         = 1800 seconds = 30 minutes
 ```
 
-Nodes MUST refresh DAO before lifetime expires (recommend 50% of lifetime).
+Nodes MUST refresh the DAO at 50% of the soft-state lifetime (every 15
+minutes).  This cadence matches Section 14.2 of
+[09-packets-timing.md](../09-packets-timing.md) and leaves half the lifetime
+for bounded retries before the installed route expires.
 
 ### 7.3. DAO-ACK
 
@@ -435,7 +438,7 @@ When DODAG root advertises prefix:
 |-------|------------|-------|
 | Trickle | 1 second | Coarse is acceptable |
 | DAO retry | 1 second | Exponential backoff |
-| DAO lifetime | 1 minute | Refresh at 50% |
+| DAO lifetime | 1 minute | Refresh every 15 minutes at 50% of lifetime |
 | Link timeout | 10 seconds | Neighbor unreachable |
 
 ### 10.3. Recommended Defaults
@@ -447,7 +450,7 @@ When DODAG root advertises prefix:
 #define RPL_TRICKLE_IMAX         8             // 2^8 doublings
 #define RPL_TRICKLE_K            10            // redundancy constant
 #define RPL_DAO_LIFETIME_UNIT    60            // seconds
-#define RPL_DAO_LIFETIME         60            // 1 hour
+#define RPL_DAO_LIFETIME         30            // 30 minutes
 #define RPL_DEFAULT_PARENT_COUNT 3             // max parents to track
 #define RPL_MRHOF_THRESHOLD      384           // parent switch hysteresis
 ```

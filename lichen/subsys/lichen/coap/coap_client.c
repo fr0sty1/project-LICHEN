@@ -128,6 +128,7 @@ struct request_ctx {
 	uint8_t response_buf[LICHEN_COAP_MAX_PAYLOAD];  /* Accumulated response */
 	size_t response_len;  /* Current accumulated length */
 	bool response_oversized;  /* True if any block exceeds response_buf */
+	bool response_invalid;  /* Malformed/non-contiguous block sequence */
 	uint32_t timeout_ms;  /* Per-request timeout, for blockwise re-arm */
 #ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
 	struct oscore_ctx *oscore_ctx;  /* OSCORE context for response decryption */
@@ -281,13 +282,20 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 		request_ctx_put(ctx);
 		return;
 	}
+	if (code < COAP_RESPONSE_CODE_OK || code > UINT8_MAX) {
+		ctx->response_invalid = true;
+	}
 
 	/*
 	 * Accumulate blockwise response payload.
 	 * Each block arrives with its offset; copy into response_buf.
 	 * On last_block, deliver the complete accumulated response.
 	 */
-	if (payload != NULL && len > 0) {
+	if ((len > 0U && payload == NULL) || offset != ctx->response_len) {
+		ctx->response_invalid = true;
+		LOG_WRN("Invalid response block: offset=%zu expected=%zu len=%zu",
+			offset, ctx->response_len, len);
+	} else if (payload != NULL && len > 0) {
 		size_t copy_len = len;
 		if (offset > sizeof(ctx->response_buf) ||
 		    len > sizeof(ctx->response_buf) - offset) {
@@ -334,7 +342,7 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 		request_ctx_cancel_timeout_sync(ctx);
 
 		if (ctx->callback != NULL) {
-			if (ctx->response_oversized) {
+			if (ctx->response_oversized || ctx->response_invalid) {
 				ctx->callback(ctx->user_data, LICHEN_COAP_ERR_INVALID_RESPONSE,
 					      0, NULL, 0);
 			} else {
@@ -430,6 +438,13 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	if (req->payload == NULL && req->payload_len > 0) {
 		return LICHEN_COAP_ERR_INVALID_PARAM;
 	}
+	if (req->payload_len > 0U && req->content_format == LICHEN_COAP_FMT_UNSET) {
+		return LICHEN_COAP_ERR_INVALID_PARAM;
+	}
+	if (req->addr.sin6_family != AF_INET6 || req->addr.sin6_port == 0U ||
+	    req->method < COAP_METHOD_GET || req->method > COAP_METHOD_IPATCH) {
+		return LICHEN_COAP_ERR_INVALID_PARAM;
+	}
 
 	ret = validate_path_components(req->path, &path_components);
 	if (ret < 0) {
@@ -441,11 +456,11 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 		return LICHEN_COAP_ERR_INVALID_PARAM;
 	}
 
-	if (!s_initialized) {
-		ret = lichen_coap_client_init();
-		if (ret < 0) {
-			return ret;
-		}
+	/* Always take the init mutex. Reading s_initialized without the lock is
+	 * a C data race when requests arrive concurrently during first use. */
+	ret = lichen_coap_client_init();
+	if (ret < 0) {
+		return ret;
 	}
 
 	/* Snapshot socket under lock - callbacks run without lock held */
@@ -462,6 +477,7 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	ctx->user_data = req->user_data;
 	ctx->response_len = 0;
 	ctx->response_oversized = false;
+	ctx->response_invalid = false;
 	ctx->timeout_ms = timeout_ms;
 	atomic_set(&ctx->refs, 2);  /* CoAP callback path + submitter path */
 	atomic_set(&ctx->completed, 0);
@@ -478,7 +494,6 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	 */
 	size_t path_pos = 0;
 	for (size_t i = 0; i < path_components; i++) {
-		size_t comp_len = strlen(req->path[i]);
 		if (i > 0) {
 			/* Add separator between components */
 			if (path_pos + 1 >= sizeof(ctx->path_buf)) {
@@ -486,6 +501,20 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 				return LICHEN_COAP_ERR_NO_MEMORY;
 			}
 			ctx->path_buf[path_pos++] = '/';
+		}
+		size_t remaining = sizeof(ctx->path_buf) - path_pos;
+		size_t comp_len = 0U;
+
+		while (comp_len < remaining && req->path[i][comp_len] != '\0') {
+			comp_len++;
+		}
+
+		/* A component without a terminator in the remaining destination
+		 * capacity cannot fit; bounded scanning avoids walking arbitrary
+		 * caller memory for an overlong path. */
+		if (comp_len == remaining) {
+			k_free(ctx);
+			return LICHEN_COAP_ERR_NO_MEMORY;
 		}
 		if (path_pos + comp_len >= sizeof(ctx->path_buf)) {
 			k_free(ctx);

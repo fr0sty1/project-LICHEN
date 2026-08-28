@@ -137,6 +137,24 @@ extern "C" {
 /** Conservative CBOR size bound for a roll-call status document (18.6.3) */
 #define LICHEN_ROLLCALL_STATUS_CBOR_MAX 5120
 
+/**
+ * Worst-case encoded size of one fully-populated roll call (18.6.3):
+ * map(1) + id(3+34) + started(8+9) + timeout_s(10+5) + responded(10+2
+ * + N x 73) + missing(8+2 + N x 73), where one track entry is
+ * map(1) + node(5+40) + ts(3+9) + status(7+8) = 73 bytes (node is
+ * full-notation IPv6, 39 chars) and N is LICHEN_ROLLCALL_TRACK_MAX.
+ * The {"rollcalls":[...]} list document is therefore bounded by
+ * 16 + M x LICHEN_ROLLCALL_RENDER_MAX for M stored roll calls;
+ * checkin_resource.c enforces the single-render case against
+ * CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX at build time and clamps the list
+ * document to what fits (documented partial-list degradation).
+ */
+#define LICHEN_ROLLCALL_TRACK_ENTRY_MAX 73
+#define LICHEN_ROLLCALL_RENDER_MAX                                              \
+	(70 + (12 + (LICHEN_ROLLCALL_TRACK_MAX *                                \
+		      LICHEN_ROLLCALL_TRACK_ENTRY_MAX)) +                       \
+	 (10 + (LICHEN_ROLLCALL_TRACK_MAX * LICHEN_ROLLCALL_TRACK_ENTRY_MAX)))
+
 /** Conservative CBOR size bound for a scheduled check-in config */
 #define LICHEN_CHECKIN_CONFIG_CBOR_MAX 128
 

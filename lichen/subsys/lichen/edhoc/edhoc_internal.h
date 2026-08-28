@@ -134,21 +134,27 @@ int compute_th(uint8_t out[32],
  * info = CBOR(length) || CBOR(th) || CBOR(label) || CBOR(context)
  * @return 0 on success, negative on error
  */
-int edhoc_kdf(const uint8_t prk[32],
-	      const uint8_t th[32],
-	      const char *label,
-	      const uint8_t *context, size_t context_len,
-	      uint8_t *out, size_t out_len);
-
 /**
- * @brief EDHOC-KDF with integer label for OSCORE export
+ * @brief EDHOC-KDF with the integer labels assigned by RFC 9528
  * @return 0 on success, negative on error
  */
 int edhoc_kdf_int(const uint8_t prk[32],
-		  const uint8_t th[32],
 		  int32_t label,
 		  const uint8_t *context, size_t context_len,
 		  uint8_t *out, size_t out_len);
+
+int edhoc_encode_identifier(const uint8_t *cid, size_t cid_len,
+			    uint8_t *out, size_t out_size, size_t *out_len);
+int edhoc_decode_identifier(const uint8_t *in, size_t in_len,
+			    uint8_t *cid, size_t *cid_len, size_t *consumed);
+int edhoc_encode_id_cred(const uint8_t pubkey[32], uint8_t out[11]);
+int edhoc_encode_credential(const uint8_t pubkey[32], uint8_t out[40]);
+int edhoc_compute_th2(const uint8_t g_y[32], const uint8_t *msg1,
+		      size_t msg1_len, uint8_t out[32]);
+int edhoc_compute_transcript(const uint8_t th[32],
+			     const uint8_t *plaintext, size_t plaintext_len,
+			     const uint8_t *credential, size_t credential_len,
+			     uint8_t out[32]);
 
 /**
  * @brief Build COSE Sig_structure per RFC 9052 Section 4.4
@@ -165,7 +171,7 @@ int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
  * @return 0 on success, negative on error
  */
 int build_enc_structure(uint8_t *out, size_t out_size, size_t *out_len,
-			const uint8_t *th, const uint8_t *cred);
+			const uint8_t th[32]);
 
 /*
  * Signing functions (edhoc_sign.c)

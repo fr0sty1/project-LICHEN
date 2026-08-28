@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-253m.12",
+  "title": "GPS/PPS time synchronization",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:37.347583Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:37.347583Z",
+  "labels": [
+    "c",
+    "hal",
+    "timing",
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-253m.12",
+      "depends_on_id": "project-LICHEN-253m",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:42.743953Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

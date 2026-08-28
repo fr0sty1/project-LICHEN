@@ -69,6 +69,9 @@ enum lichen_coap_result {
  * @param[in] code        CoAP response code (only valid when status == LICHEN_COAP_OK)
  * @param[in] payload     Response payload (may be NULL)
  * @param[in] payload_len Payload length
+ *
+ * The payload is borrowed storage and is valid only for the duration of the
+ * callback. Copy it before returning if it must be retained.
  */
 typedef void (*lichen_coap_response_cb)(void *_Nullable user_data,
 					int status,
@@ -123,6 +126,9 @@ int lichen_coap_client_init(void);
  *                URI component array as described by struct
  *                lichen_coap_request.
  * @return 0 on success (request sent), negative error code on failure
+ *
+ * The destination must be an IPv6 socket address with a nonzero port, and
+ * method must be a standard CoAP request method (GET through iPATCH).
  */
 int lichen_coap_request(const struct lichen_coap_request *_Nonnull req);
 

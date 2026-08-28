@@ -6,3 +6,4 @@ tests:
     tags: kiss transport tnc serial aprs ax25
     platform_allow:
       - native_sim/native/64
+      - qemu_x86

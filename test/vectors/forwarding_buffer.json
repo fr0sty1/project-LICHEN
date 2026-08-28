@@ -464,6 +464,71 @@
       }
     },
     {
+      "name": "deadline_expiry_boundary",
+      "description": "Packet expires exactly when now_ms == deadline_ms. Spec requires deadline_ms <= now_ms triggers expiry.",
+      "operation": "expire_old",
+      "precondition": {
+        "description": "Two packets: deadline 100ms (boundary) and 101ms",
+        "state": {
+          "sources": {
+            "0000000000000001": [
+              {
+                "packet_id": "pkt_boundary",
+                "deadline_ms": 100
+              },
+              {
+                "packet_id": "pkt_after",
+                "deadline_ms": 101
+              }
+            ]
+          },
+          "source_order": [
+            "0000000000000001"
+          ],
+          "stats": {
+            "total_packets": 2,
+            "sources": 1,
+            "max_sources": 8,
+            "max_per_source": 2,
+            "accepted": 2,
+            "backpressure": 0,
+            "expired": 0,
+            "evicted": 0
+          }
+        }
+      },
+      "inputs": {
+        "now_ms": 100
+      },
+      "expected": {
+        "expired_count": 1,
+        "remaining_count": 1,
+        "state": {
+          "sources": {
+            "0000000000000001": [
+              {
+                "packet_id": "pkt_after",
+                "deadline_ms": 101
+              }
+            ]
+          },
+          "source_order": [
+            "0000000000000001"
+          ],
+          "stats": {
+            "total_packets": 1,
+            "sources": 1,
+            "max_sources": 8,
+            "max_per_source": 2,
+            "accepted": 2,
+            "backpressure": 0,
+            "expired": 1,
+            "evicted": 0
+          }
+        }
+      }
+    },
+    {
       "name": "expiry_removes_empty_source",
       "description": "When all packets from a source expire, source is removed.",
       "operation": "expire_old",

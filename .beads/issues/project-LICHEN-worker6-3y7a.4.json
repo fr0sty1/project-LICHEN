@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-3y7a.4",
+  "title": "task",
+  "description": "Ring buffer of recently seen BLE devices. Track MAC, RSSI, timestamp, service UUIDs. Deduplicate by MAC with configurable timeout. Apply RSSI threshold filtering. Expose via callback for CoAP resource.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:52:40.750135Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:52:40.750135Z",
+  "labels": [
+    "zephyr",
+    "c",
+    "needs-linux"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-3y7a.4",
+      "depends_on_id": "project-LICHEN-worker6-3y7a",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:52:41.571111Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

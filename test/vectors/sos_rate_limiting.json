@@ -81,7 +81,7 @@
         {"uptime_ms": 1000},
         {"uptime_ms": 2000}
       ],
-      "current_uptime_ms": 3600001,
+      "current_uptime_ms": 3601000,
       "expected": {
         "accept": true,
         "sos_in_window": 2,
@@ -119,8 +119,8 @@
       "scenario": [
         {"action": "send", "uptime_ms": 0, "accept": true},
         {"action": "send", "uptime_ms": 1000, "accept": true, "note": "burst 2"},
-        {"action": "send", "uptime_ms": 600000, "accept": true, "note": "after cooldown"},
-        {"action": "send", "uptime_ms": 601000, "accept": false, "note": "need new cooldown"}
+        {"action": "send", "uptime_ms": 601000, "accept": true, "note": "after cooldown from t=1s"},
+        {"action": "send", "uptime_ms": 602000, "accept": false, "note": "need new cooldown from t=601s"}
       ]
     },
     {

@@ -16,10 +16,10 @@
       },
       "output": {
         "hash_32": 926423932,
-        "channel": 2,
-        "expected_channel": 2,
+        "channel": 1,
+        "expected_channel": 1,
         "sf": 9,
-        "select_channel": 2,
+        "select_channel": 1,
         "now": 4660
       }
     },
@@ -96,10 +96,10 @@
       },
       "output": {
         "hash_32": 666687663,
-        "channel": 1,
-        "expected_channel": 1,
+        "channel": 2,
+        "expected_channel": 2,
         "sf": 12,
-        "select_channel": 1,
+        "select_channel": 2,
         "now": 500
       }
     },
@@ -116,10 +116,10 @@
       },
       "output": {
         "hash_32": 3616577950,
-        "channel": 2,
-        "expected_channel": 2,
+        "channel": 1,
+        "expected_channel": 1,
         "sf": 11,
-        "select_channel": 2,
+        "select_channel": 1,
         "now": 1000
       }
     },
@@ -137,10 +137,10 @@
       },
       "output": {
         "hash_32": 1186160201,
-        "channel": 3,
-        "expected_channel": 3,
+        "channel": 2,
+        "expected_channel": 2,
         "sf": 11,
-        "select_channel": 3,
+        "select_channel": 2,
         "now": 1500
       }
     },
@@ -177,10 +177,10 @@
       },
       "output": {
         "hash_32": 3876314219,
-        "channel": 3,
-        "expected_channel": 3,
+        "channel": 2,
+        "expected_channel": 2,
         "sf": 10,
-        "select_channel": 3,
+        "select_channel": 2,
         "now": 2500
       }
     },
@@ -217,10 +217,10 @@
       },
       "output": {
         "hash_32": 100819461,
-        "channel": 1,
-        "expected_channel": 1,
+        "channel": 2,
+        "expected_channel": 2,
         "sf": 10,
-        "select_channel": 1,
+        "select_channel": 2,
         "now": 0
       }
     }

@@ -85,6 +85,33 @@ def test_invalid_capacity() -> None:
         RouteCache(max_entries=0)
 
 
+def test_lookup_unzoned_finds_zoned_insert() -> None:
+    # Independent oracle: RFC 4291 zone is not in the 128-bit address.
+    packed = bytes.fromhex("fe800000000000000000000000000001")
+    zoned = IPv6Address("fe80::1%lci0")
+    unzoned = IPv6Address("fe80::1")
+    hop_zoned = IPv6Address("fe80::a%lci0")
+    hop_unzoned = IPv6Address("fe80::a")
+    assert zoned != unzoned
+    assert zoned.packed == unzoned.packed == packed
+
+    cache = RouteCache()
+    entry = _entry(dest=zoned, next_hop=hop_zoned)
+    cache.add(entry)
+    found = cache.lookup(unzoned)
+    assert found is entry
+    assert found.destination == unzoned
+    assert found.destination.scope_id is None
+    assert found.next_hop == hop_unzoned
+    assert unzoned in cache
+    assert zoned in cache
+    assert IPv6Address("fe80::1%eth0") in cache
+    assert cache.lookup("fe80::1%eth0") is entry
+    removed = cache.remove_via(hop_unzoned)
+    assert removed == [unzoned]
+    assert unzoned not in cache
+
+
 def test_add_rejects_stale_seq_num() -> None:
     """Stale route update (older seq_num) should be rejected."""
     cache = RouteCache()
@@ -156,7 +183,7 @@ def test_seq_half_range_0_to_32767_fresher() -> None:
     assert cache.lookup(DEST).seq_num == 32767
 
 
-def test_seq_FFFF_to_0_wrap_fresher() -> None:
+def test_seq_ffff_to_0_wrap_fresher() -> None:
     """65535 -> 0: wrapped forward, 0 is fresher."""
     cache = RouteCache()
     cache.add(_entry(seq_num=65535, metric=100))
@@ -164,7 +191,7 @@ def test_seq_FFFF_to_0_wrap_fresher() -> None:
     assert cache.lookup(DEST).seq_num == 0
 
 
-def test_seq_0_to_FFFF_wrap_stale() -> None:
+def test_seq_0_to_ffff_wrap_stale() -> None:
     """0 -> 65535: backward wrap, 65535 is stale."""
     cache = RouteCache()
     cache.add(_entry(seq_num=0, metric=100))

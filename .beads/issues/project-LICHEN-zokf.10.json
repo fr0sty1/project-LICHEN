@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zokf.10",
+  "title": "Create board definition templates from existing .repl/.resc files",
+  "description": "Extract and templatize board definitions:\n- T-Echo\n- RAK4631\n- T-Deck\n- Heltec WiFi LoRa 32 V3\n- Nucleo-WL55JC\n\nCreate template format documentation for adding new boards. Links to 94ju epic work.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:31.350801Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:31.350801Z",
+  "labels": [
+    "blocked:hardware",
+    "defer-boardconfig",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zokf.10",
+      "depends_on_id": "project-LICHEN-zokf",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:33.993145Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -57,7 +57,7 @@ class TestRandomDisk:
     def test_random_disk_reproducible(self) -> None:
         p1 = random_disk(10, seed=123)
         p2 = random_disk(10, seed=123)
-        for a, b in zip(p1, p2):
+        for a, b in zip(p1, p2, strict=True):
             assert a.x == b.x
             assert a.y == b.y
 

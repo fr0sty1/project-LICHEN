@@ -71,7 +71,10 @@ def test_assignment_rejects_noncanonical_public_keys(pubkey: object) -> None:
         link_local_from_pubkey(pubkey)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("zone_id", ["", "lci%0", "lci 0", 0, -1, True, object()])
+@pytest.mark.parametrize(
+    "zone_id",
+    ["", "lci%0", "lci 0", 0, -1, True, object(), "0", "00", "-1", "\x00"],
+)
 def test_assignment_rejects_invalid_zones(zone_id: object) -> None:
     with pytest.raises(AddrError):
         make_link_local(bytes(8), zone_id=zone_id)  # type: ignore[arg-type]

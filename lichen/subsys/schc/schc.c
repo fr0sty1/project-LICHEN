@@ -16,7 +16,6 @@
 #define SCHC_FRAGMENT_MIC_LEN 4
 #define SCHC_ACK_BASE_LEN 3
 #define SCHC_FRAGMENT_MAX_TRACKED_TILES 64
-#define SCHC_BITMAP_MASK ((UINT64_C(1) << SCHC_FRAGMENT_WINDOW_SIZE) - 1u)
 
 enum sender_phase {
 	SENDER_INITIAL,
@@ -100,6 +99,12 @@ int schc_compress(const struct schc_profile *profile,
 	if (out == NULL) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
+	/* Rule callbacks may inspect the supplied packet.  Reject lengths that
+	 * cannot be represented by this int-returning API before dispatch so a
+	 * fallback overflow probe cannot make a matcher walk beyond the object. */
+	if (packet_len > (size_t)INT_MAX - 1u) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
 	for (size_t i = 0; i < profile->rule_count; i++) {
 		const struct schc_rule *rule = &profile->rules[i];
 
@@ -116,9 +121,6 @@ int schc_compress(const struct schc_profile *profile,
 	}
 	if (!profile->use_uncompressed_fallback) {
 		return SCHC_ERR_NO_MATCHING_RULE;
-	}
-	if (packet_len > (size_t)INT_MAX - 1u) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 	size_t needed = 1 + packet_len;
 	if (out_len < needed) {
@@ -435,6 +437,8 @@ static void sender_terminal(struct schc_fragmenter *fragmenter,
 	fragmenter->fragment_count = 0;
 	fragmenter->next_fragment = 0;
 	fragmenter->missing = 0;
+	fragmenter->retransmit_window = 0;
+	fragmenter->retransmit_position = 0;
 	fragmenter->status = status;
 	fragmenter->phase = phase;
 }
@@ -666,6 +670,7 @@ static void receiver_reset(struct schc_reassembler *reassembler)
 	reassembler->active = false;
 	reassembler->have_all1 = false;
 	reassembler->delivered = false;
+	reassembler->terminal = false;
 }
 
 int schc_reassembler_init(struct schc_reassembler *reassembler,
@@ -721,6 +726,18 @@ static unsigned trailing_zeros63(uint64_t value)
 	return count;
 }
 
+static unsigned population_count63(uint64_t value)
+{
+	unsigned count = 0;
+
+	value &= SCHC_BITMAP_MASK;
+	while (value != 0u) {
+		value &= value - 1u;
+		count++;
+	}
+	return count;
+}
+
 static void receiver_finalize(struct schc_reassembler *reassembler,
 			      struct schc_reassembly_result *result)
 {
@@ -763,8 +780,16 @@ static void receiver_finalize(struct schc_reassembler *reassembler,
 		receiver_queue_ack(reassembler, reassembler->final_window, 0, true);
 	} else {
 		result->rcs_ok = false;
+		/* RFC 8724 section 8.4.2.3: a MIC failure with a complete,
+		 * contiguous regular prefix points to a corrupt All-1, whose bit
+		 * remains clear so the sender retransmits it.  If the prefix may be
+		 * incomplete, mark All-1 received and request regular tiles only. */
+		bool full_window = bitmap == required &&
+			population_count63(bitmap) == regular_count;
+		uint64_t ack_bitmap = full_window && regular_count > 1u ?
+			bitmap : bitmap | 1u;
 		receiver_queue_ack(reassembler, reassembler->final_window,
-				   bitmap | 1u, false);
+				   ack_bitmap, false);
 		result->aborted = reassembler->pending == RECEIVER_PENDING_ABORT;
 	}
 }
@@ -793,6 +818,13 @@ int schc_reassembler_input(struct schc_reassembler *reassembler,
 	if (!valid_fragment_rule(message[0])) {
 		return SCHC_ERR_INVALID_ARGUMENT;
 	}
+	if (reassembler->terminal) {
+		/* A terminal raw context is a bounded local tombstone.  Production
+		 * owners additionally bind it to authenticated identity, generation,
+		 * replay counter, and hold-down time.  Reuse is always explicit via
+		 * schc_reassembler_release() or re-init. */
+		return SCHC_OK;
+	}
 	uint8_t rule_id = message[0];
 	bool has_context = reassembler->active || reassembler->delivered ||
 			   reassembler->pending != RECEIVER_PENDING_NONE;
@@ -801,14 +833,13 @@ int schc_reassembler_input(struct schc_reassembler *reassembler,
 		return SCHC_OK;
 	}
 	if (message_len < 2u) {
-		if (reassembler->delivered) {
-			return SCHC_ERR_TOO_SHORT;
-		}
+		return SCHC_ERR_TOO_SHORT;
 	}
 
 	if (exact_control(message, message_len, SCHC_CONTROL_SENDER_ABORT) ||
 	    exact_control(message, message_len, SCHC_CONTROL_RECEIVER_ABORT)) {
 		receiver_reset(reassembler);
+		reassembler->terminal = true;
 		result->aborted = true;
 		return SCHC_OK;
 	}
@@ -1003,6 +1034,7 @@ int schc_reassembler_next(struct schc_reassembler *reassembler,
 	if (pending == RECEIVER_PENDING_ABORT) {
 		result->aborted = true;
 		receiver_reset(reassembler);
+		reassembler->terminal = true;
 	} else if (pending == RECEIVER_PENDING_COMPLETE) {
 		reassembler->active = false;
 		reassembler->delivered = true;

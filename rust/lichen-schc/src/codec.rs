@@ -349,32 +349,85 @@ pub fn validate_full_ipv6(packet: &[u8]) -> Result<(), SchcError> {
     Ok(())
 }
 
-/// Check if CoAP payload contains OSCORE option (option number 9).
+/// Validate an RFC 8613 Object-Security option value.
+fn valid_oscore_option(value: &[u8]) -> bool {
+    if value.is_empty() {
+        return true;
+    }
+    // RFC 8613 encodes the option length in one octet in the external AAD.
+    if value.len() > u8::MAX as usize {
+        return false;
+    }
+
+    let flags = value[0];
+    let partial_iv_len = usize::from(flags & 0x07);
+    if flags & 0xe0 != 0 || partial_iv_len > 5 || flags == 0 {
+        return false;
+    }
+
+    let mut offset = 1 + partial_iv_len;
+    if offset > value.len() {
+        return false;
+    }
+    if partial_iv_len > 1 && value[1] == 0 {
+        return false;
+    }
+    if flags & 0x10 != 0 {
+        if offset >= value.len() {
+            return false;
+        }
+        let context_len = usize::from(value[offset]);
+        offset += 1;
+        let Some(end) = offset.checked_add(context_len) else {
+            return false;
+        };
+        if end > value.len() {
+            return false;
+        }
+        offset = end;
+    }
+
+    // A set K bit permits the remaining bytes to carry the KID. Otherwise the
+    // option must end after the PIV and optional KID context.
+    flags & 0x08 != 0 || offset == value.len()
+}
+
+/// Check if CoAP payload contains exactly one valid OSCORE option (number 9).
 /// CoAP options are encoded as delta+length nibbles after the 4-byte header + token.
 fn has_oscore_option(coap: &[u8]) -> bool {
     if coap.len() < 4 {
         return false;
     }
     let tkl = (coap[0] & 0x0F) as usize;
-    let mut pos = 4 + tkl;
-    let mut opt_num: u16 = 0;
+    if tkl > 8 {
+        return false;
+    }
+    let Some(mut pos) = 4usize.checked_add(tkl) else {
+        return false;
+    };
+    if pos > coap.len() {
+        return false;
+    }
+    let mut opt_num: usize = 0;
+    let mut oscore_found = false;
 
     while pos < coap.len() {
         let b = coap[pos];
         if b == 0xFF {
-            break; // payload marker
+            // A payload marker without at least one payload byte is malformed.
+            return oscore_found && pos + 1 < coap.len();
         }
         let delta_nibble = (b >> 4) & 0x0F;
         let len_nibble = b & 0x0F;
         pos += 1;
 
         let delta = match delta_nibble {
-            0..=12 => delta_nibble as u16,
+            0..=12 => delta_nibble as usize,
             13 => {
                 if pos >= coap.len() {
                     return false;
                 }
-                let ext = coap[pos] as u16;
+                let ext = coap[pos] as usize;
                 pos += 1;
                 ext + 13
             }
@@ -382,9 +435,9 @@ fn has_oscore_option(coap: &[u8]) -> bool {
                 if pos + 1 >= coap.len() {
                     return false;
                 }
-                let ext = u16::from_be_bytes([coap[pos], coap[pos + 1]]);
+                let ext = u16::from_be_bytes([coap[pos], coap[pos + 1]]) as usize;
                 pos += 2;
-                ext.saturating_add(269)
+                ext + 269
             }
             _ => return false, // 15 is reserved
         };
@@ -410,16 +463,25 @@ fn has_oscore_option(coap: &[u8]) -> bool {
             _ => return false,
         };
 
-        opt_num = opt_num.saturating_add(delta);
+        let Some(next_opt_num) = opt_num.checked_add(delta) else {
+            return false;
+        };
+        opt_num = next_opt_num;
+        let Some(end) = pos.checked_add(len) else {
+            return false;
+        };
+        if end > coap.len() {
+            return false;
+        }
         if opt_num == 9 {
-            return true; // OSCORE option found
+            if oscore_found || !valid_oscore_option(&coap[pos..end]) {
+                return false;
+            }
+            oscore_found = true;
         }
-        if opt_num > 9 {
-            return false; // past option 9, won't find it
-        }
-        pos += len;
+        pos = end;
     }
-    false
+    oscore_found
 }
 
 // ─── checksum helpers (no_std) ───────────────────────────────────────────────
@@ -598,42 +660,26 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let coap_mid = u16::from_be_bytes([coap[2], coap[3]]);
     let tail = &coap[4..];
 
-    if out.is_empty() {
-        return Err(BufferTooSmall::new(1, 0).into());
-    }
-    out[0] = rule_id;
-
-    let mut w = BitWriter::new(&mut out[1..]);
-    w.write(hop_limit as u128, 8)?;
-
     // Address compression is rule-specific:
     // - Rules 0/5 (link-local): require both fe80::/64, send 64-bit IID
     // - Rules 1/6 (Yggdrasil): require both 0200::/8, send 120 bits
     let both_link_local = is_link_local_64(src) && is_link_local_64(dst);
     let both_yggdrasil = src[0] == 0x02 && dst[0] == 0x02;
-
-    match rule_id {
+    let residue_len = match rule_id {
         RULE_LINK_LOCAL_COAP | RULE_LINK_LOCAL_OSCORE => {
             if !both_link_local {
                 return Err(SchcError::NoMatchingRule);
             }
-            let src_iid = u64::from_be_bytes(src[8..16].try_into().expect("IID is 8 bytes"));
-            let dst_iid = u64::from_be_bytes(dst[8..16].try_into().expect("IID is 8 bytes"));
-            w.write(src_iid as u128, 64)?;
-            w.write(dst_iid as u128, 64)?;
+            22
         }
         RULE_GLOBAL_COAP | RULE_GLOBAL_OSCORE => {
             if !both_yggdrasil {
                 return Err(SchcError::NoMatchingRule);
             }
-            // Yggdrasil: MSB-match 8 bits (0x02), send low 120 bits
-            let src_int = u128::from_be_bytes(src.try_into().expect("IPv6 addr is 16 bytes"));
-            let dst_int = u128::from_be_bytes(dst.try_into().expect("IPv6 addr is 16 bytes"));
-            w.write(src_int & ((1u128 << 120) - 1), 120)?;
-            w.write(dst_int & ((1u128 << 120) - 1), 120)?;
+            36
         }
         _ => return Err(SchcError::NoMatchingRule),
-    }
+    };
 
     // UDP ports use LSB compression: MSB-match 12 bits against CoAP default 5683,
     // send only the low 4 bits.
@@ -645,6 +691,33 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     if src_msb != expected_msb || dst_msb != expected_msb {
         return Err(SchcError::NoMatchingRule);
     }
+
+    // Preflight the complete result before touching caller-owned output. The
+    // fixed residue is 22 bytes for Rules 0/5 and 36 bytes for Rules 1/6.
+    let needed = 1 + residue_len + tail.len();
+    if needed > out.len() {
+        return Err(BufferTooSmall::new(needed, out.len()).into());
+    }
+    out[0] = rule_id;
+
+    let mut w = BitWriter::new(&mut out[1..]);
+    w.write(hop_limit as u128, 8)?;
+    match rule_id {
+        RULE_LINK_LOCAL_COAP | RULE_LINK_LOCAL_OSCORE => {
+            let src_iid = u64::from_be_bytes(src[8..16].try_into().expect("IID is 8 bytes"));
+            let dst_iid = u64::from_be_bytes(dst[8..16].try_into().expect("IID is 8 bytes"));
+            w.write(src_iid as u128, 64)?;
+            w.write(dst_iid as u128, 64)?;
+        }
+        RULE_GLOBAL_COAP | RULE_GLOBAL_OSCORE => {
+            // Yggdrasil: MSB-match 8 bits (0x02), send low 120 bits.
+            let src_int = u128::from_be_bytes(src.try_into().expect("IPv6 addr is 16 bytes"));
+            let dst_int = u128::from_be_bytes(dst.try_into().expect("IPv6 addr is 16 bytes"));
+            w.write(src_int & ((1u128 << 120) - 1), 120)?;
+            w.write(dst_int & ((1u128 << 120) - 1), 120)?;
+        }
+        _ => unreachable!("rule ID was validated before output preflight"),
+    }
     w.write((src_port & 0xF) as u128, PORT_LSB_BITS)?;
     w.write((dst_port & 0xF) as u128, PORT_LSB_BITS)?;
     w.write(coap_type as u128, 2)?;
@@ -652,12 +725,8 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     w.write(coap_code as u128, 8)?;
     w.write(coap_mid as u128, 16)?;
 
-    let residue_len = w.byte_len();
+    debug_assert_eq!(w.byte_len(), residue_len);
     let tail_start = 1 + residue_len;
-    let needed = tail_start + tail.len();
-    if needed > out.len() {
-        return Err(BufferTooSmall::new(needed, out.len()).into());
-    }
     out[tail_start..needed].copy_from_slice(tail);
     Ok(needed)
 }
@@ -965,6 +1034,21 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     coap_buf[3] = coap_mid as u8;
     coap_buf[4..4 + tail.len()].copy_from_slice(tail);
     let coap_slice = &coap_buf[..coap_len];
+
+    let has_oscore = has_oscore_option(coap_slice);
+    match rule_id {
+        RULE_LINK_LOCAL_OSCORE | RULE_GLOBAL_OSCORE if !has_oscore => {
+            return Err(SchcError::NonCanonicalResidue(
+                "OSCORE rule does not reconstruct valid OSCORE CoAP",
+            ));
+        }
+        RULE_LINK_LOCAL_COAP | RULE_GLOBAL_COAP if has_oscore => {
+            return Err(SchcError::NonCanonicalResidue(
+                "plaintext CoAP rule reconstructs OSCORE content",
+            ));
+        }
+        _ => {}
+    }
 
     let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, coap_slice)?;
     let total = 40 + 8 + coap_len;
@@ -1346,6 +1430,7 @@ pub fn decompress_authenticated_frame_tracked<const MAX_SOURCES: usize>(
 #[derive(Debug)]
 pub struct AuthenticatedPeerSchcContext {
     remote_version: u8,
+    expected_role: ExpectedDioRole,
     signer_identity: [u8; 32],
     authenticated_counter: u32,
     key_generation: lichen_link::PeerKeyGeneration,
@@ -1537,6 +1622,7 @@ impl<const MAX_PEERS: usize> PeerContextAuthority<MAX_PEERS> {
         });
         Ok(AuthenticatedPeerSchcContext {
             remote_version,
+            expected_role: ExpectedDioRole::Peer,
             signer_identity: signer,
             authenticated_counter,
             key_generation,
@@ -1607,7 +1693,7 @@ impl AuthenticatedPeerSchcContext {
         {
             return Err(SchcError::InvalidPacket("DIO missing SCHC L2 dispatch"));
         }
-        let mut ipv6 = [0u8; 512];
+        let mut ipv6 = [0u8; SCHC_MAX_DECOMPRESSED];
         let ipv6_len = decompress(&frame.payload()[1..], &mut ipv6)?;
         let ipv6 = &ipv6[..ipv6_len];
         if ipv6.len() < IPV6_HEADER_LEN + 4 + 24 || ipv6[6] != 58 {
@@ -1709,6 +1795,7 @@ impl AuthenticatedPeerSchcContext {
         let signer_identity = frame.signer();
         Ok(Self {
             remote_version,
+            expected_role,
             signer_identity,
             authenticated_counter: frame.authenticated_counter(),
             key_generation: frame.peer_key_generation(),
@@ -1778,6 +1865,10 @@ impl AuthenticatedPeerSchcContext {
 
     pub const fn remote_version(&self) -> u8 {
         self.remote_version
+    }
+
+    pub const fn expected_role(&self) -> ExpectedDioRole {
+        self.expected_role
     }
 
     pub const fn signer_identity(&self) -> &[u8; 32] {
@@ -1943,7 +2034,7 @@ fn authenticated_dio_destination_is_local(
 ) -> bool {
     const ALL_RPL_NODES: [u8; 16] = [0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a];
 
-    let mut ipv6 = [0u8; 512];
+    let mut ipv6 = [0u8; SCHC_MAX_DECOMPRESSED];
     let Ok(length) = decompress(frame.payload().get(1..).unwrap_or_default(), &mut ipv6) else {
         return false;
     };
@@ -2159,6 +2250,30 @@ mod tests {
         packet
     }
 
+    fn rpl_dio_packet(icmp_len: usize) -> Vec<u8> {
+        assert!(icmp_len >= 28);
+        let src = hex("fe800000000000000000000000000001");
+        let dst = hex("fe800000000000000000000000000002");
+        let mut packet = vec![0u8; IPV6_HEADER_LEN + icmp_len];
+        packet[0] = 0x60;
+        packet[4..6].copy_from_slice(&(icmp_len as u16).to_be_bytes());
+        packet[6] = 58;
+        packet[7] = 64;
+        packet[8..24].copy_from_slice(&src);
+        packet[24..40].copy_from_slice(&dst);
+        packet[40] = 155;
+        packet[41] = 1;
+        packet[44..52].copy_from_slice(&[0, 1, 1, 0, 0x08, 0, 0, 0]);
+        packet[52..68].copy_from_slice(&src);
+        let checksum = icmpv6_checksum(
+            packet[8..24].try_into().unwrap(),
+            packet[24..40].try_into().unwrap(),
+            &packet[40..],
+        );
+        packet[42..44].copy_from_slice(&checksum.to_be_bytes());
+        packet
+    }
+
     fn round_trip(packet_hex: &str, compressed_hex: &str, rule_id: u8) {
         let packet = hex(packet_hex);
         let expected = hex(compressed_hex);
@@ -2228,6 +2343,26 @@ mod tests {
             "034000000000000000010000000000000002000101008800\
              fe800000000000000000000000000001",
             3,
+        );
+    }
+
+    #[test]
+    fn rpl_dio_decompression_uses_profile_capacity_boundary() {
+        let maximum = rpl_dio_packet(SCHC_MAX_DECOMPRESSED);
+        let mut compressed = vec![0u8; maximum.len()];
+        let compressed_len = compress(&maximum, &mut compressed).unwrap();
+        let mut restored = vec![0u8; IPV6_HEADER_LEN + SCHC_MAX_DECOMPRESSED];
+        let restored_len = decompress(&compressed[..compressed_len], &mut restored).unwrap();
+        assert_eq!(restored_len, restored.len());
+        assert_eq!(&restored[..restored_len], maximum.as_slice());
+
+        let oversized = rpl_dio_packet(SCHC_MAX_DECOMPRESSED + 1);
+        let mut compressed = vec![0u8; oversized.len()];
+        let compressed_len = compress(&oversized, &mut compressed).unwrap();
+        let mut restored = vec![0u8; IPV6_HEADER_LEN + SCHC_MAX_DECOMPRESSED + 1];
+        assert_eq!(
+            decompress(&compressed[..compressed_len], &mut restored),
+            Err(BufferTooSmall::new(SCHC_MAX_DECOMPRESSED + 1, SCHC_MAX_DECOMPRESSED,).into())
         );
     }
 

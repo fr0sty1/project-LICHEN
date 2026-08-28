@@ -191,6 +191,8 @@ class ProvisioningResource(resource.Resource):
             monotonic: Clock source for timeouts.
         """
         super().__init__()
+        if isinstance(max_sessions, bool) or not isinstance(max_sessions, int) or max_sessions <= 0:
+            raise ValueError("max_sessions must be a positive integer")
         self._identity = identity
         self._role = role
         self._seed_provider = seed_provider or DefaultSeedProvider()
@@ -341,7 +343,7 @@ class ProvisioningResource(resource.Resource):
 
         # Decrypt and verify ACK
         try:
-            received_pubkey = br_session.decrypt_ack(payload)
+            br_session.decrypt_ack(payload)
         except DecryptionFailedError:
             self._remove_session(session, wipe=True)
             return Message(code=UNAUTHORIZED)
@@ -577,47 +579,87 @@ class ProvisioningResource(resource.Resource):
         """
         br_session = self.create_br_session(peer_host, node_pubkey)
 
+        # SECURITY: Capture session reference immediately. Looking it up after
+        # await points could return a different session if replaced by a
+        # concurrent request, causing use of wiped crypto and key material leak.
+        session = self._sessions.get(peer_host)
+        if session is None or session.session is not br_session:
+            raise RuntimeError(
+                f"Session for {peer_host} not found after create_br_session"
+            )
+
         try:
             # EDHOC handshake: wait for Message 1, send Message 2, wait for Message 3
             msg1 = await receive_message()
+
+            # SECURITY: Check session wasn't replaced during await. If replaced,
+            # br_session has been wiped and we must abort to prevent use of
+            # wiped crypto material.
+            if self._sessions.get(peer_host) is not session:
+                raise ProvisioningError("Session replaced during provisioning")
+
             msg2 = br_session.process_message_1(msg1)
             await send_message(msg2)
+
+            if self._sessions.get(peer_host) is not session:
+                raise ProvisioningError("Session replaced during provisioning")
+
             msg3 = await receive_message()
+
+            if self._sessions.get(peer_host) is not session:
+                raise ProvisioningError("Session replaced during provisioning")
+
             br_session.process_message_3(msg3)
 
             # Generate seed
             seed = self._seed_provider.generate_seed()
 
-            # Store seed in session for later verification
-            session = self._sessions.get(peer_host)
-            if session is None:
-                raise RuntimeError(
-                    f"Session for {peer_host} not found after create_br_session"
-                )
+            # Store seed in session (using captured reference, not fresh lookup)
             session.provisioned_seed = seed
 
             # Encrypt and send seed (session now ESTABLISHED after EDHOC)
             encrypted = br_session.encrypt_seed(seed)
             await send_message(encrypted.encode())
 
+            if self._sessions.get(peer_host) is not session:
+                raise ProvisioningError("Session replaced during provisioning")
+
             # Wait for and verify ACK from node
             # SECURITY: Per spec 8.7, the BR MUST verify the node derived the correct
             # pubkey from the provisioned seed. Without this, an attacker could intercept
             # the seed and substitute their own identity.
             ack_data = await receive_message()
+
+            if self._sessions.get(peer_host) is not session:
+                raise ProvisioningError("Session replaced during provisioning")
+
             try:
                 br_session.decrypt_ack(ack_data)
             except ProvisioningError:
                 raise ProvisioningError("ACK verification failed") from None
 
+            # Invoke callback before returning
+            if self._provisioned_callback is not None:
+                from lichen.crypto.identity import Identity
+
+                provisioned_id = Identity.from_seed(seed)
+                try:
+                    await self._provisioned_callback.on_provisioned(
+                        node_pubkey=provisioned_id.pubkey,
+                        node_iid=provisioned_id.iid,
+                        node_ygg_addr=provisioned_id.ygg_addr,
+                    )
+                except Exception:
+                    logger.exception("on_provisioned callback failed")
+                    raise ProvisioningError("on_provisioned callback failed") from None
+
             return seed
         finally:
             # SECURITY: Clean up session after provisioning (success or failure) to
             # prevent memory leak, resource exhaustion, and ensure cryptographic
-            # material is wiped
-            session = self._sessions.get(peer_host)
-            if session is not None:
-                self._remove_session(session, wipe=True)
+            # material is wiped. Use captured reference - looking up again could
+            # return a different session if ours was replaced.
+            self._remove_session(session, wipe=True)
 
     def _remove_session(self, session: ProvisioningSession, *, wipe: bool) -> None:
         """Remove a session from tracking."""

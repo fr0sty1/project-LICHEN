@@ -49,6 +49,15 @@ extern "C" {
  */
 #define LICHEN_BLE_IPV6_MTU 200
 
+/** Bluetooth SIG Internet Protocol Support Service UUID. */
+#define LICHEN_BLE_IPSS_UUID 0x1820
+
+/** Bluetooth SIG-assigned LE_PSM for IPSP. */
+#define LICHEN_BLE_IPSP_PSM 0x0023
+
+/** Largest baseline IPHC SDU (same size as its IPv6 packet). */
+#define LICHEN_BLE_IPSP_SDU_MTU LICHEN_BLE_IPV6_MTU
+
 /**
  * @brief BLE transport connection state
  */
@@ -216,6 +225,16 @@ void lichen_ble_transport_reset_stats(void);
  * Stops advertising, disconnects clients, and releases resources.
  */
 void lichen_ble_transport_deinit(void);
+
+#if defined(CONFIG_ZTEST) && defined(CONFIG_LICHEN_BLE_IPSP)
+/** Test-only controller-independent baseline RFC 6282 codec entry points. */
+int lichen_ble_ipsp_test_encode(const uint8_t *ipv6, size_t ipv6_len,
+				uint8_t *out, size_t out_size, size_t *out_len);
+int lichen_ble_ipsp_test_decode(const uint8_t *sdu, size_t sdu_len,
+				uint8_t *out, size_t out_size, size_t *out_len);
+void lichen_ble_ipsp_test_set_channel_ready(bool ready);
+bool lichen_ble_ipsp_test_channel_ready(void);
+#endif
 
 #ifdef __cplusplus
 }

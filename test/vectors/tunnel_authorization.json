@@ -1,0 +1,1392 @@
+{
+  "$schema": "./tunnel_authorization.schema.json",
+  "vector_type": "tunnel_authorization",
+  "format_version": 1,
+  "description": "Canonical and fail-closed tunnel authorization corpus for spec/06-security.md 8.11.",
+  "oracle": {
+    "basis": "RFC 9052 Sig_structure plus LICHEN security spec 8.11",
+    "implementation": "independent PyNaCl reference_schnorr48.py; no lichen package imports",
+    "generator_command": "python3 test/vectors/generate_tunnel_authorization.py",
+    "freshness_command": "python3 test/vectors/generate_tunnel_authorization.py --check"
+  },
+  "constants": {
+    "algorithm": -65537,
+    "protected_hex": "a1013a00010000",
+    "maximum_route_hops": 8,
+    "maximum_authorizations": 256,
+    "evaluation_time": 1900000000
+  },
+  "identities": [
+    {
+      "name": "root",
+      "seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "iid_hex": "ed4242ead4ac6948",
+      "address_hex": "02ed4242ead4ac69ed4242ead4ac6948"
+    },
+    {
+      "name": "other_root",
+      "seed_hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "public_key_hex": "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
+      "iid_hex": "796a1405e47be084",
+      "address_hex": "027b6a1405e47be0796a1405e47be084"
+    },
+    {
+      "name": "egress",
+      "seed_hex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+      "public_key_hex": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+      "iid_hex": "b19edad2958934e1",
+      "address_hex": "02b19edad2958934b19edad2958934e1"
+    },
+    {
+      "name": "other_egress",
+      "seed_hex": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+      "public_key_hex": "2543b92ff1095511476adc8369db6ddc933665a11978dda1404ee1066ca9559d",
+      "iid_hex": "1dae2ad7f75a0ded",
+      "address_hex": "021fae2ad7f75a0d1dae2ad7f75a0ded"
+    }
+  ],
+  "authorizations": [
+    {
+      "name": "valid",
+      "description": "Canonical root-to-egress authorization.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "3cdd16d713877da4201f39fc37c1563d4f0db954c8bdacb629055410274bf397",
+      "signature_hex": "beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e09",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e15830beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e09"
+    },
+    {
+      "name": "seq_8",
+      "description": "Fresh sequence after the baseline grant.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 8,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0408051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0408051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "4e358a2c8b8c264010699f51840e918d4b846f0b4183954b4334ab068523f3c3",
+      "signature_hex": "7ce742ce5e0bea4b68f975b3cc8403e2fa62a21351b1f164638e10c120b0c93480c7b79e970fa6c8e8c454988dbdab01",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0408051a713fb42c0648b19edad2958934e158307ce742ce5e0bea4b68f975b3cc8403e2fa62a21351b1f164638e10c120b0c93480c7b79e970fa6c8e8c454988dbdab01"
+    },
+    {
+      "name": "seq_9",
+      "description": "Sequence at a revocation floor.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 9,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0409051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0409051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "d4d27047736f00e43477e52d98911132ed40baf4f70bb134b26135419e3395fb",
+      "signature_hex": "93d53497cf9f77ca915151d5a4e0184b71e666ad3b7116b1436a5dce5d09dc2acd36cdc9697e89857dea24ef28d39709",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0409051a713fb42c0648b19edad2958934e1583093d53497cf9f77ca915151d5a4e0184b71e666ad3b7116b1436a5dce5d09dc2acd36cdc9697e89857dea24ef28d39709"
+    },
+    {
+      "name": "seq_10",
+      "description": "Sequence newer than a revocation floor.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 10,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a040a051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a040a051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "95dbbf27ab118ae6af0a5cd5a3c8fc23bfbe9cb23a77c909b4f4818e5930f66b",
+      "signature_hex": "ccf902e26f1fef619d7c4fc4a2ab4099a5c1beae248de977cd3905e793882dcdfd2202f3f422c5489c0294532c12b509",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a040a051a713fb42c0648b19edad2958934e15830ccf902e26f1fef619d7c4fc4a2ab4099a5c1beae248de977cd3905e793882dcdfd2202f3f422c5489c0294532c12b509"
+    },
+    {
+      "name": "expired",
+      "description": "Authorization expiring exactly at evaluation time.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000000,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb3000648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb3000648b19edad2958934e1",
+      "digest_hex": "f53e252432e0fd2ebd78296d298192d9b9e3eac2c9b1b3c5fbe3eab0f8a2ff03",
+      "signature_hex": "56e0c318a86c4ff35fb241bc446603b95d2880de2c46d15cc4816e9f0bd18c7cbdc20f212f4c13710652e6f8028ff80a",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb3000648b19edad2958934e1583056e0c318a86c4ff35fb241bc446603b95d2880de2c46d15cc4816e9f0bd18c7cbdc20f212f4c13710652e6f8028ff80a"
+    },
+    {
+      "name": "wrong_kid",
+      "description": "Signed by root but carrying a different root kid.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "796a1405e47be084",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "3cdd16d713877da4201f39fc37c1563d4f0db954c8bdacb629055410274bf397",
+      "signature_hex": "beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e09",
+      "cose_sign1_hex": "8447a1013a00010000a10448796a1405e47be084582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e15830beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e09"
+    },
+    {
+      "name": "wrong_signer",
+      "description": "Header claims root but signature uses another key.",
+      "mutation": "none",
+      "root_seed_hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "root_public_key_hex": "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
+      "root_iid_hex": "796a1405e47be084",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "3cdd16d713877da4201f39fc37c1563d4f0db954c8bdacb629055410274bf397",
+      "signature_hex": "3bdb82918c72d095fa6cfcc3ee5e16329a72a0c00f8e43409ad0299d1c949be81b75fce5428991b6c0ea9ae377021507",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e158303bdb82918c72d095fa6cfcc3ee5e16329a72a0c00f8e43409ad0299d1c949be81b75fce5428991b6c0ea9ae377021507"
+    },
+    {
+      "name": "wrong_egress",
+      "description": "Valid signature bound to another egress.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "1dae2ad7f75a0ded"
+      ],
+      "route_hash_hex": "779d0c160537097e5af6f06ee4b8142a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "1dae2ad7f75a0ded",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a6014502001234560218280350779d0c160537097e5af6f06ee4b8142a0407051a713fb42c06481dae2ad7f75a0ded",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa6014502001234560218280350779d0c160537097e5af6f06ee4b8142a0407051a713fb42c06481dae2ad7f75a0ded",
+      "digest_hex": "214f2e8bf19ac0fa95817994c266256cac3e07c9fcb7e1153ead6a463d3ecb3e",
+      "signature_hex": "76f45d1ba7ef5554a29ffe4cb15e5f89074cef32ecfa4afac5e07f5d54b53c76aae49b1175a20ada7fae07bd65a9c202",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa6014502001234560218280350779d0c160537097e5af6f06ee4b8142a0407051a713fb42c06481dae2ad7f75a0ded583076f45d1ba7ef5554a29ffe4cb15e5f89074cef32ecfa4afac5e07f5d54b53c76aae49b1175a20ada7fae07bd65a9c202"
+    },
+    {
+      "name": "other_root",
+      "description": "Valid authorization issued after root rotation.",
+      "mutation": "none",
+      "root_seed_hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "root_public_key_hex": "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
+      "root_iid_hex": "796a1405e47be084",
+      "kid_iid_hex": "796a1405e47be084",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "3cdd16d713877da4201f39fc37c1563d4f0db954c8bdacb629055410274bf397",
+      "signature_hex": "3bdb82918c72d095fa6cfcc3ee5e16329a72a0c00f8e43409ad0299d1c949be81b75fce5428991b6c0ea9ae377021507",
+      "cose_sign1_hex": "8447a1013a00010000a10448796a1405e47be084582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e158303bdb82918c72d095fa6cfcc3ee5e16329a72a0c00f8e43409ad0299d1c949be81b75fce5428991b6c0ea9ae377021507"
+    },
+    {
+      "name": "wrong_algorithm",
+      "description": "Valid signature over an unsupported algorithm.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a10139ffff",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653145a10139ffff40582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "cbae486e7805c035a6d143de53282a9edd635fd633543d82fb035818d5aadff2",
+      "signature_hex": "8e018c1ab75d9fdd8fcf9c06313fa61703964a14b4f1ab8be34f55c24487c0bd7556fd24b47e14bb54bce80fcae83b06",
+      "cose_sign1_hex": "8445a10139ffffa10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e158308e018c1ab75d9fdd8fcf9c06313fa61703964a14b4f1ab8be34f55c24487c0bd7556fd24b47e14bb54bce80fcae83b06"
+    },
+    {
+      "name": "signature_bit",
+      "description": "One signature bit is changed.",
+      "mutation": "signature_bit",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "3cdd16d713877da4201f39fc37c1563d4f0db954c8bdacb629055410274bf397",
+      "signature_hex": "beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e09",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e15830beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e08"
+    },
+    {
+      "name": "noncanonical_outer",
+      "description": "Non-shortest outer array encoding.",
+      "mutation": "noncanonical_outer",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "3cdd16d713877da4201f39fc37c1563d4f0db954c8bdacb629055410274bf397",
+      "signature_hex": "beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e09",
+      "cose_sign1_hex": "980447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e15830beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e09"
+    },
+    {
+      "name": "trailing_data",
+      "description": "Canonical object followed by trailing CBOR.",
+      "mutation": "trailing_data",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "3cdd16d713877da4201f39fc37c1563d4f0db954c8bdacb629055410274bf397",
+      "signature_hex": "beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e09",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e15830beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e0900"
+    },
+    {
+      "name": "duplicate_protected",
+      "description": "Protected map repeats the alg label.",
+      "mutation": "duplicate_protected",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a2013a00010000013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e6174757265314da2013a00010000013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "6e1f8af1c5a0ddb294dd30d7d6a279f3aacbb7d0fd501046a518bc77d242e872",
+      "signature_hex": "d78eac7ce3924a0cbe29e4118d7fb101f078ab923c5166f967828467ba72206998042f7981317c1d24f565085afa310d",
+      "cose_sign1_hex": "844da2013a00010000013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e15830d78eac7ce3924a0cbe29e4118d7fb101f078ab923c5166f967828467ba72206998042f7981317c1d24f565085afa310d"
+    },
+    {
+      "name": "duplicate_payload",
+      "description": "Payload map repeats target claim 1.",
+      "mutation": "duplicate_payload",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a7014502001234560145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a00010000405836a7014502001234560145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "d1456e540e84461e932d4f65bc4209d94a7930f9fcdbeec5cbb949abc8e40061",
+      "signature_hex": "39a7c14a7102b95674da3731103f2552a511f290523d25f8f9b70632fd80a4dbbbbb3c5a0525e9adfe197c224882750d",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac69485836a7014502001234560145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1583039a7c14a7102b95674da3731103f2552a511f290523d25f8f9b70632fd80a4dbbbbb3c5a0525e9adfe197c224882750d"
+    },
+    {
+      "name": "missing_claim",
+      "description": "Payload omits egress claim 6.",
+      "mutation": "missing_claim",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a50145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a00010000405825a50145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c",
+      "digest_hex": "98101b38ce0d3643524334a3b369c4c0e35b943bff90655eb21d66caa61306a3",
+      "signature_hex": "7e01d8c785492d3dd6d85ea0b4f9fa45877dbe4bac40dc14a7099597731aee9a78e554a55be09b199e5bb56e1ceeaf01",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac69485825a50145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c58307e01d8c785492d3dd6d85ea0b4f9fa45877dbe4bac40dc14a7099597731aee9a78e554a55be09b199e5bb56e1ceeaf01"
+    },
+    {
+      "name": "unknown_claim",
+      "description": "Payload contains unassigned claim 99.",
+      "mutation": "unknown_claim",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a70145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1186300",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a00010000405832a70145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1186300",
+      "digest_hex": "8443698535ab818dae3e65fed7fd65002930503e8a79bda24fe7fab1fdefc32f",
+      "signature_hex": "84dfc525766e527a6aec2280956724dba16da278ed0b884eafc376aec750a2d7f1fb7eaafd16ef212d76b7c0754bf509",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac69485832a70145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1186300583084dfc525766e527a6aec2280956724dba16da278ed0b884eafc376aec750a2d7f1fb7eaafd16ef212d76b7c0754bf509"
+    },
+    {
+      "name": "malformed_break",
+      "description": "A lone CBOR break byte.",
+      "mutation": "malformed_break",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "3cdd16d713877da4201f39fc37c1563d4f0db954c8bdacb629055410274bf397",
+      "signature_hex": "beaae637327f16570d711169b0080f5ea7dd2e1cd07cc7fd42e6aa769626c5d287f4c18a45a8a10a6ebf51994f494e09",
+      "cose_sign1_hex": "ff"
+    },
+    {
+      "name": "prefix_0",
+      "description": "Canonical zero-length prefix boundary.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "00000000000000000000000000000000",
+      "target_bytes_hex": "",
+      "prefix_len": 0,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60140020003502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a00010000405829a60140020003502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "d805722d830704fbcda6d208da3b6475ced95431738900bf0c7300103a3c563c",
+      "signature_hex": "349861aa18fc8159aef28e0be741f84f6123a204428ed638c3e5ff42a9354e1baebf318c684c83ed41e1e79adff7cb0d",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac69485829a60140020003502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e15830349861aa18fc8159aef28e0be741f84f6123a204428ed638c3e5ff42a9354e1baebf318c684c83ed41e1e79adff7cb0d"
+    },
+    {
+      "name": "prefix_73",
+      "description": "Canonical non-octet prefix boundary.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "0200123456789a800000000000000000",
+      "target_bytes_hex": "0200123456789a800000",
+      "prefix_len": 73,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a6014a0200123456789a80000002184903502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a00010000405834a6014a0200123456789a80000002184903502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "ea930b8e77836af4750f9b3c4479f8453480232fae29b040004d0ebeff82b608",
+      "signature_hex": "62f74504cf24e0b8a607c3cedfb5e36ce24372e655af67143dc3b23996164d54efb041d6a6fc8f59892a9defa6c6ae06",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac69485834a6014a0200123456789a80000002184903502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1583062f74504cf24e0b8a607c3cedfb5e36ce24372e655af67143dc3b23996164d54efb041d6a6fc8f59892a9defa6c6ae06"
+    },
+    {
+      "name": "prefix_73_bad_tail",
+      "description": "Non-zero unused bits in a /73 target.",
+      "mutation": "nonzero_prefix_tail",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "0200123456789a800000000000000000",
+      "target_bytes_hex": "0200123456789a800001",
+      "prefix_len": 73,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a6014a0200123456789a80000102184903502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a00010000405834a6014a0200123456789a80000102184903502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "d9d7bf51d4d45b48b0b64bd05fc255042a44b7ee16ffdac2ce9ac6dbbb87e95f",
+      "signature_hex": "41bb826afb11d19ebf5c2990d987670fcefd9a8069e3fe960b61e1afd7be14462b7a12622e16789d4bb32b3abdd86104",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac69485834a6014a0200123456789a80000102184903502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1583041bb826afb11d19ebf5c2990d987670fcefd9a8069e3fe960b61e1afd7be14462b7a12622e16789d4bb32b3abdd86104"
+    },
+    {
+      "name": "prefix_128",
+      "description": "Canonical host prefix boundary.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "0200123456789abcdef0123456789abc",
+      "target_bytes_hex": "0200123456789abcdef0123456789abc",
+      "prefix_len": 128,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000300,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a601500200123456789abcdef0123456789abc02188003502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040583aa601500200123456789abcdef0123456789abc02188003502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1",
+      "digest_hex": "637211bf3d47f703dbfff6bbf33e5c406ae03ef7795491f73c0f1f7ecb98f290",
+      "signature_hex": "44edcb47523f3fb8be02e087830606dc8f32710d83e67765c5d96cf652585155e9ed97e0db949e9362b88ecfb71ca706",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948583aa601500200123456789abcdef0123456789abc02188003502e7e354dbb13f833200751c697c97e6a0407051a713fb42c0648b19edad2958934e1583044edcb47523f3fb8be02e087830606dc8f32710d83e67765c5d96cf652585155e9ed97e0db949e9362b88ecfb71ca706"
+    },
+    {
+      "name": "short_expiry",
+      "description": "Grant used to test exact data-plane expiry.",
+      "mutation": "none",
+      "root_seed_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "root_public_key_hex": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+      "root_iid_hex": "ed4242ead4ac6948",
+      "kid_iid_hex": "ed4242ead4ac6948",
+      "prefix_hex": "02001234560000000000000000000000",
+      "target_bytes_hex": "0200123456",
+      "prefix_len": 40,
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "route_hash_hex": "2e7e354dbb13f833200751c697c97e6a",
+      "path_seq": 7,
+      "expiry": 1900000001,
+      "egress_iid_hex": "b19edad2958934e1",
+      "protected_hex": "a1013a00010000",
+      "payload_hex": "a60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb3010648b19edad2958934e1",
+      "sig_structure_hex": "846a5369676e61747572653147a1013a0001000040582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb3010648b19edad2958934e1",
+      "digest_hex": "6bcae608abfc59c6760becd52b9f7a22a1a84649c85435d1b7eb2484df544d19",
+      "signature_hex": "bb2d122a0f6b68a59545ec6ac0c5e203ba59a3f7725bb82f0f5b9b0f145674f0400b87ff379f79e35933f9655eea840a",
+      "cose_sign1_hex": "8447a1013a00010000a10448ed4242ead4ac6948582fa60145020012345602182803502e7e354dbb13f833200751c697c97e6a0407051a713fb3010648b19edad2958934e15830bb2d122a0f6b68a59545ec6ac0c5e203ba59a3f7725bb82f0f5b9b0f145674f0400b87ff379f79e35933f9655eea840a"
+    }
+  ],
+  "post_cases": [
+    {
+      "name": "valid_root_egress",
+      "message": "valid",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": true,
+        "denial": "none",
+        "response_code": 204
+      }
+    },
+    {
+      "name": "oscore_required",
+      "message": "valid",
+      "active_root": "root",
+      "oscore_authenticated": false,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "oscore-required",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "wrong_oscore_root",
+      "message": "valid",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "other_root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "wrong-root",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "wrong_kid",
+      "message": "wrong_kid",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "wrong-root",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "wrong_signing_key",
+      "message": "wrong_signer",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "signature",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "wrong_egress",
+      "message": "wrong_egress",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "wrong-egress",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "expired",
+      "message": "expired",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "expired",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "replay_equal",
+      "message": "valid",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "denial": "replay",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "revoked_floor",
+      "message": "seq_9",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        },
+        {
+          "action": "revoke",
+          "message": "valid",
+          "through_path_seq": 9
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "denial": "revoked",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "fresh_after_revoke",
+      "message": "seq_10",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        },
+        {
+          "action": "revoke",
+          "message": "valid",
+          "through_path_seq": 9
+        }
+      ],
+      "expected": {
+        "allowed": true,
+        "denial": "none",
+        "response_code": 204
+      }
+    },
+    {
+      "name": "clock_rollback",
+      "message": "seq_8",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000100,
+          "sender": "root"
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "denial": "clock-regression",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "old_root_after_rotation",
+      "message": "valid",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [
+        {
+          "action": "change_root",
+          "identity": "other_root"
+        }
+      ],
+      "expected": {
+        "allowed": false,
+        "denial": "wrong-root",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "new_root_after_rotation",
+      "message": "other_root",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "other_root",
+      "now": 1900000000,
+      "setup": [
+        {
+          "action": "change_root",
+          "identity": "other_root"
+        }
+      ],
+      "expected": {
+        "allowed": true,
+        "denial": "none",
+        "response_code": 204
+      }
+    },
+    {
+      "name": "wrong_algorithm",
+      "message": "wrong_algorithm",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "algorithm",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "signature_bit",
+      "message": "signature_bit",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "signature",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "noncanonical_outer",
+      "message": "noncanonical_outer",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "malformed",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "trailing_data",
+      "message": "trailing_data",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "malformed",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "duplicate_protected",
+      "message": "duplicate_protected",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "malformed",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "duplicate_payload",
+      "message": "duplicate_payload",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "malformed",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "missing_claim",
+      "message": "missing_claim",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "malformed",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "unknown_claim",
+      "message": "unknown_claim",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "malformed",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "malformed_break",
+      "message": "malformed_break",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "malformed",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "prefix_73_bad_tail",
+      "message": "prefix_73_bad_tail",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": false,
+        "denial": "malformed",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "accept_prefix_0",
+      "message": "prefix_0",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": true,
+        "denial": "none",
+        "response_code": 204
+      }
+    },
+    {
+      "name": "accept_prefix_73",
+      "message": "prefix_73",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": true,
+        "denial": "none",
+        "response_code": 204
+      }
+    },
+    {
+      "name": "accept_prefix_128",
+      "message": "prefix_128",
+      "active_root": "root",
+      "oscore_authenticated": true,
+      "oscore_sender": "root",
+      "now": 1900000000,
+      "setup": [],
+      "expected": {
+        "allowed": true,
+        "denial": "none",
+        "response_code": 204
+      }
+    }
+  ],
+  "decapsulation_cases": [
+    {
+      "name": "valid_first_address",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": true,
+        "denial": "none",
+        "response_code": 204
+      }
+    },
+    {
+      "name": "valid_last_address",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:56ff:ffff:ffff:ffff:ffff:ffff",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": true,
+        "denial": "none",
+        "response_code": 204
+      }
+    },
+    {
+      "name": "source_outside_prefix",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5700::",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "no-authorization",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "wrong_route_hash",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "1112131415161718",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "no-authorization",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "wrong_direction",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "2001:db8::1",
+      "direction": "external-to-mesh",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "wrong-direction",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "mesh_destination",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "0200:ffff::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "destination-scope",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "multicast_destination",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "ff02::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "destination-scope",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "missing_authorization",
+      "active_root": "root",
+      "setup": [],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "no-authorization",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "expired_at_boundary",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "short_expiry",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000001,
+      "expected": {
+        "allowed": false,
+        "denial": "expired",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "revoked_authorization",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        },
+        {
+          "action": "revoke",
+          "message": "valid",
+          "through_path_seq": 7
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "no-authorization",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "root_rotation_clears_table",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        },
+        {
+          "action": "change_root",
+          "identity": "other_root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "no-authorization",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "link_local_source_rejected",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "prefix_0",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "b19edad2958934e1"
+      ],
+      "inner_source": "fe80::1",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "source-scope",
+        "response_code": 403
+      }
+    },
+    {
+      "name": "looped_route",
+      "active_root": "root",
+      "setup": [
+        {
+          "action": "receive",
+          "message": "valid",
+          "now": 1900000000,
+          "sender": "root"
+        }
+      ],
+      "route_hops_hex": [
+        "0102030405060708",
+        "0102030405060708"
+      ],
+      "inner_source": "0200:1234:5600::",
+      "inner_destination": "2001:db8::1",
+      "direction": "mesh-to-external",
+      "now": 1900000000,
+      "expected": {
+        "allowed": false,
+        "denial": "invalid-route",
+        "response_code": 403
+      }
+    }
+  ]
+}

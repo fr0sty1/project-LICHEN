@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zokf.6",
+  "title": "Add integration tests and minimal example firmware",
+  "description": "Create integration tests:\n- Robot Framework tests for each peripheral\n- Minimal Zephyr example firmware (lora-tx sample)\n- Meshtastic boot test scenario\n- CI integration for test execution",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:50:30.567134Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:50:30.567134Z",
+  "labels": [
+    "blocked:hardware",
+    "defer-boardconfig",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zokf.6",
+      "depends_on_id": "project-LICHEN-zokf",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:50:33.454376Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

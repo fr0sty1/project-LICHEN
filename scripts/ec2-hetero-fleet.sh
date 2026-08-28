@@ -37,6 +37,7 @@ PYTHON_NODES=0
 TOTAL_NODES=0
 DURATION_S=300
 RENODES_PER_EC2=20
+RENODE_PORT_BASE="${RENODE_PORT_BASE:-6000}"
 
 # Colors
 log_info()  { echo -e "\033[0;34m>>>\033[0m $*" >&2; }
@@ -99,6 +100,13 @@ if [[ $((ZEPHYR_NODES + RUST_NODES + PYTHON_NODES)) -eq 0 ]]; then
 fi
 
 TOTAL=$((ZEPHYR_NODES + RUST_NODES + PYTHON_NODES))
+
+if ! [[ "$RENODE_PORT_BASE" =~ ^[0-9]+$ ]] || \
+   [[ $RENODE_PORT_BASE -lt 1024 ]] || \
+   [[ $((RENODE_PORT_BASE + ZEPHYR_NODES)) -gt 65536 ]]; then
+    log_error "RENODE_PORT_BASE must reserve one valid unprivileged TCP port per Zephyr node"
+    exit 1
+fi
 
 log_info "=== Heterogeneous LICHEN Mesh ==="
 log_info "  Zephyr (C firmware): $ZEPHYR_NODES nodes"
@@ -357,34 +365,101 @@ cat > /tmp/hetero-sim.py << 'SIMPY'
 import asyncio
 import sys
 sys.path.insert(0, "src")
+from lichen.sim.renode_server import start_renode_server
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import TimeMode
 
-async def main():
+async def main(zephyr_nodes, renode_port_base):
     server = SimulatorServer(node_port=5555, api_port=5556, bind_host="0.0.0.0")
     await server.start()
     sim = await server.create_simulation("hetero-mesh", TimeMode.REALTIME)
-    print("lichen-sim ready on 0.0.0.0:5555", flush=True)
+    renode_servers = []
 
-    # Track connections
-    connected = set()
-    while True:
-        await asyncio.sleep(5)
-        nodes = list(sim._nodes.keys())
-        new_nodes = set(nodes) - connected
-        if new_nodes:
-            print(f"New nodes: {new_nodes} (total: {len(nodes)})", flush=True)
-            connected = set(nodes)
+    try:
+        # SX1262.cs deliberately sends TX/RX messages without the generic
+        # NodeServer REGISTER handshake. Give every Zephyr node its own
+        # no-REGISTER RenodeServer while keeping all bridges on this same sim.
+        for index in range(zephyr_nodes):
+            node_id = f"zephyr-{3000 + index}"
+            endpoint_port = renode_port_base + index
+            renode_server, actual_port = await start_renode_server(
+                sim,
+                node_id,
+                host="0.0.0.0",
+                port=endpoint_port,
+                position=(index * 50.0, 0.0, 0.0),
+            )
+            if actual_port != endpoint_port:
+                raise RuntimeError(
+                    f"Renode endpoint {node_id} bound {actual_port}, expected {endpoint_port}"
+                )
+            renode_servers.append(renode_server)
+            print(
+                f"RenodeServer {node_id} listening on 0.0.0.0:{actual_port}",
+                flush=True,
+            )
 
-asyncio.run(main())
+        print(
+            f"lichen-sim ready on 0.0.0.0:5555 with {zephyr_nodes} RenodeServer endpoints",
+            flush=True,
+        )
+
+        connected_nodes = -1
+        known_nodes = set()
+        while True:
+            await asyncio.sleep(1)
+            failed_drivers = [
+                bridge._sim_driver_task
+                for bridge in renode_servers
+                if bridge._sim_driver_task is not None
+                and bridge._sim_driver_task.done()
+            ]
+            if failed_drivers:
+                # result() re-raises the original driver failure.
+                failed_drivers[0].result()
+                raise RuntimeError("RenodeServer simulation driver stopped unexpectedly")
+
+            current_connected = sum(bridge._connected for bridge in renode_servers)
+            if current_connected != connected_nodes:
+                print(
+                    f"RenodeServer connections: {current_connected}/{zephyr_nodes}",
+                    flush=True,
+                )
+                connected_nodes = current_connected
+
+            nodes = set(sim._nodes)
+            new_nodes = nodes - known_nodes
+            if new_nodes:
+                print(f"New nodes: {new_nodes} (total: {len(nodes)})", flush=True)
+                known_nodes = nodes
+    finally:
+        for renode_server in reversed(renode_servers):
+            await renode_server.stop()
+        await server.stop()
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        raise SystemExit("usage: hetero-sim.py ZEPHYR_NODES RENODE_PORT_BASE")
+    asyncio.run(main(int(sys.argv[1]), int(sys.argv[2])))
 SIMPY
 
-uv run python3 /tmp/hetero-sim.py > "$RESULTS_DIR/lichen-sim.log" 2>&1 &
+uv run python3 /tmp/hetero-sim.py "$ZEPHYR_NODES" "$RENODE_PORT_BASE" \
+    > "$RESULTS_DIR/lichen-sim.log" 2>&1 &
 SIM_PID=$!
-sleep 3
-
-if ! kill -0 "$SIM_PID" 2>/dev/null; then
-    log_error "lichen-sim failed to start"
+SIM_READY=false
+for _ in {1..30}; do
+    if ! kill -0 "$SIM_PID" 2>/dev/null; then
+        break
+    fi
+    if grep -Fq "with $ZEPHYR_NODES RenodeServer endpoints" \
+            "$RESULTS_DIR/lichen-sim.log"; then
+        SIM_READY=true
+        break
+    fi
+    sleep 1
+done
+if [[ "$SIM_READY" != "true" ]]; then
+    log_error "lichen-sim or its RenodeServer endpoints failed to start"
     cat "$RESULTS_DIR/lichen-sim.log"
     exit 1
 fi
@@ -705,7 +780,7 @@ include @/tmp/SX1262.cs
 mach create "zephyr-\$NID"
 machine LoadPlatformDescription @/tmp/t_echo_runtime.repl
 spi1.sx1262 SimHost "$PUBLIC_IP"
-spi1.sx1262 SimPort 5555
+spi1.sx1262 SimPort \$(( $RENODE_PORT_BASE + NID - 3000 ))
 sysbus Tag <0x10000060, 0x10000063> "DEVICEID[0]" \$((0x1CE00000 + NID))
 sysbus Tag <0x10000064, 0x10000067> "DEVICEID[1]" \$((0x1CE10000 + NID))
 sysbus Tag <0x10000130, 0x10000133> "DEVICEID[0]" \$((0x1CE00000 + NID))
@@ -721,11 +796,41 @@ start
 RESC
 
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/renode --disable-xwt --console --port \$((50000 + NID)) node-\$NID.resc > /tmp/renode-\$NID.log 2>&1 &
+    echo \$! > /tmp/renode-\$NID.pid
+done
+
+sleep 2
+for i in \$(seq 0 $((NODES_THIS - 1))); do
+    NID=\$((${NODE_ID} + i))
+    PID=\$(cat /tmp/renode-\$NID.pid)
+    if ! kill -0 "\$PID" 2>/dev/null; then
+        echo "Renode zephyr-\$NID exited during startup" >&2
+        cat /tmp/renode-\$NID.log >&2
+        exit 1
+    fi
 done
 REMOTE
         NODE_ID=$((NODE_ID + NODES_THIS))
         EC2_INDEX=$((EC2_INDEX + 1))
-    done &
+    done
+
+    RENODE_CONNECTED=false
+    for _ in {1..60}; do
+        if ! kill -0 "$SIM_PID" 2>/dev/null; then
+            break
+        fi
+        if grep -Fq "RenodeServer connections: $ZEPHYR_NODES/$ZEPHYR_NODES" \
+                "$RESULTS_DIR/lichen-sim.log"; then
+            RENODE_CONNECTED=true
+            break
+        fi
+        sleep 1
+    done
+    if [[ "$RENODE_CONNECTED" != "true" ]]; then
+        log_error "Not all Zephyr nodes connected to their assigned RenodeServer endpoints"
+        cat "$RESULTS_DIR/lichen-sim.log"
+        exit 1
+    fi
 
     log_ok "Started $ZEPHYR_NODES Zephyr nodes on ${#INSTANCE_IDS[@]} EC2 instances"
 fi
@@ -740,6 +845,12 @@ while true; do
     ELAPSED=$(($(date +%s) - START_TIME))
     REMAINING=$((DURATION_S - ELAPSED))
     [[ $REMAINING -le 0 ]] && break
+
+    if ! kill -0 "$SIM_PID" 2>/dev/null; then
+        log_error "lichen-sim or a RenodeServer endpoint exited during the test"
+        cat "$RESULTS_DIR/lichen-sim.log"
+        exit 1
+    fi
 
     # Count connected nodes from lichen-sim log
     CONNECTED=$(grep -c "New nodes" "$RESULTS_DIR/lichen-sim.log" 2>/dev/null || echo "?")
@@ -757,10 +868,8 @@ for pid in "${PYTHON_PIDS[@]-}" "${RUST_PIDS[@]-}"; do
     fi
 done
 if [[ "$FAILED_NODE" == "true" ]]; then
-    log_warn "Some node processes exited non-zero — see individual logs"
-fi
-if [[ "$FAILED_NODE" == "true" ]]; then
-    log_warn "Some node processes exited non-zero — see individual logs"
+    log_error "Some local node processes exited non-zero — see individual logs"
+    exit 1
 fi
 
 log_ok "Test complete"
@@ -773,6 +882,15 @@ if [[ ${#INSTANCE_IDS[@]} -gt 0 ]]; then
     EC2_INDEX=0
     for id in "${INSTANCE_IDS[@]}"; do
         IP="${INSTANCE_IPS[$EC2_INDEX]}"
+        if ! ssh "${SSH_OPTS[@]}" -o ConnectTimeout=15 ec2-user@"$IP" \
+            'for pid_file in /tmp/renode-*.pid; do
+                test -f "$pid_file" || exit 1
+                pid=$(cat "$pid_file")
+                kill -0 "$pid" 2>/dev/null || exit 1
+             done'; then
+            log_error "A remote Renode process exited before result collection on instance $EC2_INDEX ($IP)"
+            exit 1
+        fi
          if ! ssh "${SSH_OPTS[@]}" -o ConnectTimeout=15 \
             ec2-user@"$IP" \
              "find /tmp -maxdepth 1 -type f \( -name 'zephyr-*' -o -name 'renode-*' \) -print -exec cat {} \\;" \

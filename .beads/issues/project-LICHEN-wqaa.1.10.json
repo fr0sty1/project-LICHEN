@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-wqaa.1.10",
+  "title": "Write technical description section (LICHEN architecture, 500-node deployment goals)",
+  "description": "Detail LICHEN stack: LoRa PHY, SCHC compression, IPv6 native addressing, RPL/LOADng routing, OSCORE E2E security, Schnorr link signatures. Describe 500-node deployment architecture, expected performance metrics, test scenarios at DEFCON/CCC venues.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:30.880612Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:30.880612Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.1.10",
+      "depends_on_id": "project-LICHEN-wqaa.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:33.777228Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

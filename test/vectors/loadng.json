@@ -92,7 +92,7 @@
       "name": "half_to_zero_wrap",
       "a": 32768,
       "b": 0,
-      "b_fresher": true,
+      "b_fresher": false,
       "description": "b=0 wraps forward from a=32768: diff=(0-32768)&0xFFFF=32768, boundary -> NOT fresher per spec (diff must be < half)"
     },
     {

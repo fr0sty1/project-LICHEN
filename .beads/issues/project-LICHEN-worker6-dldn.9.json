@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dldn.9",
+  "title": "Implement automation/digital IO characteristic mappings (K.3.7)",
+  "description": "Add to gatt_ipso.c static table, automation/IO characteristics:\n\n- Digital (Input/Output) 0x2A56 -\u003e 3200/5500, bool\n- Analog Input 0x2A58 -\u003e 3202/5600, 1\n- Analog Output 0x2A59 -\u003e 3202/5600, 1\n- Aggregate Input 0x2A5A -\u003e 3200/5500, bitmap\n\n~4 entries. Reference: spec/appendix-gatt-ipso.md K.3.7",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:53:55.016648Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:53:55.016648Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dldn.9",
+      "depends_on_id": "project-LICHEN-worker6-dldn",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:53:55.661468Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

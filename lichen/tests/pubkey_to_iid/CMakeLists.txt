@@ -9,6 +9,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/test_common.cmake)
 add_executable(pubkey_to_iid_test
   main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/l2/ipv6_addr.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link/identity_addr.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/crypto/monocypher.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/crypto/monocypher-ed25519.c
 )

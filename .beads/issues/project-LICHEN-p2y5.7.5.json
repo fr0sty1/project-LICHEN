@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.7.5",
+  "title": "Add IRC client dependency (irc3 or pydle) and implement connection handler class",
+  "description": "Add an async IRC client library (irc3 or pydle) to the Python package dependencies. Implement an IRCConnectionHandler class that manages TLS connections to configurable IRC servers, handles reconnection with exponential backoff, negotiates IRCv3 capabilities where available, and joins configured channels on connect. The handler should emit events for connection state changes and received messages.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:49.081526Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:49.081526Z",
+  "labels": [
+    "core",
+    "gateway",
+    "python",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.7.5",
+      "depends_on_id": "project-LICHEN-p2y5.7",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:52.252748Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for the LICHEN simulator event queue system."""
 
+from unittest.mock import patch
+
 import pytest
 
 from lichen.sim.events import (
@@ -12,6 +14,8 @@ from lichen.sim.events import (
     TxEndEvent,
     TxStartEvent,
 )
+from lichen.sim.node import NodeState
+from lichen.sim.simulation import Simulation, TimeMode
 
 
 class TestEventDataclasses:
@@ -47,6 +51,17 @@ class TestEventDataclasses:
         event = TxStartEvent(time_us=100, node_id="n1", transmission_id="tx1")
         with pytest.raises(AttributeError):
             event.time_us = 200  # type: ignore[misc]
+
+    @pytest.mark.parametrize("time_us", [1.5, "100", None, True])
+    def test_event_rejects_non_integer_microseconds(self, time_us: object) -> None:
+        """Event timestamps must be exact integers, not coercible values."""
+        with pytest.raises(TypeError, match="time_us must be an exact integer"):
+            Event(time_us=time_us)  # type: ignore[arg-type]
+
+    def test_event_subclasses_reject_negative_microseconds(self) -> None:
+        """Inherited timestamp validation applies to concrete event types."""
+        with pytest.raises(ValueError, match="time_us must be non-negative"):
+            RxTimeoutEvent(time_us=-1, node_id="node1")
 
 
 class TestEventQueueBasics:
@@ -210,6 +225,20 @@ class TestEventQueueTieBreaking:
         assert queue.pop() == t1
         assert queue.pop() == t2
 
+    def test_core_event_types_at_same_tick_are_fifo(self) -> None:
+        """Core events at equal times retain insertion order across types."""
+        queue = EventQueue()
+        timeout = RxTimeoutEvent(time_us=50, node_id="rx")
+        tx_end = TxEndEvent(time_us=50, node_id="tx", transmission_id="one")
+        tx_start = TxStartEvent(time_us=50, node_id="tx", transmission_id="two")
+        queue.push(timeout)
+        queue.push(tx_end)
+        queue.push(tx_start)
+
+        assert queue.pop() == timeout
+        assert queue.pop() == tx_end
+        assert queue.pop() == tx_start
+
 
 class TestEventQueueIteration:
     """Test EventQueue iteration."""
@@ -312,11 +341,6 @@ class TestEventQueueIteration:
 # ============================================================================
 # Simulation event processing tests
 # ============================================================================
-
-from unittest.mock import patch
-
-from lichen.sim.node import NodeState
-from lichen.sim.simulation import Simulation, TimeMode
 
 
 class TestTimeAdvancement:

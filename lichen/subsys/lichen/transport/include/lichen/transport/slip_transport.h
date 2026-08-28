@@ -112,10 +112,11 @@ void slip_transport_reset_stats(void);
 /**
  * @brief Check if SLIP transport is initialized and ready
  *
- * UART device is optional (test mode uses inject/get_last_tx helpers).
- * Matches kiss_transport_is_ready() pattern.
+ * UART device is optional (test mode uses inject/get_last_tx helpers). The
+ * transport is ready only after its network interface has the selected LCI
+ * link-local address and has been brought up successfully.
  *
- * @return true if transport has been initialized
+ * @return true if transport and its network interface are ready
  */
 bool slip_transport_is_ready(void);
 
@@ -143,9 +144,27 @@ int slip_transport_test_inject_rx(const uint8_t *data, size_t len);
 int slip_transport_test_get_last_tx(uint8_t *buf, size_t max, size_t *len);
 
 /**
+ * @brief Test helper: get the last completely decoded SLIP payload
+ *
+ * The payload is captured before IPv6 validation and network dispatch.
+ *
+ * @param buf Output buffer for decoded payload bytes
+ * @param max Maximum bytes to copy
+ * @param len Output: actual decoded payload length
+ * @return 0 on success, -EINVAL for NULL output pointers
+ */
+int slip_transport_test_get_last_rx(uint8_t *buf, size_t max, size_t *len);
+
+/**
  * @brief Test helper: reset transport state for test isolation
  */
 void slip_transport_test_reset(void);
+
+/** Configure the test-only USB CDC DTR backend. */
+void slip_transport_test_set_usb_dtr(int line_ctrl_ret, bool dtr);
+
+/** Poll the test-only USB session tracker once. */
+int slip_transport_test_poll_usb_session(void);
 #endif /* CONFIG_ZTEST */
 
 #ifdef __cplusplus

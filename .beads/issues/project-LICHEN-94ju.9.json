@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-94ju.9",
+  "title": "Create boards/ directory structure in renode-lora-peripherals monorepo",
+  "description": "Create the boards/ directory structure in the renode-lora-peripherals monorepo to organize board definitions.\n\nSCOPE:\n- Create boards/ directory at repo root\n- Add README.md explaining the directory structure\n- Set up consistent naming convention for subdirectories",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:50:21.640694Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:50:21.640694Z",
+  "labels": [
+    "blocked:hardware",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-94ju.9",
+      "depends_on_id": "project-LICHEN-94ju",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:50:24.300024Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

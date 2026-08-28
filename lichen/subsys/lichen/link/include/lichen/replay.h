@@ -72,11 +72,26 @@ struct lichen_replay_entry {
 	bool active;                       /**< Entry is in use */
 };
 
+struct lichen_replay_table;
+
+/** Optional durable replay backend. Callbacks run synchronously. */
+struct lichen_replay_backend {
+	int (*_Nonnull commit)(void *_Nonnull user,
+		      struct lichen_replay_table *_Nonnull table,
+		      const uint8_t public_key[_Nonnull LICHEN_PK_LEN], uint8_t epoch,
+		      uint16_t seq);
+	int (*_Nonnull remove)(void *_Nonnull user,
+		      struct lichen_replay_table *_Nonnull table,
+		      const uint8_t public_key[_Nonnull LICHEN_PK_LEN]);
+};
+
 /**
  * @brief Table of per-peer replay windows
  */
 struct lichen_replay_table {
 	struct lichen_replay_entry peers[CONFIG_LICHEN_LINK_MAX_NEIGHBORS];
+	const struct lichen_replay_backend *_Nullable backend;
+	void *_Nullable backend_user;
 };
 
 /**
@@ -131,13 +146,23 @@ struct lichen_replay_window *_Nullable lichen_replay_get(
 	const uint8_t public_key[_Nonnull LICHEN_PK_LEN]);
 
 /**
+ * @brief Atomically accept and commit an authenticated replay tuple.
+ *
+ * A durable backend, when bound, MUST commit any required reservation before
+ * mutating @p table. This is the only replay mutation API for RX delivery.
+ */
+int lichen_replay_commit(struct lichen_replay_table *_Nonnull table,
+			 const uint8_t public_key[_Nonnull LICHEN_PK_LEN],
+			 uint8_t epoch, uint16_t seq);
+
+/**
  * @brief Remove a peer from the replay table.
  *
  * @param[in,out] table Replay table
  * @param[in]     public_key Peer's public key (32 bytes)
  */
-void lichen_replay_remove(struct lichen_replay_table *_Nonnull table,
-			  const uint8_t public_key[_Nonnull LICHEN_PK_LEN]);
+int lichen_replay_remove(struct lichen_replay_table *_Nonnull table,
+			 const uint8_t public_key[_Nonnull LICHEN_PK_LEN]);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-94ju.16",
+  "title": "Update monorepo README with boards and stubs documentation",
+  "description": "Update the renode-lora-peripherals README to document the boards and stubs.\n\nSCOPE:\n- Document boards/ directory and available boards\n- Document stubs/ directory and available stubs\n- Add usage examples for each board\n- Add CI status badges\n- Document dependencies (Renode version, etc.)\n\nDELIVERABLE: Users can understand and use the monorepo from README alone",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:23.46066Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:23.46066Z",
+  "labels": [
+    "blocked:hardware",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-94ju.16",
+      "depends_on_id": "project-LICHEN-94ju",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:26.179094Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

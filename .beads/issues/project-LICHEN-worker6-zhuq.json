@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-zhuq",
+  "title": "[review] OSCORE ctx-miss sends 4.01 then handler falls through to second 4.00 ACK (double response, same MID)",
+  "description": "P1, confirmed independently by 2 reviewers. coap_oscore_unprotect_resource_request ctx-lookup-failure path (lichen/subsys/lichen/coap/coap_oscore.c:62-65) SENDS 4.01 via coap_oscore_send_unauthorized and returns coap_err_to_oscore(...) = 0 (OSCORE_OK). Callers treating 0 as success continue: oscore.is_protected==true skips admin check, oscore.payload==NULL hits return COAP_RESPONSE_CODE_BAD_REQUEST, and the Zephyr framework auto-ACKs positive returns for CON (coap_server.c:274 in 4.1, :235 in 3.7) -\u003e two ACKs, one MID: client sees 4.01 then 4.00 (RFC 7252 mismatch), wasted LoRa airtime. Triggered by any OSCORE request with no established ctx (normal after node reboot). Affects deaddrop_post + confessions_post (coap_dtn.c:108-112, 227-231); same latent pattern in config_put/msg_inbox_post (coap_server.c). Fix at the helper: on ctx-miss return COAP_RESPONSE_CODE_UNAUTHORIZED WITHOUT sending (mirror the unprotect-fail path at :74-79) so caller/framework produce exactly one response; then audit all callers for the new contract.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:31:48.878177Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:34:03.67005Z",
+  "started_at": "2026-08-28T05:34:03.67005Z",
+  "lease_expires_at": "2026-08-28T05:39:03.67005Z",
+  "heartbeat_at": "2026-08-28T05:34:03.67005Z",
+  "labels": [
+    "local-ok"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-zhuq",
+      "depends_on_id": "project-LICHEN-6mij.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T05:31:49.795205Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

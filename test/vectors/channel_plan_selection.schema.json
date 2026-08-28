@@ -9,7 +9,7 @@
     "format_version": {"const": 1},
     "name": {"const": "channel_plan_selection"},
     "description": {"type": "string", "minLength": 1},
-    "formula": {"const": "density > 8 or n_channels == 1 ? 0 : n_channels == 2 ? 1 : 1 + fnv1a32(eui64 || epoch_u32_le) % n_channels"},
+    "formula": {"const": "density > 8 or n_channels <= 1 ? 0 : 1 + fnv1a32(eui64 || epoch_u32_le) % (n_channels - 1)"},
     "cases": {
       "type": "array",
       "minItems": 1,

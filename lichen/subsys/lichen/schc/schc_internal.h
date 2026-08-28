@@ -28,6 +28,7 @@ extern "C" {
 #define IPV6_NH_ICMPV6          58   /* ICMPv6 next header (RFC 4443) */
 #define IPV6_HDR_LEN            40   /* IPv6 base header length */
 #define UDP_HDR_LEN             8    /* UDP header length */
+#define MQTT_SN_PORT            10883 /* MQTT-SN assigned UDP port */
 #define ICMPV6_TYPE_ECHO_REQUEST 128 /* Echo Request (RFC 4443) */
 #define ICMPV6_TYPE_ECHO_REPLY  129  /* Echo Reply (RFC 4443) */
 #define ICMPV6_TYPE_RPL         155  /* RPL ICMPv6 type (RFC 6550) */
@@ -103,8 +104,10 @@ enum schc_rpl_layout {
 /* ─── address helpers (schc_helpers.c) ───────────────────────────────────── */
 
 bool is_link_local(const uint8_t addr[16]);
+bool is_canonical_link_local(const uint8_t addr[16]);
 bool is_global(const uint8_t addr[16]);
 bool is_ula(const uint8_t addr[16]);
+int validate_rule7_addresses(const uint8_t src[16], const uint8_t dst[16]);
 
 uint16_t read_be16(const uint8_t *p);
 void write_be16(uint8_t *p, uint16_t value);
@@ -188,6 +191,8 @@ void rpl_dao_write_base(uint8_t *rpl, uint8_t instance,
 /* ─── validation (schc_helpers.c) ────────────────────────────────────────── */
 
 int validate_ipv6_transport_lengths(const uint8_t *packet, size_t pkt_len);
+bool schc_coap_has_valid_oscore(uint8_t first_byte,
+				const uint8_t *tail, size_t tail_len);
 
 /* ─── checksum helpers (schc_checksum.c) ─────────────────────────────────── */
 
@@ -198,6 +203,8 @@ int udp_checksum(const uint8_t src[16], const uint8_t dst[16],
 
 uint16_t icmpv6_checksum(const uint8_t src[16], const uint8_t dst[16],
 			 const uint8_t *icmpv6_payload, uint16_t len);
+bool icmpv6_checksum_valid(const uint8_t src[16], const uint8_t dst[16],
+			   const uint8_t *icmpv6_payload, uint16_t len);
 
 /* ─── compression (schc_compress.c) ──────────────────────────────────────── */
 
@@ -209,6 +216,8 @@ int compress_rpl_dio(const uint8_t *packet, size_t pkt_len,
 		     uint8_t *out, size_t out_len);
 int compress_rpl_dao(const uint8_t *packet, size_t pkt_len,
 		     uint8_t *out, size_t out_len);
+int compress_mqtt_sn(const uint8_t *packet, size_t pkt_len,
+		     uint8_t *out, size_t out_len);
 
 /* ─── decompression (schc_decompress.c) ──────────────────────────────────── */
 
@@ -219,6 +228,8 @@ int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 		       uint8_t *out, size_t out_len);
 int decompress_rpl_dao(const uint8_t *data, size_t data_len,
+		       uint8_t *out, size_t out_len);
+int decompress_mqtt_sn(const uint8_t *data, size_t data_len,
 		       uint8_t *out, size_t out_len);
 
 #ifdef __cplusplus

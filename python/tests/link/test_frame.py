@@ -288,6 +288,25 @@ class TestValidation:
         with pytest.raises(FrameError, match="0 are required"):
             self._base(mic=b"\x00").to_bytes()
 
+    @pytest.mark.parametrize(
+        "signature_present,signer_eui64,mic",
+        [
+            (True, b"", bytes(48)),
+            (False, bytes(8), b""),
+        ],
+        ids=["S-only-model", "SI-only-model"],
+    )
+    def test_serializer_rejects_signature_signer_presence_mismatch(
+        self, signature_present: bool, signer_eui64: bytes, mic: bytes
+    ) -> None:
+        frame = self._base(
+            signature_present=signature_present,
+            signer_eui64=signer_eui64,
+            mic=mic,
+        )
+        with pytest.raises(FrameError, match="presence must match"):
+            frame.to_bytes()
+
     @pytest.mark.parametrize("selector", [2, 7, True, object()])
     def test_serializer_rejects_non_enum_mic_selector(self, selector: object) -> None:
         with pytest.raises(FrameError, match="supported MicLength"):

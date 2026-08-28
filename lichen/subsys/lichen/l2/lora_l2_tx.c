@@ -13,10 +13,99 @@
 
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/lora.h>
+#include <zephyr/random/random.h>
 
+#include <lichen/lora_cad.h>
 #include <lichen/op_class.h>
 
 LOG_MODULE_DECLARE(lichen_lora_l2, CONFIG_LICHEN_LORA_L2_LOG_LEVEL);
+
+#define LICHEN_LORA_CAD_REGISTRY_SIZE 4U
+
+struct lichen_lora_cad_entry {
+    const struct device *dev;
+    lichen_lora_cad_fn callback;
+};
+
+static struct lichen_lora_cad_entry cad_registry[LICHEN_LORA_CAD_REGISTRY_SIZE];
+K_MUTEX_DEFINE(cad_registry_mutex);
+
+int lichen_lora_cad_register(const struct device *dev,
+                             lichen_lora_cad_fn callback)
+{
+    if (dev == NULL || callback == NULL) {
+        return -EINVAL;
+    }
+
+    k_mutex_lock(&cad_registry_mutex, K_FOREVER);
+    size_t empty = LICHEN_LORA_CAD_REGISTRY_SIZE;
+    for (size_t i = 0; i < LICHEN_LORA_CAD_REGISTRY_SIZE; i++) {
+        if (cad_registry[i].dev == dev) {
+            int ret = cad_registry[i].callback == callback ? 0 : -EALREADY;
+            k_mutex_unlock(&cad_registry_mutex);
+            return ret;
+        }
+        if (empty == LICHEN_LORA_CAD_REGISTRY_SIZE && cad_registry[i].dev == NULL) {
+            empty = i;
+        }
+    }
+    if (empty == LICHEN_LORA_CAD_REGISTRY_SIZE) {
+        k_mutex_unlock(&cad_registry_mutex);
+        return -ENOSPC;
+    }
+    cad_registry[empty].dev = dev;
+    cad_registry[empty].callback = callback;
+    k_mutex_unlock(&cad_registry_mutex);
+    return 0;
+}
+
+int lichen_lora_cad_run(const struct device *dev, k_timeout_t timeout,
+                        bool *busy)
+{
+    lichen_lora_cad_fn callback = NULL;
+
+    if (dev == NULL || busy == NULL) {
+        return -EINVAL;
+    }
+    *busy = true;
+    k_mutex_lock(&cad_registry_mutex, K_FOREVER);
+    for (size_t i = 0; i < LICHEN_LORA_CAD_REGISTRY_SIZE; i++) {
+        if (cad_registry[i].dev == dev) {
+            callback = cad_registry[i].callback;
+            break;
+        }
+    }
+    k_mutex_unlock(&cad_registry_mutex);
+    if (callback == NULL) {
+        return -ENOTSUP;
+    }
+    int ret = callback(dev, timeout, busy);
+    if (ret != 0) {
+        *busy = true;
+        return ret < 0 ? ret : -EIO;
+    }
+    return 0;
+}
+
+static int csma_rng(void *user, uint32_t *value)
+{
+    ARG_UNUSED(user);
+    return sys_csrand_get(value, sizeof(*value));
+}
+
+static int csma_wait(void *user, uint32_t delay_ms)
+{
+    ARG_UNUSED(user);
+    k_msleep(delay_ms);
+    return 0;
+}
+
+static int csma_cad(void *user, uint8_t timeout_symbols, bool *busy)
+{
+    ARG_UNUSED(timeout_symbols);
+    return lichen_lora_cad_run(user,
+                              K_MSEC(CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS), busy);
+}
 
 bool lichen_lora_perform_cca(uint32_t timeout_ms)
 {
@@ -25,12 +114,10 @@ bool lichen_lora_perform_cca(uint32_t timeout_ms)
     }
 
     bool busy = false;
-    int ret = lora_cad(lora_data.lora_dev, K_MSEC(timeout_ms), &busy);
+    int ret = lichen_lora_cad_run(lora_data.lora_dev, K_MSEC(timeout_ms), &busy);
     if (ret < 0) {
-        if (ret != -ENOSYS) {
-            LOG_WRN("lora_l2: CCA failed (%d), treating as clear", ret);
-        }
-        return true;
+        LOG_WRN("lora_l2: CCA failed (%d), suppressing TX", ret);
+        return false;
     }
     return !busy;
 }
@@ -233,17 +320,39 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len, uint8_t channel)
         return -EBUSY;
     }
 
-    /* CCP-15 CCA: check channel before TX. Mutex held during CAD. */
-    if (lora_data.cca_enabled && !lichen_lora_perform_cca(CONFIG_LICHEN_LORA_CCA_TIMEOUT_MS)) {
-        LOG_INF("lora_l2: CCA detected busy channel, aborting TX");
+    /* CCP-15: bounded CSMA/CA with CAD and exponential backoff. */
+    if (lora_data.cca_enabled) {
+        ret = lichen_csma_acquire(&lora_data.csma, 0U, csma_rng, NULL,
+                                  csma_wait, NULL, csma_cad,
+                                  (void *)lora_data.lora_dev);
+        if (ret < 0) {
+            LOG_INF("lora_l2: CSMA/CA suppressed TX (%d)", ret);
+            k_mutex_unlock(&modem_mutex);
+            atomic_dec(&tx_pending);
+            secure_zero(tx_buf, sizeof(tx_buf));
+            k_mutex_unlock(&tx_buf_mutex);
+            return ret;
+        }
+    }
+
+    /* stop() cancels CSMA before publishing STOPPED. Recheck after the
+     * bounded backoff/CAD loop so a concurrent shutdown cannot start a new
+     * transmission after cancellation won the race. */
+    if (lora_get_state() != LORA_RUNNING) {
+        if (lora_data.cca_enabled) {
+            lichen_csma_cancel(&lora_data.csma);
+        }
         k_mutex_unlock(&modem_mutex);
         atomic_dec(&tx_pending);
         secure_zero(tx_buf, sizeof(tx_buf));
         k_mutex_unlock(&tx_buf_mutex);
-        return -EBUSY;
+        return -ENETDOWN;
     }
 
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
+    if (lora_data.cca_enabled) {
+        (void)lichen_csma_tx_complete(&lora_data.csma, ret);
+    }
     k_mutex_unlock(&modem_mutex);
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     if (ret >= 0) lichen_duty_cycle_record_tx(&lora_data.duty, k_uptime_get(), dur);
@@ -312,18 +421,42 @@ uint16_t lichen_lora_l2_current_duty_permille(void)
 
 int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats)
 {
+    enum lora_state state;
+    int ret;
+
     if (stats == NULL) {
         return -EINVAL;
     }
 
-    enum lora_state state = lora_get_state();
-    if (state == LORA_UNINIT) {
-        return -ENODEV;
-    }
-
     /*
-     * tx_queue_stats_get() now acquires internal lock for atomic snapshot.
-     * No tx_buf_mutex needed: queue lock serializes with TX path.
+     * Full lifecycle check under lora_mutex (mirrors copy_eui64()): a
+     * state-only check followed by the queue lock alone has a TOCTOU
+     * window against deinit()/tx_queue_destroy(), which requires
+     * exclusive quiescence. Holding lora_mutex across the whole access
+     * serializes with the destroy section in lichen_lora_l2_deinit().
      */
-    return tx_queue_stats_get(&tx_queue, stats);
+    k_mutex_lock(&lora_mutex, K_FOREVER);
+    state = lora_get_state();
+    switch (state) {
+    case LORA_STOPPED:
+    case LORA_RUNNING:
+        ret = tx_queue_stats_get(&tx_queue, stats);
+        break;
+    case LORA_UNINIT:
+        ret = -ENODEV;
+        break;
+    case LORA_ABORTED:
+    case LORA_DESTROY_FAILED:
+        ret = -ECANCELED;
+        break;
+    case LORA_DEINITING:
+        ret = -EBUSY;
+        break;
+    case LORA_STATE_COUNT:
+    default:
+        ret = -EINVAL;
+        break;
+    }
+    k_mutex_unlock(&lora_mutex);
+    return ret;
 }

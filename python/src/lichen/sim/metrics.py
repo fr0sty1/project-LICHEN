@@ -23,7 +23,7 @@ from collections import OrderedDict, defaultdict, deque
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 logger = logging.getLogger(__name__)
 
@@ -453,12 +453,12 @@ class Metrics:
         for tx_id in forgotten:
             self._tx_start_times.pop(tx_id, None)
             self._tx_latency_recorded.discard(tx_id)
-        for key in list(self._delivered):
-            if key[1] in forgotten:
-                self._delivered.pop(key, None)
-        for key in list(self._collision_keys):
-            if key[1] & forgotten:
-                self._collision_keys.pop(key, None)
+        for delivery_key in list(self._delivered):
+            if delivery_key[1] in forgotten:
+                self._delivered.pop(delivery_key, None)
+        for collision_key in list(self._collision_keys):
+            if collision_key[1] & forgotten:
+                self._collision_keys.pop(collision_key, None)
 
     def _evict_stale_identities(
         self,
@@ -1006,8 +1006,8 @@ def compare_metrics(
     # Top-level scalar metrics.
     scalar_keys = ["transmissions", "receptions", "collisions", "delivery_rate", "collision_rate"]
     for key in scalar_keys:
-        b_val = float(baseline.get(key, 0))
-        v_val = float(variant.get(key, 0))
+        b_val = float(cast(int | float, baseline.get(key, 0)))
+        v_val = float(cast(int | float, variant.get(key, 0)))
         delta = v_val - b_val
         pct = _compute_pct_change(b_val, v_val)
         sig = _is_significant(b_val, v_val, threshold, rate=key in _RATE_METRICS)
@@ -1030,14 +1030,14 @@ def compare_metrics(
     if isinstance(b_lat, dict) and isinstance(v_lat, dict):
         lat_keys = ["min", "max", "mean", "p50", "p95", "p99"]
         for key in lat_keys:
-            b_val = b_lat.get(key)
-            v_val = v_lat.get(key)
+            b_latency = b_lat.get(key)
+            v_latency = v_lat.get(key)
             # Missing samples are not 0 µs. Skip when either side has no value
             # so None→0 cannot be scored as a latency win.
-            if b_val is None or v_val is None:
+            if b_latency is None or v_latency is None:
                 continue
-            b_val = float(b_val)
-            v_val = float(v_val)
+            b_val = float(cast(int | float, b_latency))
+            v_val = float(cast(int | float, v_latency))
             metric_name = f"latency_{key}_us"
             delta = v_val - b_val
             pct = _compute_pct_change(b_val, v_val)

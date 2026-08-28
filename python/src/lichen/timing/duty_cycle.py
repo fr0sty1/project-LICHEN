@@ -26,6 +26,12 @@ EU868_COMFORTABLE_PACKETS_PER_HOUR: tuple[int, int] = (100, 300)
 SIM_DUTY_CYCLE_LIMIT_PERCENT: float = 1.0
 SIM_WINDOW_S: int = 3600
 
+# CCP-13 adaptive duty cycle constants (spec 02a section 2a.9)
+WINDOW_MS: int = 3_600_000
+REGION_EU: int = 0
+REGION_US: int = 1
+# REGION_AS = 2 reserved for future use
+
 # Common regional limits
 REGIONAL_LIMITS: dict[str, float] = {
     "EU868": 1.0,  # 1% per sub-band (simulator default)
@@ -34,6 +40,46 @@ REGIONAL_LIMITS: dict[str, float] = {
 }
 
 US915_FCC_DWELL_TIME_MS: int = 400
+
+
+def adaptive_duty_permille(density: int, region: int) -> int:
+    """Return density-adapted duty budget in permille (spec 02a.9.2).
+
+    The duty budget is adapted based on neighbor density and regulatory region.
+    Unknown regions deliberately fail closed to the stricter region-0 budget.
+
+    | Density    | Region 0 (EU, AU/NZ) | Region 1 (US/CA) |
+    |------------|----------------------|------------------|
+    | Dense >8   | 5 permille (0.5%)    | 10 permille (1%) |
+    | Moderate   | 10 permille (1%)     | 20 permille (2%) |
+    | Sparse <3  | 20 permille (2%)     | 50 permille (5%) |
+
+    Args:
+        density: Number of distinct link-layer peers heard in the current window.
+        region: Regulatory region (0=EU/AU/NZ strict, 1=US/CA lenient).
+
+    Returns:
+        Duty cycle budget in permille of the 1-hour rolling window.
+    """
+    strict_region = region != REGION_US
+    if density > 8:
+        return 5 if strict_region else 10
+    if density < 3:
+        return 20 if strict_region else 50
+    return 10 if strict_region else 20
+
+
+def max_tx_ms(duty_permille: int) -> int:
+    """Return maximum transmit time in ms for a given duty permille (spec 02a.9.2).
+
+    Args:
+        duty_permille: Duty cycle budget in permille (e.g. 10 = 1%).
+
+    Returns:
+        Maximum transmit time in milliseconds over the 1-hour rolling window.
+        Example: max_tx_ms(10) = 36000 ms = 36 seconds per hour.
+    """
+    return (WINDOW_MS // 1000) * duty_permille
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +197,8 @@ def max_packets_per_hour(airtime_ms: float, duty_cycle_percent: float, window_s:
         raise ValueError("airtime_ms must be positive")
     if not 0 < duty_cycle_percent <= 100:
         raise ValueError("duty_cycle_percent must be 0 < pct <= 100")
+    if window_s <= 0:
+        raise ValueError("window_s must be positive")
     airtime_s = airtime_ms / 1000
     return int(window_s * (duty_cycle_percent / 100) / airtime_s)
 
@@ -167,14 +215,19 @@ __all__ = [
     "EU868_DUTY_CYCLE_PERCENT",
     "EU868_MAX_PACKETS_PER_HOUR",
     "EU868_SF9_AIRTIME_60B_MS",
-    "REGIONAL_LIMITS",
+    "REGION_EU",
+    "REGION_US",
     "REGIONAL_CONFIGS",
+    "REGIONAL_LIMITS",
     "RegionalDutyCycleEnforcer",
     "RegionalDutyCycleLimit",
     "SIM_DUTY_CYCLE_LIMIT_PERCENT",
     "SIM_WINDOW_S",
     "US915_FCC_DWELL_TIME_MS",
+    "WINDOW_MS",
+    "adaptive_duty_permille",
     "duty_cycle_usage_percent",
     "get_regional_limit",
     "max_packets_per_hour",
+    "max_tx_ms",
 ]

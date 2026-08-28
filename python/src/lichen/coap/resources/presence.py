@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import math
 import time
 from collections.abc import Callable
@@ -41,6 +42,19 @@ def _finite_non_negative(value: object, name: str) -> float:
     ):
         raise ValueError(f"{name} must be a non-negative finite number")
     return float(value)
+
+
+def _canonical_ipv6(addr: str) -> str:
+    """Parse and return the canonical form of an IPv6 address.
+
+    Raises ValueError if addr is not a valid IPv6 address.
+    """
+    if not isinstance(addr, str):
+        raise ValueError("addr must be a string")
+    try:
+        return str(ipaddress.IPv6Address(addr))
+    except ipaddress.AddressValueError as e:
+        raise ValueError(f"addr must be a valid IPv6 address: {e}") from e
 
 
 class PresenceResource(resource.ObservableResource):
@@ -258,12 +272,17 @@ class PresenceCacheResource(resource.ObservableResource):
 
         SECURITY: ts is capped to the current time. A future timestamp would
         report age_s=0 indefinitely and survive TTL-based purges (spec 18.5.2).
+
+        addr must be a valid IPv6 address; it is canonicalized so that
+        equivalent spellings (e.g., "0200::1111" vs "0200:0:0:0:0:0:0:1111")
+        occupy the same cache slot.
         """
+        canonical_addr = _canonical_ipv6(addr)
         stamp = _finite_non_negative(ts, "ts")
         now = _finite_non_negative(self._time_source(), "time_source")
         # Cap ts to now: future timestamps would dodge purge and report age_s=0
         stamp = min(stamp, now)
-        entry_map: dict[str, Any] = {"addr": addr, "status": status, "age_s": 0}
+        entry_map: dict[str, Any] = {"addr": canonical_addr, "status": status, "age_s": 0}
         if battery is not None:
             entry_map["battery"] = battery
         entry = PresenceCacheEntry.from_mapping(entry_map)
@@ -298,11 +317,12 @@ class PresenceCacheResource(resource.ObservableResource):
     def evict(self, addr: str) -> None:
         """Remove a peer from the cache and notify observers.
 
-        No-op if the peer is not in the cache.
+        addr must be a valid IPv6 address; it is canonicalized so that any
+        valid spelling of the address will hit the cached entry. No-op if
+        the peer is not in the cache.
         """
-        if type(addr) is not str or addr == "":
-            raise ValueError("addr must be a non-empty string")
-        if self._nodes.pop(addr, None) is not None:
+        canonical_addr = _canonical_ipv6(addr)
+        if self._nodes.pop(canonical_addr, None) is not None:
             self.updated_state()
 
     def purge_older_than(self, cutoff_ts: float) -> int:

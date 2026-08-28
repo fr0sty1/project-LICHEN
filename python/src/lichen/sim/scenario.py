@@ -21,20 +21,31 @@ events:
     move:
       node: node-1
       to: [200, 0, 0]
+  - at: 90s
+    mobility:
+      node: node-2
+      pattern: random_waypoint
+      params:
+        area_bounds: [0, 500, 0, 500]
+        speed_m_s: 2.0
+        seed: 42
   - at: 120s
     chaos:
       type: loss
+      node: node-0
       rate: 0.1
   - at: 180s
     python: |
-      if sim.metrics.delivery_rate < 0.8:
-          sim.chaos.add_loss(0.2)
+      from lora_medium import LossRule
+      if sim.metrics.delivery_rate < 0.8 and sim.chaos_engine:
+          sim.chaos_engine.add_rule(LossRule(node_id="node-0", loss_probability=0.2))
 ```
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -42,6 +53,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from lichen.sim import topology as topo
+from lichen.sim.mobility import MobilityManager, MobilityPattern, RandomWaypoint
 
 if TYPE_CHECKING:
     from lichen.sim.simulation import Simulation
@@ -165,6 +177,10 @@ class Scenario:
                 if "duration" in move:
                     params["duration_us"] = parse_duration(str(move["duration"]))
                 events.append(ScenarioEvent(time_us, "move", params))
+            elif "mobility" in ev:
+                events.append(
+                    ScenarioEvent(time_us, "mobility", _parse_mobility_params(ev["mobility"]))
+                )
             elif "chaos" in ev:
                 events.append(ScenarioEvent(time_us, "chaos", ev["chaos"]))
             elif "python" in ev:
@@ -223,6 +239,50 @@ def _parse_value(s: str) -> int | float | str:
     return s
 
 
+def _make_random_waypoint(params: dict[str, Any]) -> RandomWaypoint:
+    """Build a RandomWaypoint, normalizing area_bounds to a tuple."""
+    bounds = params.get("area_bounds")
+    if bounds is not None:
+        params = {**params, "area_bounds": tuple(bounds)}
+    return RandomWaypoint(**params)
+
+
+# Named mobility pattern factories for the mobility scenario event.
+# Values are callables taking pattern params as keyword arguments.
+MOBILITY_PATTERNS: dict[str, Callable[[dict[str, Any]], MobilityPattern]] = {
+    "random_waypoint": _make_random_waypoint,
+}
+
+
+def _parse_mobility_params(mobility: Any) -> dict[str, Any]:
+    """Parse and validate a mobility event payload.
+
+    Attach form: {node: <id>, pattern: <name>, params: {...}}.
+    Detach form: {node: <id>, pattern: null}.
+
+    Raises:
+        ValueError: If the payload is malformed.
+    """
+    if not isinstance(mobility, dict):
+        raise ValueError(f"mobility event must be a mapping: {mobility}")
+    node_id = mobility.get("node")
+    if not isinstance(node_id, str) or not node_id:
+        raise ValueError(f"mobility event requires a non-empty 'node': {mobility}")
+    pattern_name = mobility.get("pattern")
+    if pattern_name is None:
+        if mobility.get("params") is not None:
+            raise ValueError(f"mobility detach event must not include 'params': {mobility}")
+        return {"node": node_id, "pattern": None}
+    if not isinstance(pattern_name, str):
+        raise ValueError(f"mobility 'pattern' must be a string: {mobility}")
+    params = mobility.get("params")
+    if params is None:
+        params = {}
+    if not isinstance(params, dict):
+        raise ValueError(f"mobility 'params' must be a mapping: {mobility}")
+    return {"node": node_id, "pattern": pattern_name, "params": dict(params)}
+
+
 class ScenarioRunner:
     """Runs a scenario against a simulation."""
 
@@ -236,6 +296,9 @@ class ScenarioRunner:
         self._active_moves: dict[
             str, tuple[tuple[float, float, float], tuple[float, float, float], int, int]
         ] = {}
+        # Attached mobility patterns, stepped by elapsed time on each step()
+        self.mobility_manager = MobilityManager()
+        self._last_step_time_us = 0
 
     def pause(self) -> None:
         """Pause scenario execution. Events will not be processed until resume()."""
@@ -249,6 +312,7 @@ class ScenarioRunner:
         """Stop scenario execution. Cannot be resumed."""
         self._stopped = True
         self._active_moves.clear()
+        self.mobility_manager.clear()
 
     @property
     def is_paused(self) -> bool:
@@ -291,6 +355,8 @@ class ScenarioRunner:
                 self.sim.remove_node(node_id)
         elif event.action == "move":
             self._execute_move(event, current_time_us)
+        elif event.action == "mobility":
+            self._execute_mobility(event)
         elif event.action == "chaos":
             self._apply_chaos(event.params)
         elif event.action == "python":
@@ -337,19 +403,79 @@ class ScenarioRunner:
         for node_id in completed:
             del self._active_moves[node_id]
 
+    def _execute_mobility(self, event: ScenarioEvent) -> None:
+        """Attach or detach a mobility pattern for a node.
+
+        Args:
+            event: Mobility event params:
+                - node: Node ID to attach to or detach from.
+                - pattern: Registered pattern name (MOBILITY_PATTERNS key)
+                  to attach, or None to detach.
+                - params: Keyword arguments for the pattern constructor.
+
+        Raises:
+            ValueError: If the pattern name is not registered or the
+                params are invalid for the pattern.
+        """
+        node_id = event.params["node"]
+        pattern_name = event.params["pattern"]
+        if pattern_name is None:
+            self.mobility_manager.detach(node_id)
+            return
+        factory = MOBILITY_PATTERNS.get(pattern_name)
+        if factory is None:
+            raise ValueError(f"Unknown mobility pattern: {pattern_name}")
+        params = event.params.get("params", {})
+        try:
+            pattern = factory(params)
+        except TypeError as exc:
+            raise ValueError(
+                f"Invalid params for mobility pattern '{pattern_name}': {exc}"
+            ) from exc
+        self.mobility_manager.attach(node_id, pattern)
+
+    def _step_mobility(self, current_time_us: int) -> None:
+        """Advance attached mobility patterns by the elapsed time."""
+        dt_us = max(0, current_time_us - self._last_step_time_us)
+        self._last_step_time_us = current_time_us
+        if dt_us == 0:
+            return
+        nodes = {node.id: node for node in self.sim.get_all_nodes()}
+        self.mobility_manager.step_all(nodes, dt_us)
+
     def _apply_chaos(self, params: dict[str, Any]) -> None:
-        """Apply a chaos rule."""
+        """Apply a chaos rule.
+
+        Args:
+            params: Chaos event parameters. Required keys depend on type:
+                - type: "loss" or "partition"
+                - For "loss": node (str), rate (float, default 0.1)
+                - For "partition": groups (list of node ID sets)
+
+        Raises:
+            ValueError: If chaos type is unknown or required params are missing.
+            RuntimeError: If no chaos engine is configured on the simulation.
+        """
+        if self.sim.chaos_engine is None:
+            raise RuntimeError("Cannot apply chaos rule: no chaos engine configured")
+
         chaos_type = params.get("type")
         if chaos_type == "loss":
             from lora_medium import LossRule
 
-            rule = LossRule(loss_probability=params.get("rate", 0.1))
-            self.sim.chaos.add_rule(rule)
+            node_id = params.get("node")
+            if node_id is None:
+                raise ValueError("Chaos type 'loss' requires 'node' parameter")
+            rule = LossRule(
+                node_id=node_id,
+                loss_probability=params.get("rate", 0.1),
+            )
+            self.sim.chaos_engine.add_rule(rule)
         elif chaos_type == "partition":
             from lora_medium import PartitionRule
 
             rule = PartitionRule(groups=params.get("groups", []))
-            self.sim.chaos.add_rule(rule)
+            self.sim.chaos_engine.add_rule(rule)
         else:
             raise ValueError(f"Unknown chaos type: {chaos_type}")
 
@@ -361,13 +487,19 @@ class ScenarioRunner:
     def step(self, current_time_us: int) -> int:
         """Process pending events and return count executed.
 
-        Returns 0 if paused or stopped. Updates active move interpolations.
+        Returns 0 if paused or stopped. Updates active move interpolations
+        and advances attached mobility patterns by the elapsed time.
         """
         if self._stopped or self._paused:
+            # Freeze the mobility clock so resumed patterns do not jump
+            self._last_step_time_us = current_time_us
             return 0
 
         # Update active move interpolations
         self._update_interpolations(current_time_us)
+
+        # Advance attached mobility patterns
+        self._step_mobility(current_time_us)
 
         # Process new events
         events = self.get_pending_events(current_time_us)

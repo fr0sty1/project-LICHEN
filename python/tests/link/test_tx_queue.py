@@ -630,12 +630,44 @@ class TestStatistics:
 
         assert q.stats.packets_transmitted == 2
 
-    def test_pop_does_not_claim_radio_transmission(self):
-        q = TxQueue()
+    def test_pop_records_transmission_stats(self):
+        """pop() counts a transmission and records latency, like confirm_transmitted()."""
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
         q.push(b"one")
+        clock.advance(40)
 
         assert q.pop() == b"one"
-        assert q.stats.packets_transmitted == 0
+
+        assert q.stats.packets_transmitted == 1
+        assert q.stats.max_latency_ms == 40
+        assert q.stats.avg_latency_ms == 4
+
+    def test_pop_then_stale_complete_no_double_count(self):
+        """complete(success=True) on an already-popped entry must not count twice."""
+        q = TxQueue()
+        q.push(b"one")
+        entry = q._entries[0]
+
+        assert q.pop() == b"one"
+        q.complete(entry, success=True)
+
+        assert q.stats.packets_transmitted == 1
+        assert len(q) == 0
+
+    def test_pop_and_confirm_transmitted_paths_both_count(self):
+        """Stats are consistent whichever path transmits the packet."""
+        clock = FakeClock(0)
+        q = TxQueue(clock=clock)
+        q.push(b"via_pop")
+        q.push(b"via_confirm")
+        clock.advance(10)
+
+        assert q.pop() == b"via_pop"
+        q.confirm_transmitted(b"via_confirm")
+
+        assert q.stats.packets_transmitted == 2
+        assert q.stats.max_latency_ms == 10
 
     def test_max_latency_tracking(self):
         """max_latency_ms tracks worst-case queue time."""
@@ -1002,7 +1034,8 @@ class TestReserveComplete:
         assert remaining == 3
 
     @pytest.mark.asyncio
-    async def test_complete_non_head_entry_logs_warning(self, caplog):
+    async def test_complete_non_head_entry_removes_it(self, caplog):
+        # ponytail: new behavior - complete() removes entry at any position
         q = TxQueue()
         q.push(b"first", priority=Priority.ROUTING)
         q.push(b"second", priority=Priority.BULK)
@@ -1010,8 +1043,9 @@ class TestReserveComplete:
         e2 = q._entries[1]
         q.complete(e2, success=True)
 
-        assert "complete but entry not head of queue" in caplog.text
-        assert len(q) == 2
+        # Entry was removed, only one remains
+        assert len(q) == 1
+        assert q._entries[0].data == b"first"
 
     @pytest.mark.asyncio
     async def test_signal_all_pending_then_complete_first_wins(self, caplog):
@@ -1020,7 +1054,7 @@ class TestReserveComplete:
         Simulates a race condition where queue is being cleared/shutdown
         while a transmission is in progress. The reservation should get
         the first result (False from signal_all_pending), and the later
-        complete(True) should be ignored with a warning.
+        complete(True) should be ignored (idempotent set_result).
         """
         q = TxQueue()
         res = q.push(b"race_me", return_reservation=True)
@@ -1039,12 +1073,13 @@ class TestReserveComplete:
         assert res.result() is False
         assert len(q) == 0
 
-        # complete(True) comes later - should be ignored with warning
+        # complete(True) comes later - entry already removed, set_result ignored
         q.complete(entry, success=True)
 
-        # Result is still False (first wins), warning was logged
+        # Result is still False (first wins)
         assert res.result() is False
-        assert "complete but entry not head of queue" in caplog.text
+        # ponytail: warning changed from "not head" to "set_result ignored"
+        assert "set_result" in caplog.text and "ignored" in caplog.text
 
     @pytest.mark.asyncio
     async def test_complete_true_then_clear_no_conflict(self, caplog):

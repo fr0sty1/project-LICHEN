@@ -1,0 +1,225 @@
+{
+  "description": "OSCORE encrypt/decrypt test vectors (RFC 8613). Includes key derivation, request/response protection, and replay detection.",
+  "reference": "RFC 8613 Appendix C",
+  "format": {
+    "type": "Test type: key_derivation, request_protection, response_protection, replay, roundtrip",
+    "master_secret": "16-byte master secret as hex",
+    "master_salt": "8-byte master salt as hex (null if not used)",
+    "sender_id": "Sender ID as hex (empty string if not used)",
+    "recipient_id": "Recipient ID as hex",
+    "algorithm": "COSE algorithm number (10 = AES-CCM-16-64-128)"
+  },
+  "vectors": [
+    {
+      "name": "rfc8613_c1_key_derivation_client",
+      "type": "key_derivation",
+      "description": "RFC 8613 Appendix C.1.1: Client key derivation with master salt",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "",
+      "recipient_id": "01",
+      "id_context": null,
+      "algorithm": 10,
+      "expected": {
+        "sender_key": "f0910ed7295e6ad4b54fc793154302ff",
+        "recipient_key": "ffb14e093c94c9cac9471648b4f98710",
+        "common_iv": "4622d4dd6d944168eefb54987c"
+      }
+    },
+    {
+      "name": "rfc8613_c1_key_derivation_server",
+      "type": "key_derivation",
+      "description": "RFC 8613 Appendix C.1.2: Server key derivation with master salt",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "01",
+      "recipient_id": "",
+      "id_context": null,
+      "algorithm": 10,
+      "expected": {
+        "sender_key": "ffb14e093c94c9cac9471648b4f98710",
+        "recipient_key": "f0910ed7295e6ad4b54fc793154302ff",
+        "common_iv": "4622d4dd6d944168eefb54987c"
+      }
+    },
+    {
+      "name": "rfc8613_c2_key_derivation_no_salt",
+      "type": "key_derivation",
+      "description": "RFC 8613 Appendix C.2.1: Client key derivation without master salt",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": null,
+      "sender_id": "00",
+      "recipient_id": "01",
+      "id_context": null,
+      "algorithm": 10,
+      "expected": {
+        "sender_key": "321b26943253c7ffb6003b0b64d74041",
+        "recipient_key": "e57b5635815177cd679ab4bcec9d7dda",
+        "common_iv": "be35ae297d2dace910c52e99f9"
+      }
+    },
+    {
+      "name": "rfc8613_c3_key_derivation_with_context",
+      "type": "key_derivation",
+      "description": "RFC 8613 Appendix C.3.1: Client key derivation with ID Context",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "",
+      "recipient_id": "01",
+      "id_context": "37cbf3210017a2d3",
+      "algorithm": 10,
+      "expected": {
+        "sender_key": "af2a1300a5e95788b356336eeecd2b92",
+        "recipient_key": "e39a0c7c77b43f03b4b39ab9a268699f",
+        "common_iv": "2ca58fb85ff1b81c0b7181b85e"
+      }
+    },
+    {
+      "name": "rfc8613_c4_request_protection",
+      "type": "request_protection",
+      "description": "RFC 8613 Appendix C.4: OSCORE request protection (GET /tv1)",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "",
+      "recipient_id": "01",
+      "id_context": null,
+      "algorithm": 10,
+      "sender_seq": 20,
+      "plaintext": {
+        "code": 1,
+        "options": "b3747631",
+        "payload": ""
+      },
+      "expected": {
+        "nonce": "4622d4dd6d944168eefb549868",
+        "oscore_option": "0914",
+        "ciphertext": "612f1092f1776f1c1668b3825e"
+      }
+    },
+    {
+      "name": "rfc8613_c7_response_protection",
+      "type": "response_protection",
+      "description": "RFC 8613 Appendix C.7: OSCORE response (2.05 Content)",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "01",
+      "recipient_id": "",
+      "id_context": null,
+      "algorithm": 10,
+      "sender_seq": 0,
+      "include_piv": false,
+      "request_piv": "14",
+      "request_kid": "",
+      "plaintext": {
+        "code": 69,
+        "options": "",
+        "payload": "48656c6c6f20576f726c6421"
+      },
+      "expected": {
+        "nonce": "4622d4dd6d944168eefb549868",
+        "oscore_option": "",
+        "ciphertext": "dbaad1e9a7e7b2a813d3c31524378303cdafae119106"
+      }
+    },
+    {
+      "name": "replay_accept_new",
+      "type": "replay",
+      "description": "New sequence number should be accepted",
+      "highest_seq": 100,
+      "window_bits": 0,
+      "test_seq": 101,
+      "expected": {
+        "is_replay": false,
+        "new_highest": 101
+      }
+    },
+    {
+      "name": "replay_reject_duplicate",
+      "type": "replay",
+      "description": "Duplicate sequence number should be rejected",
+      "highest_seq": 100,
+      "window_bits": 1,
+      "test_seq": 100,
+      "expected": {
+        "is_replay": true
+      }
+    },
+    {
+      "name": "replay_accept_within_window",
+      "type": "replay",
+      "description": "Unseen sequence within window should be accepted",
+      "highest_seq": 100,
+      "window_bits": 1,
+      "test_seq": 99,
+      "expected": {
+        "is_replay": false,
+        "new_highest": 100
+      }
+    },
+    {
+      "name": "replay_reject_too_old",
+      "type": "replay",
+      "description": "Sequence outside window should be rejected",
+      "highest_seq": 100,
+      "window_bits": 1,
+      "test_seq": 50,
+      "expected": {
+        "is_replay": true
+      }
+    },
+    {
+      "name": "roundtrip_simple_request",
+      "type": "roundtrip",
+      "description": "Protect then unprotect must yield original plaintext",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "00",
+      "recipient_id": "01",
+      "id_context": null,
+      "algorithm": 10,
+      "sender_seq": 0,
+      "plaintext": {
+        "code": 1,
+        "options": "",
+        "payload": "68656c6c6f"
+      }
+    },
+    {
+      "name": "piv_encoding_zero",
+      "type": "piv_encoding",
+      "description": "PIV=0 encodes as single byte 0x00",
+      "piv_value": 0,
+      "expected": {
+        "piv_bytes": "00",
+        "piv_length": 1
+      }
+    },
+    {
+      "name": "piv_encoding_max_5byte",
+      "type": "piv_encoding",
+      "description": "PIV=2^40-1: maximum valid 5-byte PIV",
+      "piv_value": 1099511627775,
+      "expected": {
+        "piv_bytes": "ffffffffff",
+        "piv_length": 5
+      }
+    },
+    {
+      "name": "invalid_sender_id_too_long",
+      "type": "invalid",
+      "description": "Sender ID exceeding 7 bytes must be rejected",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": null,
+      "sender_id": "0102030405060708",
+      "recipient_id": "01",
+      "expected_error": "invalid_param"
+    },
+    {
+      "name": "invalid_piv_overflow",
+      "type": "invalid",
+      "description": "PIV=2^40 exceeds OSCORE maximum",
+      "piv_value": 1099511627776,
+      "expected_error": "piv_overflow"
+    }
+  ]
+}

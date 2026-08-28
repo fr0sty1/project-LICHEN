@@ -26,10 +26,9 @@
  * RFC 1982. SEQUENCE_WINDOW is 16 (RFC MUST).
  *
  * Mirrors rust/lichen-rpl/src/routing.rs seq_is_newer():
- * - Same region: RFC 1982 serial arithmetic on the low 7 bits; newer iff
- *   the wrapped difference is in [1..SEQUENCE_WINDOW]. This accepts
- *   multi-step crossings of the 127->0 restart (e.g. 5 after 120) exactly
- *   as the Rust reference does.
+ * - Same region: first require the absolute magnitude of the difference to
+ *   be <= SEQUENCE_WINDOW, then apply RFC 1982 ordering. Reducing modulo 128
+ *   before the magnitude check would incorrectly compare distant values.
  * - a linear, b circular: a is newer iff more than SEQUENCE_WINDOW steps
  *   past the 255->0 wrap, i.e. (256 + b - a) > SEQUENCE_WINDOW.
  * - a circular, b linear: a is newer iff within SEQUENCE_WINDOW steps of
@@ -49,12 +48,11 @@ static bool lollipop_is_newer(uint8_t new_seq, uint8_t old_seq)
 {
 	bool new_linear = new_seq >= LOLLIPOP_LINEAR_BASE;
 	bool old_linear = old_seq >= LOLLIPOP_LINEAR_BASE;
-	uint8_t diff;
+	uint8_t magnitude;
 
 	if (new_linear == old_linear) {
-		/* RFC 1982 serial arithmetic inside one region (mod 128). */
-		diff = (uint8_t)((uint8_t)(new_seq - old_seq) & 0x7Fu);
-		return diff != 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW;
+		magnitude = new_seq > old_seq ? new_seq - old_seq : old_seq - new_seq;
+		return magnitude <= LOLLIPOP_SEQUENCE_WINDOW && new_seq > old_seq;
 	}
 	if (new_linear) {
 		/* New past the 255->0 wrap by more than SEQUENCE_WINDOW. */
@@ -81,13 +79,12 @@ static int lollipop_cmp(uint8_t a, uint8_t b)
 /**
  * True if a is strictly newer than b.
  *
- * Matches rust/lichen-rpl/src/routing.rs seq_is_newer(); the mod-128
- * serial form subsumes the increment_lollipop restarts (0 after 127 and
- * 0 after 255 are newer; the reverse pairs are stale).
+ * DODAG callers preserve the locally observed adjacent circular restart
+ * (0 after 127) even though the raw pair is incomparable under rule 3.2.
  */
 static bool version_is_newer(uint8_t a, uint8_t b)
 {
-	return lollipop_cmp(a, b) == 1;
+	return (a == 0u && b == 127u) || lollipop_cmp(a, b) == 1;
 }
 
 #ifdef LICHEN_RPL_TEST
@@ -172,9 +169,31 @@ static struct lichen_rpl_parent *find_worst_parent(struct lichen_rpl_dodag *d)
 static bool is_admissible(const struct lichen_rpl_dodag *d,
 			  const struct lichen_rpl_parent *p)
 {
-	uint16_t cost = path_cost(p, d->min_hop_rank_increase);
+	uint16_t mhri = d->min_hop_rank_increase;
+	uint16_t cost;
 
-	if (d->lowest_rank == LICHEN_RPL_INFINITE_RANK) {
+	/* DAGRank(R) is undefined when MinHopRankIncrease is zero. */
+	if (mhri == 0) {
+		return false;
+	}
+
+	cost = path_cost(p, mhri);
+	/* RFC 6550 Sections 3.5.1 and 8.2.2.4: the root occupies
+	 * DAGRank 1 and Rank must strictly increase at every hop. */
+	if (p->rank < mhri || cost == LICHEN_RPL_INFINITE_RANK ||
+	    cost / mhri <= p->rank / mhri) {
+		return false;
+	}
+
+	/* A parent must be in a strictly lower DAGRank than this node. */
+	if (d->rank != LICHEN_RPL_INFINITE_RANK &&
+	    p->rank / mhri >= d->rank / mhri) {
+		return false;
+	}
+
+	/* RFC 6550 Section 6.7.6: zero disables the rank-increase bound. */
+	if (d->max_rank_increase == 0 ||
+	    d->lowest_rank == LICHEN_RPL_INFINITE_RANK) {
 		return true;
 	}
 
@@ -230,6 +249,9 @@ int lichen_rpl_dodag_init(struct lichen_rpl_dodag *d,
 	d->max_rank_increase = LICHEN_RPL_DEFAULT_MAX_RANK_INC;
 	d->parent_switch_threshold = LICHEN_RPL_DEFAULT_SWITCH_THRESH;
 	d->lowest_rank = LICHEN_RPL_INFINITE_RANK;
+	if (lichen_trickle_init_profile(&d->trickle) != 0) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
 	return 0;
 }
 
@@ -253,6 +275,9 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 	if (d == NULL) {
 		return;
 	}
+	if (d->role == LICHEN_RPL_ROOT) {
+		return;
+	}
 
 	enum lichen_rpl_role prev_role = d->role;
 	uint16_t mhri = d->min_hop_rank_increase;
@@ -264,11 +289,17 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
 		struct lichen_rpl_parent *p = &d->parents[i];
-		if (!p->valid || !is_admissible(d, p)) {
+		if (!p->valid) {
+			continue;
+		}
+		if (!is_admissible(d, p)) {
+			/* Do not retain a cached route which can no longer be used. */
+			p->valid = false;
 			continue;
 		}
 		uint16_t cost = path_cost(p, mhri);
-		if (best == NULL || cost < best_cost) {
+		if (best == NULL || cost < best_cost ||
+		    (cost == best_cost && memcmp(p->addr, best->addr, 16) < 0)) {
 			best = p;
 			best_cost = cost;
 		}
@@ -286,7 +317,7 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 
 	uint8_t *best_addr = best->addr;
 
-	/* Hysteresis: only switch if improvement exceeds threshold */
+	/* Hysteresis: switch once improvement reaches the threshold. */
 	uint8_t *chosen_addr = best_addr;
 	uint16_t chosen_cost = best_cost;
 
@@ -298,12 +329,14 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 		if (cur != NULL && is_admissible(d, cur)) {
 			uint16_t cur_cost = path_cost(cur, mhri);
 			/*
-			 * Hysteresis: only switch if improvement exceeds threshold.
-			 * Stay with current if: best_cost + threshold >= cur_cost
+			 * Hysteresis: switch once improvement reaches the threshold.
+			 * Stay with current if: best_cost + threshold > cur_cost.
+			 * Equality reaches the threshold and therefore switches (RFC
+			 * 6719 Section 3.2).
 			 * This form avoids underflow when cur_cost <= threshold.
 			 * Explicit casts prevent overflow if best_cost + threshold > 65535.
 			 */
-			if ((uint32_t)best_cost + (uint32_t)threshold >= (uint32_t)cur_cost) {
+			if ((uint32_t)best_cost + (uint32_t)threshold > (uint32_t)cur_cost) {
 				/* Not enough improvement - stay with current */
 				chosen_addr = cur->addr;
 				chosen_cost = cur_cost;
@@ -320,6 +353,17 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 		d->lowest_rank = chosen_cost;
 	}
 
+	/* A lower selected Rank can tighten both the DAGRank loop check and
+	 * MaxRankIncrease ceiling. Re-prune now so stale backups cannot survive
+	 * until a later DIO and become eligible after the preferred parent dies. */
+	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
+		struct lichen_rpl_parent *p = &d->parents[i];
+
+		if (p->valid && !is_admissible(d, p)) {
+			p->valid = false;
+		}
+	}
+
 notify:
 	/* Fire state change callback on role transition */
 	if (d->state_cb != NULL && prev_role != d->role) {
@@ -328,18 +372,18 @@ notify:
 	}
 }
 
-int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
-				  const struct lichen_rpl_dio *dio,
-				  const struct lichen_rpl_dodag_config *config,
-				  const uint8_t *neighbor_addr,
-				  uint16_t link_etx,
-				  uint8_t load_factor,
-				  uint32_t now,
-				  bool authenticated)
+static int process_dio_inplace(struct lichen_rpl_dodag *d,
+			       const struct lichen_rpl_dio *dio,
+			       const struct lichen_rpl_dodag_config *config,
+			       const uint8_t *neighbor_addr,
+			       uint16_t link_etx, uint8_t load_factor,
+			       uint32_t now, bool authenticated,
+			       bool version_authorized, bool *accepted)
 {
-	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
+	if (d == NULL || dio == NULL || neighbor_addr == NULL || accepted == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
+	*accepted = false;
 
 	if (d->role == LICHEN_RPL_ROOT) {
 		return 0;
@@ -361,14 +405,18 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	 */
 	bool foreign = (dio->rpl_instance_id != d->rpl_instance_id) ||
 		       !rpl_addr_eq(dio->dodag_id, d->dodag_id);
+	bool adopted = false;
 
 	if (foreign) {
-		if (lichen_rpl_dodag_is_joined(d)) {
+		return 0;
+	}
+	if (version_is_newer(dio->version, d->version)) {
+		if (!version_authorized) {
 			return 0;
 		}
 		adopt_version(d, dio);
-	} else if (version_is_newer(dio->version, d->version)) {
-		adopt_version(d, dio);
+		adopted = true;
+		*accepted = true;
 	} else if (dio->version != d->version) {
 		return 0;
 	}
@@ -388,8 +436,8 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 		d->gateway_centric = d->last_gateway_centric;
 	}
 
-	int ret = 0;
-	if (dio->dtsn != d->dtsn) {
+	int ret = adopted ? 1 : 0;
+	if (!adopted && lollipop_cmp(dio->dtsn, d->dtsn) == 1) {
 		d->dtsn = dio->dtsn;
 		ret = 1;
 	}
@@ -399,17 +447,38 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 		struct lichen_rpl_parent *p = find_parent(d, neighbor_addr);
 		if (p != NULL) {
 			p->valid = false;
+			*accepted = true;
 		}
 		lichen_rpl_dodag_select_parent(d);
 		return ret;
 	}
 
-	/*
-	 * SECURITY: RFC 6550 Section 8.2.2.5 - reject parents with equal or
-	 * higher rank to prevent routing loops. Only accept neighbors with
-	 * strictly lower rank (unless we're unjoined with infinite rank).
-	 */
+	/* RFC 6550 Section 8.2.2.5 raw-Rank fast path. Full DAGRank and
+	 * objective-function validation is performed below by is_admissible(). */
 	if (d->rank != LICHEN_RPL_INFINITE_RANK && dio->rank >= d->rank) {
+		struct lichen_rpl_parent *p = find_parent(d, neighbor_addr);
+		if (p != NULL) {
+			p->valid = false;
+			*accepted = true;
+			lichen_rpl_dodag_select_parent(d);
+		}
+		return ret;
+	}
+
+	struct lichen_rpl_parent candidate = {
+		.rank = dio->rank,
+		.link_etx = link_etx,
+		.load_factor = load_factor,
+		.valid = true,
+	};
+	memcpy(candidate.addr, neighbor_addr, sizeof(candidate.addr));
+	if (!is_admissible(d, &candidate)) {
+		struct lichen_rpl_parent *old = find_parent(d, neighbor_addr);
+		if (old != NULL) {
+			old->valid = false;
+			*accepted = true;
+			lichen_rpl_dodag_select_parent(d);
+		}
 		return ret;
 	}
 
@@ -428,11 +497,7 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				return ret;
 			}
 			uint16_t worst_cost = path_cost(worst, d->min_hop_rank_increase);
-			uint32_t new_increment = ((uint32_t)link_etx * d->min_hop_rank_increase) / 256;
-			uint32_t new_cost = (uint32_t)dio->rank + new_increment + ((uint32_t)load_factor * 8);
-			if (new_cost > 0xFFFF) {
-				new_cost = 0xFFFF;
-			}
+			uint16_t new_cost = path_cost(&candidate, d->min_hop_rank_increase);
 			if (new_cost >= worst_cost) {
 				return ret;
 			}
@@ -446,20 +511,116 @@ int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	p->load_factor = load_factor;
 	p->last_updated = now;
 	p->valid = true;
+	*accepted = true;
 
 	lichen_rpl_dodag_select_parent(d);
 	return ret;
 }
 
-#ifndef LICHEN_RPL_TEST
-int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *d,
-					const uint8_t *dio_bytes,
-					size_t dio_len,
-					const uint8_t *neighbor_addr,
-					uint16_t link_etx,
-					uint8_t load_factor,
-					uint32_t now,
-					bool authenticated)
+static bool config_valid(const struct lichen_rpl_dodag_config *config)
+{
+	return config->pcs <= 7U && config->min_hop_rank_increase != 0U &&
+	       config->min_hop_rank_increase <= UINT16_MAX / 2U &&
+	       config->lifetime_unit != 0U && config->ocp == 1U &&
+	       config->dio_int_min < 31U && config->dio_redundancy_const != 0U;
+}
+
+static bool routing_inconsistent(const struct lichen_rpl_dodag *old,
+				 const struct lichen_rpl_dodag *new_state)
+{
+	return old->version != new_state->version || old->role != new_state->role ||
+	       old->rank != new_state->rank ||
+	       old->has_preferred_parent != new_state->has_preferred_parent ||
+	       memcmp(old->preferred_parent, new_state->preferred_parent,
+		      sizeof(old->preferred_parent)) != 0 ||
+	       old->gateway_centric != new_state->gateway_centric ||
+	       old->min_hop_rank_increase != new_state->min_hop_rank_increase ||
+	       old->max_rank_increase != new_state->max_rank_increase;
+}
+
+int lichen_rpl_dodag_process_dio_authorized(
+	struct lichen_rpl_dodag *d, const struct lichen_rpl_dio *dio,
+	const struct lichen_rpl_dodag_config *config,
+	const uint8_t *neighbor_addr, uint16_t link_etx, uint8_t load_factor,
+	uint32_t now, bool authenticated, bool version_authorized)
+{
+	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	if (config != NULL && !config_valid(config)) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
+
+	struct lichen_rpl_dodag staged = *d;
+	lichen_rpl_dodag_state_cb callback = staged.state_cb;
+	void *callback_data = staged.state_cb_user_data;
+	enum lichen_rpl_role old_role = d->role;
+	bool config_changed = false;
+	bool accepted = false;
+	int ret;
+
+	/* Callbacks are effects and therefore run only after the staged commit. */
+	staged.state_cb = NULL;
+	staged.state_cb_user_data = NULL;
+	if (config != NULL && rpl_addr_eq(neighbor_addr, d->dodag_id)) {
+		config_changed = staged.min_hop_rank_increase !=
+				 config->min_hop_rank_increase ||
+			 staged.max_rank_increase != config->max_rank_increase ||
+			 staged.trickle.imin != (UINT32_C(1) << config->dio_int_min) ||
+			 staged.trickle.k != config->dio_redundancy_const;
+		staged.min_hop_rank_increase = config->min_hop_rank_increase;
+		staged.max_rank_increase = config->max_rank_increase;
+	}
+
+	ret = process_dio_inplace(&staged, dio, config, neighbor_addr, link_etx,
+				  load_factor, now, authenticated,
+				  version_authorized, &accepted);
+	if (ret < 0 || !accepted) {
+		return ret;
+	}
+
+	if (config_changed) {
+		uint32_t imin = UINT32_C(1) << config->dio_int_min;
+		if (lichen_trickle_init(&staged.trickle, imin,
+					config->dio_int_doublings,
+					config->dio_redundancy_const) != 0 ||
+		    !lichen_trickle_start(&staged.trickle, now, 0U)) {
+			return LICHEN_RPL_ERR_BAD_OPT;
+		}
+	} else if (routing_inconsistent(d, &staged)) {
+		if (!lichen_trickle_reset(&staged.trickle, now, 0U)) {
+			return LICHEN_RPL_ERR_INVALID;
+		}
+	} else {
+		lichen_trickle_heard_consistent(&staged.trickle);
+	}
+
+	staged.state_cb = callback;
+	staged.state_cb_user_data = callback_data;
+	*d = staged;
+	if (callback != NULL && old_role != d->role) {
+		bool joined = d->role == LICHEN_RPL_JOINED || d->role == LICHEN_RPL_ROOT;
+		callback(joined, callback_data);
+	}
+	return ret;
+}
+
+int lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
+				  const struct lichen_rpl_dio *dio,
+				  const struct lichen_rpl_dodag_config *config,
+				  const uint8_t *neighbor_addr,
+				  uint16_t link_etx, uint8_t load_factor,
+				  uint32_t now, bool authenticated)
+{
+	return lichen_rpl_dodag_process_dio_authorized(
+		d, dio, config, neighbor_addr, link_etx, load_factor, now,
+		authenticated, false);
+}
+
+int lichen_rpl_dodag_process_dio_bytes_authorized(
+	struct lichen_rpl_dodag *d, const uint8_t *dio_bytes, size_t dio_len,
+	const uint8_t *neighbor_addr, uint16_t link_etx, uint8_t load_factor,
+	uint32_t now, bool authenticated, bool version_authorized)
 {
 	if (d == NULL || dio_bytes == NULL || neighbor_addr == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
@@ -479,6 +640,8 @@ int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *d,
 	struct lichen_rpl_raw_opt opt;
 	struct lichen_rpl_dodag_config cfg;
 	const struct lichen_rpl_dodag_config *config = NULL;
+	struct lichen_rpl_schc_rule_version schc_version;
+	bool have_schc_version = false;
 	lichen_rpl_opt_iter_init(&it, opts, opts_len);
 
 	for (;;) {
@@ -487,22 +650,46 @@ int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *d,
 			break;
 		}
 		if (oret != LICHEN_RPL_OK) {
-			break;
+			return oret;
 		}
 		if (opt.opt_type == LICHEN_RPL_OPT_DODAG_CONFIG) {
 			ret = lichen_rpl_dodag_config_parse(&cfg, opt.data, opt.data_len);
-			if (ret == LICHEN_RPL_OK) {
-				config = &cfg;
+			if (ret != LICHEN_RPL_OK) {
+				return ret;
 			}
-			break;
+			config = &cfg;
+		} else if (opt.opt_type == LICHEN_RPL_OPT_SCHC_RULE_VERSION) {
+			if (have_schc_version ||
+			    lichen_rpl_schc_rule_version_parse(&schc_version, opt.data,
+							 opt.data_len) != LICHEN_RPL_OK ||
+			    schc_version.version != LICHEN_SCHC_RULE_SET_VERSION) {
+				return LICHEN_RPL_ERR_BAD_OPT;
+			}
+			have_schc_version = true;
 		}
 	}
+	if (!have_schc_version) {
+		return LICHEN_RPL_ERR_BAD_OPT;
+	}
 
-	return lichen_rpl_dodag_process_dio(d, &dio, config, neighbor_addr,
-					    link_etx, load_factor, now,
-					    authenticated);
+	return lichen_rpl_dodag_process_dio_authorized(
+		d, &dio, config, neighbor_addr, link_etx, load_factor, now,
+		authenticated, version_authorized);
 }
-#endif /* !LICHEN_RPL_TEST */
+
+int lichen_rpl_dodag_process_dio_bytes(struct lichen_rpl_dodag *d,
+					const uint8_t *dio_bytes,
+					size_t dio_len,
+					const uint8_t *neighbor_addr,
+					uint16_t link_etx,
+					uint8_t load_factor,
+					uint32_t now,
+					bool authenticated)
+{
+	return lichen_rpl_dodag_process_dio_bytes_authorized(
+		d, dio_bytes, dio_len, neighbor_addr, link_etx, load_factor, now,
+		authenticated, false);
+}
 
 void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
 				    const uint8_t *addr)
@@ -559,10 +746,7 @@ int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,
 			continue;
 		}
 
-		/* Unsigned subtraction handles full 32-bit wraparound correctly:
-		 * if now wrapped past last_updated, age is large (> max_age). */
-		uint32_t age = now - p->last_updated;
-		if (age > max_age) {
+		if (rpl_time_expired(now, p->last_updated, max_age)) {
 			p->valid = false;
 			expired++;
 		}

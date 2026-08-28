@@ -1,0 +1,255 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "tofu_edge_cases",
+  "description": "Cross-language TOFU state-machine edge cases covering contact, binding, malformed input, durable rollback, reboot, concurrency, and replay.",
+  "spec": "spec/06-security.md#trust-on-first-use-tofu",
+  "vectors": [
+    {
+      "name": "first_contact",
+      "category": "contact",
+      "description": "A valid first observation is pinned before it is accepted.",
+      "initial_state": "empty",
+      "operation": "observe",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "pin_and_accept",
+        "entry_count": 1,
+        "state_unchanged": false,
+        "durable_commits": 1
+      }
+    },
+    {
+      "name": "idempotent_repeat",
+      "category": "contact",
+      "description": "Repeating the pinned identity accepts it without adding a second entry.",
+      "initial_state": "alice_pinned",
+      "operation": "observe",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 2,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "accept_known",
+        "entry_count": 1,
+        "state_unchanged": true
+      }
+    },
+    {
+      "name": "derivation_mismatch",
+      "category": "identity_binding",
+      "description": "A valid key claiming another key's IID is rejected before pinning.",
+      "initial_state": "empty",
+      "operation": "observe",
+      "pubkey_hex": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "reject_identity_conflict",
+        "entry_count": 0,
+        "state_unchanged": true
+      }
+    },
+    {
+      "name": "pinned_key_collision",
+      "category": "identity_binding",
+      "description": "A different key cannot replace an existing IID pin.",
+      "initial_state": "alice_pinned",
+      "operation": "observe",
+      "pubkey_hex": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "reject_identity_conflict",
+        "entry_count": 1,
+        "state_unchanged": true
+      }
+    },
+    {
+      "name": "malformed_pubkey_short",
+      "category": "malformed",
+      "description": "A 31-byte public key is rejected without mutation.",
+      "initial_state": "empty",
+      "operation": "observe",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "reject_malformed",
+        "entry_count": 0,
+        "state_unchanged": true
+      }
+    },
+    {
+      "name": "malformed_pubkey_long",
+      "category": "malformed",
+      "description": "A 33-byte public key is rejected without mutation.",
+      "initial_state": "empty",
+      "operation": "observe",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba2900",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "reject_malformed",
+        "entry_count": 0,
+        "state_unchanged": true
+      }
+    },
+    {
+      "name": "malformed_iid_short",
+      "category": "malformed",
+      "description": "A 7-byte IID is rejected without mutation.",
+      "initial_state": "empty",
+      "operation": "observe",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "iid_hex": "fd6b265c858536",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "reject_malformed",
+        "entry_count": 0,
+        "state_unchanged": true
+      }
+    },
+    {
+      "name": "malformed_iid_long",
+      "category": "malformed",
+      "description": "A 9-byte IID is rejected without mutation.",
+      "initial_state": "empty",
+      "operation": "observe",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "iid_hex": "fd6b265c8585369b00",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "reject_malformed",
+        "entry_count": 0,
+        "state_unchanged": true
+      }
+    },
+    {
+      "name": "persistence_failure_rollback",
+      "category": "persistence",
+      "description": "A failed durable commit rolls the candidate pin back before returning.",
+      "initial_state": "empty",
+      "operation": "observe",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "fail",
+      "expected": {
+        "result": "reject_persistence",
+        "entry_count": 0,
+        "state_unchanged": true,
+        "durable_commits": 0
+      }
+    },
+    {
+      "name": "reboot_restore",
+      "category": "persistence",
+      "description": "A committed pin is authenticated and restored after reboot.",
+      "initial_state": "alice_pinned",
+      "operation": "reboot",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "restore",
+        "entry_count": 1,
+        "state_unchanged": true
+      },
+      "snapshot_generation": 2,
+      "minimum_generation": 2
+    },
+    {
+      "name": "rollback_snapshot_rejected",
+      "category": "persistence",
+      "description": "A snapshot below the independently stored generation floor is rejected.",
+      "initial_state": "alice_pinned",
+      "operation": "reboot",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "reject_rollback",
+        "entry_count": 0,
+        "state_unchanged": true
+      },
+      "snapshot_generation": 1,
+      "minimum_generation": 2
+    },
+    {
+      "name": "concurrent_first_contact",
+      "category": "concurrency",
+      "description": "Concurrent identical first observations converge to one pin and one durable commit.",
+      "initial_state": "empty",
+      "operation": "observe",
+      "pubkey_hex": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 1,
+      "concurrent_observers": 2,
+      "persistence": "ok",
+      "expected": {
+        "result": "single_pin",
+        "entry_count": 1,
+        "state_unchanged": false,
+        "durable_commits": 1
+      }
+    },
+    {
+      "name": "replayed_collision",
+      "category": "replay",
+      "description": "Repeated conflicting observations remain rejected and never overwrite the pin.",
+      "initial_state": "alice_pinned",
+      "operation": "observe",
+      "pubkey_hex": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "iid_hex": "fd6b265c8585369b",
+      "repetitions": 3,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "reject_identity_conflict",
+        "entry_count": 1,
+        "state_unchanged": true
+      }
+    },
+    {
+      "name": "independent_peer",
+      "category": "contact",
+      "description": "A second correctly bound identity is an independent pin, not a collision.",
+      "initial_state": "alice_pinned",
+      "operation": "observe",
+      "pubkey_hex": "7422b9887598068e32c4448a949adb290d0f4e35b9e01b0ee5f1a1e600fe2674",
+      "iid_hex": "888bcf64cfefa304",
+      "repetitions": 1,
+      "concurrent_observers": 1,
+      "persistence": "ok",
+      "expected": {
+        "result": "pin_and_accept",
+        "entry_count": 2,
+        "state_unchanged": false,
+        "durable_commits": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-wutk.8",
+  "title": "Spec compliance: SLIP transport vs spec/07-transport-app.md",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:23.783028Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:23.783028Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wutk.8",
+      "depends_on_id": "project-LICHEN-wutk",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:32.756429Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

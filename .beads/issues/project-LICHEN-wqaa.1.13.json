@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-wqaa.1.13",
+  "title": "Document open source commitment and licensing (GPL-3.0/CC-BY-4.0)",
+  "description": "Articulate open source strategy: GPL-3.0 for code, CC-BY-4.0 for specs/docs. Describe public test vectors, reproducible builds, community contribution model. Emphasize alignment with NLnet open source requirements and NGI0 values.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:46.605989Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:46.605989Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.1.13",
+      "depends_on_id": "project-LICHEN-wqaa.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:47.51337Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

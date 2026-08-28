@@ -18,17 +18,17 @@
     },
     {
       "name": "yggdrasil_primary_02xx",
-      "description": "02xx Yggdrasil address: NOT local mesh, forward upstream via Yggdrasil tunnel.",
+      "description": "02xx Yggdrasil address with local route: mesh-local routing.",
       "dst_addr": "0200000000000000e1b0c44298fc1c14",
-      "is_local_mesh": false,
-      "classify": "external"
+      "is_local_mesh": true,
+      "classify": "mesh_local"
     },
     {
       "name": "yggdrasil_02xx_other",
-      "description": "02xx address with different IID: external, needs upstream.",
+      "description": "02xx address with local route: mesh-local routing.",
       "dst_addr": "02d4a4a4a4a4a4a40000000000000002",
-      "is_local_mesh": false,
-      "classify": "external"
+      "is_local_mesh": true,
+      "classify": "mesh_local"
     },
     {
       "name": "nat64_prefix",
@@ -53,10 +53,10 @@
     },
     {
       "name": "yggdrasil_unknown_node",
-      "description": "02xx Yggdrasil address of unknown node: forward upstream via Yggdrasil tunnel.",
+      "description": "02xx Yggdrasil address with local route: mesh-local routing.",
       "dst_addr": "02001122334455660011223344550099",
-      "is_local_mesh": false,
-      "classify": "external"
+      "is_local_mesh": true,
+      "classify": "mesh_local"
     },
     {
       "name": "link_local_second_octet_bf",

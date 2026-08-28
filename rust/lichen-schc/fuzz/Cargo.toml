@@ -35,3 +35,6 @@ path = "fuzz_targets/fuzz_fragment.rs"
 test = false
 doc = false
 bench = false
+
+# Keep cargo-fuzz's nightly/sanitizer build isolated from the parent workspace.
+[workspace]

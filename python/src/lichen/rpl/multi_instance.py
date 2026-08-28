@@ -47,7 +47,7 @@ from enum import Enum
 from ipaddress import IPv6Address
 from typing import Any, TypedDict, cast
 
-from lichen.ipv6 import AddrError, to_ipv6
+from lichen.ipv6 import AddrError, routing_key
 from lichen.rpl.dao_types import RplTarget, TransitInformation
 from lichen.rpl.dodag import ROOT_RANK, DodagState
 from lichen.rpl.messages import DAO, DIO, RplOptionType
@@ -112,9 +112,7 @@ class GatewayInfo:
     routes_learned: int = 0
 
     def __post_init__(self) -> None:
-        # Ensure iid is IPv6Address
-        if isinstance(self.iid, str):
-            object.__setattr__(self, "iid", to_ipv6(self.iid))
+        object.__setattr__(self, "iid", routing_key(self.iid))
 
 
 class DaoBackboneMessage(TypedDict):
@@ -181,7 +179,7 @@ class MultiRootCoordinator:
 
         Returns True if the peer was removed, False if not found.
         """
-        iid = to_ipv6(iid)
+        iid = routing_key(iid)
         with self._lock:
             if iid in self._peers:
                 del self._peers[iid]
@@ -195,7 +193,7 @@ class MultiRootCoordinator:
 
     def get_peer(self, iid: IPv6Address | str) -> GatewayInfo | None:
         """Get a specific peer gateway by IID."""
-        iid = to_ipv6(iid)
+        iid = routing_key(iid)
         with self._lock:
             return self._peers.get(iid)
 
@@ -389,7 +387,7 @@ class DaoBackboneBridge:
 
     def __post_init__(self) -> None:
         if self.local_gateway_iid is not None:
-            self.local_gateway_iid = to_ipv6(self.local_gateway_iid)
+            self.local_gateway_iid = routing_key(self.local_gateway_iid)
 
     def dao_to_backbone_message(self, dao: DAO, targets: list[RplTarget]) -> DaoBackboneMessage:
         """Convert a DAO and its targets to a backbone propagation message.
@@ -530,11 +528,11 @@ class DaoBackboneBridge:
 
         try:
             for addr in address_strings:
-                to_ipv6(addr)
-            origin = to_ipv6(origin_str)
+                routing_key(addr)
+            origin = routing_key(origin_str)
         except AddrError:
             return malformed
-        sender = to_ipv6(authenticated_sender)
+        sender = routing_key(authenticated_sender)
 
         # GCP-5 MUST: all cooperating gateways use the same RPLInstanceID
         if instance_id != self.coordinator.rpl_instance_id:
@@ -574,12 +572,12 @@ class DaoBackboneBridge:
                 path_sequence=cast(int, t["path_sequence"]),
                 path_lifetime=cast(int, t["path_lifetime"]),
                 path_control=cast(int, t["path_control"]),
-                parent_address=to_ipv6(parent) if parent else None,
+                parent_address=routing_key(parent) if parent else None,
             )
             routes.append(
                 (
                     RplTarget(
-                        target=to_ipv6(str(target_dict["target"])),
+                        target=routing_key(str(target_dict["target"])),
                         prefix_length=int(target_dict["prefix_length"]),
                     ),
                     transit,
@@ -623,8 +621,8 @@ def iid_compare(a: IPv6Address | str, b: IPv6Address | str) -> int:
     link-locals this reduces to IID ordering.
     Returns: -1 if a < b, 0 if a == b, 1 if a > b.
     """
-    a = to_ipv6(a)
-    b = to_ipv6(b)
+    a = routing_key(a)
+    b = routing_key(b)
     if a.packed < b.packed:
         return -1
     elif a.packed > b.packed:
@@ -640,8 +638,8 @@ def resolve_slot_conflict(
     Per GCP-6.3: If two gateways claim overlapping slot: lowest IID MUST win.
     Returns the winning gateway's IID.
     """
-    a = to_ipv6(claimant_a)
-    b = to_ipv6(claimant_b)
+    a = routing_key(claimant_a)
+    b = routing_key(claimant_b)
     if a.packed <= b.packed:
         return a
     return b

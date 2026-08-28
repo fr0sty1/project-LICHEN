@@ -531,7 +531,10 @@ def test_clear_receiver_none_does_not_clear() -> None:
     """Verify clear_receiver(None) does not clear a non-None receiver."""
     channel = SchcChannel(_Capture(), SRV)
     received: list[tuple[bytes, str]] = []
-    receiver = lambda data, source: received.append((data, source))
+
+    def receiver(data: bytes, source: str) -> None:
+        received.append((data, source))
+
     channel.set_receiver(receiver)
 
     # clear_receiver(None) should be a no-op when receiver is set
@@ -560,8 +563,11 @@ def test_set_receiver_after_clear_receiver() -> None:
     received_first: list[tuple[bytes, str]] = []
     received_second: list[tuple[bytes, str]] = []
 
-    first_receiver = lambda data, source: received_first.append((data, source))
-    second_receiver = lambda data, source: received_second.append((data, source))
+    def first_receiver(data: bytes, source: str) -> None:
+        received_first.append((data, source))
+
+    def second_receiver(data: bytes, source: str) -> None:
+        received_second.append((data, source))
 
     # Set and clear first receiver
     channel.set_receiver(first_receiver)

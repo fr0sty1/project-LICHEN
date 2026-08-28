@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.5.13",
+  "title": "Add Kconfig for backend selection and multi-backend support",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:51.698187Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:51.698187Z",
+  "labels": [
+    "core",
+    "gateway",
+    "config",
+    "abstraction",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.5.13",
+      "depends_on_id": "project-LICHEN-p2y5.5",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:55.879842Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

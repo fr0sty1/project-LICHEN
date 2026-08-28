@@ -80,10 +80,11 @@ based on the peer's EUI-64 and current network epoch.
 ```
 Procedure SelectChannel(EUI64, Epoch, Density, NChannels):
     1. IF Density > 8 THEN RETURN 0        // CH0 fallback under congestion
-    2. Data = CONCAT(EUI64, Epoch_LE)      // EUI64 big-endian, Epoch 4-byte LE
-    3. Hash = FNV1A32(Data)                // basis 0x811c9dc5
-    4. N = MAX(NChannels, 3)               // minimum 3 to spread traffic
-    5. RETURN 1 + (Hash MOD N)             // channels 1..N (CH0 reserved)
+    2. IF NChannels <= 1 THEN RETURN 0      // no configured data channel
+    3. Data = CONCAT(EUI64, Epoch_LE)       // EUI64 big-endian, Epoch 4-byte LE
+    4. Hash = FNV1A32(Data)                 // basis 0x811c9dc5
+    5. N = NChannels - 1                   // exclude reserved CH0
+    6. RETURN 1 + (Hash MOD N)             // channels 1..NChannels-1
 ```
 
 **FNV-1a32 Hash Function:**
@@ -116,17 +117,17 @@ Step 3: FNV-1a32(Data)
     H = 0x811c9dc5
     After processing all bytes: H = 926423932 (0x373854FC)
 
-Step 4: N = MAX(8, 3) = 8
+Step 4: N = 8 - 1 = 7
 
-Step 5: Channel = 1 + (926423932 MOD 8) = 1 + 4 = 5
+Step 5: Channel = 1 + (926423932 MOD 7) = 1 + 1 = 2
 
-Result: Channel 5
+Result: Channel 2
 ```
 
-**Note:** The test vector in `ccp16.json` shows `channel: 2` for this input.
-The discrepancy arises because the implementation uses `N = NChannels - 1` to
-exclude CH0 from the modulus, yielding `1 + (926423932 % 7) = 2`. Implementations
-MUST match `test/vectors/ccp16.json` exactly.
+`NChannels` counts every channel-plan entry, including CH0. Subtracting one
+before the modulus is therefore required to keep every result inside the
+configured plan while excluding CH0. Implementations MUST match
+`test/vectors/ccp16.json` exactly.
 
 ### 3.3. Density Fallback
 
@@ -156,10 +157,11 @@ and shared seed, causing the entire network to hop together in lockstep.
 
 ```
 Procedure SynchronizedHopChannel(SFN, Seed, NChannels):
-    1. Data = CONCAT(Seed_LE, SFN_LE)      // Both 4-byte little-endian
-    2. Hash = FNV1A32(Data)
-    3. N = MAX(NChannels, 3)
-    4. RETURN 1 + (Hash MOD N)
+    1. IF NChannels <= 1 THEN RETURN 0     // no configured data channel
+    2. Data = CONCAT(Seed_LE, SFN_LE)      // Both 4-byte little-endian
+    3. Hash = FNV1A32(Data)
+    4. N = NChannels - 1                  // exclude reserved CH0
+    5. RETURN 1 + (Hash MOD N)
 ```
 
 ### 4.2. Superframe Duration and LoRa Timing

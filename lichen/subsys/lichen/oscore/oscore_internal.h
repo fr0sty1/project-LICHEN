@@ -32,6 +32,7 @@ struct oscore_ctx {
 	uint8_t common_iv[OSCORE_NONCE_LEN];    /**< Common IV */
 	uint8_t id_context[OSCORE_ID_CONTEXT_MAX_LEN]; /**< ID Context (optional) */
 	uint8_t id_context_len;                 /**< ID Context length */
+	bool has_id_context;                    /**< ID Context is present (empty differs from absent) */
 
 	/* Sender context */
 	uint8_t sender_id[OSCORE_ID_MAX_LEN];   /**< Sender ID */
@@ -45,6 +46,15 @@ struct oscore_ctx {
 	uint8_t recipient_key[OSCORE_KEY_LEN];   /**< Recipient Key */
 	uint64_t recipient_seq;                  /**< Last received seq (40-bit max per RFC 8613) */
 	uint32_t replay_window;                  /**< Replay window bitmap */
+	uint64_t response_piv_seq;               /**< Last fresh response PIV */
+	uint32_t response_piv_window;            /**< Fresh response PIV replay bitmap */
+	uint64_t received_response_seq;          /**< Last request PIV with accepted response */
+	uint32_t received_response_window;       /**< No-PIV response correlation bitmap */
+	uint64_t sent_response_seq;              /**< Last request PIV answered without fresh PIV */
+	uint32_t sent_response_window;           /**< Sent no-PIV response correlation bitmap */
+	bool response_piv_window_initialized;    /**< Fresh response replay state initialized */
+	bool received_response_window_initialized; /**< No-PIV correlation state initialized */
+	bool sent_response_window_initialized;   /**< Sent no-PIV correlation state initialized */
 
 	/* Peer identity (optional EUI-64 for per-peer lookup) */
 	uint8_t peer_eui64[OSCORE_EUI64_LEN];   /**< Peer's EUI-64 address */
@@ -89,6 +99,7 @@ int ctx_get_index(const struct oscore_ctx *ctx);
 /* Internal function declarations - oscore_cbor.c */
 int build_info_cbor(const uint8_t *id, size_t id_len,
 		    const uint8_t *id_context, size_t id_context_len,
+		    bool has_id_context,
 		    const char *type, size_t out_len,
 		    uint8_t *buf, size_t buf_len);
 int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
@@ -101,6 +112,13 @@ int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_idx, uin
 void replay_clear_pending_locked(int ctx_idx, uint64_t seq);
 void replay_clear_pending_context_locked(int ctx_idx);
 bool replay_update_window(struct oscore_ctx *ctx, uint64_t seq);
+
+#if defined(CONFIG_LICHEN_OSCORE_SETTINGS)
+bool oscore_settings_ready(void);
+int oscore_settings_restore_context_locked(struct oscore_ctx *ctx, int ctx_idx);
+int oscore_settings_commit_context_locked(const struct oscore_ctx *ctx,
+					  bool sender_seq_valid);
+#endif
 
 /* Internal function declarations - oscore_nonce.c */
 void compute_nonce(const uint8_t *sender_id, size_t sender_id_len,

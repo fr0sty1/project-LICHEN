@@ -889,10 +889,20 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	int ret;
 
 	/*
-	 * Trust Zephyr's net_l2 contract: iface and pkt are guaranteed non-NULL.
-	 * The IPv6 stack calls l2->send() only with valid parameters.
+	 * Trust Zephyr's net_l2 contract for iface: the IPv6 stack calls
+	 * l2->send() only with a valid interface.
 	 */
 	ARG_UNUSED(iface);
+
+	/*
+	 * Defense-in-depth (project-LICHEN-q3iy.29): the net_l2 contract
+	 * guarantees a non-NULL pkt, but net_pkt_get_len() below would
+	 * dereference NULL on a contract violation. Validate before first use.
+	 */
+	if (pkt == NULL) {
+		LOG_ERR("lichen_l2: TX rejected (pkt is NULL)");
+		return -EINVAL;
+	}
 
 	/* SECURITY: Reject TX if interface initialization failed (project-LICHEN-1ojj.2) */
 	if (atomic_get(&iface_init_failed)) {

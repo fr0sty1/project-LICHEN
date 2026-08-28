@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-u8wx.6",
+  "title": "Extract GPIO pin mapping from schematic or vendor docs",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:48.576674Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:48.576674Z",
+  "labels": [
+    "zephyr",
+    "c",
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-u8wx.6",
+      "depends_on_id": "project-LICHEN-u8wx",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:51.439629Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

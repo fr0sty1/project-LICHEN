@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-b7ce",
+  "title": "[review] duplicate LICHEN_LINK_COORDINATION Kconfig block in subsys/lichen/link/Kconfig",
+  "description": "P3 merge artifact. lichen/subsys/lichen/link/Kconfig defines config LICHEN_LINK_COORDINATION twice (duplicate block); Kconfig last-wins so behavior today is fine but the duplicate will silently mask future edits to the first copy. Delete one block, verify west build -b qemu_x86 tests/coap_keys still configures identically.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:33:17.418446Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:33:17.418446Z",
+  "labels": [
+    "local-ok"
+  ]
+}

@@ -147,11 +147,22 @@ int lichen_lora_l2_init(void)
      */
     k_mutex_lock(&lora_mutex, K_FOREVER);
 
-    /* Idempotent: if already initialized, return success. Safe to check here
-     * because we hold the mutex, so init is either complete or not started. */
-    if (lora_get_state() != LORA_UNINIT) {
+    enum lora_state state = lora_get_state();
+    if (state == LORA_STOPPED || state == LORA_RUNNING) {
         k_mutex_unlock(&lora_mutex);
         return 0;
+    }
+    if (state == LORA_DEINITING) {
+        k_mutex_unlock(&lora_mutex);
+        return -EBUSY;
+    }
+    if (state == LORA_ABORTED || state == LORA_DESTROY_FAILED) {
+        k_mutex_unlock(&lora_mutex);
+        return -ECANCELED;
+    }
+    if (state != LORA_UNINIT) {
+        k_mutex_unlock(&lora_mutex);
+        return -EINVAL;
     }
 
     ret = lichen_hal_lora_device_get(&lora_data.lora_dev);
@@ -162,6 +173,7 @@ int lichen_lora_l2_init(void)
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA);
+    lichen_csma_init(&lora_data.csma);
     if (lora_data.cca_enabled) {
         LOG_DBG("lora_l2: CCA enabled, threshold %d dBm, timeout %d ms",
                 CONFIG_LICHEN_LORA_CCA_THRESHOLD_DBM,
@@ -216,6 +228,9 @@ int lichen_lora_l2_start(void)
     case LORA_ABORTED:
         LOG_ERR("lora_l2: in ABORTED state, call deinit() then init()");
         return -ECANCELED;
+    case LORA_DESTROY_FAILED:
+        LOG_ERR("lora_l2: queue destroy incomplete, retry deinit()");
+        return -ECANCELED;
     case LORA_DEINITING:
         LOG_ERR("lora_l2: deinit in progress, cannot start");
         return -EBUSY;
@@ -223,6 +238,7 @@ int lichen_lora_l2_start(void)
         return 0;  /* Already running */
     case LORA_STOPPED:
         break;  /* Proceed */
+    case LORA_STATE_COUNT:
     default:
         LOG_ERR("lora_l2: unknown state (%d), forcing ABORTED", state);
         atomic_set(&current_state, LORA_ABORTED);
@@ -355,6 +371,7 @@ int lichen_lora_l2_stop(void)
      */
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
+    lichen_csma_cancel(&lora_data.csma);
 
     /* Transition to STOPPED before releasing mutex - thread will see this */
     if (lora_transition(LORA_STOPPED) != 0) {
@@ -421,6 +438,11 @@ int lichen_lora_l2_stop(void)
 
 int lichen_lora_l2_deinit(void)
 {
+    /*
+     * Declared before the DESTROY_FAILED goto so destroy_queue never reads
+     * an indeterminate flag (the retry path jumps past its assignment).
+     */
+    bool lora_mutex_held = false;
     enum lora_state state = lora_get_state();
 
     /*
@@ -444,6 +466,12 @@ int lichen_lora_l2_deinit(void)
             LOG_ERR("lora_l2: deinit race, state changed");
             return -EBUSY;
         }
+    } else if (state == LORA_DESTROY_FAILED) {
+        if (lora_transition_from(LORA_DESTROY_FAILED, LORA_DEINITING) != 0) {
+            LOG_ERR("lora_l2: destroy retry race, state changed");
+            return -EBUSY;
+        }
+        goto destroy_queue;
     } else if (state == LORA_DEINITING) {
         LOG_ERR("lora_l2: deinit already in progress");
         return -EBUSY;
@@ -456,6 +484,17 @@ int lichen_lora_l2_deinit(void)
         LOG_ERR("lora_l2: unknown state (%d), forcing ABORTED", state);
         atomic_set(&current_state, LORA_ABORTED);
         return -EINVAL;
+    }
+
+    /*
+     * Serialize cleanup with public accessors (EUI-64 copies, queue stats).
+     * On the STOPPED path lora_mutex is in a clean state (stop() released
+     * it and no RX thread was aborted), so it is held for the remainder of
+     * teardown instead of being reinitialized mid-teardown.
+     */
+    if (state == LORA_STOPPED) {
+        k_mutex_lock(&lora_mutex, K_FOREVER);
+        lora_mutex_held = true;
     }
 
     /*
@@ -497,9 +536,11 @@ int lichen_lora_l2_deinit(void)
     }
 
     /*
-     * Note: We do NOT acquire lora_mutex here. If we got into the aborted
-     * state, the mutex may be left locked by the aborted thread. Attempting
-     * to lock it would deadlock. Instead, we reinitialize it.
+     * ABORTED recovery only: we do NOT acquire lora_mutex here. If we got
+     * into the aborted state, the mutex may be left locked by the aborted
+     * thread. Attempting to lock it would deadlock. Instead, we reinitialize
+     * it. On the STOPPED path the mutex is already held (acquired above), so
+     * only tx_buf_mutex is reinitialized.
      *
      * This is best-effort recovery. In the rare case where the thread is in
      * an undefined state that the join above didn't resolve, reinitializing
@@ -539,35 +580,42 @@ int lichen_lora_l2_deinit(void)
      * (it only initializes fields and the wait queue). The return value check
      * is defensive against future Zephyr API changes or userspace builds.
      */
+    int mutex_ret = 0;
+    int mutex_ret2;
 
-    /* Best-effort check: trylock to detect if mutex is held. If trylock
-     * succeeds, we own it and can safely reinit after unlock. If it fails,
-     * we log a warning but proceed with reinit anyway (documented UB). */
-    int trylock_ret = k_mutex_lock(&lora_mutex, K_NO_WAIT);
-    if (trylock_ret == 0) {
-        /* We acquired it - mutex was free. Unlock before reinit. */
-        k_mutex_unlock(&lora_mutex);
-    } else {
-        /* Trylock failed - mutex is held by another context (likely dead thread).
-         * SECURITY: Proceeding with k_mutex_init() is UNDEFINED BEHAVIOR.
-         * Log at ERR level since this indicates the system is in a degraded
-         * state where full reboot is the only guaranteed recovery. */
-        LOG_ERR("lora_l2: lora_mutex held during deinit (trylock=%d), "
-                "reinit is UB - consider k_sys_reboot for guaranteed recovery",
-                trylock_ret);
-    }
-    int mutex_ret = k_mutex_init(&lora_mutex);
-    if (mutex_ret != 0) {
-        LOG_ERR("lora_l2: k_mutex_init failed (%d)", mutex_ret);
+    if (state == LORA_ABORTED) {
+        /* Best-effort check: trylock to detect if mutex is held. If trylock
+         * succeeds, we own it and can safely reinit after unlock. If it fails,
+         * we log a warning but proceed with reinit anyway (documented UB). */
+        int trylock_ret = k_mutex_lock(&lora_mutex, K_NO_WAIT);
+        if (trylock_ret == 0) {
+            /* We acquired it - mutex was free. Unlock before reinit. */
+            k_mutex_unlock(&lora_mutex);
+        } else {
+            /* Trylock failed - mutex is held by another context (likely dead thread).
+             * SECURITY: Proceeding with k_mutex_init() is UNDEFINED BEHAVIOR.
+             * Log at ERR level since this indicates the system is in a degraded
+             * state where full reboot is the only guaranteed recovery. */
+            LOG_ERR("lora_l2: lora_mutex held during deinit (trylock=%d), "
+                    "reinit is UB - consider k_sys_reboot for guaranteed recovery",
+                    trylock_ret);
+        }
+        mutex_ret = k_mutex_init(&lora_mutex);
+        if (mutex_ret != 0) {
+            LOG_ERR("lora_l2: k_mutex_init failed (%d)", mutex_ret);
+        }
     }
 
-    int mutex_ret2 = k_mutex_init(&tx_buf_mutex);
+    mutex_ret2 = k_mutex_init(&tx_buf_mutex);
     if (mutex_ret2 != 0) {
         LOG_ERR("lora_l2: k_mutex_init(tx_buf_mutex) failed (%d)", mutex_ret2);
     }
 
     if (mutex_ret != 0 || mutex_ret2 != 0) {
         LOG_ERR("lora_l2: mutex reinit failure, module is in unstable state");
+        if (lora_mutex_held) {
+            k_mutex_unlock(&lora_mutex);
+        }
         atomic_set(&current_state, LORA_ABORTED);
         return -EIO;
     }
@@ -579,6 +627,7 @@ int lichen_lora_l2_deinit(void)
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = false;
+    lichen_csma_init(&lora_data.csma);
     lora_data.rx_channel = 0;
 
     /*
@@ -599,14 +648,25 @@ int lichen_lora_l2_deinit(void)
     lichen_l2_reinit_after_abort();
 #endif
 
+destroy_queue:
     /*
-     * Destroy TX queue (audits and propagates pthread_mutex_destroy failures;
-     * Zephyr no-op). Done before final state transition.
+     * Destroy TX queue only after the RX worker was stopped and joined above;
+     * tx_queue_destroy() requires exclusive ownership. Holding lora_mutex
+     * across destruction serializes with the public accessors (EUI-64,
+     * queue stats), which cannot run underneath the teardown. Done before
+     * the final state transition and propagated so a live queue cannot be
+     * reinitialized.
      */
+    if (!lora_mutex_held) {
+        k_mutex_lock(&lora_mutex, K_FOREVER);
+    }
     int qret = tx_queue_destroy(&tx_queue);
     if (qret < 0) {
-        LOG_ERR("lora_l2: tx_queue_destroy failed (%d) - module may be unstable",
+        LOG_ERR("lora_l2: tx_queue_destroy failed (%d) - reinit blocked",
                 qret);
+        atomic_set(&current_state, LORA_DESTROY_FAILED);
+        k_mutex_unlock(&lora_mutex);
+        return qret;
     }
 
     /*
@@ -619,9 +679,11 @@ int lichen_lora_l2_deinit(void)
         /* Should be impossible - we hold DEINITING exclusively */
         LOG_ERR("lora_l2: deinit state corrupted, forcing ABORTED");
         atomic_set(&current_state, LORA_ABORTED);
+        k_mutex_unlock(&lora_mutex);
         return -EIO;
     }
 
+    k_mutex_unlock(&lora_mutex);
     LOG_INF("lora_l2: deinitialized");
     return 0;
 }
@@ -638,4 +700,9 @@ bool lichen_lora_l2_is_running(void)
 bool lichen_lora_l2_needs_reinit(void)
 {
     return lora_get_state() == LORA_ABORTED;
+}
+
+bool lichen_lora_l2_needs_destroy_retry(void)
+{
+    return lora_get_state() == LORA_DESTROY_FAILED;
 }

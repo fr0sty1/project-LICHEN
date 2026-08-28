@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RFC 7959 CoAP Block option vectors",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "format_version", "name", "description", "spec", "vectors"],
+  "properties": {
+    "$schema": {"const": "./coap_block.schema.json"},
+    "format_version": {"const": 2},
+    "name": {"const": "coap_block"},
+    "description": {"type": "string", "minLength": 1},
+    "spec": {"type": "string", "minLength": 1},
+    "vectors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "expected"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "description": {"type": "string"},
+          "kind": {"enum": ["option_value", "coap_message"]},
+          "expected": {"enum": ["accept", "reject"]},
+          "reason": {"type": "string"},
+          "option": {"enum": ["Block1", "Block2"]},
+          "num": {"type": "integer", "minimum": 0, "maximum": 1048575},
+          "more": {"type": "boolean"},
+          "szx": {"type": "integer", "minimum": 0, "maximum": 7},
+          "size": {"type": "integer", "minimum": 16, "maximum": 1024},
+          "encoded_hex": {"type": "string", "pattern": "^([0-9a-f]{2})*$"},
+          "encoded": {"type": "string", "pattern": "^[0-9a-f]+$"},
+          "mtype": {"type": "integer", "minimum": 0, "maximum": 3},
+          "code": {"type": "integer", "minimum": 0, "maximum": 255},
+          "mid": {"type": "integer", "minimum": 0, "maximum": 65535},
+          "token": {"type": "string", "pattern": "^([0-9a-f]{2})*$"},
+          "uri_path": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "payload_hex": {"type": "string", "pattern": "^([0-9a-f]{2})*$"},
+          "block1": {"$ref": "#/definitions/block_fields"},
+          "block2": {"$ref": "#/definitions/block_fields"}
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"kind": {"const": "option_value"}}, "required": ["kind"]},
+            "then": {"required": ["encoded_hex", "szx"]}
+          },
+          {
+            "if": {"properties": {"kind": {"const": "coap_message"}}, "required": ["kind"]},
+            "then": {"required": ["encoded", "mtype", "code", "mid"]}
+          }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "block_fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["num", "more", "szx"],
+      "properties": {
+        "num": {"type": "integer", "minimum": 0, "maximum": 1048575},
+        "more": {"type": "boolean"},
+        "szx": {"type": "integer", "minimum": 0, "maximum": 6}
+      }
+    }
+  }
+}

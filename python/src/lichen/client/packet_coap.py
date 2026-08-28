@@ -17,6 +17,7 @@ from ipaddress import IPv6Address
 from typing import Any, Self, TypeVar
 from urllib.parse import unquote
 
+from lichen.client.addressing import STATIC_CLIENT_ADDRESS, STATIC_NODE_ADDRESS
 from lichen.client.ble import BlePacketTransport, BleSecurityError, BleSecurityLevel
 from lichen.client.ip_coap import AiocoapResourceTransport, CoapTransportError, IpCoapConfig
 from lichen.client.lci import LciSecurityError, ResourceSubscription, ResourceTransport
@@ -55,8 +56,8 @@ _T = TypeVar("_T")
 class PacketCoapConfig:
     """Connection settings for packet-backed local CoAP LCI."""
 
-    local_host: str = "fe80::2"
-    peer_host: str = "fe80::1"
+    local_host: str = str(STATIC_CLIENT_ADDRESS)
+    peer_host: str = str(STATIC_NODE_ADDRESS)
     timeout_s: float = 10.0
     src_port: int = DEFAULT_COAP_PORT
     dst_port: int = DEFAULT_COAP_PORT
@@ -326,7 +327,7 @@ class PacketCoapResourceTransport(ResourceTransport):
         # SECURITY: Reject null bytes to prevent truncation-based bypass in C servers.
         # We reject rather than strip because the C server may truncate at null,
         # leading to inconsistent paths between client security check and server routing.
-        if '\x00' in normalized:
+        if "\x00" in normalized:
             raise ValueError("path contains null byte")
         if not normalized:
             raise ValueError("path must not be empty after sanitization")
@@ -456,9 +457,7 @@ class PacketCoapResourceSubscription(ResourceSubscription):
     async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(
-        self, exc_type: object, exc_val: object, exc_tb: object
-    ) -> None:
+    async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         await self.close()
 
     async def _results(self) -> AsyncIterator[CoapResult]:
@@ -724,6 +723,7 @@ class PacketDatagramChannel(DatagramChannel):
                     ):
                         error = results[0]
                     else:
+
                         def _safe_exc_key(exc: BaseException) -> tuple[str, str]:
                             try:
                                 exc_str = str(exc)
@@ -733,6 +733,7 @@ class PacketDatagramChannel(DatagramChannel):
                                 f"{type(exc).__module__}.{type(exc).__qualname__}",
                                 exc_str,
                             )
+
                         error = min(failures, key=_safe_exc_key)
         finally:
             try:

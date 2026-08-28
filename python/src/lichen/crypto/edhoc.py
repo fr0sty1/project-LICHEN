@@ -29,7 +29,9 @@ from nacl.bindings import (
     crypto_sign_ed25519_pk_to_curve25519,
     crypto_sign_ed25519_sk_to_curve25519,
 )
-from nacl.signing import SigningKey, VerifyKey
+from nacl.signing import SigningKey
+
+from . import schnorr48
 
 if TYPE_CHECKING:
     from .identity import Identity
@@ -48,9 +50,12 @@ CCM_TAG_LEN = 8
 
 # EDHOC constants
 EDHOC_HASH_LEN = 32  # SHA-256 output
-EDHOC_MAC_LEN = 8  # MAC length for Suite 0
+# Method 0 authenticates both peers with signatures, so RFC 9528 Sections
+# 5.3.2 and 5.4.2 require MAC_2/MAC_3 to use hash_length, not suite-0's
+# compact static-DH MAC length.
+EDHOC_MAC_LEN = EDHOC_HASH_LEN
 X25519_KEY_LEN = 32
-ED25519_SIG_LEN = 64
+SCHNORR48_SIG_LEN = 48  # 16-byte challenge + 32-byte response
 
 # EDHOC-KDF info labels (RFC 9528 Section 4.1.2, Figure 6)
 LABEL_KEYSTREAM_2 = 0
@@ -276,17 +281,16 @@ def _validate_bytes(value: object, name: str, length: int | None = None) -> byte
 def _encode_cose_key(pubkey: bytes) -> bytes:
     """Encode Ed25519 public key as COSE_Key (RFC 9053).
 
-    Matches Rust encode_credential() output:
-    {1: 1, -1: 1, -2: bstr(pubkey), -3: null}
+    Matches Rust encode_credential() output and RFC 9053 Table 2:
+    {1: 1, -1: 6, -2: bstr(pubkey)}.
     """
     return (
-        b"\xa4"           # map(4)
+        b"\xa3"           # map(3)
         b"\x01\x01"       # 1 (kty): 1 (OKP)
-        b"\x20\x01"       # -1 (crv): 1 (Ed25519)
+        b"\x20\x06"       # -1 (crv): 6 (Ed25519)
         b"\x21"           # -2 (x)
         b"\x58\x20"       # bstr(32)
         + pubkey          # 32-byte Ed25519 public key
-        + b"\x22\xf6"     # -3 (y): null
     )
 
 
@@ -435,23 +439,21 @@ class EdhocInitiator:
         """
         self._require_state(_InitiatorState.WAIT_MESSAGE_2, "process_message_2")
         try:
-            _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
+            _validate_bytes(peer_pubkey, "peer public key", 32)
             items = _decode_cbor_sequence(msg2)
-            if len(items) != 2:
-                raise ValueError(f"Malformed message_2: expected 2 CBOR items, got {len(items)}")
+            if len(items) != 1:
+                raise ValueError(f"Malformed message_2: expected 1 CBOR item, got {len(items)}")
             combined = _validate_bytes(items[0], "G_Y || CIPHERTEXT_2")
             if len(combined) <= X25519_KEY_LEN:
                 raise ValueError("Message 2 has no CIPHERTEXT_2")
             g_y = combined[:X25519_KEY_LEN]
             ciphertext_2 = combined[X25519_KEY_LEN:]
-            c_r = _validate_connection_id(items[1], "C_R")
-            if c_r == self._c_i:
-                raise ValueError("C_R must differ from C_I")
             self._g_y = g_y
-            self._c_r = c_r
             g_xy = _x25519_shared_secret(self._eph_sk, g_y)
             h_msg1 = _compute_th(self._msg1)
-            th_2_input = g_y + h_msg1
+            # RFC 9528 §4.1.2: TH_2 hashes a CBOR Sequence containing two
+            # bstr data items, not their unframed raw-byte concatenation.
+            th_2_input = cbor2.dumps(g_y) + cbor2.dumps(h_msg1)
             self._th_2 = _compute_th(th_2_input)
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
             self._prk_3e2m = self._prk_2e
@@ -459,22 +461,28 @@ class EdhocInitiator:
                 self._prk_2e, LABEL_KEYSTREAM_2, self._th_2, len(ciphertext_2)
             )
             plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True))
-            _, id_cred_r_raw, id_cred_len = _load_raw_cbor_item(plaintext_2)
-            sig_items = _decode_cbor_sequence(plaintext_2[id_cred_len:])
+            c_r_item, _, c_r_len = _load_raw_cbor_item(plaintext_2)
+            c_r = _decode_connection_id(c_r_item)
+            if c_r == self._c_i:
+                raise ValueError("C_R must differ from C_I")
+            self._c_r = c_r
+            _, id_cred_r_raw, id_cred_len = _load_raw_cbor_item(plaintext_2[c_r_len:])
+            sig_items = _decode_cbor_sequence(plaintext_2[c_r_len + id_cred_len:])
             if not sig_items:
                 raise ValueError("Malformed PLAINTEXT_2: missing signature")
             if len(sig_items) > 1:
                 raise ValueError(f"Malformed PLAINTEXT_2 trailing items: {len(sig_items) - 1}")
-            signature_2 = _validate_bytes(sig_items[0], "Signature_2", ED25519_SIG_LEN)
+            signature_2 = _validate_bytes(sig_items[0], "Signature_2", SCHNORR48_SIG_LEN)
             expected_id_cred = _encode_id_cred(peer_pubkey)
             # SECURITY: Constant-time comparison prevents timing side-channel leakage
             if not hmac.compare_digest(id_cred_r_raw, expected_id_cred):
                 raise ValueError("ID_CRED_R does not match the authenticated peer")
             cred_r = _encode_cose_key(peer_pubkey)
-            # context_2 = << ID_CRED_R, TH_2, CRED_R, ?EAD_2 >> (RFC 9528 Section 4.1.2)
-            # id_cred_r_raw and cred_r are already CBOR-encoded; only th_2 needs wrapping
+            # context_2 = << C_R, ID_CRED_R, TH_2, CRED_R, ?EAD_2 >>.
+            # ID_CRED_R and CRED_R are already CBOR-encoded.
             context_2 = (
-                id_cred_r_raw
+                _encode_connection_id(c_r)
+                + id_cred_r_raw
                 + cbor2.dumps(self._th_2)
                 + cred_r
             )
@@ -487,7 +495,8 @@ class EdhocInitiator:
                 cbor2.dumps(self._th_2) + cred_r,
                 mac_2,
             ])
-            VerifyKey(peer_pubkey).verify(m_2, signature_2)
+            if not schnorr48.verify(peer_pubkey, m_2, signature_2):
+                raise ValueError("signature verification failed")
             # cred_r is already CBOR-encoded from _encode_cose_key
             th_3_input = (
                 cbor2.dumps(self._th_2)
@@ -514,7 +523,7 @@ class EdhocInitiator:
                 cbor2.dumps(self._th_3) + cred_i,
                 mac_3,
             ])
-            signature_3 = SigningKey(self.identity.seed).sign(m_3).signature
+            signature_3 = schnorr48.sign(self.identity.privkey, self.identity.pubkey, m_3)
             plaintext_3 = id_cred_i + cbor2.dumps(signature_3)
             k_3 = _edhoc_kdf(self._prk_3e2m, LABEL_K_3, self._th_3, CCM_KEY_LEN)
             iv_3 = _edhoc_kdf(self._prk_3e2m, LABEL_IV_3, self._th_3, CCM_NONCE_LEN)
@@ -552,7 +561,9 @@ class EdhocInitiator:
             # OSCORE export (RFC 9528 Section 7.2.1)
             master_secret = _edhoc_kdf(prk_exporter, LABEL_OSCORE_SECRET, b"", oscore_key_len)
             master_salt = _edhoc_kdf(prk_exporter, LABEL_OSCORE_SALT, b"", oscore_salt_len)
-            context = OscoreContext(master_secret, master_salt, self._c_i, self._c_r)
+            # RFC 9528 Appendix A.1, Table 14: the Initiator owns C_R as its
+            # OSCORE Sender ID and uses C_I as its Recipient ID.
+            context = OscoreContext(master_secret, master_salt, self._c_r, self._c_i)
         except Exception:
             self._fail()
             raise
@@ -652,7 +663,7 @@ class EdhocResponder:
         try:
             if self.method is not Method.SIGN_SIGN:
                 raise ValueError("only EDHOC SIGN_SIGN is supported")
-            _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
+            _validate_bytes(peer_pubkey, "peer public key", 32)
             message_1 = _validate_bytes(msg1, "message_1")
             items = _decode_cbor_sequence(message_1)
             if len(items) not in (4, 5):
@@ -686,16 +697,19 @@ class EdhocResponder:
             self._c_i = c_i
             g_xy = _x25519_shared_secret(self._eph_sk, g_x)
             h_msg1 = _compute_th(message_1)
-            th_2_input = self._eph_pk + h_msg1
+            # RFC 9528 §4.1.2: TH_2 hashes a CBOR Sequence containing two
+            # bstr data items, not their unframed raw-byte concatenation.
+            th_2_input = cbor2.dumps(self._eph_pk) + cbor2.dumps(h_msg1)
             self._th_2 = _compute_th(th_2_input)
             self._prk_2e = _hkdf_extract(self._th_2, g_xy)
             self._prk_3e2m = self._prk_2e
             id_cred_r = _encode_id_cred(self.identity.pubkey)
             cred_r = _encode_cose_key(self.identity.pubkey)
-            # context_2 = << ID_CRED_R, TH_2, CRED_R, ?EAD_2 >> (RFC 9528 Section 4.1.2)
-            # id_cred_r and cred_r are already CBOR-encoded; only th_2 needs wrapping
+            # context_2 = << C_R, ID_CRED_R, TH_2, CRED_R, ?EAD_2 >>.
+            # ID_CRED_R and CRED_R are already CBOR-encoded.
             context_2 = (
-                id_cred_r
+                _encode_connection_id(self.c_r)
+                + id_cred_r
                 + cbor2.dumps(self._th_2)
                 + cred_r
             )
@@ -708,8 +722,12 @@ class EdhocResponder:
                 cbor2.dumps(self._th_2) + cred_r,
                 mac_2,
             ])
-            signature_2 = SigningKey(self.identity.seed).sign(m_2).signature
-            plaintext_2 = id_cred_r + cbor2.dumps(signature_2)
+            signature_2 = schnorr48.sign(self.identity.privkey, self.identity.pubkey, m_2)
+            plaintext_2 = (
+                _encode_connection_id(self.c_r)
+                + id_cred_r
+                + cbor2.dumps(signature_2)
+            )
             keystream_2 = _edhoc_kdf(
                 self._prk_2e, LABEL_KEYSTREAM_2, self._th_2, len(plaintext_2)
             )
@@ -722,7 +740,7 @@ class EdhocResponder:
             )
             self._th_3 = _compute_th(th_3_input)
             g_y_ciphertext_2 = self._eph_pk + ciphertext_2
-            msg2 = cbor2.dumps(g_y_ciphertext_2) + _encode_connection_id(self.c_r)
+            msg2 = cbor2.dumps(g_y_ciphertext_2)
         except Exception as exc:
             self._fail()
             if isinstance(exc, ValueError):
@@ -745,7 +763,7 @@ class EdhocResponder:
         """
         self._require_state(_ResponderState.WAIT_MESSAGE_3, "process_message_3")
         try:
-            _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
+            _validate_bytes(peer_pubkey, "peer public key", 32)
             # RFC 9528 Section 5.4: message_3 = CBOR Sequence: ( CIPHERTEXT_3 )
             items = _decode_cbor_sequence(msg3)
             if len(items) != 1:
@@ -763,7 +781,7 @@ class EdhocResponder:
                 raise ValueError("Malformed PLAINTEXT_3: missing signature")
             if len(sig_items) > 1:
                 raise ValueError(f"Malformed PLAINTEXT_3 trailing items: {len(sig_items) - 1}")
-            signature_3 = _validate_bytes(sig_items[0], "Signature_3", ED25519_SIG_LEN)
+            signature_3 = _validate_bytes(sig_items[0], "Signature_3", SCHNORR48_SIG_LEN)
             expected_id_cred = _encode_id_cred(peer_pubkey)
             # SECURITY: Constant-time comparison prevents timing side-channel leakage
             if not hmac.compare_digest(id_cred_i_raw, expected_id_cred):
@@ -786,11 +804,9 @@ class EdhocResponder:
                 cbor2.dumps(self._th_3) + cred_i,
                 mac_3,
             ])
-            try:
-                VerifyKey(peer_pubkey).verify(m_3, signature_3)
-            except Exception:
+            if not schnorr48.verify(peer_pubkey, m_3, signature_3):
                 # SECURITY: Do not chain exception - it may reveal internal state
-                raise ValueError("signature verification failed") from None
+                raise ValueError("signature verification failed")
             # cred_i is already CBOR-encoded from _encode_cose_key
             th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(plaintext_3) + cred_i
             self._th_4 = _compute_th(th_4_input)
@@ -806,7 +822,8 @@ class EdhocResponder:
     def export_oscore(self, oscore_salt_len: int = 8, oscore_key_len: int = 16) -> OscoreContext:
         """Export OSCORE security context.
 
-        Note: Responder's sender/recipient IDs are swapped vs initiator.
+        RFC 9528 Appendix A.1 maps C_I to the Responder's Sender ID and C_R
+        to its Recipient ID.
         """
         self._require_state(_ResponderState.COMPLETE, "export_oscore")
         try:
@@ -817,7 +834,7 @@ class EdhocResponder:
             # OSCORE export (RFC 9528 Section 7.2.1)
             master_secret = _edhoc_kdf(prk_exporter, LABEL_OSCORE_SECRET, b"", oscore_key_len)
             master_salt = _edhoc_kdf(prk_exporter, LABEL_OSCORE_SALT, b"", oscore_salt_len)
-            context = OscoreContext(master_secret, master_salt, self._c_r, self._c_i)
+            context = OscoreContext(master_secret, master_salt, self._c_i, self._c_r)
         except Exception:
             self._fail()
             raise

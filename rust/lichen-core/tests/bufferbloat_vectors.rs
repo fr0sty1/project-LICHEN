@@ -23,7 +23,9 @@ fn parse(text: &str) -> Value {
 }
 
 fn u64_field(value: &Value, key: &str) -> u64 {
-    value[key].as_u64().unwrap_or_else(|| panic!("missing {key}"))
+    value[key]
+        .as_u64()
+        .unwrap_or_else(|| panic!("missing {key}"))
 }
 
 #[test]

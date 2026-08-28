@@ -524,6 +524,9 @@ impl DaoAck {
         if data.len() < base_len {
             return Err(TooShort::new(base_len, data.len()).into());
         }
+        if d_byte & 0x7f != 0 || OptionIter::new(&data[base_len..]).any(|option| option.is_err()) {
+            return Err(RplError::InvalidOption);
+        }
         let dodag_id = if d_flag == 1 {
             Some(data[4..20].try_into().unwrap())
         } else {
@@ -548,6 +551,9 @@ impl DaoAck {
         if self.rpl_instance_id >= 0xC0 {
             return Err(RplError::LocalInstanceId(self.rpl_instance_id));
         }
+        if self.flags != 0 {
+            return Err(RplError::InvalidOption);
+        }
         let base_len = if self.dodag_id.is_some() {
             Self::BASE_LEN_WITH_DODAGID
         } else {
@@ -556,7 +562,7 @@ impl DaoAck {
         if out.len() < base_len {
             return Err(BufferTooSmall::new(base_len, out.len()).into());
         }
-        let d_byte = ((self.dodag_id.is_some() as u8) << 7) | (self.flags & 0x7F);
+        let d_byte = (self.dodag_id.is_some() as u8) << 7;
         out[0] = self.rpl_instance_id;
         out[1] = d_byte;
         out[2] = self.dao_sequence;
@@ -572,9 +578,7 @@ impl DaoAck {
         if data.len() < Self::BASE_LEN_NO_DODAGID {
             return &[];
         }
-        let d_byte = data[1];
-        let d_flag = (d_byte >> 7) & 1;
-        let base_len = if d_flag == 1 {
+        let base_len = if data[1] & 0x80 != 0 {
             Self::BASE_LEN_WITH_DODAGID
         } else {
             Self::BASE_LEN_NO_DODAGID
@@ -622,14 +626,14 @@ impl Default for DodagConfig {
 
 impl DodagConfig {
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
-        if data.len() < DODAG_CONFIG_DATA_LEN {
-            return Err(TooShort::new(DODAG_CONFIG_DATA_LEN, data.len()).into());
+        if data.len() != DODAG_CONFIG_DATA_LEN {
+            return Err(RplError::InvalidOption);
         }
         let flags = data[0];
         let pcs = flags & 0x07;
-        let a_flag = (flags & 0x10) != 0;
+        let a_flag = (flags & 0x08) != 0;
         let gateway_centric = (flags & 0x80) != 0;
-        if data[10] != 0 {
+        if flags & 0x70 != 0 || data[10] != 0 {
             return Err(RplError::InvalidOption); // reserved field per RFC 6550 §6.7.6
         }
         Ok(Self {
@@ -649,14 +653,16 @@ impl DodagConfig {
     }
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
+        if self.pcs > 7 {
+            return Err(RplError::InvalidOption);
+        }
         let needed = 2 + DODAG_CONFIG_DATA_LEN;
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[0] = OPT_DODAG_CONFIG;
         out[1] = DODAG_CONFIG_DATA_LEN as u8;
-        let flags =
-            ((self.gateway_centric as u8) << 7) | ((self.a_flag as u8) << 4) | (self.pcs & 0x07);
+        let flags = ((self.gateway_centric as u8) << 7) | ((self.a_flag as u8) << 3) | self.pcs;
         out[2] = flags;
         out[3] = self.dio_int_doublings;
         out[4] = self.dio_int_min;
@@ -685,41 +691,38 @@ pub struct RplTarget {
 }
 
 impl RplTarget {
+    pub const DATA_LEN: usize = 18; // flags(1) + prefix length(1) + /128 address(16)
+
     /// Parse from the option data bytes (after type/length).
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
-        if data.len() < 2 {
-            return Err(TooShort::new(2, data.len()).into());
-        }
-        let prefix_len = data[1];
-        // IPv6 prefix cannot exceed 128 bits (16 bytes)
-        if prefix_len > 128 {
+        if data.len() != Self::DATA_LEN {
             return Err(RplError::InvalidOption);
         }
-        let nbytes = (prefix_len as usize).div_ceil(8);
-        if data.len() < 2 + nbytes {
-            return Err(TooShort::new(2 + nbytes, data.len()).into());
+        if data[0] != 0 {
+            return Err(RplError::InvalidOption);
+        }
+        let prefix_len = data[1];
+        if prefix_len != 128 {
+            return Err(RplError::InvalidOption);
         }
         let mut prefix = [0u8; 16];
-        prefix[..nbytes].copy_from_slice(&data[2..2 + nbytes]);
+        prefix.copy_from_slice(&data[2..]);
         Ok(Self { prefix_len, prefix })
     }
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
-        // IPv6 prefix cannot exceed 128 bits (16 bytes)
-        if self.prefix_len > 128 {
+        if self.prefix_len != 128 {
             return Err(RplError::InvalidOption);
         }
-        let nbytes = (self.prefix_len as usize).div_ceil(8);
-        let data_len = 2 + nbytes;
-        let needed = 2 + data_len;
+        let needed = 2 + Self::DATA_LEN;
         if out.len() < needed {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[0] = OPT_RPL_TARGET;
-        out[1] = data_len as u8;
+        out[1] = Self::DATA_LEN as u8;
         out[2] = 0; // flags
         out[3] = self.prefix_len;
-        out[4..4 + nbytes].copy_from_slice(&self.prefix[..nbytes]);
+        out[4..needed].copy_from_slice(&self.prefix);
         Ok(needed)
     }
 }
@@ -729,9 +732,11 @@ impl RplTarget {
 /// Transit Information option (RFC 6550 6.7.8).
 ///
 /// The current LICHEN profile carries a Parent Address by the exact 20-byte
-/// option length and requires the flags byte, including E, to be zero.
+/// option length. E describes external reachability; all other flag bits are
+/// reserved and must be zero.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransitInfo {
+    pub external: bool,
     pub path_control: u8,
     pub path_sequence: u8,
     pub path_lifetime: u8,
@@ -742,15 +747,13 @@ impl TransitInfo {
     pub const DATA_LEN: usize = 20; // flags(1)+path_ctl(1)+path_seq(1)+path_life(1)+addr(16)
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
-        if data.len() < Self::DATA_LEN {
-            return Err(TooShort::new(Self::DATA_LEN, data.len()).into());
-        }
-        if data.len() != Self::DATA_LEN || data[0] != 0 {
+        if data.len() != Self::DATA_LEN || data[0] & 0x7f != 0 {
             return Err(RplError::InvalidOption);
         }
         // SAFETY: exact length check above ensures 4..20 is within bounds and
         // exactly 16 bytes.
         Ok(Self {
+            external: data[0] & 0x80 != 0,
             path_control: data[1],
             path_sequence: data[2],
             path_lifetime: data[3],
@@ -765,7 +768,7 @@ impl TransitInfo {
         }
         out[0] = OPT_TRANSIT_INFO;
         out[1] = Self::DATA_LEN as u8;
-        out[2] = 0; // Current-profile flags; Parent presence is conveyed by length 20.
+        out[2] = if self.external { 0x80 } else { 0 };
         out[3] = self.path_control;
         out[4] = self.path_sequence;
         out[5] = self.path_lifetime;
@@ -1132,6 +1135,38 @@ mod tests {
 
         let decoded = RplTarget::from_bytes(&buf[2..n]).unwrap();
         assert_eq!(decoded, target);
+
+        let mut nonzero_flags = buf;
+        nonzero_flags[2] = 1;
+        assert_eq!(
+            RplTarget::from_bytes(&nonzero_flags[2..n]),
+            Err(RplError::InvalidOption)
+        );
+        let mut non_host = buf;
+        non_host[3] = 127;
+        assert_eq!(
+            RplTarget::from_bytes(&non_host[2..n]),
+            Err(RplError::InvalidOption)
+        );
+        assert_eq!(
+            RplTarget::from_bytes(&buf[2..n - 1]),
+            Err(RplError::InvalidOption)
+        );
+        let mut overlong = [0u8; 19];
+        overlong[..18].copy_from_slice(&buf[2..n]);
+        assert_eq!(
+            RplTarget::from_bytes(&overlong),
+            Err(RplError::InvalidOption)
+        );
+
+        let non_host_target = RplTarget {
+            prefix_len: 64,
+            prefix,
+        };
+        assert_eq!(
+            non_host_target.write_to(&mut buf),
+            Err(RplError::InvalidOption)
+        );
     }
 
     // ── Transit Information option ────────────────────────────────────────────
@@ -1144,6 +1179,7 @@ mod tests {
         parent[15] = 0x02;
 
         let ti = TransitInfo {
+            external: false,
             path_control: 0,
             path_sequence: 3,
             path_lifetime: 255,
@@ -1162,12 +1198,9 @@ mod tests {
         let decoded = TransitInfo::from_bytes(&buf[2..n]).unwrap();
         assert_eq!(decoded, ti);
 
-        let mut unsupported_e = buf[2..n].to_vec();
-        unsupported_e[0] = 0x80;
-        assert_eq!(
-            TransitInfo::from_bytes(&unsupported_e),
-            Err(RplError::InvalidOption)
-        );
+        let mut external = buf[2..n].to_vec();
+        external[0] = 0x80;
+        assert!(TransitInfo::from_bytes(&external).unwrap().external);
         let mut reserved_flag = buf[2..n].to_vec();
         reserved_flag[0] = 0x40;
         assert_eq!(
@@ -1199,6 +1232,8 @@ mod tests {
     fn dodag_config_gateway_centric_roundtrip() {
         let cfg = DodagConfig {
             gateway_centric: true,
+            a_flag: true,
+            pcs: 5,
             ..DodagConfig::default()
         };
         let mut buf = [0u8; 20];
@@ -1207,7 +1242,9 @@ mod tests {
 
         let decoded = DodagConfig::from_bytes(&buf[2..n]).unwrap();
         assert!(decoded.gateway_centric);
-        assert!(!decoded.a_flag);
+        assert!(decoded.a_flag);
+        assert_eq!(decoded.pcs, 5);
+        assert_eq!(buf[2], 0x8d);
         assert_eq!(decoded.min_hop_rank_increase, 256);
     }
 
@@ -1219,6 +1256,9 @@ mod tests {
             DodagConfig::from_bytes(&data),
             Err(RplError::InvalidOption)
         ));
+        data[10] = 0;
+        data[0] = 0x40;
+        assert_eq!(DodagConfig::from_bytes(&data), Err(RplError::InvalidOption));
     }
 
     // ── Option iterator ───────────────────────────────────────────────────────
@@ -1235,6 +1275,7 @@ mod tests {
             prefix: target_addr,
         };
         let transit = TransitInfo {
+            external: false,
             path_control: 0,
             path_sequence: 0,
             path_lifetime: 255,
@@ -1555,6 +1596,31 @@ mod tests {
     }
 
     #[test]
+    fn dao_ack_rejects_reserved_flags_and_malformed_options() {
+        assert_eq!(
+            DaoAck::from_bytes(&[0, 1, 5, 0]),
+            Err(RplError::InvalidOption)
+        );
+        assert_eq!(
+            DaoAck::from_bytes(&[0, 0, 5, 0, 5, 4, 1]),
+            Err(RplError::InvalidOption)
+        );
+        let with_pad1 = [0, 0, 5, 0, OPT_PAD1];
+        assert!(DaoAck::from_bytes(&with_pad1).is_ok());
+        assert_eq!(DaoAck::options_tail(&with_pad1), &[OPT_PAD1]);
+        let ack = DaoAck {
+            rpl_instance_id: 0,
+            flags: 1,
+            dao_sequence: 5,
+            status: 0,
+            dodag_id: None,
+        };
+        let mut buf = [0xa5; 4];
+        assert_eq!(ack.write_to(&mut buf), Err(RplError::InvalidOption));
+        assert_eq!(buf, [0xa5; 4]);
+    }
+
+    #[test]
     fn dao_ack_rejects_local_instance_id_0xc0() {
         let buf = [0xC0, 0, 5, 0];
         assert_eq!(
@@ -1625,6 +1691,9 @@ mod tests {
                             result
                         );
                     }
+                    "nonzero_reserved_flags" | "malformed_options" => {
+                        assert_eq!(result, Err(RplError::InvalidOption), "{}", vector["name"]);
+                    }
                     other => panic!("unknown expect_error type: {}", other),
                 }
             } else {
@@ -1654,8 +1723,8 @@ mod tests {
             executed += 1;
         }
         assert!(
-            executed >= 5,
-            "expected at least 5 DAO-ACK vectors, got {}",
+            executed >= 11,
+            "expected at least 11 DAO-ACK vectors, got {}",
             executed
         );
     }

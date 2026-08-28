@@ -118,6 +118,113 @@ New resource: `/.well-known/lichen-gw`
 
 All CoAP messages use OSCORE (PSK or signature context per mode).
 
+### 6.5. GCP Slot Claim COSE_Sign1
+
+Slot claims (POST to `/.well-known/lichen-gw/slots`) are authenticated using
+COSE_Sign1 with the Schnorr48-Ed25519 algorithm, enabling signature verification
+per GCP-6.3 conflict resolution.
+
+**COSE_Sign1 Structure:**
+
+```
+POST coap://[peer-gateway]/.well-known/lichen-gw/slots
+Content-Format: application/cose; cose-type="cose-sign1" (TBD)
+OSCORE: <gateway pairwise context>
+
+COSE_Sign1 = [
+  h'a10139ffff',          ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<gateway-iid>'},  ; unprotected: {kid: claiming gateway 8-byte IID}
+  h'<payload>',           ; see Payload below
+  h'<48-byte signature>'  ; Schnorr48 signature
+]
+```
+
+**Payload Structure (CBOR map):**
+
+```cbor
+{
+  1: [<slot indices>],    ; slots: array of uint slot numbers being claimed
+  2: <uint>,              ; superframe_epoch: superframe counter at claim time
+  3: <0|1>,               ; mode: 0=interleaved, 1=contiguous (per 6.2)
+  4: <unix timestamp>,    ; expiry: uint, claim valid until
+  5: h'<8-byte IID>',     ; gateway_iid: binds claim to this gateway
+  6: <uint>               ; claim_seq: monotonic sequence number
+}
+```
+
+Integer keys minimize payload size. The payload is the serialized CBOR map.
+
+| Key | Name | Type | Description |
+|-----|------|------|-------------|
+| 1 | slots | array[uint] | Slot indices being claimed |
+| 2 | superframe_epoch | uint | Superframe counter when claim issued |
+| 3 | mode | uint | 0=interleaved, 1=contiguous |
+| 4 | expiry | uint | Unix timestamp, claim expires after |
+| 5 | gateway_iid | bstr(8) | Claiming gateway's IID |
+| 6 | claim_seq | uint | Monotonic claim sequence |
+
+**Signature Computation (COSE_Sign1):**
+
+Per RFC 9052, the Sig_structure for COSE_Sign1:
+
+```
+Sig_structure = [
+  "Signature1",           ; context string
+  protected,              ; protected header bytes
+  h'',                    ; external_aad (empty)
+  payload                 ; payload bytes
+]
+sig = Schnorr48(gateway_privkey, SHA256(CBOR(Sig_structure)))
+```
+
+Gateway's Ed25519 private key signs the canonical CBOR encoding of Sig_structure.
+
+**Validation:**
+
+On receiving slot claim POST:
+
+1. Verify OSCORE protection (authenticates peer gateway)
+2. Decode COSE_Sign1 structure
+3. Extract `kid` from unprotected header; verify it matches a known gateway IID
+4. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+5. Reconstruct Sig_structure per RFC 9052 and verify signature using peer's pubkey
+6. Decode payload; verify `gateway_iid` matches `kid`
+7. Verify `expiry` > now
+8. Verify `claim_seq` > cached claim_seq for this gateway, or no cached entry
+9. Check for conflicts with existing slot allocations (see below)
+10. If no conflict or conflict resolved: cache claim, respond 2.04 Changed
+11. If conflict unresolved: respond 4.09 Conflict with winning gateway's claim
+
+On validation failure (signature invalid, expired, etc.), respond 4.03 Forbidden.
+Claims with invalid or missing signatures MUST be silently discarded per GCP-6.3.
+
+**Conflict Resolution Integration (GCP-6.3):**
+
+When overlapping slot claims are received:
+
+1. Both claims MUST have valid Schnorr48 signatures (invalid claims discarded)
+2. Compare `gateway_iid` values: lowest IID wins
+3. Losing gateway MUST select next available slots and issue new claim
+4. Losing gateway MUST broadcast updated schedule to all peers
+
+**claim_seq Persistence:**
+
+The `claim_seq` counter MUST persist across gateway reboots. Implementations
+MUST store `claim_seq` in non-volatile storage and increment atomically before
+each claim. This prevents replay of stale claims after restart.
+
+| Event | Behavior |
+|-------|----------|
+| Gateway boot | Load claim_seq from NVS; if missing, initialize to 0 |
+| Before claim | Increment claim_seq; persist to NVS; then sign and send |
+| Receive claim | Reject if claim_seq <= cached value for that gateway |
+
+**Security Considerations:**
+
+- claim_seq replay protection requires persistent storage
+- Signature verification MUST complete before conflict resolution
+- Rate limiting SHOULD apply to slot claim endpoints (see GCP-9)
+
 ## GCP-7. Node Handoff
 
 When a node moves (detected via better parent/RSSI):
@@ -129,6 +236,154 @@ When a node moves (detected via better parent/RSSI):
 5. Routes updated in RPL DODAG.
 
 State transferred includes recent sequence numbers, security contexts if applicable.
+
+### GCP-7.1. GCP Handoff COSE_Sign1
+
+Gateway handoff uses two COSE_Sign1 messages to transfer node ownership and
+link-layer replay state between gateways. Both messages use the Schnorr48-Ed25519
+algorithm (-65537) registered in 06-security.md section 8.11.
+
+**Handoff Request (new GW -> old GW):**
+
+New gateway B sends handoff request to old gateway A via CoAP:
+
+```
+POST coap://[old-gw]/.well-known/lichen-gw/handoff
+Content-Format: application/cose; cose-type="cose-sign1" (TBD)
+OSCORE: <B-A pairwise context>
+
+COSE_Sign1 = [
+  h'a10139ffff',          ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<new-gw-iid>'},   ; unprotected: {kid: new gateway 8-byte IID}
+  h'<payload>',           ; see Request Payload below
+  h'<48-byte signature>'  ; Schnorr48 signature
+]
+```
+
+**Request Payload Structure (CBOR map):**
+
+| Key | Name     | Type         | Description                              |
+|-----|----------|--------------|------------------------------------------|
+| 1   | node     | bstr (8)     | Node IID being transferred               |
+| 2   | old_gw   | bstr (8)     | Current owner gateway IID                |
+| 3   | seq      | uint         | Handoff sequence number (monotonic)      |
+| 4   | ts       | uint         | Unix timestamp of request                |
+| 5   | expiry   | uint         | Request validity expiry (unix timestamp) |
+| 6   | rssi     | int          | RSSI observed by new gateway (dBm)       |
+
+```cbor
+{
+  1: h'<8-byte node IID>',
+  2: h'<8-byte old gateway IID>',
+  3: <uint>,              ; seq: handoff sequence, strictly increasing
+  4: <unix timestamp>,    ; ts: request timestamp
+  5: <unix timestamp>,    ; expiry: request validity window
+  6: <int>                ; rssi: signal strength at new gateway
+}
+```
+
+**Handoff Confirm (old GW -> new GW):**
+
+Old gateway A confirms handoff and transfers replay state:
+
+```
+2.04 Changed
+Content-Format: application/cose; cose-type="cose-sign1" (TBD)
+OSCORE: <A-B pairwise context>
+
+COSE_Sign1 = [
+  h'a10139ffff',          ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<old-gw-iid>'},   ; unprotected: {kid: old gateway 8-byte IID}
+  h'<payload>',           ; see Confirm Payload below
+  h'<48-byte signature>'  ; Schnorr48 signature
+]
+```
+
+**Confirm Payload Structure (CBOR map):**
+
+| Key | Name       | Type         | Description                              |
+|-----|------------|--------------|------------------------------------------|
+| 1   | node       | bstr (8)     | Node IID being transferred               |
+| 2   | new_gw     | bstr (8)     | New owner gateway IID                    |
+| 3   | seq        | uint         | Echoed handoff sequence number           |
+| 4   | ts         | uint         | Confirmation timestamp                   |
+| 5   | link_epoch | uint         | Node's link-layer epoch (8-bit)          |
+| 6   | link_seq   | uint         | Node's link-layer sequence (16-bit)      |
+
+```cbor
+{
+  1: h'<8-byte node IID>',
+  2: h'<8-byte new gateway IID>',
+  3: <uint>,              ; seq: echoed from request
+  4: <unix timestamp>,    ; ts: confirmation timestamp
+  5: <uint>,              ; link_epoch: node's current epoch
+  6: <uint>               ; link_seq: node's last accepted seqnum
+}
+```
+
+**Signature Computation (COSE_Sign1):**
+
+Per RFC 9052, the Sig_structure for both messages:
+
+```
+Sig_structure = [
+  "Signature1",           ; context string
+  protected,              ; protected header bytes
+  h'',                    ; external_aad (empty)
+  payload                 ; payload bytes
+]
+sig = Schnorr48(gw_privkey, SHA256(CBOR(Sig_structure)))
+```
+
+The signing gateway's Ed25519 private key signs the canonical CBOR encoding.
+
+**Validation (Handoff Request):**
+
+Old gateway A validates incoming request:
+
+1. Verify OSCORE protection (authenticates new gateway B)
+2. Decode COSE_Sign1 structure
+3. Extract `kid` from unprotected header; verify it is a known federation peer
+4. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+5. Reconstruct Sig_structure per RFC 9052 and verify signature using B's pubkey
+6. Decode payload; verify `old_gw` matches own IID
+7. Verify `node` is currently owned by this gateway
+8. Verify `expiry` > now
+9. Verify `seq` > last handoff seq for this node (prevents replay)
+10. If valid: release node, respond with confirm message
+11. If invalid: respond 4.03 Forbidden
+
+**Validation (Handoff Confirm):**
+
+New gateway B validates incoming confirm:
+
+1. Verify OSCORE protection (authenticates old gateway A)
+2. Decode COSE_Sign1 structure
+3. Extract `kid` from unprotected header; verify matches expected old gateway
+4. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+5. Reconstruct Sig_structure per RFC 9052 and verify signature using A's pubkey
+6. Decode payload; verify `new_gw` matches own IID
+7. Verify `seq` matches the request sequence number
+8. Initialize node's replay window with (link_epoch, link_seq)
+9. Add node to local registry; confirm handoff to node via CoAP
+
+**Link-Layer Replay State Transfer:**
+
+The `link_epoch` and `link_seq` fields transfer the node's current replay
+position. The new gateway MUST:
+
+- Initialize replay window floor at (link_epoch, link_seq)
+- Accept only frames with epoch > link_epoch, or epoch == link_epoch AND seq > link_seq
+- This prevents replay of frames the old gateway already accepted
+
+**Security Considerations:**
+
+| Threat                  | Mitigation                                        |
+|-------------------------|---------------------------------------------------|
+| Forged handoff request  | OSCORE + COSE signature verify sender identity    |
+| Replay of old request   | Monotonic seq per-node; expiry window             |
+| Replay window gap       | Explicit state transfer; no window reset          |
+| Rogue gateway injection | Federation membership required (PSK or TOFU)      |
 
 ## GCP-8. Backwards Compatibility
 

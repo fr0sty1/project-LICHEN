@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from ipaddress import IPv6Address
 
 from lichen.gradient import GradientTable
-from lichen.ipv6 import to_ipv6
+from lichen.ipv6 import routing_key
 from lichen.loadng.cache import RouteCache
 from lichen.loadng.messages import RERR
 
@@ -50,15 +50,15 @@ class RouteErrorManager:
 
     def record_flow(self, destination: IPv6Address | str, upstream: IPv6Address | str) -> None:
         """Note that ``upstream`` forwards traffic to ``destination`` through us."""
-        self._precursors.setdefault(to_ipv6(destination), set()).add(to_ipv6(upstream))
+        self._precursors.setdefault(routing_key(destination), set()).add(routing_key(upstream))
 
     def clear_precursors(self, dest: IPv6Address | str) -> None:
         """Clear precursor tracking for ``dest`` after successful RERR transmission."""
-        self._precursors.pop(to_ipv6(dest), None)
+        self._precursors.pop(routing_key(dest), None)
 
     def on_link_failure(self, next_hop: IPv6Address | str) -> list[RerrAction]:
         """Invalidate routes through a failed ``next_hop`` and build RERRs."""
-        nh = to_ipv6(next_hop)
+        nh = routing_key(next_hop)
         dests = set(self.cache.remove_via(nh)) | set(self.gradient.remove_via(nh))
         precursor_groups = {}
         for dest in dests:
@@ -76,8 +76,8 @@ class RouteErrorManager:
     def process_rerr(
         self, rerr: RERR, from_neighbor: IPv6Address | str, now: int
     ) -> RerrAction | None:
-        dest = to_ipv6(rerr.unreachable)
-        from_neighbor = to_ipv6(from_neighbor)
+        dest = routing_key(rerr.unreachable)
+        from_neighbor = routing_key(from_neighbor)
 
         grad = self.gradient.lookup(dest, now)
         route = self.cache.lookup(dest, now)

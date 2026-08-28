@@ -17,6 +17,7 @@ import cbor2
 from aiocoap import Message
 from aiocoap.numbers import ContentFormat
 
+from lichen.client.addressing import STATIC_NODE_ADDRESS
 from lichen.client.lci import ResourceSubscription, ResourceTransport
 from lichen.client.model import CoapResult
 
@@ -74,7 +75,7 @@ class ContextLike(Protocol):
 class IpCoapConfig:
     """Connection settings for a local LCI CoAP endpoint."""
 
-    base_uri: str = "coap://[fe80::1]"
+    base_uri: str = f"coap://[{STATIC_NODE_ADDRESS}]"
     timeout_s: float = 10.0
     enforce_503_backoff: bool = True  # Enforce 5.03 backoff (spec 07 section 10.2.3)
 
@@ -173,8 +174,8 @@ class AiocoapResourceTransport(ResourceTransport):
                         reason=reason,
                     )
                 else:
-                    # Backoff expired, clear it
-                    del self._peer_backoffs[peer]
+                    # Backoff expired, clear it (use pop to avoid race with concurrent requests)
+                    self._peer_backoffs.pop(peer, None)
 
         context = self._require_context()
         try:
@@ -196,9 +197,7 @@ class AiocoapResourceTransport(ResourceTransport):
         if result.is_service_unavailable and self.config.enforce_503_backoff:
             # retry_after_s is already capped at MAX_BACKOFF_S; use it or default
             retry_after = (
-                result.retry_after_s
-                if result.retry_after_s is not None
-                else DEFAULT_503_BACKOFF_S
+                result.retry_after_s if result.retry_after_s is not None else DEFAULT_503_BACKOFF_S
             )
             reason = None
             level = None
@@ -248,8 +247,8 @@ class AiocoapResourceTransport(ResourceTransport):
                         reason=reason,
                     )
                 else:
-                    # Backoff expired, clear it
-                    del self._peer_backoffs[peer]
+                    # Backoff expired, clear it (use pop to avoid race with concurrent requests)
+                    self._peer_backoffs.pop(peer, None)
 
         context = self._require_context()
         try:
@@ -263,6 +262,16 @@ class AiocoapResourceTransport(ResourceTransport):
             path=path,
             timeout_s=self.config.timeout_s,
         )
+
+    def check_security_for_path(self, path: str) -> None:
+        """Security check is not applicable for direct IP/CoAP transport.
+
+        SECURITY: Direct IP/CoAP transport is used for trusted local connections
+        (e.g., localhost or wired network). BLE-specific LESC requirements per
+        spec 17.5.4 do not apply. This transport relies on network-layer access
+        control (firewall, bind address) rather than link-layer authentication.
+        """
+        # Intentional no-op: IP/CoAP is a trusted local transport per spec 17.6.1
 
     def _require_context(self) -> ContextLike:
         if self._context is None:
@@ -325,9 +334,7 @@ class AiocoapResourceSubscription(ResourceSubscription):
     async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(
-        self, exc_type: object, exc_val: object, exc_tb: object
-    ) -> None:
+    async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         await self.close()
 
     def _should_accept(self, msg: Message) -> bool:

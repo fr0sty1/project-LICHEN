@@ -37,6 +37,20 @@ pub const INITIAL_HOP_LIMIT: u8 = 4;
 /// Maximum hop limit.
 pub const MAX_HOP_LIMIT: u8 = 15;
 
+/// Half the 16-bit sequence space used by RFC 1982 serial comparison.
+pub const SEQ_HALF: u16 = 0x8000;
+
+/// Return true if `incoming` is fresher than `existing`.
+///
+/// Equal values are not fresher. The half-range boundary
+/// (`incoming.wrapping_sub(existing) == SEQ_HALF`) is not fresher.
+pub fn seq_is_fresher(existing: u16, incoming: u16) -> bool {
+    if existing == incoming {
+        return false;
+    }
+    incoming.wrapping_sub(existing) < SEQ_HALF
+}
+
 /// Expanding ring hop limits: [4, 8, 15].
 pub const EXPANDING_RING: [u8; 3] = [4, 8, 15];
 
@@ -862,11 +876,7 @@ mod tests {
     }
 
     fn ll_seq_is_fresher(old_seq: u16, new_seq: u16) -> bool {
-        if old_seq == new_seq {
-            return false;
-        }
-        let diff = new_seq.wrapping_sub(old_seq);
-        diff < 0x8000
+        seq_is_fresher(old_seq, new_seq)
     }
 
     #[test]

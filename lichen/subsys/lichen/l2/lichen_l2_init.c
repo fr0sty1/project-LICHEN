@@ -98,7 +98,21 @@ int init_link_ctx_locked(const uint8_t eui64[LICHEN_EUI64_LEN])
 		return ret;
 	}
 #ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
-	lichen_link_set_epoch(&link_ctx, lichen_link_epoch_advance_for_boot());
+	uint8_t boot_epoch;
+	ret = lichen_link_epoch_advance_for_boot(link_ctx.epoch, &boot_epoch);
+	if (ret < 0) {
+		LOG_ERR("epoch persistence failed (%d)", ret);
+		lichen_link_cleanup(&link_ctx);
+		secure_zero(&link_ctx, sizeof(link_ctx));
+		return ret;
+	}
+	ret = lichen_link_set_epoch(&link_ctx, boot_epoch);
+	if (ret < 0) {
+		LOG_ERR("lichen_link_set_epoch failed (%d)", ret);
+		lichen_link_cleanup(&link_ctx);
+		secure_zero(&link_ctx, sizeof(link_ctx));
+		return ret;
+	}
 #endif
 	lichen_replay_table_init(&replay_table);
 	atomic_set(&link_ctx_initialized, 1);
@@ -317,6 +331,30 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 #if HAVE_LICHEN_LINK
 				atomic_set(&link_ctx_initialized, 0);
 #endif
+				return deinit_ret;
+			}
+		}
+		/*
+		 * Retry incomplete queue destruction
+		 * (project-LICHEN-worker6-l1qw.8.17.17.1.25).
+		 *
+		 * A previous disable whose deinit failed mid-queue-destroy leaves
+		 * LORA_DESTROY_FAILED. stop() then reports success for the
+		 * non-RUNNING state, so without this retry the disable path would
+		 * skip deinit and falsely report complete teardown while the queue
+		 * was never destroyed. Retry deinit (which re-enters at the destroy
+		 * step) and propagate incomplete cleanup instead of reporting
+		 * success.
+		 */
+		if (stop_ret == 0 && lichen_lora_l2_needs_destroy_retry()) {
+			int deinit_ret = lichen_lora_l2_deinit();
+			if (deinit_ret != 0) {
+				LOG_ERR("lichen_l2: destroy retry deinit failed (%d)",
+					deinit_ret);
+#if HAVE_LICHEN_LINK
+				atomic_set(&link_ctx_initialized, 0);
+#endif
+				return deinit_ret;
 			}
 		}
 #if HAVE_LICHEN_LINK
@@ -369,6 +407,9 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		}
 		atomic_set(&link_ctx_initialized, 0);
 		lichen_link_cleanup(&link_ctx);
+#ifdef CONFIG_LICHEN_LINK_REPLAY_PERSIST
+		lichen_replay_settings_close();
+#endif
 		/*
 		 * Clear replay table to prevent stale windows from persisting across
 		 * enable/disable cycles.
@@ -748,7 +789,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 			if (lichen_ipv6_addr_to_str(&ygg, addr_str, sizeof(addr_str)) == 0) {
 				LOG_INF("lichen_l2: primary yggdrasil %s", addr_str);
 			}
-			(void)net_if_ipv6_addr_add(iface, &ygg, NET_ADDR_PREFERRED, 0);
+			(void)net_if_ipv6_addr_add(iface, &ygg, NET_ADDR_MANUAL, 0);
 		}
 	}
 

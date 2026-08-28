@@ -726,16 +726,35 @@ def normalize_route(payload: Any) -> Route:
 
 
 def normalize_message(payload: Any) -> MessageRecord:
-    """Normalize one message row from `/msg/inbox` or legacy `/messages`."""
+    """Normalize one message row from `/msg/inbox` or legacy `/messages`.
+
+    Handles multiple timestamp field conventions:
+    - Spec 18.1.2: uses ``ts`` for inbox element timestamps
+    - Legacy simulator: uses ``t`` shorthand
+    - Firmware sent records: uses ``timestamp``
+    - Firmware inbox (coap_msg.c): uses ``received`` as Unix uint
+
+    When ``received`` is a string (LCI 17.5.7 ISO-8601), it populates the
+    ``received`` field. When it is a uint (firmware format), it contributes
+    to ``timestamp`` since that is the semantic time field.
+    """
     raw = _require_map(payload, "message")
+    # Coalesce timestamp from spec/legacy/firmware keys
+    ts = raw.get("ts", raw.get("t", raw.get("timestamp")))
+    # Firmware inbox uses 'received' as uint timestamp; fall back to it
+    received_raw = raw.get("received")
+    if ts is None and isinstance(received_raw, int) and not isinstance(received_raw, bool):
+        ts = received_raw
+    # received field: string for ISO-8601, None for uint (already captured in ts)
+    received_str = _str_or_none(received_raw) if not isinstance(received_raw, int) else None
     return MessageRecord(
         raw=raw,
         message_id=_int_or_none(raw.get("id")),
         sender=_str_or_none(raw.get("from")),
         recipient=_str_or_none(raw.get("to")),
         body=_str_or_none(raw.get("body", raw.get("text"))),
-        received=_str_or_none(raw.get("received")),
-        timestamp=raw.get("ts", raw.get("t")),
+        received=received_str,
+        timestamp=ts,
     )
 
 

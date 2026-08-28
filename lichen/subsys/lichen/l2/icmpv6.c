@@ -24,6 +24,21 @@ LICHEN_LOG_MODULE(lichen_icmpv6, LOG_LEVEL_INF);
 #define IPV6_HOP_LIMIT_OFFSET           7
 #define IPV6_SRC_OFFSET                 8
 #define IPV6_DST_OFFSET                 24
+#define IPV6_FIXED_HEADER_LEN           40
+
+/* IPv6 extension/upper-layer Next Header values. */
+#define IPV6_NEXT_HEADER_HOP_BY_HOP   0
+#define IPV6_NEXT_HEADER_ROUTING      43
+#define IPV6_NEXT_HEADER_FRAGMENT     44
+#define IPV6_NEXT_HEADER_ESP          50
+#define IPV6_NEXT_HEADER_AH           51
+#define IPV6_NEXT_HEADER_NONE         59
+#define IPV6_NEXT_HEADER_DEST_OPTIONS 60
+
+#define ICMPV6_REDIRECT 137
+
+#define INVOKING_FLAGS_MASK    UINT8_C(0x0f)
+#define ECHO_REQUEST_FLAGS_MASK UINT8_C(0x03)
 
 /*
  * ICMPv6 header field offsets (relative to ICMPv6 start).
@@ -50,6 +65,140 @@ LICHEN_LOG_MODULE(lichen_icmpv6, LOG_LEVEL_INF);
  * Default hop limit for ICMPv6 messages.
  */
 #define DEFAULT_HOP_LIMIT               64
+
+static bool ipv6_addr_is_unspecified(const uint8_t *addr)
+{
+	static const uint8_t unspecified[16];
+
+	return memcmp(addr, unspecified, sizeof(unspecified)) == 0;
+}
+
+static bool ipv6_addr_is_multicast(const uint8_t *addr)
+{
+	return addr[0] == 0xff;
+}
+
+/*
+ * Locate the invoking packet's upper-layer header.  Return 1 when it cannot
+ * be inspected safely (ESP or a non-initial fragment), 0 on success, and a
+ * negative errno for a malformed/truncated header chain.
+ */
+static int invoking_upper_layer(const uint8_t *packet, size_t packet_len, uint8_t *next_header,
+				size_t *offset)
+{
+	uint8_t next;
+	size_t cursor;
+
+	if (packet_len < IPV6_FIXED_HEADER_LEN || ((uint32_t)packet[0] >> 4U) != 6U) {
+		return -EINVAL;
+	}
+
+	next = packet[IPV6_NEXT_HEADER_OFFSET];
+	cursor = IPV6_FIXED_HEADER_LEN;
+
+	while (next == IPV6_NEXT_HEADER_HOP_BY_HOP || next == IPV6_NEXT_HEADER_ROUTING ||
+	       next == IPV6_NEXT_HEADER_FRAGMENT || next == IPV6_NEXT_HEADER_AH ||
+	       next == IPV6_NEXT_HEADER_DEST_OPTIONS) {
+		size_t header_len;
+
+		if (next == IPV6_NEXT_HEADER_FRAGMENT) {
+			uint16_t fragment_offset;
+
+			if (packet_len - cursor < 8U) {
+				return -EINVAL;
+			}
+			fragment_offset = (uint16_t)(((uint32_t)packet[cursor + 2U] << 8U) |
+						     (uint32_t)packet[cursor + 3U]);
+			/* A non-initial fragment does not expose the upper-layer type. */
+			if ((fragment_offset & UINT16_C(0xfff8)) != 0U) {
+				return 1;
+			}
+			header_len = 8U;
+		} else {
+			if (packet_len - cursor < 2U) {
+				return -EINVAL;
+			}
+			if (next == IPV6_NEXT_HEADER_AH) {
+				header_len = ((size_t)packet[cursor + 1U] + 2U) * 4U;
+			} else {
+				header_len = ((size_t)packet[cursor + 1U] + 1U) * 8U;
+			}
+			if (header_len < 8U || header_len > packet_len - cursor) {
+				return -EINVAL;
+			}
+		}
+
+		next = packet[cursor];
+		cursor += header_len;
+	}
+
+	if (next == IPV6_NEXT_HEADER_ESP) {
+		return 1;
+	}
+
+	*next_header = next;
+	*offset = cursor;
+	return 0;
+}
+
+/* Return 1 when RFC 4443 requires suppression, 0 when allowed, or errno. */
+static int error_suppression(const struct in6_addr *src, const struct in6_addr *dst,
+			     const uint8_t *invoking_packet, size_t invoking_len,
+			     uint8_t invoking_flags, bool allow_multicast)
+{
+	const uint8_t *invoking_src;
+	const uint8_t *invoking_dst;
+	uint8_t next_header;
+	size_t upper_offset;
+	int ret;
+
+	if ((invoking_flags & (uint8_t)~INVOKING_FLAGS_MASK) != 0U) {
+		return -EINVAL;
+	}
+	if (src == NULL || dst == NULL || invoking_packet == NULL) {
+		return -EINVAL;
+	}
+	if (ipv6_addr_is_unspecified(src->s6_addr) || ipv6_addr_is_multicast(src->s6_addr)) {
+		return -EINVAL;
+	}
+
+	ret = invoking_upper_layer(invoking_packet, invoking_len, &next_header, &upper_offset);
+	if (ret != 0) {
+		return ret;
+	}
+
+	invoking_src = invoking_packet + IPV6_SRC_OFFSET;
+	invoking_dst = invoking_packet + IPV6_DST_OFFSET;
+	if ((invoking_flags &
+	     (LICHEN_ICMPV6_INVOKING_SOURCE_ANYCAST | LICHEN_ICMPV6_INVOKING_CONGESTION)) != 0U ||
+	    ipv6_addr_is_unspecified(invoking_src) || ipv6_addr_is_multicast(invoking_src)) {
+		return 1;
+	}
+	if (memcmp(dst->s6_addr, invoking_src, 16U) != 0) {
+		return -EINVAL;
+	}
+	if (!allow_multicast && ((invoking_flags & (LICHEN_ICMPV6_INVOKING_LINK_MULTICAST |
+						    LICHEN_ICMPV6_INVOKING_LINK_BROADCAST)) != 0U ||
+				 ipv6_addr_is_multicast(invoking_dst))) {
+		return 1;
+	}
+
+	if (next_header == LICHEN_ICMPV6_NEXT_HEADER) {
+		uint8_t type;
+
+		if (upper_offset >= invoking_len) {
+			return -EINVAL;
+		}
+		type = invoking_packet[upper_offset];
+		if (type < 128U || type == ICMPV6_REDIRECT) {
+			return 1;
+		}
+	} else if (next_header == IPV6_NEXT_HEADER_NONE && upper_offset != invoking_len) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
 
 uint16_t lichen_internet_checksum(const uint8_t *data, size_t len)
 {
@@ -192,14 +341,19 @@ int lichen_icmpv6_parse_echo(const struct lichen_icmpv6_msg *msg,
         return -EINVAL;
     }
 
+    if (msg->code != 0U) {
+        LOG_ERR("icmpv6: parse_echo failed (nonzero code: %u)", msg->code);
+        return -EINVAL;
+    }
+
     /* Body must have at least identifier (2) + sequence (2) */
-    if (msg->body_len < 4) {
+    if (msg->body == NULL || msg->body_len < 4) {
         LOG_ERR("icmpv6: parse_echo failed (body too short: %zu)", msg->body_len);
         return -EINVAL;
     }
 
-    echo->identifier = ((uint16_t)msg->body[0] << 8) | msg->body[1];
-    echo->sequence = ((uint16_t)msg->body[2] << 8) | msg->body[3];
+    echo->identifier = (uint16_t)(((uint16_t)msg->body[0] << 8) | msg->body[1]);
+    echo->sequence = (uint16_t)(((uint16_t)msg->body[2] << 8) | msg->body[3]);
     echo->data = msg->body_len > 4 ? msg->body + 4 : NULL;
     echo->data_len = msg->body_len > 4 ? msg->body_len - 4 : 0;
 
@@ -264,6 +418,18 @@ static int build_echo(uint8_t type,
     if (data_len > 0 && data == NULL) {
         LOG_ERR("icmpv6: build_echo failed (data_len > 0 but data is NULL)");
         return -EINVAL;
+    }
+
+    if (type != LICHEN_ICMPV6_ECHO_REQUEST && type != LICHEN_ICMPV6_ECHO_REPLY) {
+        return -EINVAL;
+    }
+    if (ipv6_addr_is_unspecified(src->s6_addr) || ipv6_addr_is_multicast(src->s6_addr) ||
+        ipv6_addr_is_unspecified(dst->s6_addr) ||
+        (type == LICHEN_ICMPV6_ECHO_REPLY && ipv6_addr_is_multicast(dst->s6_addr))) {
+        return -EINVAL;
+    }
+    if (data_len > UINT16_MAX - LICHEN_ICMPV6_ECHO_HEADER_LEN) {
+        return -EMSGSIZE;
     }
 
     icmpv6_len = LICHEN_ICMPV6_ECHO_HEADER_LEN + data_len;
@@ -408,30 +574,45 @@ static int build_error(uint8_t type,
     return (int)total_len;
 }
 
-int lichen_icmpv6_build_dest_unreachable(const struct in6_addr *src,
-                                         const struct in6_addr *dst,
-                                         enum lichen_icmpv6_dest_unreach_code code,
-                                         const uint8_t *invoking_packet,
-                                         size_t invoking_len,
-                                         uint8_t *out,
-                                         size_t out_len)
+int lichen_icmpv6_build_dest_unreachable(const struct in6_addr *src, const struct in6_addr *dst,
+					 enum lichen_icmpv6_dest_unreach_code code,
+					 const uint8_t *invoking_packet, size_t invoking_len,
+					 uint8_t invoking_flags, uint8_t *out, size_t out_len)
 {
-    /* Destination Unreachable: rest-of-header is unused (zeros) */
-    return build_error(LICHEN_ICMPV6_DEST_UNREACHABLE, (uint8_t)code, 0,
-                       src, dst, invoking_packet, invoking_len, out, out_len);
+	int suppression;
+
+	if ((unsigned int)code > LICHEN_ICMPV6_REJECT_ROUTE) {
+		return -EINVAL;
+	}
+
+	suppression =
+	    error_suppression(src, dst, invoking_packet, invoking_len, invoking_flags, false);
+	if (suppression != 0) {
+		return suppression > 0 ? 0 : suppression;
+	}
+
+	/* Destination Unreachable: rest-of-header is unused (zeros) */
+	return build_error(LICHEN_ICMPV6_DEST_UNREACHABLE, (uint8_t)code, 0, src, dst,
+			   invoking_packet, invoking_len, out, out_len);
 }
 
-int lichen_icmpv6_build_packet_too_big(const struct in6_addr *src,
-                                       const struct in6_addr *dst,
-                                       uint32_t mtu,
-                                       const uint8_t *invoking_packet,
-                                       size_t invoking_len,
-                                       uint8_t *out,
-                                       size_t out_len)
+int lichen_icmpv6_build_packet_too_big(const struct in6_addr *src, const struct in6_addr *dst,
+				       uint32_t mtu, const uint8_t *invoking_packet,
+				       size_t invoking_len, uint8_t invoking_flags, uint8_t *out,
+				       size_t out_len)
 {
-    /* Packet Too Big: rest-of-header is MTU */
-    return build_error(LICHEN_ICMPV6_PACKET_TOO_BIG, 0, mtu,
-                       src, dst, invoking_packet, invoking_len, out, out_len);
+	int suppression;
+
+	/* RFC 4443 section 3.2 permits PTB for multicast/broadcast packets. */
+	suppression =
+	    error_suppression(src, dst, invoking_packet, invoking_len, invoking_flags, true);
+	if (suppression != 0) {
+		return suppression > 0 ? 0 : suppression;
+	}
+
+	/* Packet Too Big: rest-of-header is the full 32-bit next-hop MTU. */
+	return build_error(LICHEN_ICMPV6_PACKET_TOO_BIG, 0, mtu, src, dst, invoking_packet,
+			   invoking_len, out, out_len);
 }
 
 int lichen_icmpv6_build_time_exceeded(const struct in6_addr *src,
@@ -439,9 +620,21 @@ int lichen_icmpv6_build_time_exceeded(const struct in6_addr *src,
                                       enum lichen_icmpv6_time_exceeded_code code,
                                       const uint8_t *invoking_packet,
                                       size_t invoking_len,
+			      uint8_t invoking_flags,
                                       uint8_t *out,
                                       size_t out_len)
 {
+	int suppression;
+
+	if ((unsigned int)code > LICHEN_ICMPV6_FRAGMENT_REASSEMBLY) {
+		return -EINVAL;
+	}
+
+	suppression = error_suppression(src, dst, invoking_packet, invoking_len, invoking_flags, false);
+	if (suppression != 0) {
+		return suppression > 0 ? 0 : suppression;
+	}
+
     /* Time Exceeded: rest-of-header is unused (zeros) */
     return build_error(LICHEN_ICMPV6_TIME_EXCEEDED, (uint8_t)code, 0,
                        src, dst, invoking_packet, invoking_len, out, out_len);
@@ -465,6 +658,7 @@ int lichen_icmpv6_handle(const struct in6_addr *src,
                          const struct in6_addr *dst,
                          const uint8_t *icmpv6_data,
                          size_t icmpv6_len,
+                         uint8_t request_flags,
                          uint8_t *reply_out,
                          size_t reply_out_len)
 {
@@ -474,6 +668,9 @@ int lichen_icmpv6_handle(const struct in6_addr *src,
 
     if (src == NULL || dst == NULL || icmpv6_data == NULL || reply_out == NULL) {
         LOG_ERR("icmpv6: handle failed (NULL input)");
+        return -EINVAL;
+    }
+    if ((request_flags & (uint8_t)~ECHO_REQUEST_FLAGS_MASK) != 0U) {
         return -EINVAL;
     }
 
@@ -493,6 +690,24 @@ int lichen_icmpv6_handle(const struct in6_addr *src,
     if (msg.type != LICHEN_ICMPV6_ECHO_REQUEST) {
         LOG_DBG("icmpv6: received %s, no reply needed",
                 lichen_icmpv6_type_str(msg.type));
+        return 0;
+    }
+
+    /* Echo code is fixed at zero.  Invalid requests are discarded silently. */
+    if (msg.code != 0U) {
+        return 0;
+    }
+
+    /*
+     * This API has no interface-address selector.  Suppress multicast and
+     * known-anycast addresses rather than illegally sourcing from or replying
+     * to them.  Callers may originate a reply explicitly once they have selected
+     * a unicast interface address as required by RFC 4443 section 4.2.
+     */
+    if (ipv6_addr_is_unspecified(src->s6_addr) || ipv6_addr_is_multicast(src->s6_addr) ||
+        ipv6_addr_is_unspecified(dst->s6_addr) || ipv6_addr_is_multicast(dst->s6_addr) ||
+        (request_flags & (LICHEN_ICMPV6_ECHO_DESTINATION_ANYCAST |
+                          LICHEN_ICMPV6_ECHO_SOURCE_ANYCAST)) != 0U) {
         return 0;
     }
 

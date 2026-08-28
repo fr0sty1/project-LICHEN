@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-wqaa.1.12",
+  "title": "Define timeline and milestones for deployment",
+  "description": "Create phased timeline: hardware procurement, firmware completion, pre-deployment testing, DEFCON deployment, CCC deployment, post-event analysis. Define measurable milestones and deliverables for each phase. Align with conference dates.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:42.779038Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:42.779038Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.1.12",
+      "depends_on_id": "project-LICHEN-wqaa.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:44.029815Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

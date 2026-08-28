@@ -134,6 +134,13 @@ from lichen.sim.baseline import (
     save_baseline,
     update_baseline,
 )
+from lichen.sim.gnss import (
+    GnssStub,
+    NmeaSentences,
+    make_gga,
+    make_rmc,
+    nmea_checksum,
+)
 from lichen.sim.hybrid import (
     HybridNode,
     HybridPropagationModel,
@@ -142,6 +149,7 @@ from lichen.sim.hybrid import (
     create_hybrid_topology,
 )
 from lichen.sim.mobility import (
+    GroupMobility,
     MobilityManager,
     MobilityPattern,
     RandomWaypoint,
@@ -167,6 +175,12 @@ from lichen.sim.topology import (
 )
 
 __all__ = [
+    # GNSS simulation
+    "GnssStub",
+    "NmeaSentences",
+    "make_gga",
+    "make_rmc",
+    "nmea_checksum",
     # Regional channel plans (generic LoRa)
     "AS923",
     "AU915",
@@ -245,6 +259,7 @@ __all__ = [
     "RFMeasurement",
     "create_hybrid_topology",
     # Mobility
+    "GroupMobility",
     "MobilityManager",
     "MobilityPattern",
     "RandomWaypoint",

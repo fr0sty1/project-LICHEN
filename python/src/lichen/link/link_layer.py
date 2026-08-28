@@ -20,24 +20,17 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import fcntl
-import hashlib
-import json
 import logging
 import math
-import os
 import random
 import secrets
-import stat
-import tempfile
 import threading
 import weakref
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import InitVar, dataclass, field
-from enum import IntEnum
 from ipaddress import IPv6Address
-from typing import TYPE_CHECKING, Literal, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Literal, TypeVar, cast
 
 from .._sync_callbacks import reject_awaitable_result, require_sync_callable
 from ..constants import (
@@ -50,6 +43,7 @@ from ..crypto.identity import Identity, PeerIdentity, yggdrasil_address
 from ..crypto.schnorr48 import sign, verify
 from ..gradient import MAX_ENTRIES
 from ..ipv6.addr import eui64_to_iid, iid_to_eui64, make_link_local
+from .dio_handler import DioHandler
 from .frame import (
     LINK_SIGNATURE_DOMAIN,
     MAX_FRAME_BODY,
@@ -59,8 +53,50 @@ from .frame import (
     LichenFrame,
     MicLength,
 )
+from .frames import (
+    ReceiveError,
+    RxFrame,
+    _AuthenticatedPeerSchcIssuance,
+    _VerifiedReceipt,
+)
+from .persistence import LinkPersistence
+from .protocols import (
+    LinkPersistenceError,
+    LinkSecurityClockError,
+    PersistenceRevisionAnchor,
+    _PeerCandidate,
+)
+from .receipts import (
+    MAX_VERIFIED_RECEIPTS_PER_PEER as _RECEIPT_MAX_PER_PEER,
+)
+from .receipts import (
+    VERIFIED_RECEIPT_PURPOSES as _RECEIPT_PURPOSES,
+)
+from .receipts import (
+    VERIFIED_RECEIPT_TTL_SECONDS as _RECEIPT_TTL,
+)
+
+# Import extracted helper classes
+from .receipts import (
+    ReceiptStore,
+)
 from .replay import ReplayCapacityError, ReplayProtector, logical_counter
+from .schc_handler import SchcHandler
 from .tx_queue import Priority, TxQueue
+
+# Re-export extracted classes for backwards compatibility
+__all__ = [
+    "LinkLayer",
+    "RxFrame",
+    "ReceiveError",
+    "PersistenceRevisionAnchor",
+    "LinkPersistenceError",
+    "LinkSecurityClockError",
+    "encode_rekey_request",
+    "_VerifiedReceipt",
+    "_AuthenticatedPeerSchcIssuance",
+    "_PeerCandidate",
+]
 
 if TYPE_CHECKING:
     from ..radio.base import Radio
@@ -70,28 +106,20 @@ if TYPE_CHECKING:
         _AuthenticatedDioSnapshot,
     )
     from ..schc.context import AuthenticatedPeerSchcContext
-    from ..schc.fragment import FragmentSender, SchcSessionManager
+    from ..schc.fragment import FragmentSender
     from ..schc.reassembly import ReceiverResult, _AuthenticatedReassemblyManager
+    from ..schc.session_manager import SchcSessionManager
     from ..timing.time_sync import MonotonicClock
 
 logger = logging.getLogger(__name__)
 
 # A signed frame puts the full Schnorr-48 value in the MIC field.
-MAX_VERIFIED_RECEIPTS_PER_PEER = 16
 SIGNATURE_LENGTH = 48
+# Re-export constants from receipts module for backwards compatibility
+MAX_VERIFIED_RECEIPTS_PER_PEER = _RECEIPT_MAX_PER_PEER
+VERIFIED_RECEIPT_TTL_SECONDS = _RECEIPT_TTL
+VERIFIED_RECEIPT_PURPOSES = _RECEIPT_PURPOSES
 MAX_VERIFIED_RECEIPTS = MAX_ENTRIES * MAX_VERIFIED_RECEIPTS_PER_PEER
-VERIFIED_RECEIPT_TTL_SECONDS = 60.0
-VERIFIED_RECEIPT_PURPOSES = frozenset(
-    {
-        "schc-ack",
-        "schc-data",
-        "schc-fragment",
-        "dio-time",
-        "dio-schc-version",
-        "dio-authenticated",
-        "link-rekey",
-    }
-)
 MAX_SINGLE_FRAME_SCHC_PACKET = (
     MAX_FRAME_BODY
     - 4
@@ -102,28 +130,6 @@ MAX_SINGLE_FRAME_SCHC_PACKET = (
 )
 _ELEVATED = TypeVar("_ELEVATED")
 REKEY_CONTROL_PREFIX = b"\xfeLKR1"
-
-
-class PersistenceRevisionAnchor(Protocol):
-    """Independent monotonic revision capability for rollback detection."""
-
-    def read(self, local_pubkey: bytes) -> int | None:
-        """Return the durable revision, or None only before explicit bootstrap."""
-
-    def advance(self, local_pubkey: bytes, expected: int | None, revision: int) -> None:
-        """Atomically advance from ``expected`` to ``revision`` or raise."""
-
-
-class _PeerCandidate(Protocol):
-    pubkey: object
-
-
-class LinkPersistenceError(RuntimeError):
-    """Terminal LinkLayer storage failure; retrying this instance is unsafe."""
-
-
-class LinkSecurityClockError(RuntimeError):
-    """Terminal receipt-clock failure; authenticated ingress cannot continue."""
 
 
 MAX_RETIRED_REMOTE_KEYS = MAX_ENTRIES
@@ -139,138 +145,6 @@ _LINK_RECEIPT_CLOCK_BINDINGS: weakref.WeakKeyDictionary[
 # Why reject: Encryption is not implemented. Frames claiming to be encrypted
 # cannot be decrypted, so accepting them would misinterpret the payload.
 _encrypted_frame_warned = False
-
-
-@dataclass(frozen=True, init=False)
-class RxFrame:
-    """A received and validated frame with metadata.
-
-    Why a separate class: Callers need both the frame content and reception
-    metadata (RSSI, SNR) for link quality estimation and routing decisions.
-
-    Attributes:
-        frame: The parsed and validated LichenFrame.
-        sender: The sender's identity (verified by signature).
-        rssi_dbm: Received signal strength in dBm.
-        snr_db: Signal-to-noise ratio in dB.
-    """
-
-    sender: PeerIdentity
-    rssi_dbm: int
-    snr_db: int
-    _authenticated_payload: bytes = field(repr=False)
-    _authenticated_sender_pubkey: bytes = field(repr=False)
-    _authenticated_local_pubkey: bytes = field(repr=False)
-    _authenticated_epoch: int = field(repr=False)
-    _authenticated_seqnum: int = field(repr=False)
-    _authenticated_dst_addr: bytes = field(repr=False)
-    _authenticated_signer_eui64: bytes = field(repr=False)
-    _authenticated_mic: bytes = field(repr=False)
-    _authenticated_addr_mode: AddrMode = field(repr=False)
-    _authenticated_mic_length: MicLength = field(repr=False)
-    _authenticated_signature_present: bool = field(repr=False)
-    _authenticated_encrypted: bool = field(repr=False)
-    _authenticated_received_monotonic: float = field(repr=False)
-    _authenticated_clock_domain: object = field(repr=False)
-    _authenticated_key_generation: object = field(repr=False)
-    _authenticated_receiving_link_identity: object = field(repr=False)
-
-    def __new__(cls) -> RxFrame:
-        raise TypeError("RxFrame values are issued only by LinkLayer.receive")
-
-    @property
-    def frame(self) -> LichenFrame:
-        """Return a detached copy of the fully authenticated frame snapshot."""
-        return LichenFrame(
-            epoch=self._authenticated_epoch,
-            seqnum=self._authenticated_seqnum,
-            dst_addr=self._authenticated_dst_addr,
-            signer_eui64=self._authenticated_signer_eui64,
-            payload=self._authenticated_payload,
-            mic=self._authenticated_mic,
-            addr_mode=self._authenticated_addr_mode,
-            mic_length=self._authenticated_mic_length,
-            signature_present=self._authenticated_signature_present,
-            encrypted=self._authenticated_encrypted,
-        )
-
-    @property
-    def payload(self) -> bytes:
-        """Authenticated frame payload."""
-        return self._authenticated_payload
-
-    @property
-    def sender_iid(self) -> bytes:
-        """Authenticated sender IID."""
-        return self.sender.iid
-
-    @property
-    def sender_pubkey(self) -> bytes:
-        """Authenticated sender public key."""
-        return self._authenticated_sender_pubkey
-
-    @property
-    def local_pubkey(self) -> bytes:
-        """Canonical local signer identity of the receiving link layer."""
-        return self._authenticated_local_pubkey
-
-    @property
-    def epoch(self) -> int:
-        """Authenticated and replay-accepted link epoch."""
-        return self._authenticated_epoch
-
-    @property
-    def seqnum(self) -> int:
-        """Authenticated and replay-accepted link sequence number."""
-        return self._authenticated_seqnum
-
-    @property
-    def received_monotonic(self) -> float:
-        """Link-stamped monotonic reception time in seconds."""
-        return self._authenticated_received_monotonic
-
-    @property
-    def clock_domain(self) -> object:
-        """Opaque identity for the receiving link's monotonic clock domain."""
-        return self._authenticated_clock_domain
-
-    @property
-    def key_generation(self) -> object:
-        """Opaque identity for the authenticated peer-key generation."""
-        return self._authenticated_key_generation
-
-    @property
-    def receiving_link_identity(self) -> object:
-        """Opaque identity for the exact LinkLayer that accepted this frame."""
-        return self._authenticated_receiving_link_identity
-
-
-class ReceiveError(IntEnum):
-    MALFORMED = 1
-    UNSIGNED = 2
-    ENCRYPTED = 3
-    BAD_SIGNATURE = 4
-    KEY_CHANGE = 5
-    MIC_FAILED = 6
-    REPLAY = 7
-    NOT_FOR_US = 8
-
-
-@dataclass(frozen=True)
-class _VerifiedReceipt:
-    facade: RxFrame
-    snapshot: RxFrame
-    expires_at: float
-    sender_was_pinned: bool
-
-
-@dataclass(frozen=True)
-class _AuthenticatedPeerSchcIssuance:
-    facade: AuthenticatedPeerSchcContext
-    remote_version: int
-    signer_identity: bytes
-    key_generation: object
-    admitted_counter: int = -1
 
 
 def encode_rekey_request(new_remote_signer_identity: bytes) -> bytes:
@@ -328,22 +202,16 @@ class LinkLayer:
     _security_lock: threading.RLock = field(default_factory=threading.RLock, init=False, repr=False)
     _retired_remote_keys: set[bytes] = field(default_factory=set, init=False, repr=False)
     _rekeyed_peers: dict[bytes, PeerIdentity] = field(default_factory=dict, init=False, repr=False)
-    _verified_receipts: OrderedDict[int, _VerifiedReceipt] = field(
-        default_factory=OrderedDict, init=False, repr=False
-    )
-    _authenticated_dio_issuances: OrderedDict[int, _AuthenticatedDioSnapshot] = field(
-        default_factory=OrderedDict, init=False, repr=False
-    )
+    # Receipt storage delegated to ReceiptStore helper
+    _receipts: ReceiptStore = field(init=False, repr=False)
+    # DIO issuance tracking delegated to DioHandler helper
+    _dio: DioHandler = field(init=False, repr=False)
+    # SCHC operations delegated to SchcHandler helper
+    _schc: SchcHandler = field(init=False, repr=False)
     _receipt_clock: object = field(init=False, repr=False)
     _clock_domain: object = field(default_factory=object, init=False, repr=False)
     _receiving_link_identity: object = field(default_factory=object, init=False, repr=False)
     _key_generations: dict[bytes, object] = field(default_factory=dict, init=False, repr=False)
-    _persistence_revision: int = field(default=0, init=False, repr=False)
-    _persistence_failed: bool = field(default=False, init=False, repr=False)
-    _persistence_revision_anchor: PersistenceRevisionAnchor | None = field(
-        default=None, init=False, repr=False
-    )
-    _allow_persistence_bootstrap: bool = field(default=False, init=False, repr=False)
     _schc_session_manager: SchcSessionManager = field(init=False, repr=False)
     _schc_peer_contexts: dict[bytes, AuthenticatedPeerSchcContext] = field(
         default_factory=dict, init=False, repr=False
@@ -365,20 +233,12 @@ class LinkLayer:
     _receipt_clock_high_water: float = field(default=-1.0, init=False, repr=False)
     _receipt_clock_failed: bool = field(default=False, init=False, repr=False)
     _receipt_clock_active: bool = field(default=False, init=False, repr=False)
-    _persistence_transition_guard: threading.Lock = field(
-        default_factory=threading.Lock, init=False, repr=False
-    )
-    _persistence_meta_lock: threading.Lock = field(
-        default_factory=threading.Lock, init=False, repr=False
-    )
-    _persistence_hook_active: bool = field(default=False, init=False, repr=False)
-    _persistence_reentry: bool = field(default=False, init=False, repr=False)
-    _persistence_transition_owner: int | None = field(default=None, init=False, repr=False)
     _generation_condition: threading.Condition = field(init=False, repr=False)
     _generation_leases: dict[bytes, int] = field(default_factory=dict, init=False, repr=False)
     _generation_lease_owners: dict[tuple[bytes, int], int] = field(
         default_factory=dict, init=False, repr=False
     )
+    _persistence: LinkPersistence = field(init=False, repr=False)
 
     def __post_init__(
         self,
@@ -437,8 +297,6 @@ class LinkLayer:
         if persistence_revision_anchor is not None:
             require_sync_callable(persistence_revision_anchor.read, "persistence anchor read")
             require_sync_callable(persistence_revision_anchor.advance, "persistence anchor advance")
-        self._persistence_revision_anchor = persistence_revision_anchor
-        self._allow_persistence_bootstrap = allow_persistence_bootstrap
         clock_capability = receipt_clock or SYSTEM_MONOTONIC_CLOCK
         self._receipt_clock = clock_capability
         self._clock_domain = clock_capability.domain_identity
@@ -447,8 +305,8 @@ class LinkLayer:
                 clock_capability,
                 clock_capability._binding_snapshot(),
             )
-        from ..schc.fragment import SchcSessionManager
         from ..schc.reassembly import _AuthenticatedReassemblyManager
+        from ..schc.session_manager import SchcSessionManager
 
         self.replay_protector._claim_owner(self._replay_owner_token)
         self._schc_control_issuer_token = object()
@@ -467,6 +325,22 @@ class LinkLayer:
             local_identity=self._local_pubkey,
             security_lock=self._security_lock,
             clock=clock_capability,
+        )
+        # Instantiate helper modules for extracted functionality
+        self._receipts = ReceiptStore(self._receipt_now)
+        self._dio = DioHandler(self)
+        self._schc = SchcHandler(self)
+        # Create persistence handler (delegates all persistence operations)
+        self._persistence = LinkPersistence(
+            persist_path=self.persist_path,
+            local_privkey=self._local_privkey,
+            local_pubkey=self._local_pubkey,
+            security_lock=self._security_lock,
+            revision_anchor=persistence_revision_anchor,
+            allow_bootstrap=allow_persistence_bootstrap,
+            state_exporter=self,
+            state_restorer=self,
+            failure_handler=self,
         )
         if self.persist_path is not None:
             self._load_persisted_state()
@@ -610,82 +484,36 @@ class LinkLayer:
         """Opaque identity for this exact receiving LinkLayer instance."""
         return self._receiving_link_identity
 
+    @property
+    def _verified_receipts(self) -> OrderedDict[int, _VerifiedReceipt]:
+        """Access to receipt storage for internal operations. Delegates to ReceiptStore."""
+        return self._receipts._receipts
+
+    @property
+    def _authenticated_dio_issuances(self) -> OrderedDict[int, _AuthenticatedDioSnapshot]:
+        """Access to DIO issuances for internal operations. Delegates to DioHandler."""
+        return self._dio._authenticated_dio_issuances
+
     def create_fragment_sender(
         self,
         payload: bytes,
         remote_signer_identity: bytes,
         receiver_limit: int = 1281,
     ) -> FragmentSender:
-        """Create the sole active T=0 SCHC sender for an authenticated link key."""
-        from ..schc.fragment import FragmentError, fragmentation_rule_for_sender
+        """Create the sole active T=0 SCHC sender for an authenticated link key.
 
-        if type(remote_signer_identity) is not bytes or len(remote_signer_identity) != 32:
-            raise FragmentError("remote signer identity must be a 32-byte signer public key")
-        derived_rule_id = fragmentation_rule_for_sender(self._local_pubkey, remote_signer_identity)
-        self._ensure_persistence_healthy()
-        with self._security_lock:
-            self._ensure_persistence_healthy()
-            if remote_signer_identity in self._retired_remote_keys:
-                raise ValueError("cannot create a session for a retired signer identity")
-            if not payload or payload[0] not in (*range(8), 0xFF):
-                raise ValueError("fragmented packet contains an unknown SCHC data Rule ID")
-            from ..schc.rules import RULE_SET_VERSION
-
-            peer = self._schc_peer_contexts.get(remote_signer_identity)
-            if peer is None:
-                raise ValueError(
-                    "SCHC data fragmentation requires a version-compatible, "
-                    "authenticated replay-accepted DIO"
-                )
-            try:
-                remote_version, signer = self._validated_authenticated_peer_schc_context(peer)
-            except ValueError as exc:
-                raise ValueError(
-                    "SCHC data fragmentation requires a current authenticated peer context"
-                ) from exc
-            if signer != remote_signer_identity or remote_version != RULE_SET_VERSION:
-                raise ValueError(
-                    "SCHC data fragmentation requires a version-compatible, "
-                    "authenticated replay-accepted DIO"
-                )
-            from ..schc.codec import SchcError
-            from ..schc.headers import decode_rule255
-
-            try:
-                if payload[0] == 0xFF:
-                    # The single-frame ceiling is an L2 serialization limit,
-                    # not a fragmentation limit.  A Rule 255 packet admitted
-                    # here is about to be fragmented and may use the peer's
-                    # advertised reassembly budget.
-                    decode_rule255(payload)
-                else:
-                    peer.decompress_packet(
-                        payload,
-                        single_frame_limit=MAX_SINGLE_FRAME_SCHC_PACKET,
-                    )
-            except (SchcError, TypeError, ValueError) as exc:
-                raise ValueError(
-                    "fragmented packet must be a canonical complete SCHC packet"
-                ) from exc
-            return self._schc_session_manager.create_sender(
-                payload=payload,
-                remote_signer_identity=remote_signer_identity,
-                key_generation=self._key_generations[remote_signer_identity],
-                rule_id=derived_rule_id,
-                receiver_limit=receiver_limit,
-            )
+        Delegates to SchcHandler.
+        """
+        return self._schc.create_fragment_sender(
+            payload, remote_signer_identity, receiver_limit
+        )
 
     def cancel_fragment_sender(self, sender: FragmentSender) -> bytes | None:
-        """Cancel one exact sender and return its one-use Sender-Abort authority."""
-        from ..schc.fragment import FragmentSender as ExactFragmentSender
+        """Cancel one exact sender and return its one-use Sender-Abort authority.
 
-        if type(sender) is not ExactFragmentSender:
-            raise TypeError("sender must be an exact FragmentSender")
-        self._ensure_persistence_healthy()
-        with self._security_lock:
-            output = self._schc_session_manager.cancel_with_abort(sender)
-        self._save_persisted_state()
-        return output
+        Delegates to SchcHandler.
+        """
+        return self._schc.cancel_fragment_sender(sender)
 
     def compress_schc_for_peer(
         self,
@@ -695,26 +523,16 @@ class LinkLayer:
         single_frame_limit: int = MAX_SINGLE_FRAME_SCHC_PACKET,
         allow_fragmentation: bool = False,
     ) -> bytes:
-        """Compress one unfragmented datagram under current peer policy."""
-        if type(raw_ipv6) is not bytes:
-            raise TypeError("raw_ipv6 must be bytes")
-        if type(remote_signer_identity) is not bytes or len(remote_signer_identity) != 32:
-            raise ValueError("remote signer identity must be a 32-byte public key")
-        if type(allow_fragmentation) is not bool:
-            raise TypeError("allow_fragmentation must be bool")
-        with self._security_lock:
-            self._ensure_persistence_healthy()
-            peer = self._schc_peer_contexts.get(remote_signer_identity)
-            if peer is None:
-                raise ValueError("SCHC egress requires an authenticated replay-accepted peer DIO")
-            self._validated_authenticated_peer_schc_context(peer)
-            encoded = peer.compress_packet(
-                raw_ipv6,
-                single_frame_limit=single_frame_limit,
-            )
-            if len(encoded) > single_frame_limit and not allow_fragmentation:
-                raise ValueError("SCHC packet requires authenticated fragmentation")
-            return encoded
+        """Compress one unfragmented datagram under current peer policy.
+
+        Delegates to SchcHandler.
+        """
+        return self._schc.compress_schc_for_peer(
+            raw_ipv6,
+            remote_signer_identity,
+            single_frame_limit=single_frame_limit,
+            allow_fragmentation=allow_fragmentation,
+        )
 
     def accept_authenticated_schc_packet(
         self,
@@ -722,44 +540,23 @@ class LinkLayer:
         *,
         single_frame_limit: int = MAX_SINGLE_FRAME_SCHC_PACKET,
     ) -> bytes:
-        """Consume one link receipt and decode it under current signer policy."""
-        from ..l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
+        """Consume one link receipt and decode it under current signer policy.
 
-        if type(received) is not RxFrame:
-            raise TypeError("received must be an exact RxFrame")
-        with self._security_lock:
-            self._ensure_persistence_healthy()
-            snapshot = self._take_verified_receipt_unlocked(received, "schc-data")
-            if classify_l2_payload(snapshot.payload) is not L2PayloadKind.SCHC:
-                raise ValueError("authenticated SCHC data requires the SCHC L2 dispatch")
-            body = l2_payload_body(snapshot.payload)
-            if not body or body[0] in (0x78, 0x79):
-                raise ValueError("fragmentation packets require authenticated reassembly")
-            peer = self._schc_peer_contexts.get(snapshot.sender_pubkey)
-            if peer is None:
-                raise ValueError("SCHC ingress requires an authenticated replay-accepted peer DIO")
-            self._validated_authenticated_peer_schc_context(peer)
-            issuance = self._schc_peer_context_issuances[id(peer)]
-            if (
-                snapshot.key_generation is not issuance.key_generation
-                or logical_counter(snapshot.epoch, snapshot.seqnum) <= issuance.admitted_counter
-            ):
-                raise ValueError("SCHC ingress predates the current authenticated peer policy")
-            return peer.decompress_packet(
-                body,
-                single_frame_limit=single_frame_limit,
-            )
+        Delegates to SchcHandler.
+        """
+        return self._schc.accept_authenticated_schc_packet(
+            received, single_frame_limit=single_frame_limit
+        )
 
     def accept_authenticated_schc_fragment(
         self,
         received: RxFrame,
     ) -> tuple[ReceiverResult, bytes | None]:
-        """Consume and apply one authenticated fragment/control frame."""
-        result, ipv6, _authenticated_dio = self._accept_authenticated_schc_fragment(
-            received,
-            dio_scope=None,
-        )
-        return result, ipv6
+        """Consume and apply one authenticated fragment/control frame.
+
+        Delegates to SchcHandler.
+        """
+        return self._schc.accept_authenticated_schc_fragment(received)
 
     def accept_authenticated_schc_fragment_dio(
         self,
@@ -770,153 +567,17 @@ class LinkLayer:
         expected_mop: int,
         expected_role: Literal["root", "peer"],
     ) -> tuple[ReceiverResult, bytes | None, AuthenticatedDio | None]:
-        """Reassemble a fragment and issue DIO evidence in one link transaction."""
-        return self._accept_authenticated_schc_fragment(
+        """Reassemble a fragment and issue DIO evidence in one link transaction.
+
+        Delegates to SchcHandler.
+        """
+        return self._schc.accept_authenticated_schc_fragment_dio(
             received,
-            dio_scope=(
-                expected_rpl_instance_id,
-                expected_dodag_id,
-                expected_mop,
-                expected_role,
-            ),
+            expected_rpl_instance_id=expected_rpl_instance_id,
+            expected_dodag_id=expected_dodag_id,
+            expected_mop=expected_mop,
+            expected_role=expected_role,
         )
-
-    def _accept_authenticated_schc_fragment(
-        self,
-        received: RxFrame,
-        *,
-        dio_scope: tuple[int, IPv6Address, int, Literal["root", "peer"]] | None,
-    ) -> tuple[ReceiverResult, bytes | None, AuthenticatedDio | None]:
-        """Consume one fragment and optionally seal a completed RPL DIO."""
-        from ..ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader
-        from ..l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
-        from ..rpl.authenticated_dio import _issue_authenticated_dio_from_ipv6
-        from ..rpl.messages import RplCode
-        from ..schc.codec import SchcError
-        from ..schc.fragment import (
-            fragmentation_message_is_response,
-            fragmentation_rule_for_sender,
-        )
-        from ..schc.headers import decode_rule255
-        from ..schc.reassembly import ReceiverResult
-        from ..schc.rules import RULE_SET_VERSION
-
-        if type(received) is not RxFrame:
-            raise TypeError("received must be an exact RxFrame")
-        with self._security_lock:
-            self._ensure_persistence_healthy()
-            snapshot = self._take_verified_receipt_unlocked(received, "schc-fragment")
-            data = snapshot.payload
-            if classify_l2_payload(data) is L2PayloadKind.SCHC:
-                body = l2_payload_body(data)
-                if body and body[0] in (0x78, 0x79):
-                    raise ValueError("SCHC fragmentation Rules 0x78/0x79 require raw link dispatch")
-            if not data or data[0] not in (0x78, 0x79):
-                raise ValueError("authenticated frame is not a SCHC fragmentation message")
-            target_frame = snapshot.frame
-            if (
-                target_frame.addr_mode is not AddrMode.EXTENDED
-                or target_frame.dst_addr != self._local_eui64
-            ):
-                raise ValueError(
-                    "authenticated SCHC fragmentation requires exact Extended local target"
-                )
-            peer = self._schc_peer_contexts.get(snapshot.sender_pubkey)
-            if peer is None:
-                raise ValueError(
-                    "fragment ingress requires an authenticated replay-accepted peer DIO"
-                )
-            remote_version, signer = self._validated_authenticated_peer_schc_context(peer)
-            if signer != snapshot.sender_pubkey or remote_version != RULE_SET_VERSION:
-                raise ValueError("fragment ingress requires compatible Rule Set Version 3")
-            generation = self._key_generations.get(signer)
-            if generation is None or snapshot.key_generation is not generation:
-                raise ValueError("fragment signer generation is stale")
-            issuance = self._schc_peer_context_issuances[id(peer)]
-            if logical_counter(snapshot.epoch, snapshot.seqnum) <= issuance.admitted_counter:
-                raise ValueError("fragment ingress predates the current authenticated peer policy")
-            is_response = fragmentation_message_is_response(
-                data,
-                sender_identity=signer,
-                receiver_identity=self._local_pubkey,
-            )
-            expected_rule = fragmentation_rule_for_sender(
-                self._local_pubkey if is_response else signer,
-                signer if is_response else self._local_pubkey,
-            )
-            if data[0] != expected_rule:
-                raise ValueError(
-                    "fragmentation Rule ID does not match authenticated endpoint direction"
-                )
-            if is_response:
-                return ReceiverResult(), None, None
-
-            reassembled_schc_rule: int | None = None
-
-            def validate(packet: bytes) -> bytes:
-                nonlocal reassembled_schc_rule
-                reassembled_schc_rule = packet[0] if packet else None
-                try:
-                    if packet and packet[0] == 0xFF:
-                        # Reassembly has already enforced the receiver limit;
-                        # validate the complete raw IPv6 packet without
-                        # reapplying the smaller unfragmented-frame ceiling.
-                        return decode_rule255(packet)
-                    return peer.decompress_packet(
-                        packet,
-                        single_frame_limit=MAX_SINGLE_FRAME_SCHC_PACKET,
-                    )
-                except SchcError as exc:
-                    raise ValueError("reassembled SCHC packet is invalid") from exc
-
-            receiver_result, ipv6 = self._schc_reassembly_manager.receive(
-                snapshot,
-                data,
-                generation,
-                validate_packet=validate,
-            )
-            if receiver_result.response is not None:
-                receiver_result.response = (
-                    self._schc_session_manager._issue_link_transition_control_wire(
-                        self._schc_control_issuer_token,
-                        receiver_result.response,
-                        signer,
-                        generation,
-                        response=True,
-                    )
-                )
-            authenticated_dio = None
-            dio_error: BaseException | None = None
-            if ipv6 is not None and dio_scope is not None:
-                try:
-                    header = IPv6Header.from_bytes(ipv6)
-                    icmp = ipv6[HEADER_LENGTH:]
-                    if (
-                        header.next_header == NextHeader.ICMPV6
-                        and len(icmp) >= 2
-                        and icmp[0] == 155
-                        and icmp[1] == int(RplCode.DIO)
-                    ):
-                        authenticated_dio = _issue_authenticated_dio_from_ipv6(
-                            snapshot,
-                            ipv6,
-                            schc_rule_id=(
-                                reassembled_schc_rule if reassembled_schc_rule is not None else -1
-                            ),
-                            expected_rpl_instance_id=dio_scope[0],
-                            expected_dodag_id=dio_scope[1],
-                            expected_mop=dio_scope[2],
-                            expected_role=dio_scope[3],
-                        )
-                        dio_issuance = self._register_authenticated_dio_unlocked(authenticated_dio)
-                        if dio_issuance.sender_pubkey != signer:
-                            raise ValueError("reassembled DIO signer evidence mismatch")
-                except BaseException as exc:
-                    dio_error = exc
-        self._save_persisted_state()
-        if dio_error is not None:
-            raise dio_error
-        return receiver_result, ipv6, authenticated_dio
 
     def expire_authenticated_schc_reassembly(self) -> list[tuple[bytes, bytes, bytes]]:
         """Drain proactive inactivity aborts as ``(peer_key, dst_eui64, wire)``.
@@ -924,56 +585,20 @@ class LinkLayer:
         Each due inbound context produces its exact Receiver-Abort once.  The
         caller transmits ``wire`` to ``dst_eui64`` with ACK priority; the full
         peer key is included so higher layers can retain authenticated ownership.
+
+        Delegates to SchcHandler.
         """
-        self._ensure_persistence_healthy()
-        with self._security_lock:
-            self._ensure_persistence_healthy()
-            pending = self._schc_reassembly_manager.expire_due()
-            outputs = [
-                (
-                    peer_key,
-                    destination,
-                    self._schc_session_manager._issue_link_transition_control_wire(
-                        self._schc_control_issuer_token,
-                        wire,
-                        peer_key,
-                        self._key_generations[peer_key],
-                        response=True,
-                    ),
-                )
-                for peer_key, destination, wire in pending
-                if peer_key in self._key_generations
-            ]
-        if outputs:
-            self._save_persisted_state()
-        return outputs
+        return self._schc.expire_authenticated_schc_reassembly()
 
     def accept_authenticated_schc_sender_control(
         self,
         received: RxFrame,
     ) -> list[bytes] | None:
-        """Apply a Link-registered sender ACK/abort before receiver dispatch."""
-        if type(received) is not RxFrame:
-            raise TypeError("received must be an exact RxFrame")
-        from ..schc.fragment import (
-            fragmentation_message_is_response,
-            fragmentation_rule_for_sender,
-        )
+        """Apply a Link-registered sender ACK/abort before receiver dispatch.
 
-        data = received.payload
-        if fragmentation_message_is_response(
-            data,
-            sender_identity=received.sender_pubkey,
-            receiver_identity=self._local_pubkey,
-        ) and data[0] != (
-            fragmentation_rule_for_sender(self._local_pubkey, received.sender_pubkey)
-        ):
-            raise ValueError("SCHC response Rule ID does not match authenticated endpoints")
-        self._ensure_persistence_healthy()
-        result = self._schc_session_manager.transition_verified_control(received)
-        if result is not None:
-            self._save_persisted_state()
-        return result
+        Delegates to SchcHandler.
+        """
+        return self._schc.accept_authenticated_schc_sender_control(received)
 
     def accept_authenticated_dio(
         self,
@@ -984,77 +609,33 @@ class LinkLayer:
         expected_mop: int,
         expected_role: Literal["root", "peer"],
     ) -> AuthenticatedDio:
-        """Consume one receipt and issue canonical DIO evidence for safe fan-out."""
-        from ..rpl.authenticated_dio import _issue_authenticated_dio
+        """Consume one receipt and issue canonical DIO evidence for safe fan-out.
 
-        if type(received) is not RxFrame:
-            raise TypeError("received must be an exact RxFrame")
-        self._ensure_persistence_healthy()
-        with self._security_lock:
-            self._ensure_persistence_healthy()
-            self._receipt_now()
-            snapshot = self._take_verified_receipt_unlocked(received, "dio-authenticated")
-            authenticated = _issue_authenticated_dio(
-                snapshot,
-                expected_rpl_instance_id=expected_rpl_instance_id,
-                expected_dodag_id=expected_dodag_id,
-                expected_mop=expected_mop,
-                expected_role=expected_role,
-            )
-            self._register_authenticated_dio_unlocked(authenticated)
-            return authenticated
+        Delegates to DioHandler.
+        """
+        return self._dio.accept_authenticated_dio(
+            received,
+            expected_rpl_instance_id=expected_rpl_instance_id,
+            expected_dodag_id=expected_dodag_id,
+            expected_mop=expected_mop,
+            expected_role=expected_role,
+        )
 
     def _register_authenticated_dio_unlocked(
         self, authenticated: AuthenticatedDio
     ) -> _AuthenticatedDioSnapshot:
-        """Register one sealed DIO while the link security lock is held."""
-        from ..rpl.authenticated_dio import _capture_authenticated_dio
+        """Register one sealed DIO while the link security lock is held.
 
-        issuance = _capture_authenticated_dio(authenticated)
-        same_signer = [
-            issuance_id
-            for issuance_id, existing in self._authenticated_dio_issuances.items()
-            if existing.sender_pubkey == issuance.sender_pubkey
-        ]
-        while len(same_signer) >= MAX_AUTHENTICATED_DIO_ISSUANCES_PER_PEER:
-            self._authenticated_dio_issuances.pop(same_signer.pop(0), None)
-        self._authenticated_dio_issuances[id(authenticated)] = issuance
-        while len(self._authenticated_dio_issuances) > MAX_AUTHENTICATED_DIO_ISSUANCES:
-            self._authenticated_dio_issuances.popitem(last=False)
-        return issuance
+        Delegates to DioHandler.
+        """
+        return self._dio._register_authenticated_dio(authenticated)
 
     def accepts_authenticated_dio(self, authenticated: object) -> bool:
-        """Validate exact ownership and the full immutable DIO issuance snapshot."""
-        from ..rpl.authenticated_dio import AuthenticatedDio, _capture_authenticated_dio
+        """Validate exact ownership and the full immutable DIO issuance snapshot.
 
-        if type(authenticated) is not AuthenticatedDio:
-            return False
-        try:
-            self._ensure_persistence_healthy()
-        except RuntimeError:
-            return False
-        with self._security_lock:
-            try:
-                self._ensure_persistence_healthy()
-                self._receipt_now()
-            except RuntimeError:
-                return False
-            issued = self._authenticated_dio_issuances.get(id(authenticated))
-            if issued is None or issued.facade is not authenticated:
-                return False
-            try:
-                current = _capture_authenticated_dio(authenticated)
-            except (AttributeError, TypeError, ValueError):
-                return False
-            return (
-                current.facade is issued.facade
-                and current.rx_snapshot is issued.rx_snapshot
-                and current.receiving_link_identity is self._receiving_link_identity
-                and current.receiving_link_identity is issued.receiving_link_identity
-                and current.clock_domain_identity is issued.clock_domain_identity
-                and current.key_generation is issued.key_generation
-                and current.structural_state == issued.structural_state
-            )
+        Delegates to DioHandler.
+        """
+        return self._dio.accepts_authenticated_dio(authenticated)
 
     def elevate_authenticated_dio(
         self,
@@ -1062,67 +643,18 @@ class LinkLayer:
         *,
         elevate: Callable[[DetachedAuthenticatedDio], _ELEVATED],
     ) -> _ELEVATED:
-        """Validate and detach DIO evidence inside one security transaction."""
-        from ..rpl.authenticated_dio import (
-            AuthenticatedDio,
-            _capture_authenticated_dio,
-            _detach_authenticated_dio,
-        )
+        """Validate and detach DIO evidence inside one security transaction.
 
-        if type(authenticated) is not AuthenticatedDio:
-            raise TypeError("authenticated must be an exact AuthenticatedDio")
-        callback = require_sync_callable(elevate, "DIO elevation callback")
-        self._ensure_persistence_healthy()
-        with self._security_lock:
-            self._ensure_persistence_healthy()
-            self._receipt_now()
-            issued = self._authenticated_dio_issuances.get(id(authenticated))
-            if issued is None or issued.facade is not authenticated:
-                raise ValueError("authenticated DIO is not a live LinkLayer issuance")
-            current = _capture_authenticated_dio(authenticated)
-            signer = issued.sender_pubkey
-            if (
-                current.rx_snapshot is not issued.rx_snapshot
-                or current.structural_state != issued.structural_state
-                or current.receiving_link_identity is not self._receiving_link_identity
-                or current.key_generation is not issued.key_generation
-                or self._key_generations.get(signer) is not issued.key_generation
-                or signer in self._retired_remote_keys
-                or self._pinned_keys.get(PeerIdentity.from_pubkey(signer).iid) != signer
-            ):
-                raise ValueError("authenticated DIO is stale, mutated, or no longer trusted")
-            detached = _detach_authenticated_dio(issued)
-            self._acquire_generation_lease_unlocked(signer, issued.key_generation)
-        try:
-            return cast(
-                _ELEVATED,
-                reject_awaitable_result(
-                    callback(detached),
-                    "DIO elevation callback",
-                ),
-            )
-        finally:
-            self._release_generation_lease(signer)
+        Delegates to DioHandler.
+        """
+        return self._dio.elevate_authenticated_dio(authenticated, elevate=elevate)
 
     def accepts_time_generation(self, signer: bytes, generation: object) -> bool:
-        """Return whether one adopted time source remains pinned and current."""
-        if type(signer) is not bytes or len(signer) != 32:
-            return False
-        try:
-            self._ensure_persistence_healthy()
-        except RuntimeError:
-            return False
-        with self._security_lock:
-            try:
-                self._ensure_persistence_healthy()
-                self._receipt_now()
-            except RuntimeError:
-                return False
-            return (
-                signer not in self._retired_remote_keys
-                and self._key_generations.get(signer) is generation
-                and self._pinned_keys.get(PeerIdentity.from_pubkey(signer).iid) == signer
-            )
+        """Return whether one adopted time source remains pinned and current.
+
+        Delegates to DioHandler.
+        """
+        return self._dio.accepts_time_generation(signer, generation)
 
     def elevate_time_generation(
         self,
@@ -1131,27 +663,11 @@ class LinkLayer:
         *,
         elevate: Callable[[], _ELEVATED],
     ) -> _ELEVATED:
-        """Commit one time-policy transition while its peer generation is current."""
-        if type(signer) is not bytes or len(signer) != 32:
-            raise ValueError("signer must be a 32-byte public key")
-        callback = require_sync_callable(elevate, "time generation callback")
-        self._ensure_persistence_healthy()
-        with self._security_lock:
-            self._ensure_persistence_healthy()
-            self._receipt_now()
-            # Generation-validation leases may overlap.  Each pins the same
-            # current key against rekey until its callback returns; waiting for
-            # another callback here would invert any external lock held by the
-            # caller (notably StratumTracker's state lock) against a callback
-            # already waiting for that external lock.
-            self._acquire_generation_lease_unlocked(signer, generation)
-        try:
-            return cast(
-                _ELEVATED,
-                reject_awaitable_result(callback(), "time generation callback"),
-            )
-        finally:
-            self._release_generation_lease(signer)
+        """Commit one time-policy transition while its peer generation is current.
+
+        Delegates to DioHandler.
+        """
+        return self._dio.elevate_time_generation(signer, generation, elevate=elevate)
 
     def elevate_peer_generation(
         self,
@@ -1486,14 +1002,8 @@ class LinkLayer:
                 return peer, result
 
     def _purge_verified_receipts_unlocked(self, now: float | None = None) -> None:
-        current = self._receipt_now() if now is None else now
-        expired = [
-            receipt_id
-            for receipt_id, receipt in self._verified_receipts.items()
-            if current >= receipt.expires_at
-        ]
-        for receipt_id in expired:
-            self._verified_receipts.pop(receipt_id, None)
+        """Purge expired receipts. Delegates to ReceiptStore."""
+        self._receipts.purge(now)
 
     def _store_verified_receipt_unlocked(
         self,
@@ -1502,42 +1012,24 @@ class LinkLayer:
         *,
         sender_was_pinned: bool,
     ) -> None:
-        self._purge_verified_receipts_unlocked(snapshot.received_monotonic)
-        same_peer = [
-            receipt_id
-            for receipt_id, receipt in self._verified_receipts.items()
-            if receipt.snapshot.sender_pubkey == snapshot.sender_pubkey
-        ]
-        while len(same_peer) >= MAX_VERIFIED_RECEIPTS_PER_PEER:
-            self._verified_receipts.pop(same_peer.pop(0), None)
-        self._verified_receipts[id(facade)] = _VerifiedReceipt(
-            facade=facade,
-            snapshot=snapshot,
-            expires_at=snapshot.received_monotonic + VERIFIED_RECEIPT_TTL_SECONDS,
-            sender_was_pinned=sender_was_pinned,
-        )
-        self._verified_receipts.move_to_end(id(facade))
-        while len(self._verified_receipts) > MAX_VERIFIED_RECEIPTS:
-            self._verified_receipts.popitem(last=False)
+        """Store a verified receipt. Delegates to ReceiptStore."""
+        self._receipts.store(facade, snapshot, sender_was_pinned=sender_was_pinned)
 
     def _take_verified_receipt_entry_unlocked(
         self,
         received: RxFrame,
         purpose: str,
     ) -> _VerifiedReceipt:
-        if purpose not in VERIFIED_RECEIPT_PURPOSES:
-            raise ValueError(f"unsupported verified-frame receipt purpose: {purpose!r}")
-        self._purge_verified_receipts_unlocked()
-        registered = self._verified_receipts.pop(id(received), None)
-        if registered is None or registered.facade is not received:
-            raise ValueError("frame lacks this LinkLayer's unconsumed verified receipt")
-        return registered
+        """Take and return the full receipt entry. Delegates to ReceiptStore."""
+        return self._receipts.take(received, purpose)
 
     def _take_verified_receipt_unlocked(self, received: RxFrame, purpose: str) -> RxFrame:
-        return self._take_verified_receipt_entry_unlocked(received, purpose).snapshot
+        """Take receipt and return snapshot. Delegates to ReceiptStore."""
+        return self._receipts.consume(received, purpose)
 
     def _consume_verified_receipt_unlocked(self, received: RxFrame, purpose: str) -> RxFrame:
-        return self._take_verified_receipt_unlocked(received, purpose)
+        """Consume receipt and return snapshot. Delegates to ReceiptStore."""
+        return self._receipts.consume(received, purpose)
 
     def consume_verified_receipt(self, received: RxFrame, *, purpose: str) -> RxFrame:
         """Consume an exact LinkLayer-issued frame receipt for one trust purpose.
@@ -2154,7 +1646,7 @@ class LinkLayer:
                 )
                 if evictable_pin is None:
                     logger.error("RX TOFU pin capacity exhausted; failing closed")
-                    return ReceiveError.REPLAY
+                    return ReceiveError.CAPACITY_EXHAUSTED
 
             # Every over-air frame, including a frame signed by our own key, is
             # replay checked. Internal loopback must use a separate local API.
@@ -2167,7 +1659,7 @@ class LinkLayer:
                 )
             except ReplayCapacityError:
                 logger.error("RX replay state capacity exhausted; failing closed")
-                return ReceiveError.REPLAY
+                return ReceiveError.CAPACITY_EXHAUSTED
             if not fresh:
                 logger.warning(
                     "RX replay detected: epoch=%d seqnum=%d sender=%s",
@@ -2427,350 +1919,16 @@ class LinkLayer:
         return self._epoch, self._seqnum
 
     def _load_persisted_state(self) -> None:
-        if self.persist_path is None:
-            return
-        with self._persistence_file_lock():
-            self._load_persisted_state_unlocked()
-
-    def _load_persisted_state_unlocked(self) -> None:
-        """Restore one journal snapshot while the cross-writer lock is held."""
-        assert self.persist_path is not None
-        slot_paths = [f"{self.persist_path}.0", f"{self.persist_path}.1"]
-        anchor_path = f"{self.persist_path}.anchor"
-        external_revision = self._read_persistence_revision_anchor()
-        if not any(os.path.exists(path) for path in (*slot_paths, anchor_path)):
-            if external_revision is not None:
-                raise RuntimeError("link security persistence was deleted after bootstrap")
-            if not self._allow_persistence_bootstrap:
-                raise RuntimeError("link security persistence requires explicit bootstrap")
-            # Bootstrap owns the file lock already; avoid recursively acquiring it.
-            self._save_persisted_state_bootstrap_unlocked()
-            self._sequence_started = True
-            return
-
-        valid_slots: list[tuple[int, dict[str, object], bytes]] = []
-        for path in slot_paths:
-            if not os.path.exists(path):
-                continue
-            try:
-                record, canonical = self._read_signed_persistence_record(path, b"state")
-                revision = record.get("revision")
-                if type(revision) is not int or revision < 1:
-                    raise ValueError("invalid persistence revision")
-                valid_slots.append((revision, record, hashlib.sha256(canonical).digest()))
-            except (OSError, ValueError, TypeError, json.JSONDecodeError):
-                continue
-        if not valid_slots:
-            raise RuntimeError("link security persistence is missing or corrupt")
-        revision, state, digest = max(valid_slots, key=lambda item: item[0])
-
-        if external_revision is None:
-            if not self._allow_persistence_bootstrap or revision != 1:
-                raise RuntimeError("independent persistence revision anchor is uninitialized")
-        elif revision < external_revision or revision > external_revision + 1:
-            raise RuntimeError("link security persistence rollback detected")
-
-        if os.path.exists(anchor_path):
-            anchor, _ = self._read_signed_persistence_record(anchor_path, b"anchor")
-            anchor_revision = anchor.get("revision")
-            anchor_digest = anchor.get("digest")
-            if type(anchor_revision) is not int or type(anchor_digest) is not str:
-                raise RuntimeError("link security persistence anchor is corrupt")
-            if revision < anchor_revision or revision > anchor_revision + 1:
-                raise RuntimeError("link security persistence rollback detected")
-            if revision == anchor_revision and anchor_digest != digest.hex():
-                raise RuntimeError("link security persistence anchor mismatch")
-        elif revision != 1 and revision != external_revision:
-            raise RuntimeError("link security persistence anchor is missing")
-
-        self._restore_security_state(state)
-        self._persistence_revision = revision
-        self._sequence_started = True
-        self._write_persistence_anchor(anchor_path, revision, digest)
-        if external_revision != revision:
-            self._advance_persistence_revision_anchor(external_revision, revision)
-
-    def _save_persisted_state_bootstrap_unlocked(self) -> None:
-        """Create revision one while initialization owns the persistence file lock."""
-        assert self.persist_path is not None
-        with self._security_lock:
-            replay_state = self.replay_protector.export_state()
-            replay_state["pins"] = []
-            state: dict[str, object] = {
-                "format": 4,
-                "revision": 1,
-                "local_pubkey": self._local_pubkey.hex(),
-                "epoch": self._epoch,
-                "seqnum": self._seqnum,
-                "exhausted": self._exhausted,
-                "pinned_keys": [],
-                "rekeyed_peers": [],
-                "retired_remote_keys": [],
-                "replay": replay_state,
-                "schc_sessions": self._schc_session_manager.export_persistence_state(),
-                "schc_reassembly": self._schc_reassembly_manager.export_persistence_state(),
-            }
-        canonical = self._write_signed_persistence_record(f"{self.persist_path}.1", state, b"state")
-        digest = hashlib.sha256(canonical).digest()
-        self._write_persistence_anchor(f"{self.persist_path}.anchor", 1, digest)
-        self._advance_persistence_revision_anchor(None, 1)
-        self._persistence_revision = 1
+        """Load persisted state. Delegates to LinkPersistence."""
+        self._persistence.load_state()
 
     def _save_persisted_state(self) -> None:
-        """Persist or irreversibly disable this instance on any journal failure."""
-        if self.persist_path is None:
-            return
-        if self._persistence_failed:
-            raise LinkPersistenceError("LinkLayer is disabled after a persistence failure")
-        with self._persistence_meta_lock:
-            if self._persistence_hook_active:
-                self._persistence_reentry = True
-                raise RuntimeError("LinkLayer operation during persistence callback")
-        if not self._persistence_transition_guard.acquire(blocking=False):
-            with self._persistence_meta_lock:
-                if self._persistence_hook_active:
-                    self._persistence_reentry = True
-                    raise RuntimeError("link persistence transition already in progress")
-                if self._persistence_transition_owner == threading.get_ident():
-                    raise RuntimeError("recursive link persistence transition")
-            self._persistence_transition_guard.acquire()
-        with self._persistence_meta_lock:
-            self._persistence_transition_owner = threading.get_ident()
-        try:
-            self._ensure_persistence_healthy()
-            self._save_persisted_state_unchecked()
-        except BaseException as exc:
-            with self._security_lock:
-                self._persistence_failed = True
-                thread_id = threading.get_ident()
-                owns_lease = any(
-                    owner_thread == thread_id and count > 0
-                    for (_signer, owner_thread), count in self._generation_lease_owners.items()
-                )
-                while self._generation_leases and not owns_lease:
-                    self._generation_condition.wait()
-                self._exhausted = True
-                self.tx_queue.clear()
-                self._verified_receipts.clear()
-                self._authenticated_dio_issuances.clear()
-                self._schc_session_manager.fail_closed()
-                self._schc_reassembly_manager.fail_closed()
-                self._schc_peer_contexts.clear()
-                self._schc_peer_context_issuances.clear()
-                self._key_generations.clear()
-            raise LinkPersistenceError(
-                "link security persistence failed; LinkLayer is permanently disabled"
-            ) from exc
-        finally:
-            with self._persistence_meta_lock:
-                self._persistence_transition_owner = None
-            self._persistence_transition_guard.release()
+        """Persist or disable on failure. Delegates to LinkPersistence."""
+        self._persistence.save_state()
 
     def _ensure_persistence_healthy(self) -> None:
-        with self._persistence_meta_lock:
-            transition_owner = self._persistence_transition_owner
-            if transition_owner is not None and transition_owner != threading.get_ident():
-                if self._persistence_hook_active:
-                    self._persistence_reentry = True
-                raise RuntimeError("LinkLayer operation during persistence transition")
-            if self._persistence_hook_active:
-                self._persistence_reentry = True
-                raise RuntimeError("LinkLayer operation during persistence callback")
-        if self._persistence_failed:
-            raise LinkPersistenceError("LinkLayer is disabled after a persistence failure")
-
-    def _save_persisted_state_unchecked(self) -> None:
-        assert self.persist_path is not None
-        with self._security_lock:
-            replay_state = self.replay_protector.export_state()
-            replay_state["pins"] = []
-            replay_state["windows"] = [
-                window
-                for window in cast(list[dict[str, object]], replay_state["windows"])
-                if cast(int, window["highest"]) >= 0
-            ]
-            revision = self._persistence_revision + 1
-            state: dict[str, object] = {
-                "format": 4,
-                "revision": revision,
-                "local_pubkey": self._local_pubkey.hex(),
-                "epoch": self._epoch,
-                "seqnum": self._seqnum,
-                "exhausted": self._exhausted,
-                "pinned_keys": [
-                    [iid.hex(), pubkey.hex()] for iid, pubkey in self._pinned_keys.items()
-                ],
-                "rekeyed_peers": [pubkey.hex() for pubkey in self._rekeyed_peers],
-                "retired_remote_keys": sorted(pubkey.hex() for pubkey in self._retired_remote_keys),
-                "replay": replay_state,
-                "schc_sessions": self._schc_session_manager.export_persistence_state(),
-                "schc_reassembly": self._schc_reassembly_manager.export_persistence_state(),
-            }
-        with self._persistence_file_lock():
-            expected_revision = (
-                None if self._persistence_revision == 0 else self._persistence_revision
-            )
-            external_revision = self._read_persistence_revision_anchor()
-            if external_revision != expected_revision:
-                raise RuntimeError("stale LinkLayer persistence writer")
-            canonical = self._write_signed_persistence_record(
-                f"{self.persist_path}.{revision % 2}", state, b"state"
-            )
-            digest = hashlib.sha256(canonical).digest()
-            self._write_persistence_anchor(f"{self.persist_path}.anchor", revision, digest)
-            self._advance_persistence_revision_anchor(expected_revision, revision)
-            with self._security_lock:
-                self._persistence_revision = revision
-
-    @contextlib.contextmanager
-    def _persistence_file_lock(self):  # type: ignore[no-untyped-def]
-        """Serialize prepare/write/CAS across every writer of one journal."""
-        assert self.persist_path is not None
-        parent = os.path.dirname(os.path.abspath(self.persist_path))
-        os.makedirs(parent, mode=0o700, exist_ok=True)
-        parent_stat = os.stat(parent, follow_symlinks=False)
-        if (
-            not stat.S_ISDIR(parent_stat.st_mode)
-            or parent_stat.st_uid != os.geteuid()
-            or parent_stat.st_mode & 0o022
-        ):
-            raise PermissionError("persistence directory must be private and owned by this user")
-        flags = os.O_RDWR | os.O_CREAT
-        flags |= getattr(os, "O_NOFOLLOW", 0)
-        descriptor = os.open(f"{self.persist_path}.lock", flags, 0o600)
-        try:
-            lock_stat = os.fstat(descriptor)
-            if (
-                not stat.S_ISREG(lock_stat.st_mode)
-                or lock_stat.st_uid != os.geteuid()
-                or lock_stat.st_mode & 0o077
-            ):
-                raise PermissionError("persistence lock file is not private")
-            fcntl.flock(descriptor, fcntl.LOCK_EX)
-            yield
-        finally:
-            with contextlib.suppress(OSError):
-                fcntl.flock(descriptor, fcntl.LOCK_UN)
-            os.close(descriptor)
-
-    def _call_persistence_anchor(self, callback: Callable[..., object], *args: object) -> object:
-        with self._persistence_meta_lock:
-            self._persistence_hook_active = True
-            self._persistence_reentry = False
-        try:
-            result = reject_awaitable_result(
-                callback(*args), "persistence revision anchor callback"
-            )
-        finally:
-            with self._persistence_meta_lock:
-                self._persistence_hook_active = False
-        with self._persistence_meta_lock:
-            if self._persistence_reentry:
-                raise RuntimeError("link persistence callback reentry")
-        return result
-
-    def _read_persistence_revision_anchor(self) -> int | None:
-        anchor = self._persistence_revision_anchor
-        if anchor is None:
-            raise RuntimeError("independent persistence revision anchor is unavailable")
-        revision = self._call_persistence_anchor(anchor.read, self._local_pubkey)
-        if revision is not None and (type(revision) is not int or revision < 1):
-            raise RuntimeError("independent persistence revision anchor is invalid")
-        return revision
-
-    def _advance_persistence_revision_anchor(
-        self,
-        expected: int | None,
-        revision: int,
-    ) -> None:
-        anchor = self._persistence_revision_anchor
-        if anchor is None:
-            raise RuntimeError("independent persistence revision anchor is unavailable")
-        self._call_persistence_anchor(anchor.advance, self._local_pubkey, expected, revision)
-        if self._read_persistence_revision_anchor() != revision:
-            raise RuntimeError("independent persistence revision anchor did not advance")
-
-    def _persistence_message(self, domain: bytes, payload: dict[str, object]) -> bytes:
-        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-        return b"LICHEN-LINK-PERSIST-v2\0" + domain + b"\0" + canonical
-
-    def _write_signed_persistence_record(
-        self,
-        path: str,
-        payload: dict[str, object],
-        domain: bytes,
-    ) -> bytes:
-        message = self._persistence_message(domain, payload)
-        canonical = message.split(b"\0", 2)[2]
-        envelope = {
-            "payload": payload,
-            "signature": sign(self._local_privkey, self._local_pubkey, message).hex(),
-        }
-        parent = os.path.dirname(os.path.abspath(path))
-        os.makedirs(parent, mode=0o700, exist_ok=True)
-        parent_stat = os.stat(parent, follow_symlinks=False)
-        if (
-            not stat.S_ISDIR(parent_stat.st_mode)
-            or parent_stat.st_uid != os.geteuid()
-            or parent_stat.st_mode & 0o022
-        ):
-            raise PermissionError("persistence directory must be private and owned by this user")
-        basename = os.path.basename(path)
-        descriptor, temporary = tempfile.mkstemp(prefix=f".{basename}.tmp-", dir=parent)
-        try:
-            os.fchmod(descriptor, 0o600)
-            handle = os.fdopen(descriptor, "w")
-            descriptor = -1
-            with handle:
-                json.dump(envelope, handle, sort_keys=True, separators=(",", ":"))
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temporary, path)
-            directory = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-            try:
-                os.fsync(directory)
-            finally:
-                os.close(directory)
-        except BaseException:
-            if descriptor >= 0:
-                os.close(descriptor)
-            with contextlib.suppress(FileNotFoundError):
-                os.unlink(temporary)
-            raise
-        return canonical
-
-    def _read_signed_persistence_record(
-        self,
-        path: str,
-        domain: bytes,
-    ) -> tuple[dict[str, object], bytes]:
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-        record_stat = os.fstat(descriptor)
-        if not stat.S_ISREG(record_stat.st_mode):
-            os.close(descriptor)
-            raise PermissionError("persistence record is not a regular file")
-        if record_stat.st_uid != os.geteuid() or record_stat.st_mode & 0o077:
-            os.close(descriptor)
-            raise PermissionError("persistence record is not private")
-        with os.fdopen(descriptor) as handle:
-            envelope = json.load(handle)
-        if type(envelope) is not dict or set(envelope) != {"payload", "signature"}:
-            raise ValueError("invalid persistence envelope")
-        payload, signature_hex = envelope["payload"], envelope["signature"]
-        if type(payload) is not dict or type(signature_hex) is not str:
-            raise ValueError("invalid persistence envelope")
-        signature = bytes.fromhex(signature_hex)
-        message = self._persistence_message(domain, payload)
-        if not verify(self._local_pubkey, message, signature):
-            raise ValueError("invalid persistence signature")
-        return payload, message.split(b"\0", 2)[2]
-
-    def _write_persistence_anchor(self, path: str, revision: int, digest: bytes) -> None:
-        self._write_signed_persistence_record(
-            path,
-            {"revision": revision, "digest": digest.hex()},
-            b"anchor",
-        )
+        """Verify persistence is healthy. Delegates to LinkPersistence."""
+        self._persistence.ensure_healthy()
 
     def _restore_security_state(self, state: dict[str, object]) -> None:
         required_v3 = {
@@ -2856,3 +2014,76 @@ class LinkLayer:
             )
         except Exception as exc:
             raise RuntimeError("invalid persisted SCHC session state") from exc
+        # A restored counter has already been made durable and may have been
+        # observed by peers.  It must never be reset through set_sequence().
+        self._sequence_started = True
+
+    # Protocol methods for LinkPersistence (SecurityStateExporter, SecurityStateRestorer,
+    # PersistenceFailureHandler)
+
+    def export_state(self) -> dict[str, object]:
+        """Export current security state for persistence (SecurityStateExporter protocol)."""
+        replay_state = self.replay_protector.export_state()
+        replay_state["pins"] = []
+        replay_state["windows"] = [
+            window
+            for window in cast(list[dict[str, object]], replay_state["windows"])
+            if cast(int, window["highest"]) >= 0
+        ]
+        return {
+            "format": 4,
+            "local_pubkey": self._local_pubkey.hex(),
+            "epoch": self._epoch,
+            "seqnum": self._seqnum,
+            "exhausted": self._exhausted,
+            "pinned_keys": [
+                [iid.hex(), pubkey.hex()] for iid, pubkey in self._pinned_keys.items()
+            ],
+            "rekeyed_peers": [pubkey.hex() for pubkey in self._rekeyed_peers],
+            "retired_remote_keys": sorted(pubkey.hex() for pubkey in self._retired_remote_keys),
+            "replay": replay_state,
+            "schc_sessions": self._schc_session_manager.export_persistence_state(),
+            "schc_reassembly": self._schc_reassembly_manager.export_persistence_state(),
+        }
+
+    def export_bootstrap_state(self) -> dict[str, object]:
+        """Export initial bootstrap state for persistence (SecurityStateExporter protocol)."""
+        replay_state = self.replay_protector.export_state()
+        replay_state["pins"] = []
+        return {
+            "format": 4,
+            "local_pubkey": self._local_pubkey.hex(),
+            "epoch": self._epoch,
+            "seqnum": self._seqnum,
+            "exhausted": self._exhausted,
+            "pinned_keys": [],
+            "rekeyed_peers": [],
+            "retired_remote_keys": [],
+            "replay": replay_state,
+            "schc_sessions": self._schc_session_manager.export_persistence_state(),
+            "schc_reassembly": self._schc_reassembly_manager.export_persistence_state(),
+        }
+
+    def restore_state(self, state: dict[str, object]) -> None:
+        """Restore security state from persistence (SecurityStateRestorer protocol)."""
+        self._restore_security_state(state)
+
+    def on_persistence_failure(self) -> None:
+        """Handle terminal persistence failure (PersistenceFailureHandler protocol)."""
+        with self._security_lock:
+            thread_id = threading.get_ident()
+            owns_lease = any(
+                owner_thread == thread_id and count > 0
+                for (_signer, owner_thread), count in self._generation_lease_owners.items()
+            )
+            while self._generation_leases and not owns_lease:
+                self._generation_condition.wait()
+            self._exhausted = True
+            self.tx_queue.clear()
+            self._verified_receipts.clear()
+            self._authenticated_dio_issuances.clear()
+            self._schc_session_manager.fail_closed()
+            self._schc_reassembly_manager.fail_closed()
+            self._schc_peer_contexts.clear()
+            self._schc_peer_context_issuances.clear()
+            self._key_generations.clear()

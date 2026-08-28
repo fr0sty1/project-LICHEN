@@ -1,0 +1,7 @@
+{
+  "id": "1787892505012403000-1",
+  "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.25",
+  "author": "Mark Atwood",
+  "text": "Code complete: lichen_lora_l2_needs_destroy_retry() added (lora_l2.c:705, lora_l2.h:275); disable path retries lichen_lora_l2_deinit() after successful stop() and propagates repeated failure + link_ctx_initialized clear (lichen_l2_init.c:349-359). White-box ztest in tests/ping_l2/src/main.c:551. REMAINING: Zephyr-only Twister validation on AWS - do not re-implement.",
+  "created_at": "2026-08-28T04:48:25.012403Z"
+}

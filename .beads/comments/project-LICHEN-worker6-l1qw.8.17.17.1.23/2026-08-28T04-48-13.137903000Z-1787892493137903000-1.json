@@ -1,0 +1,7 @@
+{
+  "id": "1787892493137903000-1",
+  "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.23",
+  "author": "Mark Atwood",
+  "text": "Code complete + host-verified where possible: stats accessor holds lora_mutex across full lifecycle switch (lora_l2_tx.c:422-462, mirrors copy_eui64()); deinit holds lora_mutex across tx_queue_destroy on STOPPED and DESTROY_FAILED retry paths (lora_l2.c:445,495-498,660), ABORTED-only trylock/reinit. White-box ztest added in tests/ping_l2/src/main.c:517. REMAINING: Zephyr-only compile + Twister run requires AWS builder - do not re-implement, only run validation then close.",
+  "created_at": "2026-08-28T04:48:13.137903Z"
+}

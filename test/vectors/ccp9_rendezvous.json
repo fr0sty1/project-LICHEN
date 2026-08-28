@@ -20,11 +20,11 @@
     },
     {
       "name": "known_peer_synchronized_hop_preference",
-      "description": "For known peers with GNSS sync, CCP-12 synchronized_hop_channel(sfn=t, seed=epoch, n_ch) yields channel 5. Announce-driven tier ranks above GNSS-synced hopping in priority chain.",
+      "description": "For known peers with GNSS sync, CCP-12 synchronized_hop_channel(sfn=t, seed=epoch, n_ch) yields channel 1. Announce-driven tier ranks above GNSS-synced hopping in priority chain.",
       "eui64_hex": "0011223344556677",
       "t": 1000,
       "epoch": 0,
-      "expected_channel": 5,
+      "expected_channel": 1,
       "n_channels": 8,
       "uses_sync_hop": true
     },

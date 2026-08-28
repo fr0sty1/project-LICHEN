@@ -12,6 +12,14 @@ std = []
 kiss = []
 kiss-aprs = ["kiss"]
 kiss-ble = ["kiss"]
+kiss-ble-btleplug = [
+    "kiss-ble",
+    "std",
+    "dep:btleplug",
+    "dep:futures-util",
+    "dep:tokio",
+    "dep:uuid",
+]
 bridge = ["kiss", "dep:lichen-link"]
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt"]
@@ -21,6 +29,10 @@ log = ["dep:log"]
 heapless = "0.8"
 kiss-framing = "0.1"
 lichen-link = { path = "../lichen-link", default-features = false, optional = true }
+btleplug = { version = "0.11", optional = true }
+futures-util = { version = "0.3", optional = true }
+tokio = { version = "1", features = ["rt", "time"], optional = true }
+uuid = { version = "1", optional = true }
 
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
@@ -29,3 +41,4 @@ log = { version = "0.4", default-features = false, optional = true }
 [dev-dependencies]
 lichen-link = { path = "../lichen-link" }
 serde_json = "1.0"
+tokio = { version = "1", features = ["rt", "macros"] }

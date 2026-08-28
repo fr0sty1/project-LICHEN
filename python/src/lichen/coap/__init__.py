@@ -31,18 +31,6 @@ from lichen.coap.resources import (
     build_site,
 )
 from lichen.coap.schc_channel import SchcChannel, unwrap_coap, wrap_coap
-from lichen.coap.sos_relay import (
-    DEFAULT_INITIAL_TTL,
-    DEFAULT_MAX_TTL,
-    SEEN_EXPIRY_S,
-    SEEN_MAX_SIZE,
-    SosId,
-    SosRelay,
-    SosRelayResult,
-    add_ttl_to_sos_payload,
-    get_sos_id_from_payload,
-    get_ttl_from_payload,
-)
 from lichen.coap.secure import (
     ContextGenerationError,
     EdhocPeerResolver,
@@ -62,6 +50,18 @@ from lichen.coap.secure import (
     create_secure_channel,
     normalize_host,
     validate_endpoint_key,
+)
+from lichen.coap.sos_relay import (
+    DEFAULT_INITIAL_TTL,
+    DEFAULT_MAX_TTL,
+    SEEN_EXPIRY_S,
+    SEEN_MAX_SIZE,
+    SosId,
+    SosRelay,
+    SosRelayResult,
+    add_ttl_to_sos_payload,
+    get_sos_id_from_payload,
+    get_ttl_from_payload,
 )
 from lichen.coap.transport import (
     DatagramChannel,

@@ -2,15 +2,15 @@
   "id": "project-LICHEN-worker6-oan4",
   "title": "deaddrop: generate_drop_id spins forever if 2^24 space exhausted",
   "description": "deaddrop.rs:897-911 retry loop never terminates if all 2^24 IDs occupied (fillable via add_drop explicit IDs ~16MB store) - a hang not an error. Fix: bail after bounded attempts with a store-full error.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-28T06:53:24.75674Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-28T07:24:14.3583Z",
+  "updated_at": "2026-08-28T07:29:26.804869Z",
   "started_at": "2026-08-28T07:24:14.3583Z",
-  "lease_expires_at": "2026-08-28T07:29:14.3583Z",
-  "heartbeat_at": "2026-08-28T07:24:14.3583Z"
+  "closed_at": "2026-08-28T07:29:26.804869Z",
+  "close_reason": "generate_drop_id now performs at most MAX_ID_ATTEMPTS=32 CSPRNG draws (new const with rationale doc) and returns Option\u003cString\u003e; None means the 2^24 space is effectively exhausted or the CSPRNG failed. Callers convert to store-full outcomes: add_drop -\u003e None (doc updated: 'budget or drop-ID space exhausted'), post -\u003e 5.03 ServiceUnavailable storage_full form (PostOutcome::ServiceUnavailable doc updated), matching the existing storage_full vector semantics. Additionally both post() and add_drop() now mint the ID BEFORE evict_for_space, so a doomed (ID-exhausted) request can never evict live drops — the same invariant tnlp established for explicit IDs. True-exhaustion is not practically testable (would need ~16M stored drops); the bound is statically evident and the full suite is green. Verified: cargo test -p lichen-client --lib 130 passed, deaddrop_vectors 24 passed. Commit 4ba8ab3d0d."
 }

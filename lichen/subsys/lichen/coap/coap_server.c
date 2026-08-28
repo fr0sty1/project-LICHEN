@@ -322,7 +322,10 @@ static int msg_inbox_post(struct coap_resource *resource,
 	}
 
 	if (oscore.payload == NULL || oscore.payload_len == 0) {
-		return COAP_RESPONSE_CODE_BAD_REQUEST;
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_BAD_REQUEST,
+						    0, NULL, 0);
 	}
 
 	ret = s_handlers.msg_post(oscore.payload, oscore.payload_len, &msg_id);

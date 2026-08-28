@@ -2,1800 +2,105 @@
 ---
 events:
   -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineSystem.cmake:12 (find_program)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_UNAME"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "uname"
-    candidate_directories:
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    searched_directories:
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/uname"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/uname"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/uname"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/uname"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/uname"
-      - "/Users/markatwood/.opencode/bin/uname"
-      - "/Users/markatwood/.local/bin/uname"
-      - "/Users/markatwood/.cargo/bin/uname"
-      - "/opt/homebrew/bin/uname"
-      - "/opt/homebrew/sbin/uname"
-      - "/usr/local/sbin/uname"
-      - "/usr/local/bin/uname"
-      - "/System/Cryptexes/App/usr/bin/uname"
-    found: "/usr/bin/uname"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
     kind: "message-v1"
     backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineSystem.cmake:218 (message)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake:205 (message)"
       - "CMakeLists.txt:5 (project)"
     message: |
       The system is: Darwin - 25.5.0 - arm64
   -
-    kind: "find-v1"
+    kind: "message-v1"
     backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeUnixFindMake.cmake:5 (find_program)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
       - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_MAKE_PROGRAM"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "gmake"
-      - "make"
-      - "smake"
-    candidate_directories:
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    searched_directories:
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/gmake"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/gmake"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/gmake"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/gmake"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/gmake"
-      - "/Users/markatwood/.opencode/bin/gmake"
-      - "/Users/markatwood/.local/bin/gmake"
-      - "/Users/markatwood/.cargo/bin/gmake"
-      - "/opt/homebrew/bin/gmake"
-      - "/opt/homebrew/sbin/gmake"
-      - "/usr/local/sbin/gmake"
-      - "/usr/local/bin/gmake"
-      - "/System/Cryptexes/App/usr/bin/gmake"
-      - "/usr/bin/gmake"
-      - "/bin/gmake"
-      - "/usr/sbin/gmake"
-      - "/sbin/gmake"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/gmake"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/gmake"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/gmake"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/gmake"
-      - "/pkg/env/global/bin/gmake"
-      - "/opt/X11/bin/gmake"
-      - "/Library/Apple/usr/bin/gmake"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/gmake"
-      - "/usr/local/MacGPG2/bin/gmake"
-      - "/usr/local/git/bin/gmake"
-      - "/usr/local/go/bin/gmake"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/gmake"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/gmake"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/gmake"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/gmake"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/make"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/make"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/make"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/make"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/make"
-      - "/Users/markatwood/.opencode/bin/make"
-      - "/Users/markatwood/.local/bin/make"
-      - "/Users/markatwood/.cargo/bin/make"
-      - "/opt/homebrew/bin/make"
-      - "/opt/homebrew/sbin/make"
-      - "/usr/local/sbin/make"
-      - "/usr/local/bin/make"
-      - "/System/Cryptexes/App/usr/bin/make"
-    found: "/usr/bin/make"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompiler.cmake:73 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:64 (_cmake_find_compiler)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_C_COMPILER"
-    description: "C compiler"
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "cc"
-      - "gcc"
-      - "cl"
-      - "bcc"
-      - "xlc"
-      - "icx"
-      - "clang"
-    candidate_directories:
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    searched_directories:
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/cc"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/cc"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/cc"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/cc"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/cc"
-      - "/Users/markatwood/.opencode/bin/cc"
-      - "/Users/markatwood/.local/bin/cc"
-      - "/Users/markatwood/.cargo/bin/cc"
-      - "/opt/homebrew/bin/cc"
-      - "/opt/homebrew/sbin/cc"
-      - "/usr/local/sbin/cc"
-      - "/usr/local/bin/cc"
-      - "/System/Cryptexes/App/usr/bin/cc"
-    found: "/usr/bin/cc"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerId.cmake:501 (find_file)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerId.cmake:538 (CMAKE_DETERMINE_COMPILER_ID_WRITE)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerId.cmake:8 (CMAKE_DETERMINE_COMPILER_ID_BUILD)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "file"
-    variable: "src_in"
-    description: "Path to a file."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "CMakeCCompilerId.c.in"
-    candidate_directories:
-      - "/opt/homebrew/share/cmake/Modules/"
-    found: "/opt/homebrew/share/cmake/Modules/CMakeCCompilerId.c.in"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+      Compiler: /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc 
+      Build flags: -fsanitize=address,undefined;-g
+      Id flags:  
+      
+      The output was:
+      1
+      ld: library 'System' not found
+      cc: error: linker command failed with exit code 1 (use -v to see invocation)
+      
+      
   -
     kind: "message-v1"
     backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
       - "CMakeLists.txt:5 (project)"
     message: |
       Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
-      Compiler: /usr/bin/cc 
-      Build flags: 
-      Id flags:  
+      Compiler: /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc 
+      Build flags: -fsanitize=address,undefined;-g
+      Id flags: -c 
       
       The output was:
       0
       
       
-      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CMakeCCompilerId.o"
       
       The C compiler identification is AppleClang, found in:
-        /Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/4.4.2/CompilerIdC/a.out
+        /Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/3.31.3/CompilerIdC/CMakeCCompilerId.o
       
-  -
-    kind: "message-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerId.cmake:323 (message)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
-      - "CMakeLists.txt:5 (project)"
-    message: |
-      Detecting C compiler apple sysroot: "/usr/bin/cc" "-E" "apple-sdk.c"
-        # 1 "apple-sdk.c"
-        # 1 "<built-in>" 1
-        # 1 "<built-in>" 3
-        # 482 "<built-in>" 3
-        # 1 "<command line>" 1
-        # 1 "<built-in>" 2
-        # 1 "apple-sdk.c" 2
-        # 1 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityMacros.h" 1 3 4
-        # 89 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityMacros.h" 3 4
-        # 1 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityVersions.h" 1 3 4
-        # 90 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityMacros.h" 2 3 4
-        # 1 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/TargetConditionals.h" 1 3 4
-        # 91 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityMacros.h" 2 3 4
-        # 207 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityMacros.h" 3 4
-        # 1 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h" 1 3 4
-        # 196 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h" 3 4
-        # 1 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityVersions.h" 1 3 4
-        # 197 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h" 2 3 4
-        # 1 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h" 1 3 4
-        # 33 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h" 3 4
-        # 1 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityVersions.h" 1 3 4
-        # 34 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h" 2 3 4
-        # 198 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h" 2 3 4
-        # 1 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternalLegacy.h" 1 3 4
-        # 34 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternalLegacy.h" 3 4
-        # 1 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h" 1 3 4
-        # 35 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternalLegacy.h" 2 3 4
-        # 199 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h" 2 3 4
-        # 208 "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityMacros.h" 2 3 4
-        # 2 "apple-sdk.c" 2
-        
-        
-      Found apple sysroot: /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_AR"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "ar"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    found: "/usr/bin/ar"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_RANLIB"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "ranlib"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    found: "/usr/bin/ranlib"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_STRIP"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "strip"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    found: "/usr/bin/strip"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_LINKER"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "ld"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    found: "/usr/bin/ld"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_NM"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "nm"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    found: "/usr/bin/nm"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_OBJDUMP"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "objdump"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    found: "/usr/bin/objdump"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_OBJCOPY"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "objcopy"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    searched_directories:
-      - "/usr/bin/objcopy"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/objcopy"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/objcopy"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/objcopy"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/objcopy"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/objcopy"
-      - "/Users/markatwood/.opencode/bin/objcopy"
-      - "/Users/markatwood/.local/bin/objcopy"
-      - "/Users/markatwood/.cargo/bin/objcopy"
-      - "/opt/homebrew/bin/objcopy"
-      - "/opt/homebrew/sbin/objcopy"
-      - "/usr/local/sbin/objcopy"
-      - "/usr/local/bin/objcopy"
-      - "/System/Cryptexes/App/usr/bin/objcopy"
-      - "/bin/objcopy"
-      - "/usr/sbin/objcopy"
-      - "/sbin/objcopy"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/objcopy"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/objcopy"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/objcopy"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/objcopy"
-      - "/pkg/env/global/bin/objcopy"
-      - "/opt/X11/bin/objcopy"
-      - "/Library/Apple/usr/bin/objcopy"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/objcopy"
-      - "/usr/local/MacGPG2/bin/objcopy"
-      - "/usr/local/git/bin/objcopy"
-      - "/usr/local/go/bin/objcopy"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/objcopy"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/objcopy"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/objcopy"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/objcopy"
-    found: false
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_READELF"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "readelf"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    searched_directories:
-      - "/usr/bin/readelf"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/readelf"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/readelf"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/readelf"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/readelf"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/readelf"
-      - "/Users/markatwood/.opencode/bin/readelf"
-      - "/Users/markatwood/.local/bin/readelf"
-      - "/Users/markatwood/.cargo/bin/readelf"
-      - "/opt/homebrew/bin/readelf"
-      - "/opt/homebrew/sbin/readelf"
-      - "/usr/local/sbin/readelf"
-      - "/usr/local/bin/readelf"
-      - "/System/Cryptexes/App/usr/bin/readelf"
-      - "/bin/readelf"
-      - "/usr/sbin/readelf"
-      - "/sbin/readelf"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/readelf"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/readelf"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/readelf"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/readelf"
-      - "/pkg/env/global/bin/readelf"
-      - "/opt/X11/bin/readelf"
-      - "/Library/Apple/usr/bin/readelf"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/readelf"
-      - "/usr/local/MacGPG2/bin/readelf"
-      - "/usr/local/git/bin/readelf"
-      - "/usr/local/go/bin/readelf"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/readelf"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/readelf"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/readelf"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/readelf"
-    found: false
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_DLLTOOL"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "dlltool"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    searched_directories:
-      - "/usr/bin/dlltool"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/dlltool"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/dlltool"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/dlltool"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/dlltool"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/dlltool"
-      - "/Users/markatwood/.opencode/bin/dlltool"
-      - "/Users/markatwood/.local/bin/dlltool"
-      - "/Users/markatwood/.cargo/bin/dlltool"
-      - "/opt/homebrew/bin/dlltool"
-      - "/opt/homebrew/sbin/dlltool"
-      - "/usr/local/sbin/dlltool"
-      - "/usr/local/bin/dlltool"
-      - "/System/Cryptexes/App/usr/bin/dlltool"
-      - "/bin/dlltool"
-      - "/usr/sbin/dlltool"
-      - "/sbin/dlltool"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/dlltool"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/dlltool"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/dlltool"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/dlltool"
-      - "/pkg/env/global/bin/dlltool"
-      - "/opt/X11/bin/dlltool"
-      - "/Library/Apple/usr/bin/dlltool"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/dlltool"
-      - "/usr/local/MacGPG2/bin/dlltool"
-      - "/usr/local/git/bin/dlltool"
-      - "/usr/local/go/bin/dlltool"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/dlltool"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/dlltool"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/dlltool"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/dlltool"
-    found: false
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_ADDR2LINE"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "addr2line"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    searched_directories:
-      - "/usr/bin/addr2line"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/addr2line"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/addr2line"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/addr2line"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/addr2line"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/addr2line"
-      - "/Users/markatwood/.opencode/bin/addr2line"
-      - "/Users/markatwood/.local/bin/addr2line"
-      - "/Users/markatwood/.cargo/bin/addr2line"
-      - "/opt/homebrew/bin/addr2line"
-      - "/opt/homebrew/sbin/addr2line"
-      - "/usr/local/sbin/addr2line"
-      - "/usr/local/bin/addr2line"
-      - "/System/Cryptexes/App/usr/bin/addr2line"
-      - "/bin/addr2line"
-      - "/usr/sbin/addr2line"
-      - "/sbin/addr2line"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/addr2line"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/addr2line"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/addr2line"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/addr2line"
-      - "/pkg/env/global/bin/addr2line"
-      - "/opt/X11/bin/addr2line"
-      - "/Library/Apple/usr/bin/addr2line"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/addr2line"
-      - "/usr/local/MacGPG2/bin/addr2line"
-      - "/usr/local/git/bin/addr2line"
-      - "/usr/local/go/bin/addr2line"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/addr2line"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/addr2line"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/addr2line"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/addr2line"
-    found: false
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_TAPI"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: false
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "tapi"
-    candidate_directories:
-      - "/usr/bin/"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    searched_directories:
-      - "/usr/bin/tapi"
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/tapi"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/tapi"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/tapi"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/tapi"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/tapi"
-      - "/Users/markatwood/.opencode/bin/tapi"
-      - "/Users/markatwood/.local/bin/tapi"
-      - "/Users/markatwood/.cargo/bin/tapi"
-      - "/opt/homebrew/bin/tapi"
-      - "/opt/homebrew/sbin/tapi"
-      - "/usr/local/sbin/tapi"
-      - "/usr/local/bin/tapi"
-      - "/System/Cryptexes/App/usr/bin/tapi"
-      - "/bin/tapi"
-      - "/usr/sbin/tapi"
-      - "/sbin/tapi"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/tapi"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/tapi"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/tapi"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/tapi"
-      - "/pkg/env/global/bin/tapi"
-      - "/opt/X11/bin/tapi"
-      - "/Library/Apple/usr/bin/tapi"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/tapi"
-      - "/usr/local/MacGPG2/bin/tapi"
-      - "/usr/local/git/bin/tapi"
-      - "/usr/local/go/bin/tapi"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/tapi"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/tapi"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/tapi"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/tapi"
-    found: false
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "/opt/homebrew/share/cmake/Modules/Platform/Darwin.cmake:66 (find_program)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeSystemSpecificInformation.cmake:32 (include)"
-      - "CMakeLists.txt:5 (project)"
-    mode: "program"
-    variable: "CMAKE_INSTALL_NAME_TOOL"
-    description: "Path to a program."
-    settings:
-      SearchFramework: "FIRST"
-      SearchAppBundle: "FIRST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "install_name_tool"
-    candidate_directories:
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/"
-      - "/Users/markatwood/.opencode/bin/"
-      - "/Users/markatwood/.local/bin/"
-      - "/Users/markatwood/.cargo/bin/"
-      - "/opt/homebrew/bin/"
-      - "/opt/homebrew/sbin/"
-      - "/usr/local/sbin/"
-      - "/usr/local/bin/"
-      - "/System/Cryptexes/App/usr/bin/"
-      - "/usr/bin/"
-      - "/bin/"
-      - "/usr/sbin/"
-      - "/sbin/"
-      - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin/"
-      - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin/"
-      - "/pkg/env/global/bin/"
-      - "/opt/X11/bin/"
-      - "/Library/Apple/usr/bin/"
-      - "/Applications/Keybase.app/Contents/SharedSupport/bin/"
-      - "/usr/local/MacGPG2/bin/"
-      - "/usr/local/git/bin/"
-      - "/usr/local/go/bin/"
-      - "/Applications/iTerm.app/Contents/Resources/utilities/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin/"
-      - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin/"
-    searched_directories:
-      - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin/install_name_tool"
-      - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin/install_name_tool"
-      - "/Volumes/Attic/Developer/android-sdk/platform-tools/install_name_tool"
-      - "/Volumes/Attic/Developer/android-sdk/emulator/install_name_tool"
-      - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/install_name_tool"
-      - "/Users/markatwood/.opencode/bin/install_name_tool"
-      - "/Users/markatwood/.local/bin/install_name_tool"
-      - "/Users/markatwood/.cargo/bin/install_name_tool"
-      - "/opt/homebrew/bin/install_name_tool"
-      - "/opt/homebrew/sbin/install_name_tool"
-      - "/usr/local/sbin/install_name_tool"
-      - "/usr/local/bin/install_name_tool"
-      - "/System/Cryptexes/App/usr/bin/install_name_tool"
-    found: "/usr/bin/install_name_tool"
-    search_context:
-      ENV{PATH}:
-        - "/Volumes/Attic/Developer/flutter-sdk/flutter/bin"
-        - "/Volumes/Attic/Developer/android-sdk/cmdline-tools/latest/bin"
-        - "/Volumes/Attic/Developer/android-sdk/platform-tools"
-        - "/Volumes/Attic/Developer/android-sdk/emulator"
-        - "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.cargo/bin"
-        - "/opt/homebrew/bin"
-        - "/opt/homebrew/sbin"
-        - "/Users/markatwood/.opencode/bin"
-        - "/usr/local/sbin"
-        - "/usr/local/bin"
-        - "/System/Cryptexes/App/usr/bin"
-        - "/usr/bin"
-        - "/bin"
-        - "/usr/sbin"
-        - "/sbin"
-        - "/Applications/BitKeeper.app/Contents/Resources/bitkeeper"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin"
-        - "/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin"
-        - "/pkg/env/global/bin"
-        - "/opt/X11/bin"
-        - "/Library/Apple/usr/bin"
-        - "/Applications/Keybase.app/Contents/SharedSupport/bin"
-        - "/usr/local/MacGPG2/bin"
-        - "/usr/local/git/bin"
-        - "/usr/local/go/bin"
-        - "/Applications/iTerm.app/Contents/Resources/utilities"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.local/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/rust-analyzer-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/claude-plugins-official/clangd-lsp/1.0.0/bin"
-        - "/Users/markatwood/.claude/plugins/cache/ponytail/ponytail/4.7.0/bin"
-      CMAKE_INSTALL_PREFIX: "/usr/local"
   -
     kind: "try_compile-v1"
     backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:123 (try_compile)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:74 (try_compile)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "CMakeLists.txt:5 (project)"
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-yPuuui"
-      binary: "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-yPuuui"
+      source: "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-nrZ5d6"
+      binary: "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-nrZ5d6"
     cmakeVariables:
-      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS: "-fsanitize=address,undefined -g"
       CMAKE_C_FLAGS_DEBUG: "-g"
       CMAKE_EXE_LINKER_FLAGS: ""
       CMAKE_OSX_ARCHITECTURES: ""
       CMAKE_OSX_DEPLOYMENT_TARGET: ""
-      CMAKE_OSX_SYSROOT: ""
+      CMAKE_OSX_SYSROOT: "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk"
     buildResult:
       variable: "CMAKE_C_ABI_COMPILED"
-      cached: false
+      cached: true
       stdout: |
-        Change Dir: '/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-yPuuui'
+        Change Dir: '/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-nrZ5d6'
         
-        Run Build Command(s): /opt/homebrew/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_67ce0/fast
-        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/usr/bin/make  -f CMakeFiles/cmTC_67ce0.dir/build.make CMakeFiles/cmTC_67ce0.dir/build
-        Building C object CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o
-        /usr/bin/cc   -arch arm64   -v -Wl,-v -MD -MT CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -c /opt/homebrew/share/cmake/Modules/CMakeCCompilerABI.c
+        Run Build Command(s): /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_554fa/fast
+        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/usr/bin/make  -f CMakeFiles/cmTC_554fa.dir/build.make CMakeFiles/cmTC_554fa.dir/build
+        Building C object CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o
+        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc   -fsanitize=address,undefined -g  -arch arm64 -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk   -v -Wl,-v -MD -MT CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o -c /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeCCompilerABI.c
         Apple clang version 21.0.0 (clang-2100.1.1.101)
         Target: arm64-apple-darwin25.5.0
         Thread model: posix
         InstalledDir: /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
-        clang: warning: -Wl,-v: 'linker' input unused [-Wunused-command-line-argument]
-         "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -cc1 -triple arm64-apple-macosx26.0.0 -Wundef-prefix=TARGET_OS_ -Wdeprecated-objc-isa-usage -Werror=deprecated-objc-isa-usage -Werror=implicit-function-declaration -emit-obj -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -mframe-pointer=non-leaf -fno-strict-return -ffp-contract=on -fno-rounding-math -funwind-tables=1 -fobjc-msgsend-selector-stubs -fno-sized-deallocation -target-sdk-version=26.5 -fvisibility-inlines-hidden-static-local-var -fno-modulemap-allow-subdirectory-search -fdefine-target-os-macros -fno-assume-unique-vtables -fno-modulemap-allow-subdirectory-search -enable-tlsdesc -target-cpu apple-m1 -target-feature +v8.5a -target-feature +aes -target-feature +altnzcv -target-feature +ccdp -target-feature +ccpp -target-feature +complxnum -target-feature +crc -target-feature +dotprod -target-feature +flagm -target-feature +fp-armv8 -target-feature +fp16fml -target-feature +fptoint -target-feature +fullfp16 -target-feature +jsconv -target-feature +lse -target-feature +neon -target-feature +pauth -target-feature +perfmon -target-feature +predres -target-feature +ras -target-feature +rcpc -target-feature +rdm -target-feature +sb -target-feature +sha2 -target-feature +sha3 -target-feature +specrestrict -target-feature +ssbs -target-abi darwinpcs -debugger-tuning=lldb -fdebug-compilation-dir=/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-yPuuui -target-linker-version 1267 -v -fcoverage-compilation-dir=/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-yPuuui -resource-dir /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21 -dependency-file CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o.d -skip-unused-modulemap-deps -MT CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -sys-header-deps -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -I/usr/local/include -internal-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/local/include -internal-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include -internal-externc-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include -internal-externc-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/SubFrameworks -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/Library/Frameworks -Wno-elaborated-enum-base -ferror-limit 19 -stack-protector 1 -fstack-check -mdarwin-stkchk-strong-link -fblocks -fencode-extended-block-signature -fregister-global-dtors-with-atexit -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fmax-type-align=16 -fcommon -clang-vendor-feature=+disableNonDependentMemberExprInCurrentInstantiation -fno-odr-hash-protocols -clang-vendor-feature=+enableAggressiveVLAFolding -clang-vendor-feature=+revert09abecef7bbf -clang-vendor-feature=+thisNoAlignAttr -clang-vendor-feature=+thisNoNullAttr -clang-vendor-feature=+disableAtImportPrivateFrameworkInImplementationError -Wno-error=allocator-wrappers -fdwarf2-cfi-asm -o CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -x c /opt/homebrew/share/cmake/Modules/CMakeCCompilerABI.c
+        cc: warning: -Wl,-v: 'linker' input unused [-Wunused-command-line-argument]
+         "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -cc1 -triple arm64-apple-macosx26.0.0 -Wundef-prefix=TARGET_OS_ -Wdeprecated-objc-isa-usage -Werror=deprecated-objc-isa-usage -Werror=implicit-function-declaration -emit-obj -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -mframe-pointer=non-leaf -fno-strict-return -ffp-contract=on -fno-rounding-math -funwind-tables=2 -fobjc-msgsend-selector-stubs -fno-sized-deallocation -target-sdk-version=26.5 -fvisibility-inlines-hidden-static-local-var -fno-modulemap-allow-subdirectory-search -fdefine-target-os-macros -fno-assume-unique-vtables -fno-modulemap-allow-subdirectory-search -enable-tlsdesc -target-cpu apple-m1 -target-feature +v8.5a -target-feature +aes -target-feature +altnzcv -target-feature +ccdp -target-feature +ccpp -target-feature +complxnum -target-feature +crc -target-feature +dotprod -target-feature +flagm -target-feature +fp-armv8 -target-feature +fp16fml -target-feature +fptoint -target-feature +fullfp16 -target-feature +jsconv -target-feature +lse -target-feature +neon -target-feature +pauth -target-feature +perfmon -target-feature +predres -target-feature +ras -target-feature +rcpc -target-feature +rdm -target-feature +sb -target-feature +sha2 -target-feature +sha3 -target-feature +specrestrict -target-feature +ssbs -target-abi darwinpcs -debug-info-kind=standalone -dwarf-version=5 -debugger-tuning=lldb -fdebug-compilation-dir=/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-nrZ5d6 -target-linker-version 1267 -v -fcoverage-compilation-dir=/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-nrZ5d6 -resource-dir /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21 -dependency-file CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o.d -skip-unused-modulemap-deps -MT CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o -sys-header-deps -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -internal-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/local/include -internal-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include -internal-externc-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/include -internal-externc-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/SubFrameworks -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/Library/Frameworks -Wno-elaborated-enum-base -ferror-limit 19 -stack-protector 1 -mdarwin-stkchk-strong-link -fblocks -fencode-extended-block-signature -fregister-global-dtors-with-atexit -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fmax-type-align=16 -fcommon -clang-vendor-feature=+disableNonDependentMemberExprInCurrentInstantiation -fno-odr-hash-protocols -clang-vendor-feature=+enableAggressiveVLAFolding -clang-vendor-feature=+revert09abecef7bbf -clang-vendor-feature=+thisNoAlignAttr -clang-vendor-feature=+thisNoNullAttr -clang-vendor-feature=+disableAtImportPrivateFrameworkInImplementationError -Wno-error=allocator-wrappers -fsanitize=address,alignment,array-bounds,bool,builtin,enum,float-cast-overflow,integer-divide-by-zero,nonnull-attribute,null,pointer-overflow,return,returns-nonnull-attribute,shift-base,shift-exponent,signed-integer-overflow,unreachable,vla-bound -fsanitize-recover=alignment,array-bounds,bool,builtin,enum,float-cast-overflow,integer-divide-by-zero,nonnull-attribute,null,pointer-overflow,returns-nonnull-attribute,shift-base,shift-exponent,signed-integer-overflow,vla-bound -fsanitize-merge=alignment,array-bounds,bool,builtin,enum,float-cast-overflow,integer-divide-by-zero,nonnull-attribute,null,pointer-overflow,return,returns-nonnull-attribute,shift-base,shift-exponent,signed-integer-overflow,unreachable,vla-bound -fsanitize-system-ignorelist=/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/share/asan_ignorelist.txt -fno-sanitize-memory-param-retval -fsanitize-address-use-after-scope -fsanitize-address-globals-dead-stripping -fno-sanitize-address-use-odr-indicator -fno-assume-sane-operator-new -fdwarf2-cfi-asm -o CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o -x c /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeCCompilerABI.c
         clang -cc1 version 21.0.0 (clang-2100.1.1.101) default target arm64-apple-darwin25.5.0
-        ignoring nonexistent directory "/usr/local/include"
-        ignoring nonexistent directory "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/local/include"
-        ignoring nonexistent directory "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/Library/Frameworks"
+        ignoring nonexistent directory "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/local/include"
+        ignoring nonexistent directory "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/Library/Frameworks"
         #include "..." search starts here:
         #include <...> search starts here:
          /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include
-         /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
+         /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/include
          /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include
-         /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks (framework directory)
-         /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/SubFrameworks (framework directory)
+         /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks (framework directory)
+         /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/SubFrameworks (framework directory)
         End of search list.
-        Linking C executable cmTC_67ce0
-        /opt/homebrew/bin/cmake -E cmake_link_script CMakeFiles/cmTC_67ce0.dir/link.txt --verbose=1
+        Linking C executable cmTC_554fa
+        /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_554fa.dir/link.txt --verbose=1
         Apple clang version 21.0.0 (clang-2100.1.1.101)
         Target: arm64-apple-darwin25.5.0
         Thread model: posix
         InstalledDir: /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
-         "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld" -demangle -lto_library /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libLTO.dylib -dynamic -arch arm64 -platform_version macos 26.0.0 26.5 -syslibroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -mllvm -enable-linkonceodr-outlining -o cmTC_67ce0 -L/usr/local/lib -v CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -lSystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.osx.a
+         "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld" -demangle -lto_library /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libLTO.dylib -dynamic -arch arm64 -platform_version macos 26.0.0 26.5 -syslibroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -mllvm -enable-linkonceodr-outlining -o cmTC_554fa -search_paths_first -headerpad_max_install_names -v CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib -rpath @executable_path -rpath /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin -lSystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.osx.a
         @(#)PROGRAM:ld PROJECT:ld-1267
         BUILD 16:38:58 Jun  8 2026
         configured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em armv8m.main armv8.1m.main
@@ -1803,18 +108,18 @@ events:
         LTO support using: LLVM version 21.0.0 (static support for 30, runtime is 30)
         TAPI support using: Apple TAPI version 21.0.0 (tapi-2100.0.2.6)
         Library search paths:
-        	/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib
-        	/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/swift
+        	/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib
+        	/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib/swift
         Framework search paths:
-        	/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks
-        /usr/bin/cc  -arch arm64  -v -Wl,-v CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -o cmTC_67ce0
+        	/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks
+        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc -fsanitize=address,undefined -g  -arch arm64 -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names  -v -Wl,-v CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o -o cmTC_554fa
         
       exitCode: 0
   -
     kind: "message-v1"
     backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:160 (message)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:113 (message)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "CMakeLists.txt:5 (project)"
     message: |
       Effective list of requested architectures (possibly empty)  : ""
@@ -1822,65 +127,63 @@ events:
   -
     kind: "message-v1"
     backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:255 (message)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:182 (message)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "CMakeLists.txt:5 (project)"
     message: |
       Parsed C implicit include dir info: rv=done
         found start of include info
         found start of implicit include info
           add: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include]
-          add: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include]
+          add: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/include]
           add: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include]
         end of search list found
         collapse include dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include]
-        collapse include dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include]
+        collapse include dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/include] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/include]
         collapse include dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include]
-        implicit include dirs: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include]
+        implicit include dirs: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/include;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include]
       
       
   -
     kind: "message-v1"
     backtrace:
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:291 (message)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:218 (message)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "CMakeLists.txt:5 (project)"
     message: |
       Parsed C implicit link information:
-        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)))("|,| |$)]
-        ignore line: [Change Dir: '/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-yPuuui']
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?))("|,| |$)]
+        ignore line: [Change Dir: '/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-nrZ5d6']
         ignore line: []
-        ignore line: [Run Build Command(s): /opt/homebrew/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_67ce0/fast]
-        ignore line: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/usr/bin/make  -f CMakeFiles/cmTC_67ce0.dir/build.make CMakeFiles/cmTC_67ce0.dir/build]
-        ignore line: [Building C object CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o]
-        ignore line: [/usr/bin/cc   -arch arm64   -v -Wl -v -MD -MT CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -c /opt/homebrew/share/cmake/Modules/CMakeCCompilerABI.c]
+        ignore line: [Run Build Command(s): /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_554fa/fast]
+        ignore line: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/usr/bin/make  -f CMakeFiles/cmTC_554fa.dir/build.make CMakeFiles/cmTC_554fa.dir/build]
+        ignore line: [Building C object CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc   -fsanitize=address undefined -g  -arch arm64 -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk   -v -Wl -v -MD -MT CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o -MF CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o.d -o CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o -c /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeCCompilerABI.c]
         ignore line: [Apple clang version 21.0.0 (clang-2100.1.1.101)]
         ignore line: [Target: arm64-apple-darwin25.5.0]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin]
-        ignore line: [clang: warning: -Wl -v: 'linker' input unused [-Wunused-command-line-argument]]
-        ignore line: [ "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -cc1 -triple arm64-apple-macosx26.0.0 -Wundef-prefix=TARGET_OS_ -Wdeprecated-objc-isa-usage -Werror=deprecated-objc-isa-usage -Werror=implicit-function-declaration -emit-obj -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -mframe-pointer=non-leaf -fno-strict-return -ffp-contract=on -fno-rounding-math -funwind-tables=1 -fobjc-msgsend-selector-stubs -fno-sized-deallocation -target-sdk-version=26.5 -fvisibility-inlines-hidden-static-local-var -fno-modulemap-allow-subdirectory-search -fdefine-target-os-macros -fno-assume-unique-vtables -fno-modulemap-allow-subdirectory-search -enable-tlsdesc -target-cpu apple-m1 -target-feature +v8.5a -target-feature +aes -target-feature +altnzcv -target-feature +ccdp -target-feature +ccpp -target-feature +complxnum -target-feature +crc -target-feature +dotprod -target-feature +flagm -target-feature +fp-armv8 -target-feature +fp16fml -target-feature +fptoint -target-feature +fullfp16 -target-feature +jsconv -target-feature +lse -target-feature +neon -target-feature +pauth -target-feature +perfmon -target-feature +predres -target-feature +ras -target-feature +rcpc -target-feature +rdm -target-feature +sb -target-feature +sha2 -target-feature +sha3 -target-feature +specrestrict -target-feature +ssbs -target-abi darwinpcs -debugger-tuning=lldb -fdebug-compilation-dir=/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-yPuuui -target-linker-version 1267 -v -fcoverage-compilation-dir=/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-yPuuui -resource-dir /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21 -dependency-file CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o.d -skip-unused-modulemap-deps -MT CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -sys-header-deps -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -I/usr/local/include -internal-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/local/include -internal-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include -internal-externc-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include -internal-externc-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/SubFrameworks -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/Library/Frameworks -Wno-elaborated-enum-base -ferror-limit 19 -stack-protector 1 -fstack-check -mdarwin-stkchk-strong-link -fblocks -fencode-extended-block-signature -fregister-global-dtors-with-atexit -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fmax-type-align=16 -fcommon -clang-vendor-feature=+disableNonDependentMemberExprInCurrentInstantiation -fno-odr-hash-protocols -clang-vendor-feature=+enableAggressiveVLAFolding -clang-vendor-feature=+revert09abecef7bbf -clang-vendor-feature=+thisNoAlignAttr -clang-vendor-feature=+thisNoNullAttr -clang-vendor-feature=+disableAtImportPrivateFrameworkInImplementationError -Wno-error=allocator-wrappers -fdwarf2-cfi-asm -o CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -x c /opt/homebrew/share/cmake/Modules/CMakeCCompilerABI.c]
+        ignore line: [cc: warning: -Wl -v: 'linker' input unused [-Wunused-command-line-argument]]
+        ignore line: [ "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang" -cc1 -triple arm64-apple-macosx26.0.0 -Wundef-prefix=TARGET_OS_ -Wdeprecated-objc-isa-usage -Werror=deprecated-objc-isa-usage -Werror=implicit-function-declaration -emit-obj -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -mframe-pointer=non-leaf -fno-strict-return -ffp-contract=on -fno-rounding-math -funwind-tables=2 -fobjc-msgsend-selector-stubs -fno-sized-deallocation -target-sdk-version=26.5 -fvisibility-inlines-hidden-static-local-var -fno-modulemap-allow-subdirectory-search -fdefine-target-os-macros -fno-assume-unique-vtables -fno-modulemap-allow-subdirectory-search -enable-tlsdesc -target-cpu apple-m1 -target-feature +v8.5a -target-feature +aes -target-feature +altnzcv -target-feature +ccdp -target-feature +ccpp -target-feature +complxnum -target-feature +crc -target-feature +dotprod -target-feature +flagm -target-feature +fp-armv8 -target-feature +fp16fml -target-feature +fptoint -target-feature +fullfp16 -target-feature +jsconv -target-feature +lse -target-feature +neon -target-feature +pauth -target-feature +perfmon -target-feature +predres -target-feature +ras -target-feature +rcpc -target-feature +rdm -target-feature +sb -target-feature +sha2 -target-feature +sha3 -target-feature +specrestrict -target-feature +ssbs -target-abi darwinpcs -debug-info-kind=standalone -dwarf-version=5 -debugger-tuning=lldb -fdebug-compilation-dir=/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-nrZ5d6 -target-linker-version 1267 -v -fcoverage-compilation-dir=/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-nrZ5d6 -resource-dir /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21 -dependency-file CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o.d -skip-unused-modulemap-deps -MT CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o -sys-header-deps -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -internal-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/local/include -internal-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include -internal-externc-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/include -internal-externc-isystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/SubFrameworks -internal-iframework /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/Library/Frameworks -Wno-elaborated-enum-base -ferror-limit 19 -stack-protector 1 -mdarwin-stkchk-strong-link -fblocks -fencode-extended-block-signature -fregister-global-dtors-with-atexit -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fmax-type-align=16 -fcommon -clang-vendor-feature=+disableNonDependentMemberExprInCurrentInstantiation -fno-odr-hash-protocols -clang-vendor-feature=+enableAggressiveVLAFolding -clang-vendor-feature=+revert09abecef7bbf -clang-vendor-feature=+thisNoAlignAttr -clang-vendor-feature=+thisNoNullAttr -clang-vendor-feature=+disableAtImportPrivateFrameworkInImplementationError -Wno-error=allocator-wrappers -fsanitize=address alignment array-bounds bool builtin enum float-cast-overflow integer-divide-by-zero nonnull-attribute null pointer-overflow return returns-nonnull-attribute shift-base shift-exponent signed-integer-overflow unreachable vla-bound -fsanitize-recover=alignment array-bounds bool builtin enum float-cast-overflow integer-divide-by-zero nonnull-attribute null pointer-overflow returns-nonnull-attribute shift-base shift-exponent signed-integer-overflow vla-bound -fsanitize-merge=alignment array-bounds bool builtin enum float-cast-overflow integer-divide-by-zero nonnull-attribute null pointer-overflow return returns-nonnull-attribute shift-base shift-exponent signed-integer-overflow unreachable vla-bound -fsanitize-system-ignorelist=/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/share/asan_ignorelist.txt -fno-sanitize-memory-param-retval -fsanitize-address-use-after-scope -fsanitize-address-globals-dead-stripping -fno-sanitize-address-use-odr-indicator -fno-assume-sane-operator-new -fdwarf2-cfi-asm -o CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o -x c /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeCCompilerABI.c]
         ignore line: [clang -cc1 version 21.0.0 (clang-2100.1.1.101) default target arm64-apple-darwin25.5.0]
-        ignore line: [ignoring nonexistent directory "/usr/local/include"]
-        ignore line: [ignoring nonexistent directory "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/local/include"]
-        ignore line: [ignoring nonexistent directory "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/Library/Frameworks"]
+        ignore line: [ignoring nonexistent directory "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/local/include"]
+        ignore line: [ignoring nonexistent directory "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/Library/Frameworks"]
         ignore line: [#include "..." search starts here:]
         ignore line: [#include <...> search starts here:]
         ignore line: [ /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/include]
-        ignore line: [ /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include]
+        ignore line: [ /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/include]
         ignore line: [ /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include]
-        ignore line: [ /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks (framework directory)]
-        ignore line: [ /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/SubFrameworks (framework directory)]
+        ignore line: [ /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks (framework directory)]
+        ignore line: [ /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/SubFrameworks (framework directory)]
         ignore line: [End of search list.]
-        ignore line: [Linking C executable cmTC_67ce0]
-        ignore line: [/opt/homebrew/bin/cmake -E cmake_link_script CMakeFiles/cmTC_67ce0.dir/link.txt --verbose=1]
+        ignore line: [Linking C executable cmTC_554fa]
+        ignore line: [/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_554fa.dir/link.txt --verbose=1]
         ignore line: [Apple clang version 21.0.0 (clang-2100.1.1.101)]
         ignore line: [Target: arm64-apple-darwin25.5.0]
         ignore line: [Thread model: posix]
         ignore line: [InstalledDir: /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin]
-        link line: [ "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld" -demangle -lto_library /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libLTO.dylib -dynamic -arch arm64 -platform_version macos 26.0.0 26.5 -syslibroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -mllvm -enable-linkonceodr-outlining -o cmTC_67ce0 -L/usr/local/lib -v CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -lSystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.osx.a] ==> linker [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld]
-        link line: [ "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld" -demangle -lto_library /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libLTO.dylib -dynamic -arch arm64 -platform_version macos 26.0.0 26.5 -syslibroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk -mllvm -enable-linkonceodr-outlining -o cmTC_67ce0 -L/usr/local/lib -v CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o -lSystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.osx.a]
+        link line: [ "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld" -demangle -lto_library /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libLTO.dylib -dynamic -arch arm64 -platform_version macos 26.0.0 26.5 -syslibroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -mllvm -enable-linkonceodr-outlining -o cmTC_554fa -search_paths_first -headerpad_max_install_names -v CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib -rpath @executable_path -rpath /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin -lSystem /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.osx.a]
           arg [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld] ==> ignore
           arg [-demangle] ==> ignore
           arg [-lto_library] ==> ignore, skip following value
@@ -1893,37 +196,42 @@ events:
           arg [26.0.0] ==> ignore
           arg [26.5] ==> ignore
           arg [-syslibroot] ==> ignore
-          arg [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk] ==> ignore
+          arg [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk] ==> ignore
           arg [-mllvm] ==> ignore
           arg [-enable-linkonceodr-outlining] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_67ce0] ==> ignore
-          arg [-L/usr/local/lib] ==> dir [/usr/local/lib]
+          arg [cmTC_554fa] ==> ignore
+          arg [-search_paths_first] ==> ignore
+          arg [-headerpad_max_install_names] ==> ignore
           arg [-v] ==> ignore
-          arg [CMakeFiles/cmTC_67ce0.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [CMakeFiles/cmTC_554fa.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [@executable_path] ==> ignore
+          arg [-rpath] ==> ignore
+          arg [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin] ==> ignore
           arg [-lSystem] ==> lib [System]
           arg [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.osx.a] ==> lib [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.osx.a]
-        linker tool for 'C': /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld 
-        Library search paths: [;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/swift]
-        Framework search paths: [;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks]
+        linker tool for 'C': /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld
+        Library search paths: [;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib/swift]
+        Framework search paths: [;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks]
         remove lib [System]
         remove lib [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.osx.a]
-        collapse library dir [/usr/local/lib] ==> [/usr/local/lib]
-        collapse library dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib]
-        collapse library dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/swift] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/swift]
-        collapse framework dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks]
+        collapse library dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib]
+        collapse library dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib/swift] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib/swift]
+        collapse framework dir [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks] ==> [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks]
         implicit libs: []
         implicit objs: []
-        implicit dirs: [/usr/local/lib;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib/swift]
-        implicit fwks: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks]
+        implicit dirs: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib;/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/usr/lib/swift]
+        implicit fwks: [/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks]
       
       
   -
     kind: "message-v1"
     backtrace:
-      - "/opt/homebrew/share/cmake/Modules/Internal/CMakeDetermineLinkerId.cmake:41 (message)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeDetermineCompilerABI.cmake:337 (cmake_determine_linker_id)"
-      - "/opt/homebrew/share/cmake/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/Internal/CMakeDetermineLinkerId.cmake:40 (message)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:255 (cmake_determine_linker_id)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "CMakeLists.txt:5 (project)"
     message: |
       Running the C compiler's linker: "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld" "-v"
@@ -1933,4 +241,74 @@ events:
       will use ld-classic for: armv6 armv7 armv7s i386 armv6m armv7k armv7m armv7em
       LTO support using: LLVM version 21.0.0 (static support for 30, runtime is 30)
       TAPI support using: Apple TAPI version 21.0.0 (tapi-2100.0.2.6)
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CheckCCompilerFlag.cmake:56 (cmake_check_compiler_flag)"
+      - "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/cmake/test_common.cmake:48 (check_c_compiler_flag)"
+      - "CMakeLists.txt:43 (lichen_test_target)"
+    checks:
+      - "Performing Test _has_asan"
+    directories:
+      source: "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-kWejxk"
+      binary: "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-kWejxk"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fsanitize=address,undefined -g"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+      CMAKE_OSX_ARCHITECTURES: ""
+      CMAKE_OSX_DEPLOYMENT_TARGET: ""
+      CMAKE_OSX_SYSROOT: "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk"
+    buildResult:
+      variable: "_has_asan"
+      cached: true
+      stdout: |
+        Change Dir: '/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-kWejxk'
+        
+        Run Build Command(s): /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_dc4ce/fast
+        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/usr/bin/make  -f CMakeFiles/cmTC_dc4ce.dir/build.make CMakeFiles/cmTC_dc4ce.dir/build
+        Building C object CMakeFiles/cmTC_dc4ce.dir/src.c.o
+        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc -D_has_asan  -fsanitize=address,undefined -g  -arch arm64 -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk   -fsanitize=address -MD -MT CMakeFiles/cmTC_dc4ce.dir/src.c.o -MF CMakeFiles/cmTC_dc4ce.dir/src.c.o.d -o CMakeFiles/cmTC_dc4ce.dir/src.c.o -c /Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-kWejxk/src.c
+        Linking C executable cmTC_dc4ce
+        /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_dc4ce.dir/link.txt --verbose=1
+        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc -fsanitize=address,undefined -g  -arch arm64 -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/cmTC_dc4ce.dir/src.c.o -o cmTC_dc4ce
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake:108 (try_compile)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/share/cmake-3.31/Modules/CheckCCompilerFlag.cmake:56 (cmake_check_compiler_flag)"
+      - "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/cmake/test_common.cmake:55 (check_c_compiler_flag)"
+      - "CMakeLists.txt:43 (lichen_test_target)"
+    checks:
+      - "Performing Test _has_ubsan"
+    directories:
+      source: "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-L5CCjs"
+      binary: "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-L5CCjs"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fsanitize=address,undefined -g"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+      CMAKE_OSX_ARCHITECTURES: ""
+      CMAKE_OSX_DEPLOYMENT_TARGET: ""
+      CMAKE_OSX_SYSROOT: "/Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk"
+    buildResult:
+      variable: "_has_ubsan"
+      cached: true
+      stdout: |
+        Change Dir: '/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-L5CCjs'
+        
+        Run Build Command(s): /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin/cmake -E env VERBOSE=1 /usr/bin/make -f Makefile cmTC_39b35/fast
+        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/usr/bin/make  -f CMakeFiles/cmTC_39b35.dir/build.make CMakeFiles/cmTC_39b35.dir/build
+        Building C object CMakeFiles/cmTC_39b35.dir/src.c.o
+        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc -D_has_ubsan  -fsanitize=address,undefined -g  -arch arm64 -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk   -fsanitize=undefined -MD -MT CMakeFiles/cmTC_39b35.dir/src.c.o -MF CMakeFiles/cmTC_39b35.dir/src.c.o.d -o CMakeFiles/cmTC_39b35.dir/src.c.o -c /Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/tx_queue/build/CMakeFiles/CMakeScratch/TryCompile-L5CCjs/src.c
+        Linking C executable cmTC_39b35
+        /Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin/cmake -E cmake_link_script CMakeFiles/cmTC_39b35.dir/link.txt --verbose=1
+        /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc -fsanitize=address,undefined -g  -arch arm64 -isysroot /Volumes/Attic/Applications/Xcode-26.6.0.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/cmTC_39b35.dir/src.c.o -o cmTC_39b35
+        
+      exitCode: 0
 ...

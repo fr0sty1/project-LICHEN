@@ -1,1 +1,2 @@
 {"id":"01a045dd-0b0f-768f-b723-682654e527fe","issue_id":"project-LICHEN-9j70.4","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: local-ok","created_at":"2026-08-28T00:55:09.327431Z"}
+{"id":"01a046b1-75c6-7631-b1d4-8f0f61c3c1cb","issue_id":"project-LICHEN-9j70.4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"LICHEN_MIN_FRAME_LEN is now defined at file level in lichen_l2_internal.h:64 under a Constants section","created_at":"2026-08-28T04:47:10.278407Z"}

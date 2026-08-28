@@ -332,7 +332,7 @@ class TestFading:
     def test_fading_invalid_type_raises(self) -> None:
         """Invalid fading_type raises ValueError."""
         with pytest.raises(ValueError, match="fading_type must be 'rayleigh' or 'ricean'"):
-            PropagationModel(fading_type="unknown")
+            PropagationModel(fading_type="unknown")  # type: ignore[arg-type]
 
     def test_ricean_fading_nonnegative(self) -> None:
         """Ricean fading produces non-negative fading loss (abs)."""
@@ -383,8 +383,11 @@ class TestSINR:
         int2 = 10.0 ** (-95.0 / 10.0)
         noise_linear = 10.0 ** (-120.0 / 10.0)
         total_noise = noise_linear + int1 + int2
-        expected = 10.0 * math.log10(signal_linear / total_noise) if total_noise > 0 else float("inf")
+        expected = (
+            10.0 * math.log10(signal_linear / total_noise)
+            if total_noise > 0
+            else float("inf")
+        )
         sinr_val = model.sinr(0.0, 1.0, interfering_powers_linear=[int1, int2])
         assert sinr_val == pytest.approx(expected, rel=1e-6)
-
 

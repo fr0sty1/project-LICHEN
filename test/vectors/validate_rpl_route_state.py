@@ -425,6 +425,16 @@ def validate(document: dict) -> None:
             path_sequence = 0 if path_sequence in (127, 255) else path_sequence + 1
         assert dao_sequence == case["expected_dao_sequence"], case["name"]
         assert path_sequence == case["expected_path_sequence"], case["name"]
+        expected_wire = (
+            bytes([oracle["rpl_instance_id"], 0x40, 0, dao_sequence])
+            + bytes.fromhex(oracle["dodag_id"])
+            + bytes([5, 18, 0, 128])
+            + bytes.fromhex(oracle["sequence_authority"])
+            + bytes([6, 20, 0, 0x80, path_sequence, case["path_lifetime"]])
+            + bytes.fromhex(oracle["dodag_id"])
+        )
+        assert len(expected_wire) == 62
+        assert bytes.fromhex(case["expected_wire"]) == expected_wire, case["name"]
     for case in document["route_hop_boundaries"]:
         assert case["accepted"] == (len(case["path"]) <= oracle["max_route_hops"]), case["name"]
     state: dict[str, dict] = {}

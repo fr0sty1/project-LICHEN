@@ -22,6 +22,12 @@
 BUILD_ASSERT(GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN >=
 	     1U + LICHEN_MESHTASTIC_FULL_SYNC_RECORDS(
 		     GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS));
+BUILD_ASSERT(sizeof(((struct lichen_meshtastic_adapter_packet_info *)0)->payload_buf) ==
+	     LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX + 1U,
+	     "packet_info payload storage must include its terminator");
+BUILD_ASSERT(offsetof(struct lichen_meshtastic_adapter_packet_info, payload_len) <
+	     offsetof(struct lichen_meshtastic_adapter_packet_info, payload_buf),
+	     "packet_info payload ABI order changed");
 
 struct test_ctx {
 	uint8_t out[TEST_FROM_RADIO_OUT_CAP][LICHEN_MESHTASTIC_FROM_RADIO_MAX];
@@ -147,6 +153,8 @@ static int test_text(
 	}
 	ctx->last_text_want_ack = packet->want_ack;
 	zassert_true(packet->payload_len <= sizeof(s_last_text_payload));
+	zassert_equal(packet->payload[packet->payload_len], 0U,
+		      "owned payload copy is not terminated");
 	memcpy(s_last_text_payload, packet->payload, packet->payload_len);
 	return 0;
 }

@@ -106,6 +106,20 @@ SEQUENCE_RELATIONS = [
         "expected": "stale",
     },
 ]
+
+
+def leaf_dao_wire(dao_sequence: int, path_sequence: int, path_lifetime: int) -> str:
+    """Build the canonical unsigned leaf DAO directly from its wire fields."""
+    return (
+        bytes([0, 0x40, 0, dao_sequence])
+        + bytes.fromhex(DODAG)
+        + bytes([5, 18, 0, 128])
+        + bytes.fromhex(AUTHORITY)
+        + bytes([6, 20, 0, 0x80, path_sequence, path_lifetime])
+        + bytes.fromhex(DODAG)
+    ).hex()
+
+
 TX_SEQUENCE_TRANSITIONS = [
     {
         "name": "first_new_update",
@@ -113,6 +127,7 @@ TX_SEQUENCE_TRANSITIONS = [
         "path_lifetime": 255,
         "expected_dao_sequence": 241,
         "expected_path_sequence": 241,
+        "expected_wire": leaf_dao_wire(241, 241, 255),
     },
     {
         "name": "explicit_logical_copy",
@@ -120,6 +135,7 @@ TX_SEQUENCE_TRANSITIONS = [
         "path_lifetime": 255,
         "expected_dao_sequence": 242,
         "expected_path_sequence": 241,
+        "expected_wire": leaf_dao_wire(242, 241, 255),
     },
     {
         "name": "next_new_update",
@@ -127,6 +143,7 @@ TX_SEQUENCE_TRANSITIONS = [
         "path_lifetime": 0,
         "expected_dao_sequence": 243,
         "expected_path_sequence": 242,
+        "expected_wire": leaf_dao_wire(243, 242, 0),
     },
 ]
 HOP_ADDRESSES = [
@@ -979,11 +996,12 @@ def build_document() -> JsonObject:
         "format_version": 2,
         "description": (
             "Canonical post-provenance RPL DAO route-state transitions from fixed "
-            "RFC 6550 option bytes and LICHEN Section 8.8 semantics (v2 schema)."
+            "RFC 6550 option bytes, canonical leaf DAO wire images, and LICHEN "
+            "Sections 8.4.4 and 8.8 semantics (v2 schema)."
         ),
         "oracle": {
             "basis": (
-                "RFC 6550 Sections 6.7.7-6.7.11, 7.2, and 9.9; spec/05-routing.md Sections 8.8-8.9"
+                "RFC 6550 Sections 6.7.7-6.7.11, 7.2, and 9.9; spec/05-routing.md Sections 8.4.4 and 8.8-8.9"
             ),
             "scope": (
                 "Route-state processing after DAO provenance, authorization, and "

@@ -3,9 +3,9 @@
 
 /**
  * @file lichen/senml.h
- * @brief SenML CBOR encoder for sensor data (RFC 8428)
+ * @brief Allocation-free SenML CBOR codec for sensor data (RFC 8428)
  *
- * Provides helpers for encoding sensor readings as SenML over CBOR.
+ * Provides helpers for encoding and decoding sensor readings as SenML over CBOR.
  * Content-Format: application/senml+cbor (112)
  *
  * @warning SenML payloads may contain sensitive data (location, health
@@ -80,6 +80,9 @@ extern "C" {
 /** Maximum string value length (for vs field, e.g. DTN messages) */
 #define SENML_MAX_STRING_LEN 256
 
+/** Maximum binary data value accepted by the bounded codec. */
+#define SENML_MAX_DATA_LEN 1536
+
 /** Maximum unit string length */
 #define SENML_MAX_UNIT_LEN 8
 
@@ -90,20 +93,27 @@ enum senml_value_type {
 	SENML_VALUE_FLOAT,   /**< Floating point value (v) */
 	SENML_VALUE_BOOL,    /**< Boolean value (vb) */
 	SENML_VALUE_STRING,  /**< String value (vs) */
-	SENML_VALUE_DATA,    /**< Binary data (vd) - not yet supported */
+	SENML_VALUE_DATA,    /**< Binary data (vd) */
+};
+
+/** Borrowed byte span used for decoded text and binary values. */
+struct senml_span {
+	const uint8_t *_Nullable data;
+	size_t len;
 };
 
 /**
  * @brief SenML record
  */
-	struct senml_record {
+struct senml_record {
 	const char *_Nullable name;  /**< Record name (n) - may be NULL per SenML spec */
-	const char *unit;          /**< Unit (u) - may be NULL */
+	const char *_Nullable unit; /**< Unit (u) - may be NULL */
 	enum senml_value_type type;
 	union {
 		float f;           /**< Float value */
 		bool b;            /**< Boolean value */
-		const char *s;     /**< String value (vs) */
+		const char *_Nullable s; /**< String value (vs) */
+		struct senml_span data;  /**< Binary value (vd) */
 	} value;
 	int32_t time_offset;
 	bool has_time;
@@ -114,8 +124,8 @@ enum senml_value_type {
  * @brief SenML pack (array of records with common base)
  */
 struct senml_pack {
-	const char *base_name;     /**< Base name (bn) - may be NULL */
-	uint64_t base_time;        /**< Base time (bt) - always included now */
+	const char *_Nullable base_name; /**< Base name (bn) - may be NULL */
+	uint64_t base_time;        /**< Base time (bt) */
 	bool has_base_time;        /**< Include base time */
 	struct senml_record records[SENML_MAX_RECORDS];
 	size_t record_count;
@@ -126,7 +136,8 @@ struct senml_pack {
  *
  * @param[out] pack       Pack to initialize
  * @param[in]  base_name  Base name (e.g., "urn:dev:mac:0011223344556677:")
- * @param[in]  base_time  Base Unix timestamp (0 is valid epoch)
+ * @param[in]  base_time  Base Unix timestamp (0 omits bt; callers that need
+ *                        the Unix epoch can set has_base_time after init)
  * @return 0 on success, -EINVAL if pack is NULL, -EMSGSIZE if base_name is
  *         longer than SENML_MAX_NAME_LEN
  */
@@ -193,6 +204,16 @@ int senml_add_string(struct senml_pack *_Nonnull pack,
 		    const char *_Nullable value);
 
 /**
+ * @brief Add a binary data record to the pack.
+ *
+ * The data is borrowed until senml_encode_cbor() returns. A NULL pointer is
+ * valid only when data_len is zero.
+ */
+int senml_add_data(struct senml_pack *_Nullable pack,
+		   const char *_Nullable name,
+		   const uint8_t *_Nullable data, size_t data_len);
+
+/**
  * @brief Encode SenML pack to CBOR.
  *
  * @param[in]  pack    SenML pack to encode
@@ -200,13 +221,65 @@ int senml_add_string(struct senml_pack *_Nonnull pack,
  * @param[in]  buflen  Buffer size
  * @return Bytes written, or negative error code:
  *         -EINVAL if pack has no records
- *         -ENOTSUP if record uses unsupported value type (DATA)
  *         -ENOMEM if buffer too small
  *         -EMSGSIZE if string too long to encode
  */
 LICHEN_WARN_UNUSED_RESULT
 int senml_encode_cbor(const struct senml_pack *_Nonnull pack,
 		      uint8_t *_Nonnull buf, size_t buflen);
+
+/** Complete RFC 8428 record returned by senml_decode_cbor(). */
+struct senml_decoded_record {
+	struct senml_span base_name;
+	struct senml_span base_unit;
+	struct senml_span name;
+	struct senml_span unit;
+	struct senml_span string_value;
+	struct senml_span data_value;
+	double base_time;
+	double base_value;
+	double base_sum;
+	double value;
+	double sum;
+	double time;
+	double update_time;
+	uint8_t base_version;
+	bool bool_value;
+	bool has_base_name;
+	bool has_base_time;
+	bool has_base_unit;
+	bool has_base_value;
+	bool has_base_sum;
+	bool has_base_version;
+	bool has_name;
+	bool has_unit;
+	bool has_value;
+	bool has_sum;
+	bool has_time;
+	bool has_update_time;
+	enum senml_value_type value_type;
+};
+
+/** Fixed-capacity, allocation-free decoded SenML pack. */
+struct senml_decoded_pack {
+	struct senml_decoded_record records[SENML_MAX_RECORDS];
+	size_t record_count;
+};
+
+/**
+ * @brief Decode a definite-length SenML-CBOR pack.
+ *
+ * Text and binary spans borrow from @p buf, which must remain valid while the
+ * decoded pack is used. The decoder rejects duplicate standard labels,
+ * multiple value fields, invalid UTF-8/types, non-finite numbers, oversized
+ * strings/data, excessive record counts, nesting, trailing bytes, and integer
+ * or length overflow. On error, pack->record_count is zero.
+ *
+ * @return 0 on success, -EINVAL for malformed input, -EMSGSIZE for a bounded
+ *         field violation, or -ENOMEM when the record capacity is exceeded.
+ */
+int senml_decode_cbor(const uint8_t *_Nullable buf, size_t buflen,
+		      struct senml_decoded_pack *_Nullable pack);
 
  /* --------------------------------------------------------------------------
  * Convenience functions for common sensor types
@@ -231,31 +304,6 @@ int senml_encode_location(const char *_Nullable base_name, uint64_t base_time,
 			  uint8_t *_Nonnull buf, size_t buflen);
 
 
-/**
- * @brief Encode full location as SenML, including optional fields.
- *
- * Optional fields (alt, speed, heading, hacc, vacc) are included only when
- * not NaN. Pass NAN to omit a field.
- *
- * @param[in]  base_name  Base name or NULL
- * @param[in]  base_time  Unix timestamp (0 valid for epoch)
- * @param[in]  lat        Latitude (WGS84 degrees)
- * @param[in]  lon        Longitude (WGS84 degrees)
- * @param[in]  alt        Altitude (meters) or NAN to omit
- * @param[in]  speed      Ground speed (m/s) or NAN to omit
- * @param[in]  heading    Heading (degrees, 0=N) or NAN to omit
- * @param[in]  hacc       Horizontal accuracy (meters) or NAN to omit
- * @param[in]  vacc       Vertical accuracy (meters) or NAN to omit
- * @param[out] buf        Output buffer
- * @param[in]  buflen     Buffer size
- * @return Bytes written, or negative error code
- */
-LICHEN_WARN_UNUSED_RESULT
-int senml_encode_location_full(const char *_Nullable base_name, uint64_t base_time,
-			       float lat, float lon, float alt,
-			       float speed, float heading,
-			       float hacc, float vacc,
-			       uint8_t *_Nonnull buf, size_t buflen);
 /**
  * @brief Encode full location as SenML, including optional fields.
  *

@@ -145,6 +145,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	bool mutex_locked = false;
 	bool reservation_rollback_allowed = false;
 	bool had_peer_eui64 = false;
+	bool has_id_context = false;
 
 	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
 	    oscore_opt == NULL || oscore_opt_len == NULL) {
@@ -203,13 +204,16 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 		ret = OSCORE_ERR_SEQ_EXHAUSTED;
 		goto cleanup;
 	}
-	if (ctx->sender_id_len > 7 || ctx->id_context_len > OSCORE_ID_CONTEXT_MAX_LEN) {
+	if (ctx->sender_id_len > 7 ||
+	    ctx->id_context_len > OSCORE_ID_CONTEXT_MAX_LEN ||
+	    (!ctx->has_id_context && ctx->id_context_len != 0)) {
 		ret = OSCORE_ERR_INVALID_PARAM;
 		goto cleanup;
 	}
 
 	sender_id_len = ctx->sender_id_len;
 	id_context_len = ctx->id_context_len;
+	has_id_context = ctx->has_id_context;
 	memcpy(sender_id, ctx->sender_id, sender_id_len);
 	memcpy(id_context, ctx->id_context, id_context_len);
 	memcpy(sender_key, ctx->sender_key, sizeof(sender_key));
@@ -250,7 +254,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	opt.kid_len = (uint8_t)sender_id_len;
 	memcpy(opt.piv, piv, piv_len);
 	memcpy(opt.kid, sender_id, sender_id_len);
-	opt.has_kid_context = id_context_len > 0;
+	opt.has_kid_context = has_id_context;
 	opt.kid_context_len = (uint8_t)id_context_len;
 	memcpy(opt.kid_context, id_context, id_context_len);
 
@@ -291,6 +295,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	if (ctx_idx < 0 || !ctx->active ||
 	    ctx->sender_id_len != sender_id_len ||
 	    ctx->id_context_len != id_context_len ||
+	    ctx->has_id_context != has_id_context ||
 	    memcmp(ctx->sender_id, sender_id, sender_id_len) != 0 ||
 	    memcmp(ctx->id_context, id_context, id_context_len) != 0 ||
 	    memcmp(ctx->sender_key, sender_key, sizeof(sender_key)) != 0 ||
@@ -323,6 +328,7 @@ cleanup:
 		if (ctx_idx >= 0 && ctx->active && ctx->sender_seq == seq + 1 &&
 		    ctx->sender_id_len == sender_id_len &&
 		    ctx->id_context_len == id_context_len &&
+		    ctx->has_id_context == has_id_context &&
 		    memcmp(ctx->sender_id, sender_id, sender_id_len) == 0 &&
 		    memcmp(ctx->id_context, id_context, id_context_len) == 0 &&
 		    memcmp(ctx->sender_key, sender_key, sizeof(sender_key)) == 0 &&
@@ -423,6 +429,7 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	/* Any identifiers carried by the request must select this exact context. */
 	if (!opt.has_kid || opt.kid_len != ctx->recipient_id_len ||
 	    memcmp(opt.kid, ctx->recipient_id, opt.kid_len) != 0 ||
+	    opt.has_kid_context != ctx->has_id_context ||
 	    (opt.has_kid_context &&
 	     (opt.kid_context_len != ctx->id_context_len ||
 	      memcmp(opt.kid_context, ctx->id_context,
@@ -510,14 +517,31 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 		goto cleanup_unprotect_request;
 	}
 
-	/* Commit exactly once, only after authentication and full validation. */
-	replay_clear_pending_locked(ctx_idx, seq);
-	replay_reserved = false;
-	if (!replay_update_window(ctx, seq)) {
+	/*
+	 * Compute the exact next state without mutating live replay state.  When
+	 * Settings persistence is enabled it is durably committed before either
+	 * the live window or caller-visible plaintext is published.
+	 */
+	struct oscore_ctx replay_candidate = *ctx;
+	if (!replay_update_window(&replay_candidate, seq)) {
 		LOG_WRN("OSCORE replay detected after decrypt: seq=%" PRIu64, seq);
 		ret = OSCORE_ERR_REPLAY;
+		crypto_wipe(&replay_candidate, sizeof(replay_candidate));
 		goto cleanup_unprotect_request;
 	}
+#if defined(CONFIG_LICHEN_OSCORE_SETTINGS)
+	if (oscore_settings_commit_context_locked(
+		    &replay_candidate, s_seq_initialized[ctx_idx]) != 0) {
+		ret = OSCORE_ERR_NVM_FAILED;
+		crypto_wipe(&replay_candidate, sizeof(replay_candidate));
+		goto cleanup_unprotect_request;
+	}
+#endif
+	replay_clear_pending_locked(ctx_idx, seq);
+	replay_reserved = false;
+	ctx->recipient_seq = replay_candidate.recipient_seq;
+	ctx->replay_window = replay_candidate.replay_window;
+	crypto_wipe(&replay_candidate, sizeof(replay_candidate));
 
 	*code = decoded_code;
 	if (opt_out_len > 0) {
@@ -718,6 +742,35 @@ static int protect_response(struct oscore_ctx *ctx,
 		}
 	}
 
+#if defined(CONFIG_LICHEN_OSCORE_SETTINGS)
+	/*
+	 * A no-PIV response consumes its request correlation.  Persist and
+	 * publish that consumption before the AEAD writes caller-visible bytes.
+	 * If encryption subsequently fails the correlation remains consumed;
+	 * conservative loss is preferable to a crash window that can emit the
+	 * same authenticated response nonce twice.
+	 */
+	if (!include_piv) {
+		struct oscore_ctx replay_candidate = *ctx;
+
+		response_replay_update(
+			&replay_candidate.sent_response_window_initialized,
+			&replay_candidate.sent_response_seq,
+			&replay_candidate.sent_response_window, request_seq);
+		if (oscore_settings_commit_context_locked(
+			    &replay_candidate, s_seq_initialized[ctx_idx]) != 0) {
+			crypto_wipe(&replay_candidate, sizeof(replay_candidate));
+			ret = OSCORE_ERR_NVM_FAILED;
+			goto cleanup;
+		}
+		ctx->sent_response_window_initialized =
+			replay_candidate.sent_response_window_initialized;
+		ctx->sent_response_seq = replay_candidate.sent_response_seq;
+		ctx->sent_response_window = replay_candidate.sent_response_window;
+		crypto_wipe(&replay_candidate, sizeof(replay_candidate));
+	}
+#endif
+
 	/*
 	 * SECURITY: Encryption is the final fallible step and writes directly
 	 * into the caller's buffer (mirroring oscore_protect_request), which
@@ -725,15 +778,14 @@ static int protect_response(struct oscore_ctx *ctx,
 	 * Every failure-prone step above (buffer checks, context validation,
 	 * NVM persistence, slot recycle rejection, AAD build) completes first,
 	 * so policy and validation failures never write any caller-visible
-	 * byte; the no-PIV correlation commit follows only after encryption
-	 * succeeds. Residual exposure: if the AEAD primitive itself faults
+	 * byte. With persistent state, no-PIV correlation is already committed;
+	 * the legacy RAM-only path commits it after encryption. Residual exposure:
+	 * if the AEAD primitive itself faults
 	 * (hardware-error territory given pre-validated sizes), partial bytes
 	 * may land in the caller buffer. With a fresh PIV the NVM SSN then
 	 * stays persisted at the margin-skipped value and the in-RAM advance
 	 * keeps it (the rollback equality check below no longer matches), so
-	 * the skipped sequences are never reused; without a PIV the window is
-	 * left uncommitted, so an identical retry of this correlation remains
-	 * possible.
+	 * the skipped sequences are never reused.
 	 */
 	if (lichen_aes_ccm_encrypt(sender_key, nonce,
 			    aad, aad_len,
@@ -752,11 +804,29 @@ static int protect_response(struct oscore_ctx *ctx,
 	 * between the two. On an encrypt fault the window stays unchanged and
 	 * a genuine retry of the same correlation can still succeed.
 	 */
+#if !defined(CONFIG_LICHEN_OSCORE_SETTINGS)
 	if (!include_piv) {
-		response_replay_update(&ctx->sent_response_window_initialized,
-				       &ctx->sent_response_seq,
-				       &ctx->sent_response_window, request_seq);
+		struct oscore_ctx replay_candidate = *ctx;
+
+		response_replay_update(
+			&replay_candidate.sent_response_window_initialized,
+			&replay_candidate.sent_response_seq,
+			&replay_candidate.sent_response_window, request_seq);
+#if defined(CONFIG_LICHEN_OSCORE_SETTINGS)
+		if (oscore_settings_commit_context_locked(
+			    &replay_candidate, s_seq_initialized[ctx_idx]) != 0) {
+			crypto_wipe(&replay_candidate, sizeof(replay_candidate));
+			ret = OSCORE_ERR_NVM_FAILED;
+			goto cleanup;
+		}
+#endif
+		ctx->sent_response_window_initialized =
+			replay_candidate.sent_response_window_initialized;
+		ctx->sent_response_seq = replay_candidate.sent_response_seq;
+		ctx->sent_response_window = replay_candidate.sent_response_window;
+		crypto_wipe(&replay_candidate, sizeof(replay_candidate));
 	}
+#endif
 
 	if (option_len > 0) {
 		memcpy(oscore_opt, option_tmp, option_len);
@@ -903,7 +973,8 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 		goto cleanup_unprotect_response;
 	}
 	if (resp_opt.has_kid_context &&
-	    (resp_opt.kid_context_len != ctx->id_context_len ||
+	    (!ctx->has_id_context ||
+	     resp_opt.kid_context_len != ctx->id_context_len ||
 	     memcmp(resp_opt.kid_context, ctx->id_context,
 		    resp_opt.kid_context_len) != 0)) {
 		ret = OSCORE_ERR_NO_CONTEXT;
@@ -1013,15 +1084,35 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 	}
 
 	/* Commit response replay state only after authentication and validation. */
+	struct oscore_ctx replay_candidate = *ctx;
 	if (response_has_piv) {
-		response_replay_update(&ctx->response_piv_window_initialized,
-				       &ctx->response_piv_seq,
-				       &ctx->response_piv_window, response_seq);
+		response_replay_update(
+			&replay_candidate.response_piv_window_initialized,
+			&replay_candidate.response_piv_seq,
+			&replay_candidate.response_piv_window, response_seq);
 	} else {
-		response_replay_update(&ctx->received_response_window_initialized,
-				       &ctx->received_response_seq,
-				       &ctx->received_response_window, request_seq);
+		response_replay_update(
+			&replay_candidate.received_response_window_initialized,
+			&replay_candidate.received_response_seq,
+			&replay_candidate.received_response_window, request_seq);
 	}
+#if defined(CONFIG_LICHEN_OSCORE_SETTINGS)
+	if (oscore_settings_commit_context_locked(
+		    &replay_candidate, s_seq_initialized[ctx_get_index(ctx)]) != 0) {
+		crypto_wipe(&replay_candidate, sizeof(replay_candidate));
+		ret = OSCORE_ERR_NVM_FAILED;
+		goto cleanup_unprotect_response;
+	}
+#endif
+	ctx->response_piv_window_initialized =
+		replay_candidate.response_piv_window_initialized;
+	ctx->response_piv_seq = replay_candidate.response_piv_seq;
+	ctx->response_piv_window = replay_candidate.response_piv_window;
+	ctx->received_response_window_initialized =
+		replay_candidate.received_response_window_initialized;
+	ctx->received_response_seq = replay_candidate.received_response_seq;
+	ctx->received_response_window = replay_candidate.received_response_window;
+	crypto_wipe(&replay_candidate, sizeof(replay_candidate));
 
 	/* Publish decrypted data only after all failure paths above are exhausted. */
 	*code = plaintext[0];

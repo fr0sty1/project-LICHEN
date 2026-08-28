@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.5.10",
+  "title": "Implement Ethernet backend using Zephyr net_if APIs",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:12.502721Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:12.502721Z",
+  "labels": [
+    "core",
+    "gateway",
+    "ethernet",
+    "abstraction",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.5.10",
+      "depends_on_id": "project-LICHEN-p2y5.5",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:21.051627Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

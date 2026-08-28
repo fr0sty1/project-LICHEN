@@ -1,0 +1,315 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lichen.example/schema/tunnel_authorization.schema.json",
+  "title": "LICHEN Tunnel Authorization Vectors",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "vector_type",
+    "format_version",
+    "description",
+    "oracle",
+    "constants",
+    "identities",
+    "authorizations",
+    "post_cases",
+    "decapsulation_cases"
+  ],
+  "properties": {
+    "$schema": { "const": "./tunnel_authorization.schema.json" },
+    "vector_type": { "const": "tunnel_authorization" },
+    "format_version": { "const": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "oracle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basis", "implementation", "generator_command", "freshness_command"],
+      "properties": {
+        "basis": { "type": "string", "minLength": 1 },
+        "implementation": { "type": "string", "minLength": 1 },
+        "generator_command": { "type": "string", "minLength": 1 },
+        "freshness_command": { "type": "string", "minLength": 1 }
+      }
+    },
+    "constants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "protected_hex",
+        "maximum_route_hops",
+        "maximum_authorizations",
+        "evaluation_time"
+      ],
+      "properties": {
+        "algorithm": { "const": -65537 },
+        "protected_hex": { "const": "a1013a00010000" },
+        "maximum_route_hops": { "const": 8 },
+        "maximum_authorizations": { "const": 256 },
+        "evaluation_time": { "$ref": "#/definitions/u64" }
+      }
+    },
+    "identities": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": { "$ref": "#/definitions/identity" }
+    },
+    "authorizations": {
+      "type": "array",
+      "minItems": 20,
+      "items": { "$ref": "#/definitions/authorization" }
+    },
+    "post_cases": {
+      "type": "array",
+      "minItems": 20,
+      "items": { "$ref": "#/definitions/postCase" }
+    },
+    "decapsulation_cases": {
+      "type": "array",
+      "minItems": 10,
+      "items": { "$ref": "#/definitions/decapsulationCase" }
+    }
+  },
+  "definitions": {
+    "u64": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    },
+    "hex": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{2})*$"
+    },
+    "iid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "address": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "publicKey": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "seed": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "routeHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{96}$"
+    },
+    "identityName": {
+      "enum": ["root", "other_root", "egress", "other_egress"]
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "seed_hex", "public_key_hex", "iid_hex", "address_hex"],
+      "properties": {
+        "name": { "$ref": "#/definitions/identityName" },
+        "seed_hex": { "$ref": "#/definitions/seed" },
+        "public_key_hex": { "$ref": "#/definitions/publicKey" },
+        "iid_hex": { "$ref": "#/definitions/iid" },
+        "address_hex": { "$ref": "#/definitions/address" }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "mutation",
+        "root_seed_hex",
+        "root_public_key_hex",
+        "root_iid_hex",
+        "kid_iid_hex",
+        "prefix_hex",
+        "target_bytes_hex",
+        "prefix_len",
+        "route_hops_hex",
+        "route_hash_hex",
+        "path_seq",
+        "expiry",
+        "egress_iid_hex",
+        "protected_hex",
+        "payload_hex",
+        "sig_structure_hex",
+        "digest_hex",
+        "signature_hex",
+        "cose_sign1_hex"
+      ],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "description": { "type": "string", "minLength": 1 },
+        "mutation": {
+          "enum": [
+            "none",
+            "signature_bit",
+            "noncanonical_outer",
+            "trailing_data",
+            "duplicate_protected",
+            "duplicate_payload",
+            "nonzero_prefix_tail",
+            "missing_claim",
+            "unknown_claim",
+            "malformed_break"
+          ]
+        },
+        "root_seed_hex": { "$ref": "#/definitions/seed" },
+        "root_public_key_hex": { "$ref": "#/definitions/publicKey" },
+        "root_iid_hex": { "$ref": "#/definitions/iid" },
+        "kid_iid_hex": { "$ref": "#/definitions/iid" },
+        "prefix_hex": { "$ref": "#/definitions/address" },
+        "target_bytes_hex": { "$ref": "#/definitions/hex" },
+        "prefix_len": { "type": "integer", "minimum": 0, "maximum": 128 },
+        "route_hops_hex": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/definitions/iid" }
+        },
+        "route_hash_hex": { "$ref": "#/definitions/routeHash" },
+        "path_seq": { "$ref": "#/definitions/u64" },
+        "expiry": { "$ref": "#/definitions/u64" },
+        "egress_iid_hex": { "$ref": "#/definitions/iid" },
+        "protected_hex": { "$ref": "#/definitions/hex" },
+        "payload_hex": { "$ref": "#/definitions/hex" },
+        "sig_structure_hex": { "$ref": "#/definitions/hex" },
+        "digest_hex": { "$ref": "#/definitions/digest" },
+        "signature_hex": { "$ref": "#/definitions/signature" },
+        "cose_sign1_hex": { "$ref": "#/definitions/hex" }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed", "denial", "response_code"],
+      "properties": {
+        "allowed": { "type": "boolean" },
+        "denial": {
+          "enum": [
+            "none",
+            "malformed",
+            "oscore-required",
+            "wrong-root",
+            "algorithm",
+            "signature",
+            "wrong-egress",
+            "expired",
+            "replay",
+            "revoked",
+            "clock-regression",
+            "wrong-direction",
+            "invalid-route",
+            "source-scope",
+            "destination-scope",
+            "no-authorization"
+          ]
+        },
+        "response_code": { "enum": [204, 403] }
+      }
+    },
+    "setupAction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "message", "now", "sender"],
+          "properties": {
+            "action": { "const": "receive" },
+            "message": { "type": "string" },
+            "now": { "$ref": "#/definitions/u64" },
+            "sender": { "$ref": "#/definitions/identityName" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "message", "through_path_seq"],
+          "properties": {
+            "action": { "const": "revoke" },
+            "message": { "type": "string" },
+            "through_path_seq": { "$ref": "#/definitions/u64" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action", "identity"],
+          "properties": {
+            "action": { "const": "change_root" },
+            "identity": { "$ref": "#/definitions/identityName" }
+          }
+        }
+      ]
+    },
+    "postCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "message",
+        "active_root",
+        "oscore_authenticated",
+        "oscore_sender",
+        "now",
+        "setup",
+        "expected"
+      ],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "message": { "type": "string" },
+        "active_root": { "$ref": "#/definitions/identityName" },
+        "oscore_authenticated": { "type": "boolean" },
+        "oscore_sender": { "$ref": "#/definitions/identityName" },
+        "now": { "$ref": "#/definitions/u64" },
+        "setup": { "type": "array", "items": { "$ref": "#/definitions/setupAction" } },
+        "expected": { "$ref": "#/definitions/expected" }
+      }
+    },
+    "decapsulationCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "active_root",
+        "setup",
+        "route_hops_hex",
+        "inner_source",
+        "inner_destination",
+        "direction",
+        "now",
+        "expected"
+      ],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "active_root": { "$ref": "#/definitions/identityName" },
+        "setup": { "type": "array", "items": { "$ref": "#/definitions/setupAction" } },
+        "route_hops_hex": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/definitions/iid" }
+        },
+        "inner_source": { "type": "string", "format": "ipv6" },
+        "inner_destination": { "type": "string", "format": "ipv6" },
+        "direction": { "enum": ["mesh-to-external", "external-to-mesh", "mesh-transit"] },
+        "now": { "$ref": "#/definitions/u64" },
+        "expected": { "$ref": "#/definitions/expected" }
+      }
+    }
+  }
+}

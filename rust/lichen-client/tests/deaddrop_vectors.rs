@@ -971,12 +971,16 @@ fn pack_record_cap_bounds_heap_amplification() {
     // 32 minimal records are accepted...
     let at_cap = vec![SenmlRecord::text("c", "x"); MAX_RECORDS_PER_PACK];
     assert!(
-        s.add_drop(&at_cap, "ctx-a", &AddDropParams::default()).is_some(),
+        s.add_drop(&at_cap, "ctx-a", &AddDropParams::default())
+            .is_some(),
         "pack at the record cap is admitted"
     );
     // ...while 33 records are rejected without touching the store.
     let over_cap = vec![SenmlRecord::text("c", "x"); MAX_RECORDS_PER_PACK + 1];
-    assert!(over_cap.len() < MAX_DROP_SIZE, "size gate would not catch this");
+    assert!(
+        over_cap.len() < MAX_DROP_SIZE,
+        "size gate would not catch this"
+    );
     assert_eq!(
         s.add_drop(&over_cap, "ctx-b", &AddDropParams::default()),
         None,

@@ -48,6 +48,7 @@ from lichen.node import (
     _NATIVE_MESH_PREFIX,
     PEER_DB_MAX_SIZE,
     RECEIVE_TIMEOUT_MAX_MS,
+    RELAY_SEEN_MAX_SIZE,
     RELAY_SEEN_WINDOW_MS,
     Node,
     NodeConfig,
@@ -495,7 +496,7 @@ class TestPeerManagement:
         collision_iid = b"collisio"
         incumbent = PeerIdentity(pubkey=bytes([0x11]) * 32, iid=collision_iid)
         candidate = PeerIdentity(pubkey=bytes([0x22]) * 32, iid=collision_iid)
-        monkeypatch.setattr("lichen.node._canonical_peer", lambda peer: peer)
+        monkeypatch.setattr("lichen.peers._canonical_peer", lambda peer: peer)
         node.add_peer(incumbent)
         if pinned:
             node.link._pinned_keys[collision_iid] = incumbent.pubkey
@@ -2487,3 +2488,32 @@ async def test_locally_originated_packet_suppresses_looped_peer_encoding(
 
     assert transmitted == [b"origin-context"]
     assert len(node._relay_seen) == 1
+
+
+def test_relay_seen_lru_eviction(node: Node) -> None:
+    """Verify LRU eviction removes oldest half when cache exceeds max size.
+
+    When the cache exceeds RELAY_SEEN_MAX_SIZE (128), the oldest half (64)
+    is bulk-evicted to amortize eviction cost while preserving recent
+    loop-suppression history.
+    """
+    now_ms = 10_000
+
+    # Add RELAY_SEEN_MAX_SIZE + 1 unique payloads
+    payloads = [f"payload-{i:03d}".encode() for i in range(RELAY_SEEN_MAX_SIZE + 1)]
+    for payload in payloads:
+        node._remember_relay(payload, now_ms)
+
+    # After adding 129 items, bulk eviction removes oldest 64.
+    # Remaining: items 64..128 inclusive (65 entries).
+    expected_remaining = RELAY_SEEN_MAX_SIZE + 1 - (RELAY_SEEN_MAX_SIZE // 2)
+    assert len(node._relay_seen) == expected_remaining
+
+    # Verify oldest payloads were evicted
+    evicted_count = RELAY_SEEN_MAX_SIZE // 2
+    for i in range(evicted_count):
+        assert payloads[i] not in node._relay_seen, f"payload-{i:03d} should be evicted"
+
+    # Verify newest payloads remain
+    for i in range(evicted_count, RELAY_SEEN_MAX_SIZE + 1):
+        assert payloads[i] in node._relay_seen, f"payload-{i:03d} should remain"

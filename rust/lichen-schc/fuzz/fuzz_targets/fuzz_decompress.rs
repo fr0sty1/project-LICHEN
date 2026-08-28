@@ -1,29 +1,29 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use lichen_schc::{PacketProfile, ParsedPacket, CoapUdpLinkLocalProfile, Icmpv6EchoProfile};
+use lichen_schc::{CoapUdpLinkLocalProfile, Icmpv6EchoProfile, PacketProfile};
 
 fuzz_target!(|data: &[u8]| {
     // Fuzz SCHC packet parsing with arbitrary data
     // The parser should never panic, only return errors
 
-    if data.len() < 8 {
-        return;  // Too short for any valid packet
-    }
+    // Must match the fixed SCHC_MAX_DECOMPRESSED profile bound.
+    let mut output = vec![0u8; 1_500];
+    let _ = lichen_schc::decompress(data, &mut output);
 
     // Try parsing as different packet profiles
     // Each profile has different header expectations
 
     // CoAP over UDP (link-local)
-    let _ = CoapUdpLinkLocalProfile::parse(data);
+    let coap = CoapUdpLinkLocalProfile;
+    let _ = coap.parse(data);
 
     // ICMPv6 Echo
-    let _ = Icmpv6EchoProfile::parse(data);
+    let echo = Icmpv6EchoProfile;
+    let _ = echo.parse(data);
 
     // Try rule matching on the parsed packet
-    if let Ok(parsed) = CoapUdpLinkLocalProfile::parse(data) {
-        let _ = lichen_schc::rule_matches(&parsed, 0);
-        let _ = lichen_schc::rule_matches(&parsed, 1);
-        let _ = lichen_schc::rule_matches(&parsed, 255);
+    if let Ok(parsed) = coap.parse(data) {
+        let _ = lichen_schc::rule_matches(coap.rule(), parsed.as_slice());
     }
 });

@@ -108,13 +108,15 @@ def test_select_channel_density_fallback():
     assert select_channel(eui64, epoch=0, density=100, n_channels=8) == 0
 
 
-def test_select_channel_min_3_channels():
-    """select_channel uses min 3 channels for modulo."""
+def test_select_channel_degenerate_channel_plans():
+    """n_channels <= 0 fails fast; a sole data channel stays bounded."""
     eui64 = bytes.fromhex("0011223344556677")
-    # With n_channels=1, should still use max(1, 3) = 3
-    ch = select_channel(eui64, epoch=0, density=0, n_channels=1)
-    # Result should be in [1, 3]
-    assert 1 <= ch <= 3
+    with pytest.raises(ValueError, match="n_channels must be a positive integer"):
+        select_channel(eui64, epoch=0, density=0, n_channels=0)
+    with pytest.raises(ValueError, match="n_channels must be a positive integer"):
+        select_channel(eui64, epoch=0, density=0, n_channels=-1)
+    assert select_channel(eui64, epoch=0, density=0, n_channels=1) == 0
+    assert select_channel(eui64, epoch=0, density=0, n_channels=2) == 1
 
 
 # --- adaptive_sf_select tests ---
@@ -254,7 +256,7 @@ def test_synchronized_hop_integration():
     )
 
     # Channel should be in valid range (not CH0 since density <= 8)
-    assert 1 <= channel <= 8
+    assert 1 <= channel < 8
     # SF should be default 10 with no conditions triggered
     assert sf == 10
     assert tx_allowed is True
@@ -333,3 +335,145 @@ def test_ema_loss_vector_coverage():
     assert "ema_loss_0.24_below_threshold" in names
     assert "ema_loss_0.25_at_threshold_exactly" in names
     assert "ema_loss_0.26_above_threshold" in names
+
+
+# --- CCP16 Load Balance vectors ---
+
+
+def _ccp16_load_balance_channel_cases():
+    """Load CCP16 load balance channel selection test vectors."""
+    doc = _load("ccp16_load_balance.json")
+    assert doc["format_version"] == 2
+    return [
+        (v["name"], v)
+        for v in doc["vectors"]
+        if v.get("category") == "channel_selection"
+    ]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_load_balance_channel_cases())
+def test_ccp16_load_balance_channel_selection(name: str, vector: dict) -> None:
+    """Validate select_channel against ccp16_load_balance.json channel vectors."""
+    inp = vector["input"]
+    out = vector["output"]
+
+    eui64 = bytes.fromhex(inp["eui64_hex"])
+    epoch = inp["epoch"]
+    density = inp["density"]
+    n_channels = inp["n_channels"]
+
+    channel = select_channel(eui64, epoch, density, n_channels)
+    assert channel == out["channel"], f"{name}: channel mismatch (got {channel}, expected {out['channel']})"
+
+
+def _ccp16_load_balance_slot_cases():
+    """Load CCP16 load balance TDMA slot test vectors."""
+    doc = _load("ccp16_load_balance.json")
+    assert doc["format_version"] == 2
+    return [
+        (v["name"], v)
+        for v in doc["vectors"]
+        if v.get("category") == "tdma_slot"
+    ]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_load_balance_slot_cases())
+def test_ccp16_load_balance_slot_hash(name: str, vector: dict) -> None:
+    """Validate slot_hash against ccp16_load_balance.json TDMA slot vectors."""
+    inp = vector["input"]
+    out = vector["output"]
+
+    eui64 = bytes.fromhex(inp["eui64_hex"])
+    sfn = inp["sfn"]
+    num_slots = inp["num_slots"]
+
+    slot = slot_hash(eui64, sfn, num_slots)
+    assert slot == out["slot"], f"{name}: slot mismatch (got {slot}, expected {out['slot']})"
+
+
+def _ccp16_load_balance_sf_cases():
+    """Load CCP16 load balance adaptive SF test vectors."""
+    doc = _load("ccp16_load_balance.json")
+    assert doc["format_version"] == 2
+    return [
+        (v["name"], v)
+        for v in doc["vectors"]
+        if v.get("category") == "adaptive_sf"
+    ]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_load_balance_sf_cases())
+def test_ccp16_load_balance_adaptive_sf(name: str, vector: dict) -> None:
+    """Validate adaptive_sf_select against ccp16_load_balance.json adaptive SF vectors."""
+    inp = vector["input"]
+    out = vector["output"]
+
+    result = adaptive_sf_select(
+        assigned_sf=inp.get("assigned_sf"),
+        density=inp.get("density", 5),
+        ema_snr=inp.get("ema_snr", 5.0),
+        ema_loss=inp.get("ema_loss", 0.0),
+        utilization=inp.get("utilization", 0),
+        load_factor=inp.get("load_factor", 0.0),
+    )
+
+    assert result.sf == out["sf"], f"{name}: SF mismatch (got {result.sf}, expected {out['sf']})"
+    assert result.tx_allowed == out["tx_allowed"], f"{name}: tx_allowed mismatch"
+
+
+def _ccp16_load_balance_combined_cases():
+    """Load CCP16 load balance combined/synchronized hop test vectors."""
+    doc = _load("ccp16_load_balance.json")
+    assert doc["format_version"] == 2
+    return [
+        (v["name"], v)
+        for v in doc["vectors"]
+        if v.get("category") == "combined" and "channel" in v.get("output", {})
+    ]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_load_balance_combined_cases())
+def test_ccp16_load_balance_synchronized_hop(name: str, vector: dict) -> None:
+    """Validate synchronized_hop against ccp16_load_balance.json combined vectors."""
+    inp = vector["input"]
+    out = vector["output"]
+
+    eui64 = bytes.fromhex(inp["eui64_hex"])
+    channel, sf, tx_allowed = synchronized_hop(
+        eui64=eui64,
+        epoch=inp.get("epoch", 0),
+        density=inp.get("density", 5),
+        ema_snr=inp.get("ema_snr", 5.0),
+        ema_loss=inp.get("ema_loss", 0.0),
+        utilization=inp.get("utilization", 0),
+        load_factor=inp.get("load_factor", 0.0),
+        n_channels=inp.get("n_channels", 8),
+    )
+
+    assert channel == out["channel"], f"{name}: channel mismatch (got {channel}, expected {out['channel']})"
+    assert sf == out["sf"], f"{name}: SF mismatch (got {sf}, expected {out['sf']})"
+    assert tx_allowed == out["tx_allowed"], f"{name}: tx_allowed mismatch"
+
+
+def test_ccp16_load_balance_vector_coverage():
+    """Verify ccp16_load_balance.json covers all required categories."""
+    doc = _load("ccp16_load_balance.json")
+    categories = {v.get("category") for v in doc["vectors"]}
+
+    # Verify all required categories are present
+    assert "channel_selection" in categories
+    assert "tdma_slot" in categories
+    assert "adaptive_sf" in categories
+    assert "density_estimate" in categories
+    assert "combined" in categories
+
+    # Verify minimum vector counts per category
+    category_counts = {}
+    for v in doc["vectors"]:
+        cat = v.get("category", "unknown")
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+
+    assert category_counts.get("channel_selection", 0) >= 5, "Need at least 5 channel selection vectors"
+    assert category_counts.get("tdma_slot", 0) >= 5, "Need at least 5 TDMA slot vectors"
+    assert category_counts.get("adaptive_sf", 0) >= 10, "Need at least 10 adaptive SF vectors"
+    assert category_counts.get("density_estimate", 0) >= 5, "Need at least 5 density estimate vectors"

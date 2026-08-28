@@ -5,11 +5,10 @@
   "status": "open",
   "priority": 3,
   "issue_type": "epic",
-  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:50:41.568801Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-28T03:44:35.039223Z",
+  "updated_at": "2026-08-28T04:51:42.280402Z",
   "started_at": "2026-07-23T04:12:56.824784321Z",
   "labels": [
     "renode",

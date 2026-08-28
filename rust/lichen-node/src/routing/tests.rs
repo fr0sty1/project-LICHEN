@@ -10,6 +10,7 @@ use lichen_rpl::message::{
     Dao, Dio, DodagConfig, OptionIter, TransitInfo, DODAG_CONFIG_DATA_LEN, OPT_DODAG_CONFIG,
     OPT_DODAG_VERSION_AUTHORIZATION, OPT_TRANSIT_INFO,
 };
+use lichen_rpl::trickle::TrickleTimer;
 use std::vec;
 use std::vec::Vec;
 
@@ -779,6 +780,7 @@ fn dao_helper_returns_every_parent_for_source_group() {
     let mut sender = DaoManager::new(packet_source, RPL_INSTANCE_ID, root_addr);
     let mut dao = sender.build_dao(root_addr);
     let transit = TransitInfo {
+        external: false,
         path_control: 1,
         path_sequence: 241,
         path_lifetime: 255,
@@ -1823,4 +1825,234 @@ fn production_handler_requires_announce_pin() {
         ),
         crate::node::DaoHandlingOutcome::Applied
     );
+}
+
+// --- Trickle-suppression-safe liveness tests (bead 2auf.44.11.7.1.3) ---
+
+#[test]
+fn trickle_aware_live_within_base_timeout_always_alive() {
+    let mut table = NeighborTable::new();
+    let addr = link_local(1);
+    table.update(&addr, 1.0, -50, 1000);
+
+    // Create a trickle timer with k=10
+    let mut trickle = TrickleTimer::new(4000, 8, 10);
+    trickle.start(1000, 0);
+
+    // Within base timeout, neighbor is alive regardless of counter
+    assert!(table.is_trickle_aware_live(&addr, &trickle, 5000, 5000)); // age=4000, timeout=5000
+    trickle.counter = 10; // full suppression
+    assert!(table.is_trickle_aware_live(&addr, &trickle, 5000, 5000)); // still alive
+}
+
+#[test]
+fn trickle_aware_live_scales_timeout_with_suppression() {
+    let mut table = NeighborTable::new();
+    let addr = link_local(1);
+    table.update(&addr, 1.0, -50, 0);
+
+    let mut trickle = TrickleTimer::new(4000, 8, 10);
+    trickle.start(0, 0);
+
+    // Base timeout = 5000ms, no suppression (counter=0, scale=1)
+    // Age = 5001ms: should be stale (5001 > 5000*1)
+    trickle.counter = 0;
+    assert!(!table.is_trickle_aware_live(&addr, &trickle, 5001, 5000));
+
+    // With counter=5 (half of k=10), scale = 1 + 2*5/10 = 2
+    // Age = 5001ms: should be alive (5001 <= 5000*2)
+    trickle.counter = 5;
+    assert!(table.is_trickle_aware_live(&addr, &trickle, 5001, 5000));
+
+    // With counter=10 (full k), scale = 1 + 2*10/10 = 3
+    // Age = 10001ms: should be alive (10001 <= 5000*3)
+    trickle.counter = 10;
+    assert!(table.is_trickle_aware_live(&addr, &trickle, 10001, 5000));
+    // Age = 15001ms: should be stale (15001 > 5000*3)
+    assert!(!table.is_trickle_aware_live(&addr, &trickle, 15001, 5000));
+}
+
+#[test]
+fn trickle_aware_live_counter_above_k_clamped() {
+    // Counter values above k should be clamped to k (scale maxes at 3)
+    let mut table = NeighborTable::new();
+    let addr = link_local(1);
+    table.update(&addr, 1.0, -50, 0);
+
+    let mut trickle = TrickleTimer::new(4000, 8, 10);
+    trickle.start(0, 0);
+    trickle.counter = 100; // way above k=10
+
+    // Scale should still be 3 (clamped at k)
+    // Age = 15000ms: should be alive (15000 <= 5000*3)
+    assert!(table.is_trickle_aware_live(&addr, &trickle, 15000, 5000));
+    // Age = 15001ms: should be stale (15001 > 5000*3)
+    assert!(!table.is_trickle_aware_live(&addr, &trickle, 15001, 5000));
+}
+
+#[test]
+fn trickle_aware_live_k_zero_no_scaling() {
+    // When k=0, no scaling is applied (neighbor stale if beyond base timeout)
+    let mut table = NeighborTable::new();
+    let addr = link_local(1);
+    table.update(&addr, 1.0, -50, 0);
+
+    let mut trickle = TrickleTimer::new(4000, 8, 0); // k=0
+    trickle.start(0, 0);
+
+    // Within base timeout: alive
+    assert!(table.is_trickle_aware_live(&addr, &trickle, 5000, 5000));
+    // Beyond base timeout: stale (no scaling when k=0)
+    assert!(!table.is_trickle_aware_live(&addr, &trickle, 5001, 5000));
+}
+
+#[test]
+fn trickle_aware_live_unknown_neighbor() {
+    let table = NeighborTable::new();
+    let addr = link_local(1);
+
+    let mut trickle = TrickleTimer::new(4000, 8, 10);
+    trickle.start(0, 0);
+
+    // Unknown neighbor is never alive
+    assert!(!table.is_trickle_aware_live(&addr, &trickle, 0, 5000));
+}
+
+#[test]
+fn prune_trickle_safe_preserves_suppressed_neighbors() {
+    // Simulate a dense network where DIOs are suppressed (counter near k)
+    let mut table = NeighborTable::new();
+    let addr1 = link_local(1);
+    let addr2 = link_local(2);
+    table.update(&addr1, 1.0, -50, 0);
+    table.update(&addr2, 1.0, -50, 0);
+
+    let mut trickle = TrickleTimer::new(4000, 8, 10);
+    trickle.start(0, 0);
+
+    // Simulate dense network: high heard_consistent count
+    for _ in 0..10 {
+        trickle.heard_consistent();
+    }
+    assert_eq!(trickle.counter, 10);
+
+    // At time 10000ms with 5000ms base timeout:
+    // Without suppression awareness, neighbors would be pruned (age 10000 > 5000)
+    // With scale=3 (counter=k), they survive (age 10000 <= 5000*3)
+    let mut removed = Vec::new();
+    table.prune_trickle_safe(10000, 5000, &trickle, |addr| removed.push(addr));
+
+    assert!(
+        removed.is_empty(),
+        "suppressed neighbors should not be pruned"
+    );
+    assert_eq!(table.count(), 2);
+}
+
+#[test]
+fn prune_trickle_safe_removes_truly_stale_neighbors() {
+    let mut table = NeighborTable::new();
+    let addr = link_local(1);
+    table.update(&addr, 1.0, -50, 0);
+
+    let mut trickle = TrickleTimer::new(4000, 8, 10);
+    trickle.start(0, 0);
+    trickle.counter = 10; // full suppression, scale=3
+
+    // Age = 15001ms, base timeout = 5000ms, scale = 3
+    // Neighbor should be pruned (15001 > 5000*3)
+    let mut removed = Vec::new();
+    table.prune_trickle_safe(15001, 5000, &trickle, |addr| removed.push(addr));
+
+    assert_eq!(removed.len(), 1);
+    assert_eq!(removed[0], addr);
+    assert_eq!(table.count(), 0);
+}
+
+#[test]
+fn counter_reset_on_inconsistency_shrinks_liveness_window() {
+    // When an inconsistency resets the trickle timer, the counter resets to 0,
+    // which shrinks the effective liveness window back to base timeout.
+    let mut table = NeighborTable::new();
+    let addr = link_local(1);
+    table.update(&addr, 1.0, -50, 0);
+
+    let mut trickle = TrickleTimer::new(4000, 8, 10);
+    trickle.start(0, 0);
+    trickle.counter = 10; // full suppression, scale=3
+
+    // With scale=3, neighbor at age 10000ms is alive (10000 <= 5000*3)
+    assert!(table.is_trickle_aware_live(&addr, &trickle, 10000, 5000));
+
+    // Inconsistency detected - reset trickle timer
+    trickle.reset(10000, 0);
+    assert_eq!(trickle.counter, 0); // counter reset to 0
+
+    // Now with scale=1, neighbor at age 10000ms is stale (10000 > 5000*1)
+    assert!(!table.is_trickle_aware_live(&addr, &trickle, 10000, 5000));
+}
+
+#[test]
+fn prune_trickle_safe_after_inconsistency_reset() {
+    // Edge case: verify pruning behavior changes after counter reset
+    let mut table = NeighborTable::new();
+    let addr = link_local(1);
+    table.update(&addr, 1.0, -50, 0);
+
+    let mut trickle = TrickleTimer::new(4000, 8, 10);
+    trickle.start(0, 0);
+    trickle.counter = 10;
+
+    // Before reset: neighbor survives due to extended timeout
+    let mut removed = Vec::new();
+    table.prune_trickle_safe(10000, 5000, &trickle, |addr| removed.push(addr));
+    assert!(removed.is_empty());
+    assert_eq!(table.count(), 1);
+
+    // Inconsistency reset
+    trickle.reset(10000, 0);
+
+    // After reset: same age, but neighbor is now stale
+    table.prune_trickle_safe(10000, 5000, &trickle, |addr| removed.push(addr));
+    assert_eq!(removed.len(), 1);
+    assert_eq!(table.count(), 0);
+}
+
+#[test]
+fn dense_network_simulation_progressive_suppression() {
+    // Simulate a node receiving consistent DIOs in a dense network,
+    // gradually increasing suppression, and verify neighbors stay alive.
+    let mut table = NeighborTable::new();
+    let neighbors: Vec<[u8; 16]> = (1..=5).map(|i| link_local(i)).collect();
+    for addr in &neighbors {
+        table.update(addr, 1.0, -50, 0);
+    }
+
+    let mut trickle = TrickleTimer::new(4000, 8, 10);
+    trickle.start(0, 0);
+
+    // Progressive suppression as DIOs are heard
+    let base_timeout = 5000u64;
+    for heard in 0..=10 {
+        trickle.counter = heard;
+        let scale = 1 + (2 * heard.min(10) / 10);
+        let max_age = base_timeout * u64::from(scale);
+
+        // Neighbor at max_age should be alive
+        assert!(
+            table.is_trickle_aware_live(&neighbors[0], &trickle, max_age, base_timeout),
+            "heard={}, scale={}, max_age={}: neighbor should be alive",
+            heard,
+            scale,
+            max_age
+        );
+        // Neighbor at max_age+1 should be stale
+        assert!(
+            !table.is_trickle_aware_live(&neighbors[0], &trickle, max_age + 1, base_timeout),
+            "heard={}, scale={}, max_age+1={}: neighbor should be stale",
+            heard,
+            scale,
+            max_age + 1
+        );
+    }
 }

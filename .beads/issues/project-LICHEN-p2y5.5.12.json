@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.5.12",
+  "title": "Implement tunnel backend (WireGuard/VPN abstraction)",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:35.905632Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:35.905632Z",
+  "labels": [
+    "core",
+    "gateway",
+    "tunnel",
+    "abstraction",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.5.12",
+      "depends_on_id": "project-LICHEN-p2y5.5",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:42.743327Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

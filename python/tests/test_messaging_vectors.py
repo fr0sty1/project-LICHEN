@@ -63,7 +63,10 @@ class TestInboxPostVectors:
 
         # For valid inbox POST, body or text or canned must be present
         if isinstance(cbor_payload, dict):
-            has_content = "body" in cbor_payload or "text" in cbor_payload or "canned" in cbor_payload
+            has_body = "body" in cbor_payload
+            has_text = "text" in cbor_payload
+            has_canned = "canned" in cbor_payload
+            has_content = has_body or has_text or has_canned
             if not has_content and expected_code.startswith("2."):
                 pytest.fail(f"{name}: Valid inbox POST requires body, text, or canned field")
 
@@ -88,7 +91,7 @@ class TestInboxPostVectors:
 
         if not isinstance(cbor_payload, dict):
             # Array payloads should be rejected
-            assert expected_code == "4.00 Bad Request", f"{name}: Non-map payload should be rejected"
+            assert expected_code == "4.00 Bad Request", f"{name}: Non-map rejected"
             return
 
         body = cbor_payload.get("body")
@@ -96,7 +99,7 @@ class TestInboxPostVectors:
 
         # Validate body/text type requirements
         if expected_error == "body_not_string":
-            assert body is not None and not isinstance(body, str), f"{name}: Expected non-string body"
+            assert body is not None and not isinstance(body, str), f"{name}: Expected non-str"
         elif expected_error == "missing_body_or_text":
             assert body is None and text is None, f"{name}: Expected missing body/text"
 
@@ -104,7 +107,7 @@ class TestInboxPostVectors:
         if expected_code.startswith("2.") and "canned" not in cbor_payload:
             has_string_body = isinstance(body, str)
             has_string_text = isinstance(text, str)
-            assert has_string_body or has_string_text, f"{name}: Valid payload needs string body/text"
+            assert has_string_body or has_string_text, f"{name}: Needs string body/text"
 
 
 class TestMessageDraftEncoding:
@@ -226,10 +229,14 @@ class TestReceiptValidation:
         if expected_error == "invalid_id_type":
             # Negative, string, or wrong-type IDs should fail validation
             assert not _valid_receipt_id(msg_id), f"{name}: Expected invalid id"
-        elif expected_error is None and "id" in cbor_payload:
+        elif (
+            expected_error is None
+            and "id" in cbor_payload
+            and isinstance(msg_id, int)
+            and msg_id >= 0
+        ):
             # Valid IDs should pass
-            if isinstance(msg_id, int) and msg_id >= 0:
-                assert _valid_receipt_id(msg_id), f"{name}: Expected valid id"
+            assert _valid_receipt_id(msg_id), f"{name}: Expected valid id"
 
     @pytest.mark.parametrize("name,vector", _get_vectors())
     def test_receipt_ts_validation(self, name: str, vector: dict[str, Any]) -> None:
@@ -249,10 +256,14 @@ class TestReceiptValidation:
         if expected_error == "invalid_ts_type":
             # Negative timestamps should fail validation
             assert not _valid_receipt_timestamp(ts), f"{name}: Expected invalid ts"
-        elif expected_error is None and "ts" in cbor_payload:
+        elif (
+            expected_error is None
+            and "ts" in cbor_payload
+            and isinstance(ts, int)
+            and ts >= 0
+        ):
             # Valid timestamps should pass (0 is valid per spec)
-            if isinstance(ts, int) and ts >= 0:
-                assert _valid_receipt_timestamp(ts), f"{name}: Expected valid ts"
+            assert _valid_receipt_timestamp(ts), f"{name}: Expected valid ts"
 
     def test_receipt_status_enum(self) -> None:
         """ReceiptStatus enum matches valid_statuses from vectors."""
@@ -415,7 +426,9 @@ class TestSentGetVectors:
         assert leading_zeros["expected"]["response_code"] == "4.04 Not Found"
 
         # sent_get_invalid_id_format: Non-numeric IDs are invalid
-        invalid_format = next(v for v in doc["vectors"] if v["name"] == "sent_get_invalid_id_format")
+        invalid_format = next(
+            v for v in doc["vectors"] if v["name"] == "sent_get_invalid_id_format"
+        )
         assert invalid_format["resource"] == "/msg/sent/abc"
         assert invalid_format["expected"]["response_code"] == "4.04 Not Found"
 
@@ -462,7 +475,7 @@ class TestErrorVectors:
 
         # The decoded result is not a valid message map (dict)
         decoded = cbor2.loads(wire)
-        assert not isinstance(decoded, dict), "Malformed CBOR should not decode to a valid message map"
+        assert not isinstance(decoded, dict), "Malformed CBOR should not decode to map"
 
     def test_empty_payload_handling(self) -> None:
         """Empty payloads should be rejected."""
@@ -486,10 +499,17 @@ class TestVectorCoverage:
     def test_all_resources_covered(self) -> None:
         """Verify all three messaging resources have vectors."""
         doc = _load_messaging_vectors()
-        resources = {v["resource"].split("/")[2] for v in doc["vectors"] if v["resource"].startswith("/msg/")}
+        resources = {
+            v["resource"].split("/")[2]
+            for v in doc["vectors"]
+            if v["resource"].startswith("/msg/")
+        }
         # Should cover inbox, sent, ack
         assert "inbox" in resources, "Missing /msg/inbox vectors"
-        assert "sent" in resources or any("/msg/sent" in v["resource"] for v in doc["vectors"]), "Missing /msg/sent vectors"
+        has_sent = "sent" in resources or any(
+            "/msg/sent" in v["resource"] for v in doc["vectors"]
+        )
+        assert has_sent, "Missing /msg/sent vectors"
         assert "ack" in resources, "Missing /msg/ack vectors"
 
     def test_all_methods_covered(self) -> None:

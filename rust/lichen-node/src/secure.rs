@@ -9,8 +9,13 @@ use std::collections::HashMap;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use lichen_coap::codec::{CoapBuilder, CoapPacket, MAX_TOKEN_LEN};
+use lichen_coap::block::{BlockOption, BlockReceiver, BlockSender};
+use lichen_coap::codec::{CoapBuilder, CoapError, CoapPacket, OptionIterator, MAX_TOKEN_LEN};
 use lichen_coap::message::{MessageCode, MessageType};
+use lichen_coap::observe::{
+    ClientEvent, ClientNotification, ObserveClient, ObserveError, ObserveKey, ObserveRequest,
+};
+use lichen_coap::option::OptionNumber;
 use lichen_core::constants::PORT_COAP;
 use lichen_hal::Radio;
 use lichen_ipv6::{next_header, Addr, Ipv6Header, UdpHeader, IPV6_HEADER_LEN, UDP_HEADER_LEN};
@@ -52,6 +57,10 @@ pub enum SecureError {
     CoapEncode,
     /// Malformed OSCORE option.
     MalformedOscore,
+    /// Invalid or inconsistent CoAP Observe state.
+    Observe(ObserveError),
+    /// Invalid or inconsistent RFC 7959 blockwise state.
+    Blockwise(CoapError),
     /// TX error from underlying stack.
     Tx(TxError),
 }
@@ -71,6 +80,8 @@ impl core::fmt::Display for SecureError {
             Self::CorrelationMismatch => write!(f, "response correlation mismatch"),
             Self::CoapEncode => write!(f, "CoAP encoding failed"),
             Self::MalformedOscore => write!(f, "malformed OSCORE option"),
+            Self::Observe(error) => write!(f, "Observe error: {error}"),
+            Self::Blockwise(error) => write!(f, "blockwise error: {error}"),
             Self::Tx(e) => write!(f, "TX error: {}", e),
         }
     }
@@ -80,6 +91,8 @@ impl core::error::Error for SecureError {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
             Self::Tx(e) => Some(e),
+            Self::Observe(e) => Some(e),
+            Self::Blockwise(e) => Some(e),
             _ => None,
         }
     }
@@ -88,6 +101,18 @@ impl core::error::Error for SecureError {
 impl From<TxError> for SecureError {
     fn from(e: TxError) -> Self {
         SecureError::Tx(e)
+    }
+}
+
+impl From<ObserveError> for SecureError {
+    fn from(error: ObserveError) -> Self {
+        Self::Observe(error)
+    }
+}
+
+impl From<CoapError> for SecureError {
+    fn from(error: CoapError) -> Self {
+        Self::Blockwise(error)
     }
 }
 
@@ -122,6 +147,49 @@ pub struct RequestCorrelation {
     completed_confirmable: Option<(u16, Vec<u8>)>,
 }
 
+/// Client state for one OSCORE-protected RFC 7641 relationship.
+///
+/// The original request PIV remains bound to the token for the lifetime of this value. Each
+/// accepted notification must carry a fresh responder PIV; ordinary one-shot correlations use
+/// [`RequestCorrelation`] and are unaffected.
+pub struct SecureObserveCorrelation {
+    request: RequestCorrelation,
+    client: ObserveClient<[u8; 8], 1>,
+    key: ObserveKey<[u8; 8]>,
+    active: bool,
+    completed_confirmable: Option<(u16, Vec<u8>)>,
+}
+
+impl SecureObserveCorrelation {
+    /// Canonical CoAP token bound to this protected subscription.
+    pub fn token(&self) -> &[u8] {
+        self.key.token()
+    }
+
+    /// Whether the relationship remains active locally.
+    pub const fn is_active(&self) -> bool {
+        self.active
+    }
+
+    /// Cancel the local relationship. Send GET Observe=1 separately when the peer is reachable.
+    pub fn cancel(&mut self) -> bool {
+        let removed = self.client.cancel(&self.key);
+        self.active = false;
+        self.completed_confirmable = None;
+        removed
+    }
+
+    /// Remove an expired registration/relationship.
+    pub fn cleanup(&mut self, now_ms: u64) -> bool {
+        let removed = self.client.cleanup(now_ms) != 0;
+        if removed {
+            self.active = false;
+            self.completed_confirmable = None;
+        }
+        removed
+    }
+}
+
 /// Result of processing a response correlated to a secure request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SecureResponse {
@@ -134,6 +202,25 @@ pub enum SecureResponse {
         /// Decrypted Class E options.
         options: Vec<u8>,
         /// Decrypted payload.
+        payload: Vec<u8>,
+    },
+}
+
+/// Result of processing an OSCORE-protected Observe response or notification.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SecureObserveResponse {
+    /// Empty ACK for the registration request; a separate response may follow.
+    Acknowledged,
+    /// Exact retransmission of an already accepted CON notification; it was ACKed again without
+    /// reusing or advancing either OSCORE or Observe state.
+    Duplicate,
+    /// Tokenless RST terminated the relationship.
+    Reset,
+    /// Authenticated notification and its RFC 7641 classification.
+    Decrypted {
+        event: ClientEvent,
+        code: MessageCode,
+        options: Vec<u8>,
         payload: Vec<u8>,
     },
 }
@@ -241,6 +328,83 @@ pub struct SecureRequestData<'a> {
     pub method: MessageCode,
     /// Inner request payload.
     pub payload: &'a [u8],
+}
+
+/// Bounded client state for an OSCORE-protected Block1 upload.
+#[derive(Debug)]
+pub struct SecureBlock1Transfer {
+    sender: BlockSender,
+    in_flight: Option<BlockOption>,
+}
+
+impl SecureBlock1Transfer {
+    pub fn new(payload: &[u8], block_size: usize) -> Result<Self, SecureError> {
+        if payload.is_empty() {
+            return Err(SecureError::Blockwise(CoapError::InvalidBlockOption));
+        }
+        Ok(Self {
+            sender: BlockSender::new(payload, block_size)?,
+            in_flight: None,
+        })
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.sender.is_complete()
+    }
+
+    pub fn total_size(&self) -> usize {
+        self.sender.total_size()
+    }
+}
+
+/// Bounded client state for an OSCORE-protected Block2 download.
+#[derive(Debug)]
+pub struct SecureBlock2Transfer {
+    receiver: BlockReceiver,
+    in_flight: Option<BlockOption>,
+}
+
+/// Authenticated progress of one blockwise exchange.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SecureBlockwiseProgress {
+    /// Empty ACK accepted the CON; the protected response is still pending.
+    Acknowledged,
+    /// The authenticated block was accepted and another block is required.
+    More,
+    /// The final authenticated block was accepted.
+    Complete,
+}
+
+impl SecureBlock2Transfer {
+    pub fn new(block_size: usize) -> Self {
+        Self {
+            receiver: BlockReceiver::new(block_size),
+            in_flight: None,
+        }
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.receiver.is_complete()
+    }
+
+    pub fn payload(&self) -> &[u8] {
+        self.receiver.payload()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum BlockRequestOption {
+    Block1 { block: BlockOption, size1: u32 },
+    Block2(BlockOption),
+}
+
+/// Inputs for one protected Observe registration.
+#[derive(Debug, Clone, Copy)]
+pub struct SecureObserveRegistration<'a> {
+    pub uri_path: &'a [&'a str],
+    pub token: &'a [u8],
+    pub now_ms: u64,
+    pub registration_timeout_ms: u64,
 }
 
 pub(crate) struct SecureRoute<'a> {
@@ -467,6 +631,254 @@ impl<R: Radio> SecureStack<R> {
             },
             peer_iid,
             request,
+            None,
+            None,
+            store,
+        )
+        .await
+    }
+
+    /// Send the next independently protected Block1 request.
+    pub async fn send_secure_block1<S: SenderStateStore>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        uri_path: &[&str],
+        token: &[u8],
+        method: MessageCode,
+        transfer: &mut SecureBlock1Transfer,
+        store: &mut S,
+    ) -> Result<RequestCorrelation, SecureError> {
+        if transfer.in_flight.is_some() || transfer.sender.is_complete() {
+            return Err(SecureError::Blockwise(CoapError::BlockOutOfOrder));
+        }
+        let (block, payload) = transfer
+            .sender
+            .next_block()
+            .ok_or(SecureError::Blockwise(CoapError::BlockOutOfOrder))?;
+        let payload = Vec::from(payload);
+        let size1 = u32::try_from(transfer.sender.total_size())
+            .map_err(|_| SecureError::Blockwise(CoapError::PayloadTooLarge))?;
+        let source = self.stack.local_addr();
+        let correlation = self
+            .send_secure_request_to(
+                SecureRoute {
+                    source: &source,
+                    destination: dst,
+                    l2_destination: &[],
+                    source_route: &[],
+                },
+                peer_iid,
+                SecureRequestData {
+                    uri_path,
+                    token,
+                    method,
+                    payload: &payload,
+                },
+                None,
+                Some(BlockRequestOption::Block1 { block, size1 }),
+                store,
+            )
+            .await?;
+        transfer.in_flight = Some(block);
+        Ok(correlation)
+    }
+
+    /// Authenticate and apply one Block1 acknowledgement/terminal response.
+    pub async fn accept_secure_block1_response(
+        &mut self,
+        received: &ReceivedSecureDatagram,
+        correlation: &mut RequestCorrelation,
+        transfer: &mut SecureBlock1Transfer,
+    ) -> Result<SecureBlockwiseProgress, SecureError> {
+        let response = self.decrypt_response(received, correlation).await?;
+        let SecureResponse::Decrypted {
+            code,
+            options,
+            payload,
+        } = response
+        else {
+            return Ok(SecureBlockwiseProgress::Acknowledged);
+        };
+        if !payload.is_empty() {
+            return Err(SecureError::Blockwise(CoapError::InvalidBlockOption));
+        }
+        let sent = transfer
+            .in_flight
+            .ok_or(SecureError::Blockwise(CoapError::BlockOutOfOrder))?;
+        if (sent.more && code != MessageCode::CONTINUE)
+            || (!sent.more && (code.class() != 2 || code == MessageCode::CONTINUE))
+        {
+            return Err(SecureError::Blockwise(CoapError::InvalidBlockOption));
+        }
+        let (ack, size) = parse_block_response(&options, OptionNumber::Block1)?;
+        if size.is_some() {
+            return Err(SecureError::Blockwise(CoapError::InvalidBlockOption));
+        }
+        let complete = transfer.sender.acknowledge(sent, ack)?;
+        transfer.in_flight = None;
+        Ok(if complete {
+            SecureBlockwiseProgress::Complete
+        } else {
+            SecureBlockwiseProgress::More
+        })
+    }
+
+    /// Send the next independently protected Block2 request.
+    pub async fn send_secure_block2<S: SenderStateStore>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        uri_path: &[&str],
+        token: &[u8],
+        transfer: &mut SecureBlock2Transfer,
+        store: &mut S,
+    ) -> Result<RequestCorrelation, SecureError> {
+        if transfer.in_flight.is_some() || transfer.receiver.is_complete() {
+            return Err(SecureError::Blockwise(CoapError::BlockOutOfOrder));
+        }
+        let block = transfer.receiver.next_request_block();
+        let source = self.stack.local_addr();
+        let correlation = self
+            .send_secure_request_to(
+                SecureRoute {
+                    source: &source,
+                    destination: dst,
+                    l2_destination: &[],
+                    source_route: &[],
+                },
+                peer_iid,
+                SecureRequestData {
+                    uri_path,
+                    token,
+                    method: MessageCode::GET,
+                    payload: &[],
+                },
+                None,
+                Some(BlockRequestOption::Block2(block)),
+                store,
+            )
+            .await?;
+        transfer.in_flight = Some(block);
+        Ok(correlation)
+    }
+
+    /// Authenticate, order-check, and assemble one Block2 response.
+    pub async fn accept_secure_block2_response(
+        &mut self,
+        received: &ReceivedSecureDatagram,
+        correlation: &mut RequestCorrelation,
+        transfer: &mut SecureBlock2Transfer,
+    ) -> Result<SecureBlockwiseProgress, SecureError> {
+        let response = self.decrypt_response(received, correlation).await?;
+        let SecureResponse::Decrypted {
+            code,
+            options,
+            payload,
+        } = response
+        else {
+            return Ok(SecureBlockwiseProgress::Acknowledged);
+        };
+        if code != MessageCode::CONTENT {
+            return Err(SecureError::Blockwise(CoapError::InvalidBlockOption));
+        }
+        let requested = transfer
+            .in_flight
+            .ok_or(SecureError::Blockwise(CoapError::BlockOutOfOrder))?;
+        let (block, size2) = parse_block_response(&options, OptionNumber::Block2)?;
+        if block.num != requested.num || block.szx > requested.szx {
+            return Err(SecureError::Blockwise(CoapError::BlockOutOfOrder));
+        }
+        if let Some(size2) = size2 {
+            transfer.receiver.set_expected_size(size2)?;
+        }
+        let complete = transfer.receiver.receive_block(block, &payload)?;
+        transfer.in_flight = None;
+        Ok(if complete {
+            SecureBlockwiseProgress::Complete
+        } else {
+            SecureBlockwiseProgress::More
+        })
+    }
+
+    /// Register one OSCORE-protected CoAP Observe relationship.
+    ///
+    /// The encrypted request carries GET + Observe=0 + Uri-Path. `registration_timeout_ms`
+    /// bounds the registering state until the first authenticated response arrives.
+    pub async fn send_secure_observe<S: SenderStateStore>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        registration: SecureObserveRegistration<'_>,
+        store: &mut S,
+    ) -> Result<SecureObserveCorrelation, SecureError> {
+        let key = ObserveKey::new(*peer_iid, registration.token)?;
+        let mut client = ObserveClient::new();
+        client.subscribe(
+            key,
+            0,
+            registration.now_ms,
+            registration.registration_timeout_ms,
+        )?;
+        let source = self.stack.local_addr();
+        let request = self
+            .send_secure_request_to(
+                SecureRoute {
+                    source: &source,
+                    destination: dst,
+                    l2_destination: &[],
+                    source_route: &[],
+                },
+                peer_iid,
+                SecureRequestData {
+                    uri_path: registration.uri_path,
+                    token: registration.token,
+                    method: MessageCode::GET,
+                    payload: &[],
+                },
+                Some(ObserveRequest::Register),
+                None,
+                store,
+            )
+            .await?;
+        Ok(SecureObserveCorrelation {
+            request,
+            client,
+            key,
+            active: true,
+            completed_confirmable: None,
+        })
+    }
+
+    /// Send an authenticated GET Observe=1 cancellation request.
+    ///
+    /// On successful transmission, call [`SecureObserveCorrelation::cancel`] on the existing
+    /// relationship. Its response uses ordinary one-shot correlation semantics.
+    pub async fn send_secure_observe_cancel<S: SenderStateStore>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        uri_path: &[&str],
+        token: &[u8],
+        store: &mut S,
+    ) -> Result<RequestCorrelation, SecureError> {
+        let source = self.stack.local_addr();
+        self.send_secure_request_to(
+            SecureRoute {
+                source: &source,
+                destination: dst,
+                l2_destination: &[],
+                source_route: &[],
+            },
+            peer_iid,
+            SecureRequestData {
+                uri_path,
+                token,
+                method: MessageCode::GET,
+                payload: &[],
+            },
+            Some(ObserveRequest::Deregister),
+            None,
             store,
         )
         .await
@@ -489,6 +901,8 @@ impl<R: Radio> SecureStack<R> {
                 method: MessageCode::GET,
                 payload: &[],
             },
+            None,
+            None,
             store,
         )
         .await
@@ -499,6 +913,8 @@ impl<R: Radio> SecureStack<R> {
         route: SecureRoute<'_>,
         peer_iid: &[u8; 8],
         request: SecureRequestData<'_>,
+        observe_request: Option<ObserveRequest>,
+        block_request: Option<BlockRequestOption>,
         store: &mut S,
     ) -> Result<RequestCorrelation, SecureError> {
         if request.token.len() > MAX_TOKEN_LEN {
@@ -513,13 +929,28 @@ impl<R: Radio> SecureStack<R> {
         let mut class_e = [0u8; 256];
         let mut class_e_len = 0;
 
+        // Observe (option 6) precedes Uri-Path (option 11) in the encrypted Class E options.
+        let mut previous_option = 0u16;
+        if let Some(observe) = observe_request {
+            class_e[class_e_len] = match observe {
+                ObserveRequest::Register => 0x60,
+                ObserveRequest::Deregister => 0x61,
+            };
+            class_e_len += 1;
+            if observe == ObserveRequest::Deregister {
+                class_e[class_e_len] = 1;
+                class_e_len += 1;
+            }
+            previous_option = OptionNumber::Observe as u16;
+        }
+
         // Encode Uri-Path options using CoAP delta encoding (RFC 7252 section 3.1).
         // Option delta = current_option_number - previous_option_number.
         // First Uri-Path (option 11): delta = 11 - 0 = 11.
         // Subsequent Uri-Path options: delta = 11 - 11 = 0 (same option number repeats).
         // Length < 13: fits in 4-bit nibble. Length >= 13: use extended form (13 + ext byte).
         for seg in request.uri_path {
-            let delta = if class_e_len == 0 { 11 } else { 0 };
+            let delta = (OptionNumber::UriPath as u16 - previous_option) as u8;
             let seg_bytes = seg.as_bytes();
             // RFC 7252 section 3.1: length encoding
             // < 13: 4-bit nibble; 13-268: nibble=13 + 1 byte; 269-65804: nibble=14 + 2 bytes
@@ -535,22 +966,59 @@ impl<R: Radio> SecureStack<R> {
                 return Err(SecureError::CoapEncode);
             }
             if seg_bytes.len() < 13 {
-                class_e[class_e_len] = ((delta as u8) << 4) | (seg_bytes.len() as u8);
+                class_e[class_e_len] = (delta << 4) | (seg_bytes.len() as u8);
                 class_e_len += 1;
             } else if seg_bytes.len() < 269 {
-                class_e[class_e_len] = (delta as u8) << 4 | 13;
+                class_e[class_e_len] = delta << 4 | 13;
                 class_e[class_e_len + 1] = (seg_bytes.len() - 13) as u8;
                 class_e_len += 2;
             } else {
                 // Extended 2-byte form: nibble=14, value = len - 269 (big-endian)
                 let ext_val = (seg_bytes.len() - 269) as u16;
-                class_e[class_e_len] = (delta as u8) << 4 | 14;
+                class_e[class_e_len] = delta << 4 | 14;
                 class_e[class_e_len + 1] = (ext_val >> 8) as u8;
                 class_e[class_e_len + 2] = (ext_val & 0xFF) as u8;
                 class_e_len += 3;
             }
             class_e[class_e_len..class_e_len + seg_bytes.len()].copy_from_slice(seg_bytes);
             class_e_len += seg_bytes.len();
+            previous_option = OptionNumber::UriPath as u16;
+        }
+
+        if let Some(block_request) = block_request {
+            match block_request {
+                BlockRequestOption::Block1 { block, size1 } => {
+                    let mut block_value = [0u8; 3];
+                    let block_len = block.write_to(&mut block_value)?;
+                    append_class_e_option(
+                        &mut class_e,
+                        &mut class_e_len,
+                        &mut previous_option,
+                        OptionNumber::Block1 as u16,
+                        &block_value[..block_len],
+                    )?;
+                    let size_bytes = size1.to_be_bytes();
+                    let first = size_bytes.iter().position(|byte| *byte != 0).unwrap_or(4);
+                    append_class_e_option(
+                        &mut class_e,
+                        &mut class_e_len,
+                        &mut previous_option,
+                        OptionNumber::Size1 as u16,
+                        &size_bytes[first..],
+                    )?;
+                }
+                BlockRequestOption::Block2(block) => {
+                    let mut block_value = [0u8; 3];
+                    let block_len = block.write_to(&mut block_value)?;
+                    append_class_e_option(
+                        &mut class_e,
+                        &mut class_e_len,
+                        &mut previous_option,
+                        OptionNumber::Block2 as u16,
+                        &block_value[..block_len],
+                    )?;
+                }
+            }
         }
 
         // Reject bounded-output failures before consuming a sender sequence.
@@ -788,6 +1256,138 @@ impl<R: Radio> SecureStack<R> {
         })
     }
 
+    /// Authenticate and classify one response on an OSCORE-protected Observe relationship.
+    pub async fn decrypt_observe_response(
+        &mut self,
+        received: &ReceivedSecureDatagram,
+        correlation: &mut SecureObserveCorrelation,
+        now_ms: u64,
+    ) -> Result<SecureObserveResponse, SecureError> {
+        let source = received.destination();
+        let destination = received.source();
+        let mut l2_destination: [u8; 8] = destination.0[8..].try_into().unwrap();
+        l2_destination[0] ^= 0x02;
+        self.decrypt_observe_response_to(
+            Some(SecureRoute {
+                source: &source,
+                destination: &destination,
+                l2_destination: &l2_destination,
+                source_route: &[],
+            }),
+            received,
+            correlation,
+            now_ms,
+        )
+        .await
+    }
+
+    async fn decrypt_observe_response_to(
+        &mut self,
+        route: Option<SecureRoute<'_>>,
+        received: &ReceivedSecureDatagram,
+        correlation: &mut SecureObserveCorrelation,
+        now_ms: u64,
+    ) -> Result<SecureObserveResponse, SecureError> {
+        let peer_iid = &received.sender_iid;
+        if *peer_iid != correlation.request.destination_peer_iid
+            || received.source_port != PORT_COAP
+            || received.destination_port != PORT_COAP
+        {
+            return Err(SecureError::CorrelationMismatch);
+        }
+        let pkt = CoapPacket::from_bytes(&received.coap).map_err(|_| SecureError::CoapEncode)?;
+
+        if pkt.msg_type() == MessageType::Reset {
+            if received.coap.len() != 4
+                || pkt.code() != MessageCode::EMPTY
+                || !pkt.token().is_empty()
+                || !correlation.client.reset(*peer_iid, pkt.message_id())
+            {
+                return Err(SecureError::CorrelationMismatch);
+            }
+            correlation.active = false;
+            correlation.completed_confirmable = None;
+            return Ok(SecureObserveResponse::Reset);
+        }
+        if !correlation.active {
+            return Err(SecureError::CorrelationMismatch);
+        }
+
+        let exact_retransmission =
+            correlation
+                .completed_confirmable
+                .as_ref()
+                .is_some_and(|(message_id, wire)| {
+                    pkt.msg_type() == MessageType::Confirmable
+                        && pkt.message_id() == *message_id
+                        && received.coap == *wire
+                });
+        if exact_retransmission {
+            send_empty_ack(&mut self.stack, route, pkt.message_id()).await?;
+            return Ok(SecureObserveResponse::Duplicate);
+        }
+
+        if received.coap.len() == 4
+            && pkt.msg_type() == MessageType::Acknowledgement
+            && pkt.code() == MessageCode::EMPTY
+            && pkt.message_id() == correlation.request.message_id
+        {
+            return Ok(SecureObserveResponse::Acknowledged);
+        }
+        if pkt.code() != MessageCode::CHANGED
+            || pkt.token() != correlation.key.token()
+            || (pkt.msg_type() == MessageType::Acknowledgement
+                && pkt.message_id() != correlation.request.message_id)
+        {
+            return Err(SecureError::CorrelationMismatch);
+        }
+
+        let (stack, contexts) = (&mut self.stack, &mut self.contexts);
+        let ctx = contexts.get_mut(peer_iid).ok_or(SecureError::NoContext)?;
+        if ctx.context_id() != correlation.request.context_id {
+            return Err(SecureError::CorrelationMismatch);
+        }
+        let mut oscore_option = None;
+        for option in pkt.options() {
+            let option = option.map_err(|_| SecureError::DecryptFailed)?;
+            if option.number == OSCORE_OPTION {
+                if oscore_option.is_some() {
+                    return Err(SecureError::DecryptFailed);
+                }
+                oscore_option = Some(option.value);
+            }
+        }
+        let pending = ctx
+            .begin_unprotect_observe_response(
+                oscore_option.ok_or(SecureError::DecryptFailed)?,
+                pkt.payload(),
+                correlation.request.request_piv(),
+            )
+            .map_err(|_| SecureError::DecryptFailed)?;
+
+        if pkt.msg_type() == MessageType::Confirmable {
+            send_empty_ack(stack, route, pkt.message_id()).await?;
+        }
+        let (code, options, payload) = pending.commit().map_err(|_| SecureError::DecryptFailed)?;
+        let notification = observe_notification(&options, pkt.msg_type(), pkt.message_id())?;
+        let event = correlation
+            .client
+            .process(&correlation.key, 0, notification, now_ms)?;
+        if event == ClientEvent::Terminated {
+            correlation.active = false;
+        }
+        if pkt.msg_type() == MessageType::Confirmable {
+            correlation.completed_confirmable = Some((pkt.message_id(), received.coap.clone()));
+        }
+
+        Ok(SecureObserveResponse::Decrypted {
+            event,
+            code: MessageCode(code),
+            options: options.to_vec(),
+            payload: payload.to_vec(),
+        })
+    }
+
     /// Protect and send a response bound to a decrypted request.
     pub async fn send_secure_response<S: SenderStateStore>(
         &mut self,
@@ -1016,6 +1616,165 @@ impl<R: Radio> SecureStack<R> {
     }
 }
 
+fn append_class_e_option(
+    out: &mut [u8],
+    length: &mut usize,
+    previous: &mut u16,
+    number: u16,
+    value: &[u8],
+) -> Result<(), SecureError> {
+    if number < *previous {
+        return Err(SecureError::CoapEncode);
+    }
+    let delta = usize::from(number - *previous);
+    let (delta_nibble, delta_ext, delta_ext_len) = option_component(delta)?;
+    let (length_nibble, length_ext, length_ext_len) = option_component(value.len())?;
+    let needed = 1usize
+        .checked_add(delta_ext_len)
+        .and_then(|n| n.checked_add(length_ext_len))
+        .and_then(|n| n.checked_add(value.len()))
+        .and_then(|n| length.checked_add(n))
+        .ok_or(SecureError::CoapEncode)?;
+    if needed > out.len() {
+        return Err(SecureError::CoapEncode);
+    }
+
+    let mut cursor = *length;
+    out[cursor] = (delta_nibble << 4) | length_nibble;
+    cursor += 1;
+    out[cursor..cursor + delta_ext_len].copy_from_slice(&delta_ext[..delta_ext_len]);
+    cursor += delta_ext_len;
+    out[cursor..cursor + length_ext_len].copy_from_slice(&length_ext[..length_ext_len]);
+    cursor += length_ext_len;
+    out[cursor..cursor + value.len()].copy_from_slice(value);
+    *length = needed;
+    *previous = number;
+    Ok(())
+}
+
+fn parse_block_response(
+    options: &[u8],
+    expected: OptionNumber,
+) -> Result<(BlockOption, Option<usize>), SecureError> {
+    let mut block = None;
+    let mut size2 = None;
+    for option in OptionIterator::from_bytes(options) {
+        let option = option.map_err(|_| SecureError::Blockwise(CoapError::InvalidBlockOption))?;
+        if option.number == expected as u16 {
+            if block.is_some() {
+                return Err(SecureError::Blockwise(CoapError::InvalidBlockOption));
+            }
+            block = Some(BlockOption::from_bytes(option.value)?);
+        } else if option.number == OptionNumber::Block1 as u16
+            || option.number == OptionNumber::Block2 as u16
+        {
+            return Err(SecureError::Blockwise(CoapError::InvalidBlockOption));
+        } else if option.number == OptionNumber::Size2 as u16 {
+            if expected != OptionNumber::Block2 || size2.is_some() {
+                return Err(SecureError::Blockwise(CoapError::InvalidBlockOption));
+            }
+            if option.value.len() > 4 || option.value.first() == Some(&0) {
+                return Err(SecureError::Blockwise(CoapError::InvalidBlockOption));
+            }
+            size2 = Some(
+                usize::try_from(option.as_uint()?)
+                    .map_err(|_| SecureError::Blockwise(CoapError::PayloadTooLarge))?,
+            );
+        }
+    }
+    Ok((
+        block.ok_or(SecureError::Blockwise(CoapError::InvalidBlockOption))?,
+        size2,
+    ))
+}
+
+fn option_component(value: usize) -> Result<(u8, [u8; 2], usize), SecureError> {
+    if value < 13 {
+        Ok((value as u8, [0; 2], 0))
+    } else if value < 269 {
+        Ok((13, [(value - 13) as u8, 0], 1))
+    } else if value <= 65_804 {
+        let extended = (value - 269) as u16;
+        Ok((14, extended.to_be_bytes(), 2))
+    } else {
+        Err(SecureError::CoapEncode)
+    }
+}
+
+async fn send_empty_ack<R: Radio>(
+    stack: &mut Stack<R>,
+    route: Option<SecureRoute<'_>>,
+    message_id: u16,
+) -> Result<(), SecureError> {
+    let route = route.ok_or(SecureError::Tx(TxError::NoRoute))?;
+    let ack = [
+        0x60,
+        MessageCode::EMPTY.0,
+        (message_id >> 8) as u8,
+        message_id as u8,
+    ];
+    stack
+        .send_coap_raw_to(
+            route.source,
+            route.destination,
+            &ack,
+            route.l2_destination,
+            route.source_route,
+            Priority::Normal,
+        )
+        .await?;
+    Ok(())
+}
+
+fn observe_notification(
+    options: &[u8],
+    message_type: MessageType,
+    message_id: u16,
+) -> Result<ClientNotification, SecureError> {
+    let mut observe = None;
+    let mut block2_num = None;
+    let mut max_age_ms = 60_000u64;
+    let mut max_age_seen = false;
+    for option in OptionIterator::from_bytes(options) {
+        let option = option.map_err(|_| SecureError::CoapEncode)?;
+        match option.number {
+            number if number == OptionNumber::Observe as u16 => {
+                if observe.is_some() {
+                    return Err(SecureError::Observe(ObserveError::InvalidObserveValue));
+                }
+                observe = Some(option.as_observe()?);
+            }
+            number if number == OptionNumber::MaxAge as u16 => {
+                if max_age_seen {
+                    return Err(SecureError::CoapEncode);
+                }
+                max_age_seen = true;
+                max_age_ms = u64::from(option.as_uint().map_err(|_| SecureError::CoapEncode)?)
+                    .checked_mul(1_000)
+                    .ok_or(SecureError::CoapEncode)?;
+            }
+            number if number == OptionNumber::Block2 as u16 => {
+                if block2_num.is_some() {
+                    return Err(SecureError::CoapEncode);
+                }
+                block2_num = Some(
+                    BlockOption::from_bytes(option.value)
+                        .map_err(|_| SecureError::CoapEncode)?
+                        .num,
+                );
+            }
+            _ => {}
+        }
+    }
+    Ok(ClientNotification {
+        message_type,
+        message_id,
+        observe,
+        block2_num,
+        max_age_ms,
+    })
+}
+
 fn preflight_secure_frame(
     source: &Addr,
     destination: &Addr,
@@ -1224,6 +1983,7 @@ impl<R: Radio> From<Stack<R>> for SecureStack<R> {
 mod tests {
     use super::*;
     use core::convert::Infallible;
+    use lichen_coap::{ObserveSequence, ObserveServer, ServerNotification};
     use lichen_hal::loopback::LoopbackRadio;
     use lichen_hal::{ChannelConfig, RadioConfig, RxPacket, TxResult};
     use lichen_link::identity::{Identity, PeerIdentity};
@@ -1246,6 +2006,57 @@ mod tests {
             rssi: None,
             snr: None,
         }
+    }
+
+    fn protected_response_packet(
+        message_type: MessageType,
+        message_id: u16,
+        token: &[u8],
+        oscore_option: &[u8],
+        ciphertext: &[u8],
+    ) -> Vec<u8> {
+        let mut wire = [0u8; 384];
+        let mut builder = CoapBuilder::new(
+            &mut wire,
+            message_type,
+            MessageCode::CHANGED,
+            message_id,
+            token,
+        )
+        .unwrap();
+        builder.option(OSCORE_OPTION, oscore_option).unwrap();
+        builder.payload(ciphertext).unwrap();
+        let length = builder.finish();
+        wire[..length].to_vec()
+    }
+
+    fn block_options(number: OptionNumber, block: BlockOption, size2: Option<u32>) -> Vec<u8> {
+        let mut encoded = [0u8; 16];
+        let mut length = 0;
+        let mut previous = 0;
+        let mut block_value = [0u8; 3];
+        let block_len = block.write_to(&mut block_value).unwrap();
+        append_class_e_option(
+            &mut encoded,
+            &mut length,
+            &mut previous,
+            number as u16,
+            &block_value[..block_len],
+        )
+        .unwrap();
+        if let Some(size2) = size2 {
+            let value = size2.to_be_bytes();
+            let first = value.iter().position(|byte| *byte != 0).unwrap_or(4);
+            append_class_e_option(
+                &mut encoded,
+                &mut length,
+                &mut previous,
+                OptionNumber::Size2 as u16,
+                &value[first..],
+            )
+            .unwrap();
+        }
+        encoded[..length].to_vec()
     }
 
     struct RecordingRadio {
@@ -1644,6 +2455,202 @@ mod tests {
             SecureResponse::Decrypted { code, payload, .. }
                 if code == MessageCode::CONTENT && payload == b"ok"
         ));
+    }
+
+    #[tokio::test]
+    async fn secure_block1_and_block2_roundtrip_replay_order_and_pivs() {
+        let alice_id = Identity::from_seed(Seed::new([0x71; 32]));
+        let bob_id = Identity::from_seed(Seed::new([0x72; 32]));
+        let alice_iid = alice_id.iid;
+        let bob_iid = bob_id.iid;
+        let (radio_a, radio_b) = LoopbackRadio::pair();
+        let mut alice_stack = Stack::new(radio_a, alice_id, 128, 0);
+        alice_stack.add_peer(PeerIdentity::from_pubkey(bob_id.pubkey));
+        let mut bob_stack = Stack::new(radio_b, bob_id, 128, 0);
+        bob_stack.add_peer(PeerIdentity::from_pubkey(alice_stack.local_public_key()));
+        let mut alice = SecureStack::new(alice_stack);
+        let mut bob = SecureStack::new(bob_stack);
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let mut alice_store = RecordingStore {
+            record: None,
+            existing: SenderSequenceState {
+                next_sequence: 0,
+                exhausted: false,
+            },
+            events: Arc::clone(&events),
+            fail: false,
+        };
+        let mut bob_store = RecordingStore {
+            record: None,
+            existing: SenderSequenceState {
+                next_sequence: 0,
+                exhausted: false,
+            },
+            events,
+            fail: false,
+        };
+        let secret = [0x73; 16];
+        let alice_ctx = OscoreContext::new(&secret, None, None, &[0], &[1])
+            .unwrap()
+            .restore_existing(&mut alice_store)
+            .unwrap();
+        let bob_ctx = OscoreContext::new(&secret, None, None, &[1], &[0])
+            .unwrap()
+            .restore_existing(&mut bob_store)
+            .unwrap();
+        alice
+            .restore_context(bob_iid, alice_ctx, &mut alice_store)
+            .unwrap();
+        bob.restore_context(alice_iid, bob_ctx, &mut bob_store)
+            .unwrap();
+        let bob_addr = bob.local_addr();
+        let alice_addr = alice.local_addr();
+        let upload_payload: Vec<u8> = (0..100).collect();
+        let mut upload = SecureBlock1Transfer::new(&upload_payload, 64).unwrap();
+        let mut request_pivs = Vec::new();
+
+        for expected_num in 0..2 {
+            let mut correlation = alice
+                .send_secure_block1(
+                    &bob_addr,
+                    &bob_iid,
+                    &["ota"],
+                    &[0xa1],
+                    MessageCode::PUT,
+                    &mut upload,
+                    &mut alice_store,
+                )
+                .await
+                .unwrap();
+            request_pivs.push(correlation.request_piv().to_vec());
+            let received = bob.receive_secure_datagram(1_000).await.unwrap().unwrap();
+            let replay = received.clone();
+            let request = bob.decrypt_request(&received).unwrap();
+            assert_eq!(request.code, MessageCode::PUT);
+            let block = OptionIterator::from_bytes(&request.options)
+                .map(Result::unwrap)
+                .find(|option| option.number == OptionNumber::Block1 as u16)
+                .unwrap()
+                .as_block()
+                .unwrap();
+            assert_eq!(block.num, expected_num);
+            assert_eq!(block.more, expected_num == 0);
+            let upload_start = expected_num as usize * 64;
+            let upload_end = (upload_start + 64).min(upload_payload.len());
+            assert_eq!(request.payload, upload_payload[upload_start..upload_end]);
+
+            let response_options = block_options(OptionNumber::Block1, block, None);
+            bob.send_secure_response(
+                &alice_addr,
+                &alice_iid,
+                &request,
+                SecureResponseData {
+                    code: if block.more {
+                        MessageCode::CONTINUE
+                    } else {
+                        MessageCode::CHANGED
+                    },
+                    options: &response_options,
+                    payload: &[],
+                },
+                &mut bob_store,
+            )
+            .await
+            .unwrap();
+            assert_eq!(
+                bob.decrypt_request(&replay).unwrap_err(),
+                SecureError::DecryptFailed
+            );
+            let response = alice.receive_secure_datagram(1_000).await.unwrap().unwrap();
+            let progress = alice
+                .accept_secure_block1_response(&response, &mut correlation, &mut upload)
+                .await
+                .unwrap();
+            assert_eq!(
+                progress,
+                if block.more {
+                    SecureBlockwiseProgress::More
+                } else {
+                    SecureBlockwiseProgress::Complete
+                }
+            );
+        }
+        assert!(upload.is_complete());
+        assert_ne!(request_pivs[0], request_pivs[1]);
+
+        let download_payload: Vec<u8> = (100..200).collect();
+        let mut download = SecureBlock2Transfer::new(64);
+        for expected_num in 0..2 {
+            let mut correlation = alice
+                .send_secure_block2(
+                    &bob_addr,
+                    &bob_iid,
+                    &["firmware"],
+                    &[0xb2],
+                    &mut download,
+                    &mut alice_store,
+                )
+                .await
+                .unwrap();
+            request_pivs.push(correlation.request_piv().to_vec());
+            let received = bob.receive_secure_datagram(1_000).await.unwrap().unwrap();
+            let request = bob.decrypt_request(&received).unwrap();
+            let requested = OptionIterator::from_bytes(&request.options)
+                .map(Result::unwrap)
+                .find(|option| option.number == OptionNumber::Block2 as u16)
+                .unwrap()
+                .as_block()
+                .unwrap();
+            assert_eq!(requested.num, expected_num);
+            let start = expected_num as usize * 64;
+            let end = (start + 64).min(download_payload.len());
+            let response_block =
+                BlockOption::new(expected_num, end < download_payload.len(), 2).unwrap();
+            let response_options = block_options(
+                OptionNumber::Block2,
+                response_block,
+                (expected_num == 0).then_some(download_payload.len() as u32),
+            );
+            bob.send_secure_response(
+                &alice_addr,
+                &alice_iid,
+                &request,
+                SecureResponseData {
+                    code: MessageCode::CONTENT,
+                    options: &response_options,
+                    payload: &download_payload[start..end],
+                },
+                &mut bob_store,
+            )
+            .await
+            .unwrap();
+            let response = alice.receive_secure_datagram(1_000).await.unwrap().unwrap();
+            let replay = response.clone();
+            let progress = alice
+                .accept_secure_block2_response(&response, &mut correlation, &mut download)
+                .await
+                .unwrap();
+            assert_eq!(
+                progress,
+                if response_block.more {
+                    SecureBlockwiseProgress::More
+                } else {
+                    SecureBlockwiseProgress::Complete
+                }
+            );
+            assert_eq!(
+                alice
+                    .accept_secure_block2_response(&replay, &mut correlation, &mut download)
+                    .await
+                    .unwrap_err(),
+                SecureError::CorrelationMismatch
+            );
+        }
+        assert!(download.is_complete());
+        assert_eq!(download.payload(), download_payload);
+        for pair in request_pivs.windows(2) {
+            assert_ne!(pair[0], pair[1]);
+        }
     }
 
     #[tokio::test]
@@ -2096,5 +3103,358 @@ mod tests {
                 .unwrap_err(),
             SecureError::CorrelationMismatch
         );
+    }
+
+    #[tokio::test]
+    async fn protected_observe_registration_notifications_retries_blocks_and_reset() {
+        let alice_id = Identity::from_seed(Seed::new([0x51; 32]));
+        let bob_id = Identity::from_seed(Seed::new([0x52; 32]));
+        let alice_iid = alice_id.iid;
+        let bob_iid = bob_id.iid;
+        let alice_peer = PeerIdentity::from_pubkey(alice_id.pubkey);
+        let bob_peer = PeerIdentity::from_pubkey(bob_id.pubkey);
+        let (radio_a, radio_b) = LoopbackRadio::pair();
+        let mut alice_stack = Stack::new(radio_a, alice_id, 128, 0);
+        alice_stack.add_peer(bob_peer);
+        let mut peer_stack = Stack::new(radio_b, bob_id, 128, 0);
+        peer_stack.add_peer(alice_peer);
+        let mut alice = SecureStack::new(alice_stack);
+
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let mut alice_store = RecordingStore {
+            record: None,
+            existing: SenderSequenceState {
+                next_sequence: 0,
+                exhausted: false,
+            },
+            events: Arc::clone(&events),
+            fail: false,
+        };
+        let mut bob_store = RecordingStore {
+            record: None,
+            existing: SenderSequenceState {
+                next_sequence: 0,
+                exhausted: false,
+            },
+            events,
+            fail: false,
+        };
+        let secret = [0x53; 16];
+        let alice_context = OscoreContext::new(&secret, None, None, &alice_iid[..1], &bob_iid[..1])
+            .unwrap()
+            .restore_existing(&mut alice_store)
+            .unwrap();
+        let mut bob_context =
+            OscoreContext::new(&secret, None, None, &bob_iid[..1], &alice_iid[..1])
+                .unwrap()
+                .restore_existing(&mut bob_store)
+                .unwrap();
+        alice
+            .restore_context(bob_iid, alice_context, &mut alice_store)
+            .unwrap();
+
+        let bob_addr = peer_stack.local_addr();
+        let token = [0xa5];
+        let mut correlation = alice
+            .send_secure_observe(
+                &bob_addr,
+                &bob_iid,
+                SecureObserveRegistration {
+                    uri_path: &["sensors"],
+                    token: &token,
+                    now_ms: 0,
+                    registration_timeout_ms: 10_000,
+                },
+                &mut alice_store,
+            )
+            .await
+            .unwrap();
+        assert!(correlation.is_active());
+        assert_eq!(correlation.token(), &token);
+
+        // The protected registration contains canonical Observe=0 followed by Uri-Path.
+        let registration_frame = peer_stack.receive(1_000).await.unwrap().unwrap();
+        let registration = CoapPacket::from_bytes(&registration_frame.ipv6[48..]).unwrap();
+        let registration_oscore = registration
+            .options()
+            .map(Result::unwrap)
+            .find(|option| option.number == OSCORE_OPTION)
+            .unwrap();
+        let (request_code, request_options, _) = bob_context
+            .unprotect_request(registration_oscore.value, registration.payload())
+            .unwrap();
+        assert_eq!(request_code, MessageCode::GET.0);
+        assert_eq!(request_options.as_slice(), b"\x60\x57sensors");
+
+        let observer_key = ObserveKey::new(alice_iid, &token).unwrap();
+        let mut observer = ObserveServer::<[u8; 8], 1, 128>::new(60_000, 1_000, 2).unwrap();
+        observer.register(observer_key, 0, 0).unwrap();
+
+        let first = bob_context
+            .reserve_sender(&mut bob_store)
+            .unwrap()
+            .protect_response_with_piv(
+                MessageCode::CONTENT.0,
+                b"\x60",
+                b"first",
+                &alice_iid[..1],
+                correlation.request.request_piv(),
+            )
+            .unwrap();
+        let first_wire =
+            protected_response_packet(MessageType::Confirmable, 0x2222, &token, &first.1, &first.0);
+        observer
+            .queue_notification(
+                &observer_key,
+                ServerNotification {
+                    resource: 0,
+                    sequence: ObserveSequence::new(0).unwrap(),
+                    message_id: 0x2222,
+                    confirmable: true,
+                    wire: &first_wire,
+                    now_ms: 0,
+                },
+            )
+            .unwrap();
+        let initial = observer.next_due(0).unwrap();
+        let retry = observer.next_due(1_000).unwrap();
+        assert_eq!(initial.wire(), retry.wire());
+        assert!(!initial.retransmission);
+        assert!(retry.retransmission);
+
+        assert!(matches!(
+            alice
+                .decrypt_observe_response(&received(initial.wire(), bob_iid), &mut correlation, 1)
+                .await
+                .unwrap(),
+            SecureObserveResponse::Decrypted {
+                event: ClientEvent::Registered(sequence),
+                payload,
+                ..
+            } if sequence.value() == 0 && payload == b"first"
+        ));
+        let first_ack = peer_stack.receive(1_000).await.unwrap().unwrap();
+        assert_eq!(&first_ack.ipv6[48..], b"\x60\x00\x22\x22");
+        assert_eq!(
+            alice
+                .decrypt_observe_response(&received(retry.wire(), bob_iid), &mut correlation, 2)
+                .await
+                .unwrap(),
+            SecureObserveResponse::Duplicate
+        );
+        let retry_ack = peer_stack.receive(1_000).await.unwrap().unwrap();
+        assert_eq!(&retry_ack.ipv6[48..], b"\x60\x00\x22\x22");
+        assert!(observer.acknowledge(alice_iid, 0x2222, 2));
+
+        let second = bob_context
+            .reserve_sender(&mut bob_store)
+            .unwrap()
+            .protect_response_with_piv(
+                MessageCode::CONTENT.0,
+                b"\x61\x01",
+                b"second",
+                &alice_iid[..1],
+                correlation.request.request_piv(),
+            )
+            .unwrap();
+        let second_wire = protected_response_packet(
+            MessageType::NonConfirmable,
+            0x2223,
+            &token,
+            &second.1,
+            &second.0,
+        );
+        let wrong_token = protected_response_packet(
+            MessageType::NonConfirmable,
+            0x2223,
+            &[0xb6],
+            &second.1,
+            &second.0,
+        );
+        assert_eq!(
+            alice
+                .decrypt_observe_response(&received(&wrong_token, bob_iid), &mut correlation, 3)
+                .await
+                .unwrap_err(),
+            SecureError::CorrelationMismatch
+        );
+        let correct_context_id = correlation.request.context_id;
+        correlation.request.context_id = bob_context.context_id();
+        assert_eq!(
+            alice
+                .decrypt_observe_response(&received(&second_wire, bob_iid), &mut correlation, 3)
+                .await
+                .unwrap_err(),
+            SecureError::CorrelationMismatch
+        );
+        correlation.request.context_id = correct_context_id;
+        let mut corrupt = second_wire.clone();
+        *corrupt.last_mut().unwrap() ^= 1;
+        assert_eq!(
+            alice
+                .decrypt_observe_response(&received(&corrupt, bob_iid), &mut correlation, 3)
+                .await
+                .unwrap_err(),
+            SecureError::DecryptFailed
+        );
+        assert!(matches!(
+            alice
+                .decrypt_observe_response(&received(&second_wire, bob_iid), &mut correlation, 3)
+                .await
+                .unwrap(),
+            SecureObserveResponse::Decrypted {
+                event: ClientEvent::Notification { sequence, .. },
+                payload,
+                ..
+            } if sequence.value() == 1 && payload == b"second"
+        ));
+        assert!(peer_stack.receive(0).await.unwrap().is_none());
+
+        // A non-initial Block2 continuation omits Observe and preserves the relationship.
+        let continuation = bob_context
+            .reserve_sender(&mut bob_store)
+            .unwrap()
+            .protect_response_with_piv(
+                MessageCode::CONTENT.0,
+                b"\xd1\x0a\x10",
+                b"block-1",
+                &alice_iid[..1],
+                correlation.request.request_piv(),
+            )
+            .unwrap();
+        let continuation_wire = protected_response_packet(
+            MessageType::NonConfirmable,
+            0x2224,
+            &token,
+            &continuation.1,
+            &continuation.0,
+        );
+        assert!(matches!(
+            alice
+                .decrypt_observe_response(
+                    &received(&continuation_wire, bob_iid),
+                    &mut correlation,
+                    4,
+                )
+                .await
+                .unwrap(),
+            SecureObserveResponse::Decrypted {
+                event: ClientEvent::BlockContinuation,
+                ..
+            }
+        ));
+
+        let invalid_block = bob_context
+            .reserve_sender(&mut bob_store)
+            .unwrap()
+            .protect_response_with_piv(
+                MessageCode::CONTENT.0,
+                b"\x61\x02\xd1\x04\x10",
+                b"invalid",
+                &alice_iid[..1],
+                correlation.request.request_piv(),
+            )
+            .unwrap();
+        let invalid_block_wire = protected_response_packet(
+            MessageType::NonConfirmable,
+            0x2225,
+            &token,
+            &invalid_block.1,
+            &invalid_block.0,
+        );
+        assert_eq!(
+            alice
+                .decrypt_observe_response(
+                    &received(&invalid_block_wire, bob_iid),
+                    &mut correlation,
+                    5,
+                )
+                .await
+                .unwrap_err(),
+            SecureError::Observe(ObserveError::InvalidBlockwise)
+        );
+        assert!(correlation.is_active());
+
+        // The terminal 40-bit responder PIV is valid once; reserving another is forbidden.
+        let mut terminal_store = RecordingStore {
+            record: None,
+            existing: SenderSequenceState {
+                next_sequence: lichen_oscore::OscoreSeqNum::MAX,
+                exhausted: false,
+            },
+            events: Arc::new(Mutex::new(Vec::new())),
+            fail: false,
+        };
+        let mut terminal_context =
+            OscoreContext::new(&secret, None, None, &bob_iid[..1], &alice_iid[..1])
+                .unwrap()
+                .restore_existing(&mut terminal_store)
+                .unwrap();
+        let terminal = terminal_context
+            .reserve_sender(&mut terminal_store)
+            .unwrap()
+            .protect_response_with_piv(
+                MessageCode::CONTENT.0,
+                b"\x61\x03",
+                b"terminal",
+                &alice_iid[..1],
+                correlation.request.request_piv(),
+            )
+            .unwrap();
+        assert_eq!(terminal.1.as_slice(), b"\x05\xff\xff\xff\xff\xff");
+        assert!(matches!(
+            terminal_context.reserve_sender(&mut terminal_store),
+            Err(ReservationError::SequenceExhausted)
+        ));
+        let terminal_wire = protected_response_packet(
+            MessageType::NonConfirmable,
+            0x2226,
+            &token,
+            &terminal.1,
+            &terminal.0,
+        );
+        assert!(matches!(
+            alice
+                .decrypt_observe_response(&received(&terminal_wire, bob_iid), &mut correlation, 6)
+                .await
+                .unwrap(),
+            SecureObserveResponse::Decrypted {
+                event: ClientEvent::Notification { sequence, .. },
+                payload,
+                ..
+            } if sequence.value() == 3 && payload == b"terminal"
+        ));
+
+        // Tokenless RST for the last accepted notification cancels the relationship.
+        assert_eq!(
+            alice
+                .decrypt_observe_response(
+                    &received(b"\x70\x00\x22\x26", bob_iid),
+                    &mut correlation,
+                    7,
+                )
+                .await
+                .unwrap(),
+            SecureObserveResponse::Reset
+        );
+        assert!(!correlation.is_active());
+
+        // Reachable peers are cancelled with a separately correlated encrypted Observe=1 GET.
+        alice
+            .send_secure_observe_cancel(&bob_addr, &bob_iid, &["sensors"], &token, &mut alice_store)
+            .await
+            .unwrap();
+        let cancel_frame = peer_stack.receive(1_000).await.unwrap().unwrap();
+        let cancel = CoapPacket::from_bytes(&cancel_frame.ipv6[48..]).unwrap();
+        let cancel_oscore = cancel
+            .options()
+            .map(Result::unwrap)
+            .find(|option| option.number == OSCORE_OPTION)
+            .unwrap();
+        let (cancel_code, cancel_options, _) = bob_context
+            .unprotect_request(cancel_oscore.value, cancel.payload())
+            .unwrap();
+        assert_eq!(cancel_code, MessageCode::GET.0);
+        assert_eq!(cancel_options.as_slice(), b"\x61\x01\x57sensors");
     }
 }

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-wqaa.1.8",
+  "title": "Research NLnet NGI0 Discovery call requirements and application format",
+  "description": "Review NLnet NGI0 Discovery call documentation. Identify required sections, formatting guidelines, submission deadlines, evaluation criteria, and any specific themes or priorities for current call cycle.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:14.227591Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:14.227591Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.1.8",
+      "depends_on_id": "project-LICHEN-wqaa.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:16.854551Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -337,14 +337,14 @@ async def test_persistence_fault_terminally_disables_link_and_drops_queue(
     radio = MemoryRadio()
     link = receiving_link(radio, path)
     if stage == "record":
-        monkeypatch.setattr(link, "_write_signed_persistence_record", _raise_oserror)
+        monkeypatch.setattr(link._persistence, "_write_signed_persistence_record", _raise_oserror)
     elif stage == "fsync":
-        monkeypatch.setattr("lichen.link.link_layer.os.fsync", _raise_oserror)
+        monkeypatch.setattr("lichen.link.persistence.os.fsync", _raise_oserror)
     elif stage == "replace":
-        monkeypatch.setattr("lichen.link.link_layer.os.replace", _raise_oserror)
+        monkeypatch.setattr("lichen.link.persistence.os.replace", _raise_oserror)
     else:
         if stage == "anchor":
-            monkeypatch.setattr(link, "_write_persistence_anchor", _raise_oserror)
+            monkeypatch.setattr(link._persistence, "_write_persistence_anchor", _raise_oserror)
         else:
             anchor = _REVISION_ANCHORS[path]
             monkeypatch.setattr(anchor, "advance", _raise_oserror)
@@ -371,7 +371,7 @@ async def test_receive_anchor_failure_returns_no_receipt_and_disables_sessions(
     remote._seqnum = 0
     assert await remote.send(b"accepted-only-if-durable")
     local_radio.queue(remote_radio.tx_history[-1])
-    monkeypatch.setattr(local, "_write_persistence_anchor", _raise_oserror)
+    monkeypatch.setattr(local._persistence, "_write_persistence_anchor", _raise_oserror)
 
     with pytest.raises(RuntimeError, match="permanently disabled"):
         await local.receive(100)
@@ -437,13 +437,17 @@ def test_corrupt_restarted_t0_tombstone_fails_closed(tmp_path: Path) -> None:
     original = receiving_link(MemoryRadio(), path, revision_anchor=anchor, bootstrap=True)
     authorize_schc(original)
     original.create_fragment_sender(canonical_schc_packet(b"active"), REMOTE.pubkey).start()
-    current_path = Path(f"{path}.{original._persistence_revision % 2}")
-    state, _ = original._read_signed_persistence_record(str(current_path), b"state")
-    state["revision"] = original._persistence_revision + 1
+    current_path = Path(f"{path}.{original._persistence.revision % 2}")
+    state, _ = original._persistence._read_signed_persistence_record(
+        str(current_path), b"state"
+    )
+    state["revision"] = original._persistence.revision + 1
     sessions = state["schc_sessions"]
     assert type(sessions) is list and sessions
     sessions[0]["high_water"] = 0xFF_FFFF
-    original._write_signed_persistence_record(f"{path}.{state['revision'] % 2}", state, b"state")
+    original._persistence._write_signed_persistence_record(
+        f"{path}.{state['revision'] % 2}", state, b"state"
+    )
 
     with pytest.raises(RuntimeError, match="invalid persisted SCHC session"):
         receiving_link(MemoryRadio(), path, revision_anchor=anchor, bootstrap=False)
@@ -740,10 +744,8 @@ def test_persistence_failure_revokes_cached_policy_capabilities(tmp_path: Path) 
     authorize_schc(link)
     context = link._schc_peer_contexts[REMOTE.pubkey]
     generation = link._key_generations[REMOTE.pubkey]
-    link._persistence_failed = True
-    link._schc_peer_contexts.clear()
-    link._schc_peer_context_issuances.clear()
-    link._key_generations.clear()
+    link._persistence._persistence_failed = True
+    link.on_persistence_failure()
     with pytest.raises(RuntimeError, match="disabled"):
         link._validated_authenticated_peer_schc_context(context)
     assert not link.accepts_time_generation(REMOTE.pubkey, generation)

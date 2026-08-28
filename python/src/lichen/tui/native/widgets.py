@@ -38,7 +38,7 @@ from .models import (
 )
 
 
-class NativeStatusBar(Static):  # type: ignore[misc]  # textual lacks py.typed
+class NativeStatusBar(Static):
     """One-line global status bar."""
 
     DEFAULT_CSS = """
@@ -70,7 +70,7 @@ class NativeStatusBar(Static):  # type: ignore[misc]  # textual lacks py.typed
         self.update(status_line(self.status, self.line_width))
 
 
-class CommandBar(Static):  # type: ignore[misc]  # textual lacks py.typed
+class CommandBar(Static):
     """One-line context command footer."""
 
     DEFAULT_CSS = """
@@ -100,7 +100,7 @@ class CommandBar(Static):  # type: ignore[misc]  # textual lacks py.typed
         return "  ".join(self.commands)
 
 
-class ModeNav(Static):  # type: ignore[misc]  # textual lacks py.typed
+class ModeNav(Static):
     """Top-level mode navigation."""
 
     MODES: ClassVar[tuple[str, ...]] = (
@@ -146,7 +146,7 @@ class ModeNav(Static):  # type: ignore[misc]  # textual lacks py.typed
         self.update(self.render_modes())
 
 
-class MessageList(Static):  # type: ignore[misc]  # textual lacks py.typed
+class MessageList(Static):
     """Compact message preview list."""
 
     DEFAULT_CSS = """
@@ -238,7 +238,7 @@ class MessagingPanel:
 from lichen.client import SendResult  # noqa: E402
 
 
-class ConfigTable(Static):  # type: ignore[misc]  # textual lacks py.typed
+class ConfigTable(Static):
     """Config row summary widget."""
 
     def __init__(self, rows: tuple[ConfigRow, ...] = (), *, width: int = 76) -> None:
@@ -262,7 +262,7 @@ class ConfigTable(Static):  # type: ignore[misc]  # textual lacks py.typed
         )
 
 
-class LogPanel(Static):  # type: ignore[misc]  # textual lacks py.typed
+class LogPanel(Static):
     """Log stream summary widget."""
 
     def __init__(self, rows: tuple[LogRow, ...] = (), *, width: int = 76) -> None:
@@ -278,7 +278,7 @@ class LogPanel(Static):  # type: ignore[misc]  # textual lacks py.typed
         )
 
 
-class DiagnosticsPanel(Static):  # type: ignore[misc]  # textual lacks py.typed
+class DiagnosticsPanel(Static):
     """Diagnostics summary widget."""
 
     def __init__(self, rows: tuple[DiagnosticRow, ...] = (), *, width: int = 76) -> None:
@@ -297,7 +297,7 @@ class DiagnosticsPanel(Static):  # type: ignore[misc]  # textual lacks py.typed
         )
 
 
-class ActivePane(Static):  # type: ignore[misc]  # textual lacks py.typed
+class ActivePane(Static):
     """Single active screen pane for all top-level modes."""
 
     DEFAULT_CSS = """

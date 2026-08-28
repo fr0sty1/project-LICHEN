@@ -182,9 +182,10 @@ class SimRadio:
     async def reconnect(self) -> None:
         """Close any existing connection and establish a fresh one.
 
-        Call after SimRadioError from connection loss (BrokenResourceError
-        or ClosedResourceError) to restore usability. Context-manager users
-        must re-enter the context after reconnect.
+        Call after SimRadioError from connection loss (BrokenResourceError,
+        ClosedResourceError, or EndOfStream mapped to SimRadioError) to
+        restore usability. Context-manager users must re-enter the context
+        after reconnect.
         """
         await self.close()
         await self.connect()
@@ -202,12 +203,22 @@ class SimRadio:
         msg_type = self._validate_response(response)
         if msg_type == MSG_TX_DONE:
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
-            logger.info("tx", node_id=self._node_id, len=len(payload), packet_hash=packet_hash)
+            logger.info(
+                "tx",
+                node_id=self._node_id,
+                len=len(payload),
+                hex=payload.hex(),
+                packet_hash=packet_hash,
+            )
             return True
         elif msg_type == MSG_TX_FAIL:
             packet_hash = hashlib.sha256(payload).digest()[:16].hex()
             logger.warning(
-                "tx_fail", node_id=self._node_id, len=len(payload), packet_hash=packet_hash
+                "tx_fail",
+                node_id=self._node_id,
+                len=len(payload),
+                hex=payload.hex(),
+                packet_hash=packet_hash,
             )
             return False
         elif msg_type == MSG_ERR:
@@ -237,6 +248,7 @@ class SimRadio:
                 "rx",
                 node_id=self._node_id,
                 len=len(payload),
+                hex=payload.hex(),
                 rssi=rssi,
                 snr=snr,
                 packet_hash=packet_hash,
@@ -410,7 +422,7 @@ class SimRadio:
             # Read the message body
             return await self._recv_exact(msg_len)
 
-        except (anyio.BrokenResourceError, anyio.ClosedResourceError) as e:
+        except (anyio.BrokenResourceError, anyio.ClosedResourceError, anyio.EndOfStream) as e:
             self._stream = None
             raise SimRadioError(f"Connection lost during receive: {e}") from e
 

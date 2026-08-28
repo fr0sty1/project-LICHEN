@@ -23,6 +23,7 @@ const char *state_names[] = {
     [LORA_STOPPED]   = "STOPPED",
     [LORA_RUNNING]   = "RUNNING",
     [LORA_ABORTED]   = "ABORTED",
+    [LORA_DESTROY_FAILED] = "DESTROY_FAILED",
     [LORA_DEINITING] = "DEINITING",
 };
 
@@ -33,12 +34,13 @@ BUILD_ASSERT(ARRAY_SIZE(state_names) == LORA_STATE_COUNT,
 
 /* Valid state transitions: valid_transitions[from][to] = 1 if allowed */
 const uint8_t valid_transitions[LORA_STATE_COUNT][LORA_STATE_COUNT] = {
-    /*                    UNINIT STOPPED RUNNING ABORTED DEINITING */
-    [LORA_UNINIT]    = {  0,     1,      0,      0,      0 },  /* init -> STOPPED */
-    [LORA_STOPPED]   = {  0,     0,      1,      0,      1 },  /* start -> RUNNING, deinit -> DEINITING */
-    [LORA_RUNNING]   = {  0,     1,      0,      1,      0 },  /* stop -> STOPPED or ABORTED */
-    [LORA_ABORTED]   = {  0,     0,      0,      0,      1 },  /* deinit -> DEINITING */
-    [LORA_DEINITING] = {  1,     0,      0,      0,      0 },  /* -> UNINIT */
+    /*                         UNINIT STOPPED RUNNING ABORTED DESTROY_FAILED DEINITING */
+    [LORA_UNINIT]          = {  0,     1,      0,      0,      0,             0 },
+    [LORA_STOPPED]         = {  0,     0,      1,      0,      0,             1 },
+    [LORA_RUNNING]         = {  0,     1,      0,      1,      0,             0 },
+    [LORA_ABORTED]         = {  0,     0,      0,      0,      0,             1 },
+    [LORA_DESTROY_FAILED]  = {  0,     0,      0,      0,      0,             1 },
+    [LORA_DEINITING]       = {  1,     0,      0,      0,      1,             0 },
 };
 
 /* Current state - atomic for lock-free reads */

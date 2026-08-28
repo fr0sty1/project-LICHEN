@@ -101,6 +101,18 @@ config LICHEN_LINK_EPOCH_TEST_HOOKS
 	  boot-epoch cache so tests can simulate a reboot and exercise the
 	  persist-and-advance behavior. Testing only.
 
+config LICHEN_LINK_REPLAY_PERSIST
+	bool "Persist authenticated link replay state"
+	depends on SETTINGS
+	depends on !LICHEN_LINK_EPOCH_PERSIST
+	select LICHEN_CRYPTO_MONOCYPHER
+	help
+	  Persist TX epoch reservations and bounded per-public-key RX replay floors
+	  in alternating authenticated Settings snapshots. A separately protected,
+	  monotonic platform authority is mandatory; ordinary Settings alone cannot
+	  detect rollback or deletion. State is committed before packet delivery or
+	  nonce publication. Epoch 255 is terminal and requires key rotation.
+
 config LICHEN_LINK_COORDINATION
 	bool "Link-layer coordination (CCP-5 negotiation, rendezvous)"
 	depends on LICHEN_LINK
@@ -114,7 +126,7 @@ config LICHEN_LINK_COORDINATION
 config LICHEN_LINK_CCP16_LOAD_BALANCING
 	bool "CCP16 density-aware load balancing"
 	depends on LICHEN_RPL
-	depends on LICHEN_LINK_EPOCH_PERSIST
+	depends on LICHEN_LINK_EPOCH_PERSIST || LICHEN_LINK_REPLAY_PERSIST
 	help
 	  Enable CCP-16 coordinated capacity features: density-aware
 	  channel selection in lichen_link_channel_select() (control

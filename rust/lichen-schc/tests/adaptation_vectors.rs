@@ -19,8 +19,21 @@ use lichen_schc::fragment::{AuthenticatedFragmentReceiver, FragmentSender, Fragm
 use lichen_schc::{ExpectedDioRole, PeerContextAuthority};
 
 #[derive(Deserialize)]
+struct ExpectedCounts {
+    p0: usize,
+    endpoint_direction: usize,
+    rule7_address_policy: usize,
+    #[cfg_attr(
+        not(all(feature = "raw-fragment-codec", feature = "test-utils")),
+        allow(dead_code)
+    )]
+    duplicate_idempotence: usize,
+}
+
+#[derive(Deserialize)]
 struct VectorFile {
     format_version: u32,
+    expected_counts: ExpectedCounts,
     vectors: Vec<AdaptationVector>,
 }
 
@@ -130,6 +143,9 @@ struct AdaptationVector {
 fn hex_decode(s: &str) -> Vec<u8> {
     if s.is_empty() {
         return Vec::new();
+    }
+    if !s.len().is_multiple_of(2) {
+        panic!("hex_decode: odd-length hex string (len={})", s.len());
     }
     (0..s.len())
         .step_by(2)
@@ -536,7 +552,19 @@ fn test_schc_adaptation_vectors() {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/schc_adaptation.json");
 
     if !vectors_path.exists() {
-        eprintln!("Vectors file not found at {:?}, skipping", vectors_path);
+        // SECURITY: These vectors include P0 security-critical tests.
+        // In CI, fail hard so missing vectors are never silently ignored.
+        if std::env::var("CI").is_ok() {
+            panic!(
+                "Vectors file not found at {:?}. P0 security vectors must be present in CI.",
+                vectors_path
+            );
+        }
+        eprintln!(
+            "WARNING: Vectors file not found at {:?}, skipping. \
+             Set CI=1 to require vectors.",
+            vectors_path
+        );
         return;
     }
 
@@ -569,7 +597,12 @@ fn test_schc_adaptation_vectors() {
                 let wire = vector.wire.as_deref().map(hex_decode).unwrap_or_default();
 
                 if vector.expect_error.as_deref() == Some("unknown_rule_id") {
-                    let expected_rule_id = vector.expect_rule_id.unwrap_or(0);
+                    // SECURITY: Do not default to 0 - rule 0 (RULE_LINK_LOCAL_COAP) is valid.
+                    // Missing expect_rule_id in a vector would silently pass if the rejected
+                    // rule happened to be 0. Force proper vector configuration instead.
+                    let expected_rule_id = vector
+                        .expect_rule_id
+                        .expect("unknown_rule_id rejection vector must specify expect_rule_id");
 
                     // Test decompress rejects unknown rule ID
                     let mut out = [0u8; 1500];
@@ -1153,6 +1186,10 @@ fn test_schc_adaptation_vectors() {
                             failures.push(format!("{}: Rule Version option bytes mismatch", name));
                         }
                     }
+                } else if vector.expect_error.is_none() {
+                    // Vectors without wire that have expect_error are logical
+                    // tests (e.g., version mismatch), not wire format tests.
+                    failures.push(format!("{}: rule_version vector missing wire field", name));
                 }
             }
 
@@ -1295,30 +1332,31 @@ fn test_schc_adaptation_vectors() {
         }
     }
 
-    // Verify P0 security-critical vectors are present
-    if p0_count < 4 {
+    // Verify expected counts from vector file metadata
+    let expected = &vectors.expected_counts;
+    if p0_count != expected.p0 {
         failures.push(format!(
-            "Expected at least 4 P0 security-critical vectors, found {}",
-            p0_count
+            "Expected {} P0 security-critical vectors (per metadata), found {}",
+            expected.p0, p0_count
         ));
     }
-    if endpoint_direction_count != 6 {
+    if endpoint_direction_count != expected.endpoint_direction {
         failures.push(format!(
-            "Expected 6 endpoint-direction vectors, found {}",
-            endpoint_direction_count
+            "Expected {} endpoint-direction vectors (per metadata), found {}",
+            expected.endpoint_direction, endpoint_direction_count
         ));
     }
-    if rule7_address_policy_count != 14 {
+    if rule7_address_policy_count != expected.rule7_address_policy {
         failures.push(format!(
-            "Expected 14 Rule 7 address-policy vectors, found {}",
-            rule7_address_policy_count
+            "Expected {} Rule 7 address-policy vectors (per metadata), found {}",
+            expected.rule7_address_policy, rule7_address_policy_count
         ));
     }
     #[cfg(all(feature = "raw-fragment-codec", feature = "test-utils"))]
-    if duplicate_idempotence_count != 1 {
+    if duplicate_idempotence_count != expected.duplicate_idempotence {
         failures.push(format!(
-            "Expected 1 duplicate-idempotence vector, found {}",
-            duplicate_idempotence_count
+            "Expected {} duplicate-idempotence vector (per metadata), found {}",
+            expected.duplicate_idempotence, duplicate_idempotence_count
         ));
     }
 
@@ -1342,6 +1380,18 @@ fn test_schc_adaptation_coverage() {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/schc_adaptation.json");
 
     if !vectors_path.exists() {
+        // SECURITY: This coverage test validates P0 security vectors are present.
+        // In CI, fail hard so missing vectors are never silently ignored.
+        if std::env::var("CI").is_ok() {
+            panic!(
+                "Vectors file not found at {:?}. P0 security vectors must be present in CI.",
+                vectors_path
+            );
+        }
+        eprintln!(
+            "WARNING: Vectors file not found at {:?}, skipping coverage check.",
+            vectors_path
+        );
         return;
     }
 

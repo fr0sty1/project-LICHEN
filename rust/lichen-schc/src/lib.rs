@@ -25,6 +25,8 @@ pub mod codec;
 pub mod context;
 pub mod fragment;
 pub mod headers;
+#[cfg(feature = "std")]
+pub mod link;
 pub mod rules;
 
 pub use fragment::AuthenticatedFragmentReceiver;
@@ -44,6 +46,12 @@ pub use context::{
 pub use headers::{
     CoapUdpGlobalProfile, CoapUdpLinkLocalProfile, Icmpv6EchoProfile, PacketError, PacketProfile,
     ParsedPacket, RplDaoProfile, RplDioProfile, DEFAULT_PROFILES, MAX_FIELDS,
+};
+#[cfg(feature = "std")]
+pub use link::{
+    accept_authenticated_schc_packet, compress_schc_for_peer, create_fragment_sender,
+    requires_fragmentation, wrap_schc_payload, wrap_unfragmented_schc, AuthenticatedSchcPolicy,
+    MAX_SINGLE_FRAME_SCHC_PACKET,
 };
 
 // Re-export LICHEN-specific rule constants and versioning

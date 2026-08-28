@@ -2,11 +2,15 @@
   "id": "project-LICHEN-worker6-co35",
   "title": "Vectors: checkin_rollcall.json cbor_length fields are stale",
   "description": "18 of 25 payload vectors in test/vectors/checkin_rollcall.json have cbor_length values that disagree with the actual byte length of their own cbor_hex (e.g. rollcall_status_response claims 220, hex is 250; checkin_minimal claims 64, hex is 65; checkin_boundary_coords claims 83, hex is 91). The cbor_hex bytes are canonical (cbor2 round-trip verified for all 25). Any consumer asserting len(wire)==cbor_length fails; the C suite (gen_vectors.py) deliberately derives lengths from cbor_hex and ignores cbor_length. Fix: recompute all cbor_length values from the hex. Discovered-from project-LICHEN-worker6-l1qw.10.19.3; related sibling defect in project-LICHEN-worker6-2yps (different file).",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-28T05:53:26.182828Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-28T05:53:26.182828Z"
+  "updated_at": "2026-08-28T09:01:46.51957Z",
+  "started_at": "2026-08-28T08:47:02.941786Z",
+  "closed_at": "2026-08-28T09:01:46.51957Z",
+  "close_reason": "Recomputed cbor_length for all 18 stale vectors in test/vectors/checkin_rollcall.json from the authoritative cbor_hex; generator comment updated. Verified: zero stale fields remain; host C suite lichen/tests/checkin_rollcall green (ctest 1/1, ASan/UBSan build); Rust checkin_rollcall_vectors 13/13; no Python consumer exists for this JSON (rg across python/tests/ empty) and the two cbor_length-asserting Python consumers target receipt/sos files only. Commit \u003csee git log\u003e."
 }

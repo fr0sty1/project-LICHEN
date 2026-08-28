@@ -1,0 +1,1 @@
+Read scripts/beads-worker-full.txt and execute those instructions. Loop until bd ready is empty.

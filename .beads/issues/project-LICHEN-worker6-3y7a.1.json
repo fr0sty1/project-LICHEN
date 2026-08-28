@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-3y7a.1",
+  "title": "task",
+  "description": "Enable CONFIG_BT_OBSERVER in Kconfig. Implement bt_le_scan_start/stop wrapper with configurable scan params (interval, window, passive mode). Core init/deinit functions for scanner lifecycle.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:52:32.736263Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:52:32.736263Z",
+  "labels": [
+    "zephyr",
+    "c",
+    "needs-linux"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-3y7a.1",
+      "depends_on_id": "project-LICHEN-worker6-3y7a",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:52:33.994603Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

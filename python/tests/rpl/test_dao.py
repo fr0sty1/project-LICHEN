@@ -61,15 +61,21 @@ def grouped_dao(targets: list[IPv6Address], transits: list[TransitInformation]) 
     )
 
 
-def test_option_codecs_are_exact_and_canonicalize_unused_prefix_bits() -> None:
-    target = RplTarget.from_option(RplOption(RplOptionType.RPL_TARGET, b"\0\x7f" + N1.packed))
-    assert target.target == IPv6Address("fd00::10")
-    assert target.prefix_length == 127
+def test_option_codecs_are_exact_and_profile_canonical() -> None:
+    target = RplTarget.from_option(RplOption(RplOptionType.RPL_TARGET, b"\0\x80" + N1.packed))
+    assert target.target == N1
+    assert target.prefix_length == 128
 
     transit = TransitInformation(N1, 30, 2, 0x40)
     assert TransitInformation.from_option(transit.to_option()) == transit
-    with pytest.raises(DaoError, match="canonical length"):
+    with pytest.raises(DaoError, match="Data Length 18"):
         RplTarget.from_option(RplOption(RplOptionType.RPL_TARGET, b"\0\x00\0"))
+    with pytest.raises(DaoError, match="flags must be zero"):
+        RplTarget.from_option(RplOption(RplOptionType.RPL_TARGET, b"\1\x80" + N1.packed))
+    with pytest.raises(DaoError, match="prefix_length must be 128"):
+        RplTarget.from_option(RplOption(RplOptionType.RPL_TARGET, b"\0\x7f" + N1.packed))
+    with pytest.raises(DaoError, match="prefix_length must be 128"):
+        RplTarget(N1, 64).to_option()
     with pytest.raises(DaoError, match="Data Length"):
         TransitInformation.from_option(
             RplOption(RplOptionType.TRANSIT_INFORMATION, b"\x80\x00\x00\x00\x00")
@@ -530,8 +536,9 @@ def test_newer_withdrawal_and_expiry_retain_tombstones_and_equal_cannot_revive()
         ([RplTarget(N1).to_option()], "missing RPL Target or Transit"),
         ([RplOption(9, b"x")], "immediately follow one Target"),
         (
-            [RplTarget(N1, 64).to_option(), TransitInformation(ROOT).to_option()],
-            "only /128",
+            [RplOption(RplOptionType.RPL_TARGET, b"\0\x40" + N1.packed),
+             TransitInformation(ROOT).to_option()],
+            "prefix_length must be 128",
         ),
     ],
 )
@@ -883,7 +890,7 @@ def test_expired_tombstone_reclaims_only_after_retention_boundary() -> None:
 
 
 def test_transit_information_e_flag_parsing() -> None:
-    """E describes external ownership; Data Length carries parent presence."""
+    """E describes external ownership while the parent is always present."""
     from lichen.rpl.messages import RplOption
 
     # E=1 (0x80): parent address present (standard LICHEN case)
@@ -895,11 +902,11 @@ def test_transit_information_e_flag_parsing() -> None:
     assert ti_e1.path_sequence == 1
     assert ti_e1.path_lifetime == 30
 
-    # E=0: no parent address (RFC-compliant option from other implementations)
-    e0_data = bytes([0x00, 0, 2, 60])  # E=0, path_seq=2, lifetime=60
+    # E=0 still carries the mandatory parent address.
+    e0_data = bytes([0x00, 0, 2, 60]) + ROOT.packed
     opt_e0 = RplOption(RplOptionType.TRANSIT_INFORMATION, e0_data)
     ti_e0 = TransitInformation.from_option(opt_e0)
-    assert ti_e0.parent_address is None
+    assert ti_e0.parent_address == ROOT
     assert ti_e0.external is False
     assert ti_e0.path_sequence == 2
     assert ti_e0.path_lifetime == 60
@@ -913,11 +920,10 @@ def test_transit_information_e_flag_encoding() -> None:
     assert opt.data[0] & 0x80 == 0x00
     assert len(opt.data) == 4 + 16  # includes parent address
 
-    # Without parent address: E flag should be clear
+    # The LICHEN profile never serializes the RFC's four-byte form.
     ti_no_parent = TransitInformation(parent_address=None, path_lifetime=30)
-    opt_no_parent = ti_no_parent.to_option()
-    assert opt_no_parent.data[0] & 0x80 == 0x00  # E flag is clear
-    assert len(opt_no_parent.data) == 4  # no parent address
+    with pytest.raises(DaoError, match="requires a Parent Address"):
+        ti_no_parent.to_option()
 
 
 def test_canonical_route_state_vectors_match_dao_manager() -> None:

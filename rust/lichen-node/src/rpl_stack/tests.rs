@@ -327,6 +327,30 @@ async fn runtime_receive_uses_planned_timeout_and_post_await_clock() {
 }
 
 #[tokio::test]
+async fn runtime_rejects_action_after_stack_generation_changes_before_radio_await() {
+    let (mut root, radio) = runtime_root();
+    let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
+    let action = root.runtime_poll(&mut runtime, 0).unwrap().action;
+
+    root.trickle_start(0, 0);
+    assert!(matches!(
+        root.runtime_receive(&mut runtime, action, || 1).await,
+        Err(RplRuntimeReceiveError::Action(
+            RplRuntimeActionError::StaleGeneration
+        ))
+    ));
+    assert!(radio.lock().unwrap().receive_timeouts.is_empty());
+
+    let mut current_runtime = RplRuntime::new(RplRuntimeConfig::default(), 1);
+    assert_eq!(
+        root.runtime_poll(&mut current_runtime, 1)
+            .unwrap()
+            .generation,
+        root.generation()
+    );
+}
+
+#[tokio::test]
 async fn runtime_completes_trickle_multicast_suppression_and_expiry() {
     let (mut root, radio) = runtime_root();
     // Configure a small trickle interval (imin=8ms) for fast test execution.

@@ -4,6 +4,7 @@
 
 import pytest
 
+from lichen.sim.events import RxTimeoutEvent
 from lichen.sim.node import NodeState, SimNode
 from lichen.sim.simulation import Simulation
 
@@ -84,8 +85,8 @@ class TestNodeManagement:
         assert len(sim.event_queue) == 1
         # Remaining event should be for node2
         event = sim.event_queue.peek()
-        assert event is not None
-        assert event.node_id == "node2"  # type: ignore[union-attr]
+        assert isinstance(event, RxTimeoutEvent)
+        assert event.node_id == "node2"
 
     def test_remove_nonexistent_node_is_safe(self) -> None:
         """remove_node with nonexistent ID does not raise."""

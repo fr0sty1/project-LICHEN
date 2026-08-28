@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-zt3c.2.1.12",
+  "title": "Design certificate format Sign_K(domain, K, G, capabilities, epoch, serial, expiry) with test vectors",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:34.658303Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:34.658303Z",
+  "labels": [
+    "gateway",
+    "global",
+    "networking",
+    "yggdrasil"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.2.1.12",
+      "depends_on_id": "project-LICHEN-zt3c.2.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:42.628817Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

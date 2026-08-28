@@ -27,6 +27,7 @@ LICHEN uses RPLInstanceID 0 and Non-Storing mode (MOP=1) per spec B.2.
 RPL_ICMPV6_TYPE = 155
 DIO_BASE_LENGTH = 24
 DODAGID_LENGTH = 16
+DODAG_CONFIG_DATA_LENGTH = 14
 
 
 class RplCode(IntEnum):
@@ -88,6 +89,82 @@ class RplOption:
         if len(self.data) > 0xFF:
             raise RplError(f"option data too long: {len(self.data)} bytes")
         return bytes([self.type, len(self.data)]) + self.data
+
+
+@dataclass(frozen=True)
+class DodagConfig:
+    """Typed DODAG Configuration option for the LICHEN profile."""
+
+    pcs: int = 0
+    authentication_enabled: bool = False
+    gateway_centric: bool = False
+    dio_int_doublings: int = 8
+    dio_int_min: int = 12
+    dio_redundancy_const: int = 10
+    max_rank_increase: int = 2048
+    min_hop_rank_increase: int = 256
+    ocp: int = 1
+    default_lifetime: int = 0xFF
+    lifetime_unit: int = 60
+
+    def to_option(self) -> RplOption:
+        octets = (
+            self.dio_int_doublings,
+            self.dio_int_min,
+            self.dio_redundancy_const,
+            self.default_lifetime,
+        )
+        words = (
+            self.max_rank_increase,
+            self.min_hop_rank_increase,
+            self.ocp,
+            self.lifetime_unit,
+        )
+        if not 0 <= self.pcs <= 7:
+            raise RplError("DODAG Configuration PCS must be in 0..7")
+        if any(not 0 <= value <= 0xFF for value in octets):
+            raise RplError("DODAG Configuration octet field out of range")
+        if any(not 0 <= value <= 0xFFFF for value in words):
+            raise RplError("DODAG Configuration 16-bit field out of range")
+        flags = (
+            (0x80 if self.gateway_centric else 0)
+            | (0x08 if self.authentication_enabled else 0)
+            | self.pcs
+        )
+        data = bytes(
+            [flags, self.dio_int_doublings, self.dio_int_min, self.dio_redundancy_const]
+        )
+        data += self.max_rank_increase.to_bytes(2, "big")
+        data += self.min_hop_rank_increase.to_bytes(2, "big")
+        data += self.ocp.to_bytes(2, "big")
+        data += bytes([0, self.default_lifetime])
+        data += self.lifetime_unit.to_bytes(2, "big")
+        return RplOption(RplOptionType.DODAG_CONFIGURATION, data)
+
+    @classmethod
+    def from_option(cls, option: RplOption) -> DodagConfig:
+        if option.type != RplOptionType.DODAG_CONFIGURATION:
+            raise RplError(f"not a DODAG Configuration option: type {option.type}")
+        data = option.data
+        if len(data) != DODAG_CONFIG_DATA_LENGTH:
+            raise RplError("DODAG Configuration option must have Data Length 14")
+        if data[0] & 0x70:
+            raise RplError("DODAG Configuration reserved flag bits must be zero")
+        if data[10] != 0:
+            raise RplError("DODAG Configuration Reserved octet must be zero")
+        return cls(
+            pcs=data[0] & 0x07,
+            authentication_enabled=bool(data[0] & 0x08),
+            gateway_centric=bool(data[0] & 0x80),
+            dio_int_doublings=data[1],
+            dio_int_min=data[2],
+            dio_redundancy_const=data[3],
+            max_rank_increase=int.from_bytes(data[4:6], "big"),
+            min_hop_rank_increase=int.from_bytes(data[6:8], "big"),
+            ocp=int.from_bytes(data[8:10], "big"),
+            default_lifetime=data[11],
+            lifetime_unit=int.from_bytes(data[12:14], "big"),
+        )
 
 
 def _options_to_bytes(options: list[RplOption]) -> bytes:
@@ -486,8 +563,10 @@ class DAOAck:
         ]:
             if not 0 <= val <= 255:
                 raise RplError(f"{name} out of range: {val}")
+        if self.flags != 0:
+            raise RplError("DAO-ACK reserved flags must be zero")
         d_flag = self.dodag_id is not None
-        d_byte = (int(d_flag) << 7) | (self.flags & 0x7F)
+        d_byte = int(d_flag) << 7
         out = bytes([self.rpl_instance_id, d_byte, self.dao_sequence, self.status])
         if self.dodag_id is not None:
             out += self.dodag_id.packed
@@ -498,21 +577,24 @@ class DAOAck:
         if len(data) < 4:
             raise RplError(f"DAO-ACK too short: {len(data)} bytes")
         d_byte = data[1]
+        if d_byte & 0x7F:
+            raise RplError("DAO-ACK reserved flags must be zero")
         d_flag = bool(d_byte & 0x80)
-        offset = 4
+        expected_length = 20 if d_flag else 4
+        if len(data) < expected_length:
+            if d_flag:
+                raise RplError("DAO-ACK D flag set but DODAGID missing")
+            raise RplError(f"DAO-ACK too short: {len(data)} bytes")
         dodag_id = None
         if d_flag:
-            if len(data) < 4 + DODAGID_LENGTH:
-                raise RplError("DAO-ACK D flag set but DODAGID missing")
             dodag_id = IPv6Address(data[4:20])
-            offset = 20
         return cls(
             rpl_instance_id=data[0],
-            flags=d_byte & 0x7F,
+            flags=0,
             dao_sequence=data[2],
             status=data[3],
             dodag_id=dodag_id,
-            options=_parse_options(data[offset:]),
+            options=_parse_options(data[expected_length:]),
         )
 
 

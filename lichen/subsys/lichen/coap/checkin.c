@@ -1838,6 +1838,8 @@ int lichen_rollcall_list_encode(const struct lichen_checkin_service *svc,
 	uint8_t *p = buf;
 	size_t rem = cap;
 	size_t n;
+	size_t fit;
+	size_t count;
 	int err;
 
 	n = cbor_encode_header(p, rem, 5, 1U);
@@ -1854,14 +1856,22 @@ int lichen_rollcall_list_encode(const struct lichen_checkin_service *svc,
 	p += n;
 	rem -= n;
 
-	n = cbor_encode_header(p, rem, 4, (uint64_t)svc->rollcall_count);
+	/* The payload buffer cannot necessarily hold every stored roll
+	 * call (CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX bounds the single
+	 * status document at build time, not the whole list). Clamp the
+	 * item count to what provably fits so the array header stays
+	 * truthful; discovery is by polling, so a partial list is a
+	 * documented degradation, not an error. */
+	fit = rem / LICHEN_ROLLCALL_RENDER_MAX;
+	count = svc->rollcall_count < fit ? svc->rollcall_count : fit;
+	n = cbor_encode_header(p, rem, 4, (uint64_t)count);
 	if (n == 0U) {
 		return -LICHEN_CHECKIN_ERR_BUFFER_TOO_SMALL;
 	}
 	p += n;
 	rem -= n;
 
-	for (size_t i = 0; i < svc->rollcall_count; i++) {
+	for (size_t i = 0; i < count; i++) {
 		size_t item_len = 0U;
 
 		err = lichen_rollcall_render(&svc->rollcalls[i], p, rem,

@@ -106,5 +106,5 @@ def test_lci_mesh_access_prefers_direct_ipv6_with_optional_proxy() -> None:
     assert '</mesh>;rt="proxy"' not in lci
     assert "mesh proxy" not in lci
 
-    assert "authoritative LCI mesh access model remains direct IPv6" in resources
+    assert "LCI baseline mesh access" in resources
     assert 'rt = "proxy"' in resources

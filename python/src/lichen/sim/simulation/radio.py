@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 from lora_medium import GilbertElliottRule
 
@@ -338,12 +338,11 @@ class RadioMixin:
         # This preserves half-duplex for physically ongoing TXs while allowing
         # bidirectional communication after logical completion.
         tx_id = self._active_transmissions.get(node_id)
-        if tx_id is not None:
-            # Check if this TX has been received by anyone - if so, it's done
-            if self._metrics.has_any_reception_for_tx(tx_id):
-                self._active_transmissions.pop(node_id, None)
-                self._medium.end_tx(tx_id)
-                self._drop_delayed_rx_for_tx(tx_id)
+        if tx_id is not None and self._metrics.has_any_reception_for_tx(tx_id):
+            # If this TX has been received by anyone, it is logically complete.
+            self._active_transmissions.pop(node_id, None)
+            self._medium.end_tx(tx_id)
+            self._drop_delayed_rx_for_tx(tx_id)
         channel = node.get_hop_channel()
         self._cancel_rx_timeout_events(node_id)
         self._pending_poll_rx_map().pop(node_id, None)
@@ -479,24 +478,24 @@ class RadioMixin:
         """Drop GE cache, tombstones, and collision epoch for a receiver."""
         dropped = self._dropped_rx_set()
         ge = self._ge_cache()
-        for key in list(dropped):
-            if key[0] == node_id:
-                dropped.discard(key)
-        for key in list(ge):
-            if key[0] == node_id:
-                ge.pop(key, None)
+        for dropped_key in list(dropped):
+            if dropped_key[0] == node_id:
+                dropped.discard(dropped_key)
+        for ge_key in list(ge):
+            if ge_key[0] == node_id:
+                ge.pop(ge_key, None)
         self._collision_open_map().pop(node_id, None)
 
     def _drop_chaos_state_for_tx(self, tx_id: str) -> None:
         """Drop GE cache and tombstones for a finished or aborted TX."""
         dropped = self._dropped_rx_set()
         ge = self._ge_cache()
-        for key in list(dropped):
-            if key[1] == tx_id:
-                dropped.discard(key)
-        for key in list(ge):
-            if key[1] == tx_id:
-                ge.pop(key, None)
+        for dropped_key in list(dropped):
+            if dropped_key[1] == tx_id:
+                dropped.discard(dropped_key)
+        for ge_key in list(ge):
+            if ge_key[1] == tx_id:
+                ge.pop(ge_key, None)
 
     def _prune_delayed_rx(self) -> None:
         """Drop expired, disconnected, or missing delayed-RX entries."""
@@ -632,7 +631,10 @@ class RadioMixin:
         tx = candidate.transmission
         link_key = (tx.source_node_id, rx_node_id, rule.id)
         shim_state = _GeLinkState(self._ge_link_states_map().get(link_key, False))
-        shim = replace(rule, _link_states={(tx.source_node_id, tx.id): shim_state})
+        shim = replace(
+            rule,
+            _link_states={(tx.source_node_id, tx.id): cast(Any, shim_state)},
+        )
         result = shim.apply(candidate, rx_position)
         self._ge_link_states_map()[link_key] = shim_state.in_bad_state
         return result

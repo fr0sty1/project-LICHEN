@@ -100,3 +100,84 @@ pre {
 .htmx-request .htmx-indicator {
   opacity: 1;
 }
+
+/* Metrics telemetry grid */
+.metrics-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.metric-item {
+  background: #21262d;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  position: relative;
+}
+
+.metric-item.warn {
+  border-color: #d29922;
+  background: rgba(210, 153, 34, 0.1);
+}
+
+.metric-item.crit {
+  border-color: #f85149;
+  background: rgba(248, 81, 73, 0.1);
+}
+
+.metric-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.metric-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--fg);
+}
+
+.metric-unit {
+  font-size: 0.75rem;
+  font-weight: normal;
+  color: var(--muted);
+}
+
+.metric-sparkline {
+  margin-top: 0.5rem;
+}
+
+.metric-sparkline .sparkline {
+  display: block;
+  width: 100%;
+}
+
+.alert-badge {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  font-size: 0.55rem;
+  font-weight: bold;
+  padding: 0.1rem 0.25rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.alert-badge.warn {
+  background: #d29922;
+  color: #000;
+}
+
+.alert-badge.crit {
+  background: #f85149;
+  color: #fff;
+  animation: pulse-alert 1s ease-in-out infinite;
+}
+
+@keyframes pulse-alert {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}

@@ -20,6 +20,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include <lichen/frame_pool.h>
+
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
 #define __has_feature(x) 0
@@ -44,10 +46,10 @@ extern "C" {
 #endif
 
 /** Maximum TX queue depth */
-#define TX_QUEUE_SIZE 4
+#define TX_QUEUE_SIZE LICHEN_FRAME_POOL_CAPACITY
 
 /** Maximum packet size in TX queue */
-#define TX_QUEUE_MAX_PACKET_SIZE 256
+#define TX_QUEUE_MAX_PACKET_SIZE LICHEN_FRAME_BUFFER_SIZE
 
 /**
  * @brief TX packet priority levels
@@ -56,21 +58,33 @@ extern "C" {
  * to maintain mesh connectivity under load.
  */
 enum tx_queue_priority {
-	TX_PRIORITY_ROUTING = 0,  /**< Routing control (DIO/DAO) */
-	TX_PRIORITY_ACK = 1,      /**< Link-layer ACKs */
-	TX_PRIORITY_URGENT = 2,   /**< Urgent app messages */
-	TX_PRIORITY_BULK = 3,     /**< Bulk data (default) */
-	TX_PRIORITY_COUNT
+	TX_PRIORITY_SOS = 0,      /**< Emergency/SOS traffic */
+	TX_PRIORITY_ROUTING = 1,  /**< Routing control (DIO/DAO) */
+	TX_PRIORITY_ACK = TX_PRIORITY_ROUTING, /**< ACKs share routing priority */
+	TX_PRIORITY_URGENT = 2,   /**< Urgent application messages */
+	TX_PRIORITY_NORMAL = 3,   /**< Normal application data */
+	TX_PRIORITY_BULK = 4,     /**< Bulk transfers */
+	TX_PRIORITY_COUNT = 5
 };
 
-/** Default deadline for routing control packets (slots; each slot is 250ms) */
+/** Canonical default deadlines from appendix-bufferbloat.md B.2.2. */
+#define TX_DEADLINE_SOS_MS       UINT32_C(2000)
+#define TX_DEADLINE_ROUTING_MS   UINT32_C(5000)
+#define TX_DEADLINE_ACK_MS       UINT32_C(10000)
+#define TX_DEADLINE_URGENT_MS    UINT32_C(30000)
+#define TX_DEADLINE_NORMAL_MS    UINT32_C(60000)
+#define TX_DEADLINE_BULK_MS      UINT32_C(120000)
+
+/* Slot-count forms retained for coordinated-capacity callers (250 ms/slot). */
+#define TX_DEADLINE_SOS_SLOTS       8
 #define TX_DEADLINE_ROUTING_SLOTS   20
-
-/** Default deadline for ACK packets (slots; each slot is 250ms) */
 #define TX_DEADLINE_ACK_SLOTS       40
+#define TX_DEADLINE_URGENT_SLOTS    120
+#define TX_DEADLINE_NORMAL_SLOTS    240
+#define TX_DEADLINE_BULK_SLOTS      480
 
-/** Default deadline for application data packets (slots; each slot is 250ms) */
-#define TX_DEADLINE_APP_SLOTS       240
+/** Backward-compatible name for the normal application deadline. */
+#define TX_DEADLINE_APP_SLOTS TX_DEADLINE_NORMAL_SLOTS
 
 /**
  * @brief TX queue entry
@@ -78,10 +92,12 @@ enum tx_queue_priority {
  * Holds a single packet waiting for transmission.
  */
 struct tx_queue_entry {
-	uint8_t data[TX_QUEUE_MAX_PACKET_SIZE]; /**< Packet data */
+	struct lichen_frame_handle buffer;      /**< Owned pool buffer */
 	uint16_t len;                           /**< Packet length */
 	uint32_t deadline_ms;                   /**< Absolute deadline (uptime ms) */
+	uint64_t deadline_ms64;                 /**< Deadline in extended monotonic ms (internal) */
 	uint32_t enqueue_ms;                    /**< Enqueue timestamp (uptime ms) */
+	uint64_t enqueue_order;                 /**< FIFO order within a priority */
 	uint8_t priority;                       /**< Priority (0 = highest) */
 	bool valid;                             /**< Entry contains valid packet */
 };
@@ -106,8 +122,12 @@ struct tx_queue_stats {
  */
 struct tx_queue {
 	struct tx_queue_entry entries[TX_QUEUE_SIZE]; /**< Queue entries */
+	struct lichen_frame_pool pool;                 /**< Fixed frame storage */
 	struct tx_queue_stats stats;                   /**< Queue statistics */
 	uint32_t avg_latency_scaled;                   /**< EWMA latency, scaled by 8 (internal) */
+	uint64_t next_enqueue_order;                   /**< Next FIFO sequence number */
+	uint64_t now_ms64;                             /**< Extended monotonic time base, ms (internal) */
+	bool terminal;                                 /**< Unrecoverable destroy failure */
 #ifdef __ZEPHYR__
 	struct k_mutex lock;  /**< Protects queue state */
 #else
@@ -117,6 +137,9 @@ struct tx_queue {
 
 /**
  * @brief Initialize a TX queue.
+ *
+ * Storage must be fresh or have completed tx_queue_destroy() successfully;
+ * a terminal or partially destroyed queue MUST NOT be reinitialized in place.
  *
  * @param[out] queue Queue to initialize (must not be NULL)
  * @return 0 on success, -EINVAL if queue is NULL
@@ -138,7 +161,8 @@ int tx_queue_init(struct tx_queue *_Nonnull queue);
  * @param[in]     priority Packet priority (0 = highest)
  * @param[in]     deadline_ms Absolute deadline in uptime milliseconds; must be
  *                            less than 2^31 ms ahead of the current uptime
- * @return 0 on success, -EINVAL on bad args, -ENOBUFS if full and cannot preempt,
+ * @return 0 on success, -EINVAL on bad args or invalid priority,
+ *         -ENOBUFS if full and cannot preempt,
  *         -EIO if the monotonic clock cannot be read
  */
 int tx_queue_push(struct tx_queue *_Nonnull queue,
@@ -149,17 +173,22 @@ int tx_queue_push(struct tx_queue *_Nonnull queue,
  * @brief Push a packet with default deadline based on priority.
  *
  * Convenience wrapper that sets deadline based on priority:
- *   - TX_PRIORITY_ROUTING: 20 slots (5s)
- *   - TX_PRIORITY_ACK: 40 slots (10s)
- *   - TX_PRIORITY_BULK/others: 240 slots (60s)
+ *   - TX_PRIORITY_SOS: 2 seconds
+ *   - TX_PRIORITY_ROUTING/TX_PRIORITY_ACK: 5 seconds
+ *   - TX_PRIORITY_URGENT: 30 seconds
+ *   - TX_PRIORITY_NORMAL: 60 seconds
+ *   - TX_PRIORITY_BULK: 120 seconds
  *
- * Deadlines are expressed as multiples of SLOT_DURATION_MS.
+ * ACK is an alias of routing priority, so this convenience API uses the
+ * routing default. Callers that require the distinct 10-second ACK deadline
+ * pass an absolute deadline based on TX_DEADLINE_ACK_MS to tx_queue_push().
  *
  * @param[in,out] queue    TX queue
  * @param[in]     data     Packet data
  * @param[in]     len      Packet length
  * @param[in]     priority Packet priority
- * @return 0 on success, -EINVAL on bad args, -ENOBUFS if full,
+ * @return 0 on success, -EINVAL on bad args or invalid priority,
+ *         -ENOBUFS if full,
  *         -EIO if the monotonic clock cannot be read
  */
 int tx_queue_push_default_deadline(struct tx_queue *_Nonnull queue,
@@ -194,7 +223,8 @@ int tx_queue_pop(struct tx_queue *_Nonnull queue,
  * expire packets (lazily done by push/pop/clear).
  *
  * @param[in,out] queue TX queue (non-const due to internal locking)
- * @return Number of packets (>=0), or -EINVAL if queue is NULL
+ * @return Number of packets (>=0), -EINVAL if queue is NULL, or -EIO if the
+ *         queue is terminal.
  */
 int tx_queue_count(struct tx_queue *_Nullable queue);
 
@@ -204,7 +234,8 @@ int tx_queue_count(struct tx_queue *_Nullable queue);
  * Thread-safe via lock; returns snapshot of current valid entries.
  *
  * @param[in,out] queue TX queue (NULL accepted, returns true)
- * @return true if empty, false otherwise (NULL returns true)
+ * @return true if empty/unusable, false otherwise (NULL and terminal queues
+ *         return true)
  */
 bool tx_queue_empty(struct tx_queue *_Nullable queue);
 
@@ -215,7 +246,7 @@ bool tx_queue_empty(struct tx_queue *_Nullable queue);
  *
  * @param[in,out] queue TX queue (non-const due to internal locking)
  * @param[out] stats Statistics output
- * @return 0 on success, -EINVAL if args are NULL
+ * @return 0 on success, -EINVAL if args are NULL, or -EIO if terminal
  */
 int tx_queue_stats_get(struct tx_queue *_Nonnull queue,
 		       struct tx_queue_stats *_Nonnull stats);
@@ -224,13 +255,23 @@ int tx_queue_stats_get(struct tx_queue *_Nonnull queue,
  * @brief Clear the queue and reset statistics.
  *
  * @param[in,out] queue TX queue
+ * @return 0 on success, -EINVAL if queue is NULL, -EIO if terminal, or a
+ *         frame-pool error.
+ *         On failure, the entry whose buffer could not be released remains
+ *         valid so the operation can be retried.
  */
-void tx_queue_clear(struct tx_queue *_Nonnull queue);
+int tx_queue_clear(struct tx_queue *_Nonnull queue);
 
 /**
  * @brief Destroy a TX queue (releases pthread mutex on POSIX).
  *
- * Propagates pthread_mutex_destroy failures. Zephyr path is no-op.
+ * The caller MUST have exclusive ownership: all threads and callbacks that
+ * can access the queue must be stopped and joined before this call. Concurrent
+ * queue operations during destruction are unsupported.
+ *
+ * Propagates frame-pool and pthread mutex failures. A failed operation is
+ * retryable unless the queue enters its terminal state; terminal queues reject
+ * all later operations with -EIO and must not be reinitialized in place.
  *
  * @param[in,out] queue TX queue
  * @return 0 on success, negative errno on mutex destroy failure

@@ -1,0 +1,177 @@
+{
+  "$schema": "./mqtt_sn.schema.json",
+  "format_version": 2,
+  "name": "mqtt_sn",
+  "description": "OASIS MQTT-SN 1.2 wire encodings for spec 07 section 10.4 message types on UDP port 10883. Bytes independently hand-derived from the OASIS Length-MsgType-payload layout (1-byte length when total<=255), not from lichen.mqttsn.encode. Port 10883 dispatch lives in port_dispatch.json; SCHC Rule 7 lives in schc_compression.json.",
+  "spec": "OASIS MQTT-SN 1.2 Table 2, spec/07-transport-app.md section 10.4",
+  "vectors": [
+    {
+      "name": "spec_10_4_message_types",
+      "description": "Message type codes listed in spec 07 section 10.4 (OASIS MQTT-SN 1.2 Table 2 subset).",
+      "kind": "type_table",
+      "expected": "accept",
+      "types": [
+        {"name": "CONNECT", "code": 4},
+        {"name": "CONNACK", "code": 5},
+        {"name": "REGISTER", "code": 10},
+        {"name": "REGACK", "code": 11},
+        {"name": "PUBLISH", "code": 12},
+        {"name": "PUBACK", "code": 13},
+        {"name": "SUBSCRIBE", "code": 18},
+        {"name": "SUBACK", "code": 19}
+      ]
+    },
+    {
+      "name": "connect_clean_test",
+      "description": "CONNECT client_id=test duration=60 clean_session=1 ProtocolId=0x01. Length=10.",
+      "kind": "wire",
+      "expected": "accept",
+      "msg_type": 4,
+      "msg_type_name": "CONNECT",
+      "encoded": "0a040401003c74657374",
+      "fields": {
+        "client_id_hex": "74657374",
+        "duration": 60,
+        "clean_session": true,
+        "will": false
+      }
+    },
+    {
+      "name": "connack_accepted",
+      "description": "CONNACK ReturnCode=0x00 Accepted. Length=3.",
+      "kind": "wire",
+      "expected": "accept",
+      "msg_type": 5,
+      "msg_type_name": "CONNACK",
+      "encoded": "030500",
+      "fields": {
+        "return_code": 0
+      }
+    },
+    {
+      "name": "register_sensors_temp",
+      "description": "REGISTER topic_id=0 msg_id=1 topic_name=sensors/temp. Length=18.",
+      "kind": "wire",
+      "expected": "accept",
+      "msg_type": 10,
+      "msg_type_name": "REGISTER",
+      "encoded": "120a0000000173656e736f72732f74656d70",
+      "fields": {
+        "topic_id": 0,
+        "msg_id": 1,
+        "topic_name_hex": "73656e736f72732f74656d70"
+      }
+    },
+    {
+      "name": "regack_assigned",
+      "description": "REGACK topic_id=1 msg_id=2 ReturnCode=0. Length=7.",
+      "kind": "wire",
+      "expected": "accept",
+      "msg_type": 11,
+      "msg_type_name": "REGACK",
+      "encoded": "070b0001000200",
+      "fields": {
+        "topic_id": 1,
+        "msg_id": 2,
+        "return_code": 0
+      }
+    },
+    {
+      "name": "publish_qos1_hello",
+      "description": "PUBLISH QoS 1 topic_id=42 msg_id=1 data=hello. Flags=0x20. Length=12.",
+      "kind": "wire",
+      "expected": "accept",
+      "msg_type": 12,
+      "msg_type_name": "PUBLISH",
+      "encoded": "0c0c20002a000168656c6c6f",
+      "fields": {
+        "topic_id": 42,
+        "msg_id": 1,
+        "qos": 1,
+        "data_hex": "68656c6c6f"
+      }
+    },
+    {
+      "name": "publish_qos_minus_one",
+      "description": "PUBLISH QoS -1 (flags QoS=3) fire-and-forget, topic_id=1 data=x. Spec 10.4 key difference from MQTT.",
+      "kind": "wire",
+      "expected": "accept",
+      "msg_type": 12,
+      "msg_type_name": "PUBLISH",
+      "encoded": "080c600001000078",
+      "fields": {
+        "topic_id": 1,
+        "msg_id": 0,
+        "qos": 3,
+        "data_hex": "78"
+      }
+    },
+    {
+      "name": "puback_topic256",
+      "description": "PUBACK topic_id=256 msg_id=512 ReturnCode=0. Length=7.",
+      "kind": "wire",
+      "expected": "accept",
+      "msg_type": 13,
+      "msg_type_name": "PUBACK",
+      "encoded": "070d0100020000",
+      "fields": {
+        "topic_id": 256,
+        "msg_id": 512,
+        "return_code": 0
+      }
+    },
+    {
+      "name": "subscribe_topic_name",
+      "description": "SUBSCRIBE QoS 1 msg_id=1 topic=test/topic (normal topic name). Length=15.",
+      "kind": "wire",
+      "expected": "accept",
+      "msg_type": 18,
+      "msg_type_name": "SUBSCRIBE",
+      "encoded": "0f12200001746573742f746f706963",
+      "fields": {
+        "msg_id": 1,
+        "qos": 1,
+        "topic_hex": "746573742f746f706963"
+      }
+    },
+    {
+      "name": "suback_qos2",
+      "description": "SUBACK QoS 2 topic_id=1 msg_id=2 ReturnCode=0. Flags=0x40. Length=8.",
+      "kind": "wire",
+      "expected": "accept",
+      "msg_type": 19,
+      "msg_type_name": "SUBACK",
+      "encoded": "0813400001000200",
+      "fields": {
+        "topic_id": 1,
+        "msg_id": 2,
+        "qos": 2,
+        "return_code": 0
+      }
+    },
+    {
+      "name": "empty_message",
+      "description": "Zero-length datagram is not a valid MQTT-SN message.",
+      "kind": "reject",
+      "expected": "reject",
+      "reason": "too_short",
+      "encoded": ""
+    },
+    {
+      "name": "truncated_connect",
+      "description": "Length field 0x0a claims 10 bytes but only 6 are present.",
+      "kind": "reject",
+      "expected": "reject",
+      "reason": "truncated",
+      "encoded": "0a040401003c"
+    },
+    {
+      "name": "reserved_msg_type_0x03",
+      "description": "MsgType 0x03 is reserved in OASIS MQTT-SN 1.2 Table 2.",
+      "kind": "reject",
+      "expected": "reject",
+      "reason": "unknown_type",
+      "encoded": "0203"
+    }
+  ]
+}

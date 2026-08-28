@@ -1,0 +1,160 @@
+{
+  "description": "RPL message parsing test vectors (DIS/DIO/DAO/DAO-ACK per RFC 6550). Round-trip: encode(fields) == encoded AND decode(encoded) == fields.",
+  "reference": "spec/04-network-routing.md section 2",
+  "format": {
+    "type": "Message type: dis, dio, dao, dao_ack",
+    "encoded": "Binary message as hex string (excluding ICMPv6 header)",
+    "fields": "Parsed field values",
+    "expect_error": "Error code for malformed input (if present, parsing must fail)"
+  },
+  "vectors": [
+    {
+      "name": "dis_base",
+      "type": "dis",
+      "description": "Normal DODAG Information Solicitation: zero flags, zero reserved (RFC 6550 6.2)",
+      "encoded": "0000",
+      "fields": {
+        "flags": 0,
+        "reserved": 0
+      }
+    },
+    {
+      "name": "dis_flags_ignored",
+      "type": "dis",
+      "description": "RFC 6550 6.2: receivers MUST ignore DIS flag bits",
+      "encoded": "a500",
+      "fields": {
+        "flags": 165,
+        "reserved": 0
+      }
+    },
+    {
+      "name": "dis_truncated",
+      "type": "dis",
+      "description": "DIS shorter than two-byte base must be rejected",
+      "encoded": "00",
+      "expect_error": "too_short"
+    },
+    {
+      "name": "dis_nonzero_reserved",
+      "type": "dis",
+      "description": "Nonzero DIS Reserved byte violates RFC 6550 6.2",
+      "encoded": "0001",
+      "expect_error": "nonzero_reserved"
+    },
+    {
+      "name": "dio_base",
+      "type": "dio",
+      "description": "LICHEN root RPL DIO with AddrForKey DODAGID and SCHC Rule Version option",
+      "encoded": "0001010091000000027dd5cfc679ab637dd5cfc679ab6342130103",
+      "fields": {
+        "rpl_instance_id": 0,
+        "version": 1,
+        "rank": 256,
+        "grounded": true,
+        "mode_of_operation": 2,
+        "preference": 1,
+        "dtsn": 0,
+        "flags": 0,
+        "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342"
+      }
+    },
+    {
+      "name": "dio_non_root",
+      "type": "dio",
+      "description": "LICHEN non-root parent DIO at rank 512",
+      "encoded": "0001020091000000027dd5cfc679ab637dd5cfc679ab6342130103",
+      "fields": {
+        "rpl_instance_id": 0,
+        "version": 1,
+        "rank": 512,
+        "grounded": true,
+        "mode_of_operation": 2,
+        "preference": 1,
+        "dtsn": 0,
+        "flags": 0,
+        "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342"
+      }
+    },
+    {
+      "name": "dio_malformed_version_length_zero",
+      "type": "dio",
+      "description": "Type 0x13 option with Length zero is not canonical",
+      "options_hex": "1300",
+      "expect_error": "invalid_schc_version_option"
+    },
+    {
+      "name": "dio_duplicate_version_option",
+      "type": "dio",
+      "description": "Two Type 0x13 options must be rejected",
+      "options_hex": "130103130103",
+      "expect_error": "invalid_schc_version_option"
+    },
+    {
+      "name": "dao_base",
+      "type": "dao",
+      "description": "Base RPL DAO without DODAGID (D flag clear)",
+      "encoded": "00000005",
+      "fields": {
+        "rpl_instance_id": 0,
+        "dao_sequence": 5,
+        "ack_requested": false,
+        "flags": 0,
+        "dodag_id": null
+      }
+    },
+    {
+      "name": "dao_ack_accept",
+      "type": "dao_ack",
+      "description": "Successful DAO acknowledgement: status 0, no DODAGID",
+      "encoded": "00000500",
+      "fields": {
+        "rpl_instance_id": 0,
+        "flags": 0,
+        "dao_sequence": 5,
+        "status": 0,
+        "dodag_id": null
+      }
+    },
+    {
+      "name": "dao_ack_rejected",
+      "type": "dao_ack",
+      "description": "Non-success DAO-ACK with status 1",
+      "encoded": "00000601",
+      "fields": {
+        "rpl_instance_id": 0,
+        "flags": 0,
+        "dao_sequence": 6,
+        "status": 1,
+        "dodag_id": null
+      }
+    },
+    {
+      "name": "dao_ack_with_dodagid",
+      "type": "dao_ack",
+      "description": "DAO-ACK with D-flag carries DODAGID",
+      "encoded": "00800900027dd5cfc679ab637dd5cfc679ab6342",
+      "fields": {
+        "rpl_instance_id": 0,
+        "flags": 0,
+        "dao_sequence": 9,
+        "status": 0,
+        "dodag_id": "27d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342"
+      }
+    },
+    {
+      "name": "dao_ack_too_short",
+      "type": "dao_ack",
+      "description": "DAO-ACK shorter than four-byte base must be rejected",
+      "encoded": "000005",
+      "expect_error": "too_short"
+    },
+    {
+      "name": "dao_ack_missing_dodagid",
+      "type": "dao_ack",
+      "description": "D flag set without DODAGID bytes must be rejected",
+      "encoded": "00800500",
+      "expect_error": "missing_dodagid"
+    }
+  ]
+}

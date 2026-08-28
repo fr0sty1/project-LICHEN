@@ -110,7 +110,10 @@ impl Group {
     /// Rotate key_epoch after a removal (spec 18.8.2). Callers replace key material.
     pub fn rekey(&mut self, removed_member: Option<&str>) {
         if let Some(member) = removed_member {
-            self.members.retain(|m| m != member);
+            if member != self.owner {
+                self.members.retain(|m| m != member);
+                self.admins.retain(|admin| admin != member);
+            }
         }
         self.key_epoch = self.key_epoch.saturating_add(1);
     }
@@ -157,6 +160,29 @@ mod tests {
         group.rekey(Some("0200::3333"));
         assert_eq!(group.key_epoch, 2);
         assert!(!group.members.iter().any(|m| m == "0200::3333"));
+        assert!(group.members.contains(&group.owner));
+    }
+
+    #[test]
+    fn rekey_drops_admin_but_never_owner() {
+        let mut group = Group::new(
+            "team-alpha".into(),
+            "Team Alpha".into(),
+            "ff35:0040::1".into(),
+            "0200::1111".into(),
+            1716742800,
+        );
+        let admin = "0200::2222".to_string();
+        group.members.push(admin.clone());
+        group.admins.push(admin.clone());
+
+        group.rekey(Some(&admin));
+        assert!(!group.members.contains(&admin));
+        assert!(!group.admins.contains(&admin));
+        assert!(group.members.contains(&group.owner));
+
+        let owner = group.owner.clone();
+        group.rekey(Some(&owner));
         assert!(group.members.contains(&group.owner));
     }
 }

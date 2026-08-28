@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+#include <errno.h>
 #include <lichen/replay.h>
 
 void lichen_replay_init(struct lichen_replay_window *rw)
@@ -121,19 +122,49 @@ struct lichen_replay_window *lichen_replay_get(struct lichen_replay_table *table
 	return &table->peers[free_slot].window;
 }
 
-void lichen_replay_remove(struct lichen_replay_table *table,
-			  const uint8_t public_key[LICHEN_PK_LEN])
+int lichen_replay_commit(struct lichen_replay_table *table,
+			 const uint8_t public_key[LICHEN_PK_LEN], uint8_t epoch,
+			 uint16_t seq)
+{
+	struct lichen_replay_window *window;
+
+	if (table == NULL || public_key == NULL) {
+		return -EINVAL;
+	}
+	if (table->backend != NULL) {
+		if (table->backend->commit == NULL) {
+			return -EACCES;
+		}
+		return table->backend->commit(table->backend_user, table, public_key,
+					      epoch, seq);
+	}
+	window = lichen_replay_get(table, public_key);
+	if (window == NULL) {
+		return -ENOSPC;
+	}
+	return lichen_replay_check(window, epoch, seq) ? 0 : -EALREADY;
+}
+
+int lichen_replay_remove(struct lichen_replay_table *table,
+			 const uint8_t public_key[LICHEN_PK_LEN])
 {
 	if (table == NULL || public_key == NULL) {
-		return;
+		return -EINVAL;
+	}
+	if (table->backend != NULL) {
+		if (table->backend->remove == NULL) {
+			return -EACCES;
+		}
+		return table->backend->remove(table->backend_user, table, public_key);
 	}
 
 	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
 		if (table->peers[i].active &&
 		    memcmp(table->peers[i].public_key, public_key,
 			   LICHEN_PK_LEN) == 0) {
-			table->peers[i].active = false;
-			return;
+			memset(&table->peers[i], 0, sizeof(table->peers[i]));
+			return 0;
 		}
 	}
+	return 0;
 }

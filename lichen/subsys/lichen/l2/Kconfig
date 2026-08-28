@@ -6,6 +6,7 @@
 config LICHEN_IPV6
 	bool "LICHEN IPv6 address utilities"
 	depends on LICHEN
+	select LICHEN_CRYPTO_MONOCYPHER
 	# The l2 library always compiles lichen_util.c (EUI-64 derivation),
 	# which needs TinyCrypt SHA-256 — select it here, not only from
 	# LICHEN_LORA_L2, so radio-less builds (native_sim) link too.
@@ -13,7 +14,8 @@ config LICHEN_IPV6
 	select TINYCRYPT_SHA256
 	default y
 	help
-	  Enable LICHEN IPv6 address utilities:
+	  Enable LICHEN IPv6 address utilities. Monocypher supplies the
+	  canonical SHA-512 public-key address derivation:
 	  - Link-local fe80::/10 (control plane)
 	  - Yggdrasil-derived 02xx::/64 primary mesh address from Ed25519 pubkey
 	  - GUA optional (from DIO)
@@ -287,4 +289,3 @@ config LICHEN_LR_FHSS_CR
 	default 1
 	range 1 2
 	depends on LICHEN_LR_FHSS_ENABLED
-

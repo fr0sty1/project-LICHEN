@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-253m.9",
+  "title": "GPIO HAL for concentrator control",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:03.978593Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:03.978593Z",
+  "labels": [
+    "c",
+    "hal",
+    "hardware",
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-253m.9",
+      "depends_on_id": "project-LICHEN-253m",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:07.462599Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+tests:
+  lichen.link.replay_persist:
+    platform_allow:
+      - qemu_x86
+    tags:
+      - lichen
+      - link
+      - replay
+      - security

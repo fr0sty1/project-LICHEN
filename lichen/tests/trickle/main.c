@@ -10,6 +10,7 @@
  */
 
 #include <lichen/rpl_trickle.h>
+#include <errno.h>
 #include <stdio.h>
 
 /* ─── test framework ──────────────────────────────────────────────────────── */
@@ -132,9 +133,12 @@ static int test_reset_noop_when_already_at_imin(void)
 	lichen_trickle_init(&t, 1000, 4, 10);
 	lichen_trickle_start(&t, 0, 0);
 
-	uint32_t tt_before = t.transmit_time;
-	lichen_trickle_reset(&t, 0, 999); /* different rand_offset - should not restart */
-	ASSERT_EQ(t.transmit_time, tt_before, "transmit_time unchanged on noop reset");
+	t.counter = 4;
+	ASSERT_TRUE(lichen_trickle_reset(&t, 100, 499),
+		    "authorized profile reset at Imin");
+	ASSERT_EQ(t.interval_start, 100, "reset restarts interval at Imin");
+	ASSERT_EQ(t.transmit_time, 1099, "reset samples a fresh transmit point");
+	ASSERT_EQ(t.counter, 0, "reset clears counter");
 
 	return 1;
 }
@@ -175,29 +179,24 @@ static int test_init_rejects_zero_k(void)
 {
 	struct lichen_trickle t;
 
-	/* RFC 6206 §4.2: if k=0, counter (0) is never < k (0), so
-	 * heard_consistent always suppresses. This is degenerate but valid
-	 * per the spec. Test that init handles it gracefully. */
-	lichen_trickle_init(&t, 1000, 4, 0);
-	ASSERT_EQ(t.k, 0, "k=0 accepted");
-	lichen_trickle_start(&t, 0, 0);
-	ASSERT_FALSE(lichen_trickle_should_transmit(&t),
-		     "k=0: should_transmit returns false");
-	ASSERT_FALSE(lichen_trickle_fire_transmit(&t),
-		     "k=0: fire_transmit returns false");
+	/* RFC 6206 §4.1 defines k as a natural number greater than zero. */
+	ASSERT_EQ(lichen_trickle_init(&t, 1000, 4, 0), -EINVAL,
+		  "k=0 rejected");
+	ASSERT_FALSE(t.initialized, "invalid timer remains uninitialized");
+	ASSERT_FALSE(lichen_trickle_start(&t, 0, 0),
+		     "invalid timer cannot start");
 
 	return 1;
 }
 
 static int test_init_null_pointer_does_not_crash(void)
 {
-	/* NULL pointer to init should be handled gracefully (no assertion failure) */
-	lichen_trickle_init(NULL, 1000, 4, 10);
-	lichen_trickle_start(NULL, 0, 0);
-	lichen_trickle_fire_transmit(NULL);
-	lichen_trickle_expire(NULL, 0, 0);
-	lichen_trickle_reset(NULL, 0, 0);
-	/* If we reach here without crash, the test passes */
+	ASSERT_EQ(lichen_trickle_init(NULL, 1000, 4, 10), -EINVAL,
+		  "NULL init rejected");
+	ASSERT_FALSE(lichen_trickle_start(NULL, 0, 0), "NULL start rejected");
+	ASSERT_FALSE(lichen_trickle_fire_transmit(NULL), "NULL fire rejected");
+	ASSERT_FALSE(lichen_trickle_expire(NULL, 0, 0), "NULL expire rejected");
+	ASSERT_FALSE(lichen_trickle_reset(NULL, 0, 0), "NULL reset rejected");
 	return 1;
 }
 
@@ -211,11 +210,9 @@ static int test_fire_transmit_before_start_has_counter_below_k(void)
 {
 	struct lichen_trickle t;
 
-	/* fire_transmit before start: counter=0 < k=10, so must transmit.
-	 * The timer has not started but state is consistent enough to answer. */
 	lichen_trickle_init(&t, 1000, 4, 10);
-	ASSERT_TRUE(lichen_trickle_fire_transmit(&t),
-		    "fire before start: counter=0 < k=10, returns true");
+	ASSERT_FALSE(lichen_trickle_fire_transmit(&t),
+		     "fire before start rejected");
 	return 1;
 }
 
@@ -223,11 +220,9 @@ static int test_expire_before_start_interval_stays_zero(void)
 {
 	struct lichen_trickle t;
 
-	/* expire before start: interval is 0 (init state), doubling 0*2=0,
-	 * which is < max_interval, so interval stays 0. This is harmless
-	 * because a future start() or reset() will re-initialize properly. */
 	lichen_trickle_init(&t, 1000, 4, 10);
-	lichen_trickle_expire(&t, 0, 0);
+	ASSERT_FALSE(lichen_trickle_expire(&t, 0, 0),
+		     "expire before start rejected");
 	ASSERT_EQ(t.interval, 0, "expire before start: interval stays 0");
 	ASSERT_EQ(t.transmit_time, 0, "expire before start: transmit_time=0");
 	return 1;
@@ -238,13 +233,9 @@ static int test_next_event_before_start_returns_transmit(void)
 	struct lichen_trickle t;
 	struct lichen_trickle_event ev;
 
-	/* After init but before start: transmitted=false, so next_event
-	 * returns TRANSMIT with transmit_time=0. The caller should handle
-	 * this as "first DIO due immediately" which is valid behavior. */
 	lichen_trickle_init(&t, 1000, 4, 10);
-	lichen_trickle_next_event(&t, &ev);
-	ASSERT_EQ(ev.type, LICHEN_TRICKLE_TRANSMIT,
-		  "next_event before start returns TRANSMIT");
+	ASSERT_FALSE(lichen_trickle_next_event(&t, &ev),
+		     "next_event before start reports no event");
 	return 1;
 }
 
@@ -263,21 +254,8 @@ static int test_redundancy_constant_zero_suppresses_always(void)
 {
 	struct lichen_trickle t;
 
-	/* k=0: even without hearing any consistent transmissions, counter (0)
-	 * is never < k (0), so should_transmit() is always false. */
-	lichen_trickle_init(&t, 1000, 4, 0);
-	lichen_trickle_start(&t, 0, 0);
-	ASSERT_FALSE(lichen_trickle_should_transmit(&t),
-		     "k=0: should_transmit false without hearing");
-
-	/* heard_consistent should not change behavior (counter saturates) */
-	lichen_trickle_heard_consistent(&t);
-	ASSERT_FALSE(lichen_trickle_should_transmit(&t),
-		     "k=0: should_transmit false after hearing");
-
-	/* c=0, k=0: 0 < 0 is false, so fire_transmit returns false */
-	ASSERT_FALSE(lichen_trickle_fire_transmit(&t),
-		     "k=0: fire_transmit returns false");
+	ASSERT_EQ(lichen_trickle_init(&t, 1000, 4, 0), -EINVAL,
+		  "RFC-invalid k=0 is rejected");
 	return 1;
 }
 
@@ -317,13 +295,15 @@ static int test_repeated_start_resets_interval(void)
 
 /* ─── additional tests for saturation and overflow ────────────────────────── */
 
-static int test_max_interval_saturates_on_overflow(void)
+static int test_max_interval_rejects_overflow(void)
 {
 	struct lichen_trickle t;
 
-	/* 1000 << 32 would overflow; should saturate at UINT32_MAX */
-	lichen_trickle_init(&t, 1000, 32, 10);
-	ASSERT_EQ(t.max_interval, UINT32_MAX, "max_interval saturates");
+	/* Silent saturation changes the configured Imax and makes 32-bit deadline
+	 * ordering ambiguous.  Invalid profiles fail closed instead. */
+	ASSERT_EQ(lichen_trickle_init(&t, 1000, 32, 10), -ERANGE,
+		  "max_interval overflow rejected");
+	ASSERT_FALSE(t.initialized, "overflowed profile stays inactive");
 
 	return 1;
 }
@@ -347,14 +327,88 @@ static int test_zero_imin_uses_safe_default(void)
 {
 	struct lichen_trickle t;
 
-	/* imin=0 would cause divide-by-zero or busy loop; init defends by using 1 */
-	lichen_trickle_init(&t, 0, 4, 10);
-	ASSERT_EQ(t.imin, 1, "imin=0 normalized to 1");
+	ASSERT_EQ(lichen_trickle_init(&t, 0, 4, 10), -EINVAL,
+		  "zero Imin rejected");
+	ASSERT_EQ(lichen_trickle_init(&t, 1, 4, 10), -EINVAL,
+		  "one-tick Imin cannot represent [I/2,I)");
 
-	lichen_trickle_start(&t, 0, 0);
-	ASSERT_EQ(t.interval, 1, "interval set to safe default");
-	ASSERT_TRUE(t.transmit_time > 0, "timer starts without immediate loop");
+	return 1;
+}
 
+static int test_profile_constants_and_max_math(void)
+{
+	struct lichen_trickle t;
+
+	ASSERT_EQ(lichen_trickle_init_profile(&t), 0, "profile init");
+	ASSERT_EQ(t.imin, 4000, "canonical Imin");
+	ASSERT_EQ(t.max_interval, 1024000, "canonical Imax");
+	ASSERT_EQ(t.k, 10, "canonical k");
+	return 1;
+}
+
+static int test_invalid_imax_overflow_fails_closed(void)
+{
+	struct lichen_trickle t;
+
+	ASSERT_EQ(lichen_trickle_init(&t, 4000, 32, 10), -ERANGE,
+		  "shift overflow rejected");
+	ASSERT_FALSE(t.initialized, "overflow leaves timer invalid");
+	ASSERT_EQ(lichen_trickle_init(&t, UINT32_MAX, 0, 10), -ERANGE,
+		  "interval beyond wrap-safe horizon rejected");
+	return 1;
+}
+
+static int test_random_offset_bounds_are_checked_atomically(void)
+{
+	struct lichen_trickle t;
+
+	lichen_trickle_init(&t, 1000, 4, 10);
+	ASSERT_FALSE(lichen_trickle_start(&t, 10, 500),
+		     "upper-exclusive random bound rejected");
+	ASSERT_FALSE(t.active, "failed start leaves timer inactive");
+	ASSERT_TRUE(lichen_trickle_start(&t, 10, 499), "last valid offset");
+	ASSERT_EQ(t.transmit_time, 1009, "last point is strictly before I");
+
+	t.counter = 7;
+	ASSERT_FALSE(lichen_trickle_reset(&t, 20, 500),
+		     "invalid reset offset rejected");
+	ASSERT_EQ(t.interval_start, 10, "failed reset preserves start");
+	ASSERT_EQ(t.counter, 7, "failed reset preserves counter");
+	return 1;
+}
+
+static int test_uptime_wrap_uses_modular_deadlines(void)
+{
+	struct lichen_trickle t;
+	struct lichen_trickle_event ev;
+	uint32_t start = UINT32_MAX - 299U;
+
+	lichen_trickle_init(&t, 1000, 0, 10);
+	ASSERT_TRUE(lichen_trickle_start(&t, start, 0), "start near wrap");
+	ASSERT_EQ(t.transmit_time, 200, "transmit deadline wraps");
+	ASSERT_EQ(lichen_trickle_interval_end(&t), 700, "interval end wraps");
+	ASSERT_FALSE(lichen_trickle_time_reached(UINT32_MAX, t.transmit_time),
+		     "pre-wrap time remains before wrapped deadline");
+	ASSERT_FALSE(lichen_trickle_time_reached(199, t.transmit_time),
+		     "one tick before deadline");
+	ASSERT_TRUE(lichen_trickle_time_reached(200, t.transmit_time),
+		    "deadline reached across wrap");
+	ASSERT_TRUE(lichen_trickle_next_event(&t, &ev), "event available");
+	ASSERT_EQ(ev.at_ms, 200, "event exposes wrapped deadline");
+	return 1;
+}
+
+static int test_state_transitions_reject_repeats(void)
+{
+	struct lichen_trickle t;
+
+	lichen_trickle_init(&t, 1000, 1, 10);
+	ASSERT_TRUE(lichen_trickle_start(&t, 0, 0), "start");
+	ASSERT_TRUE(lichen_trickle_fire_transmit(&t), "first fire");
+	ASSERT_FALSE(lichen_trickle_fire_transmit(&t), "repeated fire rejected");
+	ASSERT_TRUE(lichen_trickle_expire(&t, 1000, 0), "expire after fire");
+	ASSERT_FALSE(lichen_trickle_expire(&t, 1000, 0),
+		     "early expire in new interval rejected");
 	return 1;
 }
 
@@ -382,9 +436,14 @@ int main(void)
 	RUN_TEST(test_reset_noop_when_already_at_imin);
 	RUN_TEST(test_rand_offset_shifts_transmit_time);
 	RUN_TEST(test_odd_interval_bias_free_transmit_time);
-	RUN_TEST(test_max_interval_saturates_on_overflow);
+	RUN_TEST(test_max_interval_rejects_overflow);
 	RUN_TEST(test_counter_saturates_at_max);
 	RUN_TEST(test_zero_imin_uses_safe_default);
+	RUN_TEST(test_profile_constants_and_max_math);
+	RUN_TEST(test_invalid_imax_overflow_fails_closed);
+	RUN_TEST(test_random_offset_bounds_are_checked_atomically);
+	RUN_TEST(test_uptime_wrap_uses_modular_deadlines);
+	RUN_TEST(test_state_transitions_reject_repeats);
 
 	/* RFC2119 parameter validation */
 	RUN_TEST(test_init_rejects_zero_k);

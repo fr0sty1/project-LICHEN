@@ -69,6 +69,7 @@ from lichen.schc.rules import (
     Rule,
     SchcRuleVersionOption,
 )
+from lichen.schc.session_manager import SchcSessionManager
 
 __all__ = [
     "ALL_1",
@@ -109,6 +110,7 @@ __all__ = [
     "SchcContext",
     "SchcError",
     "SchcRuleVersionOption",
+    "SchcSessionManager",
     "UDP_PORT_RULE",
     "VersionMismatchError",
     "check_version_compatibility",

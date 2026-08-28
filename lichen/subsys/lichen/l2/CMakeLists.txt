@@ -8,7 +8,11 @@ zephyr_library_sources(
   lichen_util.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_LICHEN_IPV6 ipv6_addr.c)
+zephyr_library_sources_ifdef(CONFIG_LICHEN_IPV6
+  dad.c
+  ipv6_addr.c
+  short_addr.c
+)
 zephyr_library_sources_ifdef(CONFIG_LICHEN_ICMPV6 icmpv6.c)
 zephyr_library_sources_ifdef(CONFIG_LICHEN_LORA_L2
   lora_l2.c
@@ -36,6 +40,7 @@ endif()
 
 zephyr_include_directories(.)
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../link/include)
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../routing/include)
 
 # Link subsystem headers required for lichen_identity_ygg_addr_from_ed25519
 # (used by lichen_yggdrasil_addr in ipv6_addr.c). Matches pattern used in

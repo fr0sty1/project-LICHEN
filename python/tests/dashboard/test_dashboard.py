@@ -186,6 +186,7 @@ class TestIndexCards:
             "/partial/location",
             "/partial/mesh-stats",
             "/partial/messages",
+            "/partial/metrics",
             "/partial/neighbors",
             "/partial/presence",
             "/partial/sensors",
@@ -196,6 +197,59 @@ class TestIndexCards:
             with _mock_fetch([]):
                 partial = await client.get(target)
             assert partial.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Metrics telemetry with alerts
+# ---------------------------------------------------------------------------
+
+
+class TestPartialMetrics:
+    async def test_empty_metrics(self, client: AsyncClient) -> None:
+        with _mock_fetch([]):
+            resp = await client.get("/partial/metrics")
+        assert "No metrics data" in resp.text
+
+    async def test_metrics_renders_values(self, client: AsyncClient) -> None:
+        with _mock_fetch([
+            {"n": "rssi", "v": -85, "u": "dBm"},
+            {"n": "battery", "v": 72, "u": "%"},
+            {"n": "nodecount", "v": 12},
+        ]):
+            resp = await client.get("/partial/metrics")
+        assert resp.status_code == 200
+        assert "rssi" in resp.text
+        assert "-85" in resp.text
+        assert "battery" in resp.text
+        assert "72" in resp.text
+
+    async def test_metrics_shows_warning_for_low_battery(self, client: AsyncClient) -> None:
+        with _mock_fetch([{"n": "battery", "v": 20, "u": "%"}]):
+            resp = await client.get("/partial/metrics")
+        assert "warn" in resp.text
+        assert "WARNING" in resp.text
+
+    async def test_metrics_shows_critical_for_very_low_battery(self, client: AsyncClient) -> None:
+        with _mock_fetch([{"n": "battery", "v": 5, "u": "%"}]):
+            resp = await client.get("/partial/metrics")
+        assert "crit" in resp.text
+        assert "CRITICAL" in resp.text
+
+    async def test_metrics_shows_critical_for_poor_rssi(self, client: AsyncClient) -> None:
+        with _mock_fetch([{"n": "rssi", "v": -105, "u": "dBm"}]):
+            resp = await client.get("/partial/metrics")
+        assert "crit" in resp.text
+
+    async def test_metrics_no_alert_for_good_values(self, client: AsyncClient) -> None:
+        with _mock_fetch([{"n": "battery", "v": 80, "u": "%"}]):
+            resp = await client.get("/partial/metrics")
+        assert "warn" not in resp.text
+        assert "crit" not in resp.text
+
+    async def test_metrics_unreachable(self, client: AsyncClient) -> None:
+        with _mock_fetch(None):
+            resp = await client.get("/partial/metrics")
+        assert "No metrics data" in resp.text
 
 
 # ---------------------------------------------------------------------------

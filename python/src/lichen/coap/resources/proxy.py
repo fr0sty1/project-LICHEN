@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""CoAP proxy resource for constrained local transports."""
+"""CoAP forward proxy for LCI baseline mesh access."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ import aiocoap
 from aiocoap import BAD_GATEWAY, BAD_REQUEST, Message, resource
 
 # SECURITY: Mesh address prefixes allowed for proxy forwarding.
-# IPv6 ULA (fd00::/8) is the LICHEN mesh address space.
+# Native 0200::/8 is the LICHEN key-derived Yggdrasil address space.
 # Link-local (fe80::/10) may be used for direct neighbor access.
 _MESH_ALLOWED_PREFIXES = (
-    ipaddress.IPv6Network("fd00::/8"),
+    ipaddress.IPv6Network("0200::/8"),
     ipaddress.IPv6Network("fe80::/10"),
 )
 
@@ -24,7 +24,7 @@ def _is_mesh_uri(uri: str) -> bool:
     """Return True if *uri* targets a mesh-allowed address.
 
     SECURITY: Validates that the target host is an IPv6 address within
-    the mesh address space (ULA fd00::/8 or link-local fe80::/10).
+    the mesh address space (native 0200::/8 or link-local fe80::/10).
     Rejects hostnames, IPv4 addresses, and non-mesh IPv6 addresses
     to prevent SSRF attacks via the proxy.
     """
@@ -45,18 +45,18 @@ def _is_mesh_uri(uri: str) -> bool:
 
 
 class ProxyResource(resource.Resource):
-    """Optional CoAP forward proxy for constrained local transports.
+    """CoAP forward proxy for LCI baseline mesh access.
 
-    LCI clients normally address mesh nodes directly and let the local node
-    route IPv6 packets into the mesh. When direct routing is unavailable, a
-    client can send a request to ``/proxy`` on the gateway with a ``Proxy-Uri``
-    option naming the target mesh node::
+    LCI baseline clients have link-local reachability to the gateway and access
+    mesh nodes through this proxy using RFC 7252 Proxy-Uri. A client sends a
+    request to ``/proxy`` on the gateway with a ``Proxy-Uri`` option naming the
+    target mesh node::
 
         GET coap://[gateway]/proxy
-        Proxy-Uri: coap://[fd00::2]/status
+        Proxy-Uri: coap://[0200::1234:5678:9abc:def0]/status
 
     The gateway forwards the request via its mesh-side aiocoap context and
-    relays the response — including any CoAP error codes from the target.
+    relays the response, including any CoAP error codes from the target.
     The ``mesh_ctx`` must be a context whose transport can route to mesh nodes
     (e.g. a :class:`~lichen.coap.transport.LichenTransport` backed by a
     :class:`~lichen.coap.node_channel.NodeChannel`).
@@ -65,7 +65,7 @@ class ProxyResource(resource.Resource):
 
     SECURITY: To prevent SSRF, the proxy validates that the target URI is a
     ``coap://`` or ``coaps://`` URI with an IPv6 address in the mesh address
-    space (ULA fd00::/8 or link-local fe80::/10). Requests to hostnames, IPv4
+    space (native 0200::/8 or link-local fe80::/10). Requests to hostnames, IPv4
     addresses, or non-mesh IPv6 addresses are rejected with 4.00 Bad Request.
     """
 

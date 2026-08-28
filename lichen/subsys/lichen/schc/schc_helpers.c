@@ -16,6 +16,56 @@ bool is_link_local(const uint8_t addr[16])
 	return addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80;
 }
 
+bool is_canonical_link_local(const uint8_t addr[16])
+{
+	static const uint8_t prefix[8] = { 0xFE, 0x80, 0, 0, 0, 0, 0, 0 };
+
+	return memcmp(addr, prefix, sizeof(prefix)) == 0;
+}
+
+static bool is_unspecified(const uint8_t addr[16])
+{
+	static const uint8_t zero[16];
+
+	return memcmp(addr, zero, sizeof(zero)) == 0;
+}
+
+static bool is_loopback(const uint8_t addr[16])
+{
+	static const uint8_t loopback[16] = { [15] = 1 };
+
+	return memcmp(addr, loopback, sizeof(loopback)) == 0;
+}
+
+static bool is_ipv4_mapped(const uint8_t addr[16])
+{
+	static const uint8_t prefix[12] = {
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF
+	};
+
+	return memcmp(addr, prefix, sizeof(prefix)) == 0;
+}
+
+int validate_rule7_addresses(const uint8_t src[16], const uint8_t dst[16])
+{
+	if (is_unspecified(src) || is_loopback(src) || src[0] == 0xFF ||
+	    is_ipv4_mapped(src)) {
+		return SCHC_ERR_INVALID_ARGUMENT;
+	}
+	if (is_unspecified(dst) || is_loopback(dst) || is_ipv4_mapped(dst)) {
+		return SCHC_ERR_INVALID_ARGUMENT;
+	}
+	if (dst[0] == 0xFF) {
+		uint8_t scope = dst[1] & 0x0F;
+
+		if (scope < 2 || scope > 14) {
+			return SCHC_ERR_INVALID_ARGUMENT;
+		}
+	}
+
+	return SCHC_OK;
+}
+
 bool is_global(const uint8_t addr[16])
 {
 	return (addr[0] >> 5) == 0x01 ||             /* 2000::/3 */
@@ -29,7 +79,7 @@ bool is_ula(const uint8_t addr[16])
 
 uint16_t read_be16(const uint8_t *p)
 {
-	return ((uint16_t)p[0] << 8) | p[1];
+	return (uint16_t)(((uint16_t)p[0] << 8) | p[1]);
 }
 
 void write_be16(uint8_t *p, uint16_t value)
@@ -175,8 +225,8 @@ uint8_t *coap_tail_mut(uint8_t *coap)
 void coap_write_fixed(uint8_t *coap, uint8_t type, uint8_t tkl,
 		      uint8_t code, uint16_t mid)
 {
-	coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] =
-		(1u << 6) | ((type & 0x3u) << 4) | (tkl & 0x0Fu);
+	coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] = (uint8_t)(
+		(1u << 6) | ((type & 0x3u) << 4) | (tkl & 0x0Fu));
 	coap[SCHC_COAP_CODE_OFFSET] = code;
 	write_be16(&coap[SCHC_COAP_MID_OFFSET], mid);
 }

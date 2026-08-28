@@ -52,15 +52,17 @@ pub struct RouteEntry {
 }
 
 /// Canonical IPv6 route prefix.
-#[cfg(feature = "std")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RouteTarget {
     prefix: [u8; 16],
     prefix_len: u8,
 }
 
-#[cfg(feature = "std")]
 impl RouteTarget {
+    /// Construct a prefix key, clearing every bit after `prefix_len`.
+    ///
+    /// This representation is allocation-free and available in `no_std`
+    /// builds. Prefix lengths greater than 128 fail closed.
     pub fn new(mut prefix: [u8; 16], prefix_len: u8) -> Option<Self> {
         if prefix_len > 128 {
             return None;

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-9zfd.4",
+  "title": "Create Python harness to spawn/manage Meshtastic portduino instances",
+  "description": "Create a Python harness that spawns and manages Meshtastic portduino instances in simulation scenarios.\n\nComponents:\n\n1. **MeshtasticNode class**\n   - Spawn portduino binary with SimRadio enabled\n   - Configure node ID, position, radio params via env/args\n   - Capture stdout/stderr for logging\n   - Graceful shutdown with signal handling\n\n2. **Process management**\n   - Track multiple node processes\n   - Health monitoring (process alive, connected to Medium)\n   - Restart failed nodes with backoff\n   - Cleanup on scenario exit\n\n3. **Scenario integration**\n   - API compatible with existing LICHEN simulator nodes\n   - Support mixed topologies (LICHEN + Meshtastic)\n   - Provide scenario.add_meshtastic_node(id, x, y, z, config)\n\n4. **Configuration options**\n   - Path to portduino binary\n   - Medium simulator host:port\n   - Meshtastic channel settings\n   - Logging verbosity\n\n5. **Utility functions**\n   - Wait for all nodes to register with Medium\n   - Inject messages via Meshtastic Python API (optional)\n   - Collect node state for assertions\n\nLocation: python/lichen_sim/meshtastic_harness.py\n\nDependencies: Compiled portduino with SimRadio, running Medium simulator",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:49:29.355616Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:49:29.355616Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9zfd.4",
+      "depends_on_id": "project-LICHEN-worker6-9zfd",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:49:33.340469Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

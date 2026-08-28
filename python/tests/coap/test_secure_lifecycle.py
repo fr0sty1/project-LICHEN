@@ -550,7 +550,8 @@ async def test_failed_terminal_con_protection_retires_on_expiry() -> None:
     correlation = _RequestCorrelation(object(), observe=False, terminal=True)
     peer.inbound_requests[token] = correlation
 
-    await channel._send_protected(make_message(code=CONTENT, mtype=CON, mid=59, token=token), "peer")
+    msg = make_message(code=CONTENT, mtype=CON, mid=59, token=token)
+    await channel._send_protected(msg, "peer")
 
     assert peer.inbound_requests[token] is correlation
     assert correlation.con_mids == {59}
@@ -928,7 +929,8 @@ async def test_ordinary_inbound_correlation_retires_after_response(mtype: Any) -
     peer.inbound_requests[token] = correlation
     channel.response_completed("peer", token, correlation.lifecycle_id)
 
-    await channel._send_protected(make_message(code=CONTENT, mtype=mtype, mid=9, token=token), "peer")
+    msg = make_message(code=CONTENT, mtype=mtype, mid=9, token=token)
+    await channel._send_protected(msg, "peer")
 
     assert token not in peer.inbound_requests
 

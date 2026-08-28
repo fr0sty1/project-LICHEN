@@ -5,7 +5,9 @@ cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ble_app_owner)
 
-target_include_directories(app PRIVATE ../../apps/gateway/src)
+target_include_directories(app PRIVATE
+  ../../apps/gateway/src
+  ../../subsys/lichen/transport/include)
 if(DEFINED BLE_APP_OWNER_TEST_MODE)
   if(BLE_APP_OWNER_TEST_MODE STREQUAL "native")
     target_compile_definitions(app PRIVATE CONFIG_LORA_LICHEN_BLE=1)

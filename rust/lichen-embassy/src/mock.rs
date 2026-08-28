@@ -7,6 +7,7 @@ use lichen_hal::{
     ChannelConfig, Clock, NonVolatile, RadioConfig, RadioError, Rng, RxPacket, TxResult,
 };
 use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -163,13 +164,14 @@ impl Rng for MockRng {
     fn fill_bytes(&mut self, buf: &mut [u8]) {
         // SECURITY: Deterministic xorshift - NOT cryptographically secure.
         // ponytail: simple xorshift instead of pulling in rand crate
-        static SEED: Mutex<u64> = Mutex::new(0xDEADBEEF);
-        let mut seed = SEED.lock().unwrap();
+        static SEED: AtomicU64 = AtomicU64::new(0xDEADBEEF);
         for byte in buf.iter_mut() {
-            *seed ^= *seed << 13;
-            *seed ^= *seed >> 7;
-            *seed ^= *seed << 17;
-            *byte = *seed as u8;
+            let mut s = SEED.load(Ordering::Relaxed);
+            s ^= s << 13;
+            s ^= s >> 7;
+            s ^= s << 17;
+            SEED.store(s, Ordering::Relaxed);
+            *byte = s as u8;
         }
     }
 }

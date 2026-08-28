@@ -100,16 +100,122 @@ struct lichen_key_entry {
 	bool valid;             /**< Entry in use */
 };
 
+/** Result of an authenticated TOFU observation. */
+enum lichen_key_pin_result {
+	LICHEN_KEY_PIN_NEW = 0,
+	LICHEN_KEY_PIN_MATCH,
+};
+
+/** Bounded audit record for an authenticated peer-key mismatch. */
+struct lichen_key_mismatch_audit {
+	uint8_t iid[LICHEN_KEY_IID_LEN];
+	uint8_t pinned_pubkey[LICHEN_KEY_PUBKEY_LEN];
+	uint8_t presented_pubkey[LICHEN_KEY_PUBKEY_LEN];
+	uint64_t sequence;       /**< Monotonic event identifier for this boot. */
+	uint32_t first_seen;     /**< First observation of this mismatch. */
+	uint32_t last_seen;      /**< Most recent observation of this mismatch. */
+	uint32_t attempts;       /**< Saturating count, including replays. */
+	int last_delivery_error; /**< 0 after delivery, negative errno otherwise. */
+	bool valid;
+};
+
+/**
+ * Deliver a key-mismatch security event to an authenticated audit sink.
+ *
+ * The callback is synchronous, MUST copy the event before returning, and MUST
+ * NOT re-enter the key-store API. A zero return means the sink durably accepted
+ * the event; a negative errno leaves it pending for retry.
+ */
+typedef int (*lichen_key_mismatch_alert_cb)(
+	void *_Nullable user,
+	const struct lichen_key_mismatch_audit *_Nonnull event);
+
+/**
+ * Load one durable, compact key-store snapshot.
+ *
+ * The backend MUST authenticate the snapshot, reject rollback, and return
+ * -ENOENT only when no snapshot has ever been committed. Entries occupy
+ * indices [0, *count), and the revision is monotonically increasing.
+ */
+typedef int (*lichen_key_store_load_cb)(
+	void *_Nullable user,
+	struct lichen_key_entry *_Nonnull entries, size_t capacity,
+	size_t *_Nonnull count, uint64_t *_Nonnull revision);
+
+/**
+ * Atomically persist one compact key-store snapshot.
+ *
+ * The callback MUST copy all input before returning and MUST return success
+ * only after the snapshot and revision are durably committed. It MUST NOT
+ * call back into the key-store API.
+ */
+typedef int (*lichen_key_store_save_cb)(
+	void *_Nullable user,
+	const struct lichen_key_entry *_Nonnull entries, size_t count,
+	uint64_t revision);
+
+/**
+ * Initialize the durable TOFU store and restore its last committed snapshot.
+ *
+ * Loading and validation are atomic: on error, the active in-memory store is
+ * unchanged and first-contact pinning remains disabled.
+ */
+int lichen_key_store_init(lichen_key_store_load_cb _Nonnull load_cb,
+			  lichen_key_store_save_cb _Nonnull save_cb,
+			  void *_Nullable user);
+
+/**
+ * Verify the key-derived IID and atomically pin a peer on first contact.
+ *
+ * Durable initialization is required. A new pin is published to readers only
+ * after the persistence callback succeeds. An already pinned matching key is
+ * accepted without another flash write.
+ *
+ * @return 0, -EKEYREJECTED for IID/key mismatch, -EEXIST for a changed pinned
+ *         key, -EACCES before durable initialization, or a backend error.
+ */
+int lichen_key_store_verify_or_pin(
+	const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+	const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+	enum lichen_key_pin_result *_Nullable result);
+
+/**
+ * Register or replace the authenticated key-mismatch alert sink.
+ *
+ * Pending undelivered audit records are retried immediately.
+ * Pass NULL to detach the sink while retaining bounded audit state.
+ *
+ * @return 0 when all pending events were delivered, otherwise the first
+ *         callback error. Registration remains active on callback error.
+ */
+int lichen_key_store_set_mismatch_alert_cb(
+	lichen_key_mismatch_alert_cb _Nullable alert_cb,
+	void *_Nullable user);
+
+/**
+ * Copy the current bounded mismatch audit record for a pinned peer.
+ *
+ * Replayed presentations of the same mismatched key increment @c attempts but
+ * do not redeliver an event that the sink already accepted.
+ */
+int lichen_key_store_get_mismatch_audit(
+	const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
+	struct lichen_key_mismatch_audit *_Nonnull audit);
+
 /**
  * @brief Add or update a peer key
  *
  * SECURITY: TOFU key pinning enforced - existing keys with different
  * trust levels cannot have their pubkey changed. Remove first.
  *
+ * The trust level and IID/pubkey binding are validated on every call,
+ * regardless of persistence readiness.
+ *
  * @param[in] iid        8-byte interface identifier
  * @param[in] pubkey     32-byte Ed25519 public key
  * @param[in] trust      Trust level for the key
- * @return 0 on success, -ENOSPC if store full, -EEXIST on key mismatch
+ * @return 0 on success, -ENOSPC if store full, -EEXIST on key mismatch,
+ *         -EKEYREJECTED if trust is invalid or iid is not the key-derived IID
  */
 int lichen_key_store_put(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
 			 const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],

@@ -937,7 +937,7 @@ class TestNodeSessionStateMachine:
         # Decrypt seed to enable pubkey verification
         seed = os.urandom(32)
         encrypted = br_session.encrypt_seed(seed)
-        new_identity = node_session.decrypt_seed(encrypted.encode())
+        node_session.decrypt_seed(encrypted.encode())
 
         assert node_session.state == ProvisioningState.ESTABLISHED
 

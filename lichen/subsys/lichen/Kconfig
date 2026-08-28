@@ -14,9 +14,11 @@ if LICHEN
 rsource "app_identity/Kconfig"
 rsource "app_interface/Kconfig"
 rsource "coap/Kconfig"
+rsource "compact_cot/Kconfig"
 rsource "crypto/Kconfig"
 rsource "edhoc/Kconfig"
 rsource "gcp/Kconfig"
+rsource "gateway/Kconfig"
 rsource "hal/Kconfig"
 rsource "link/Kconfig"
 rsource "meshcore/Kconfig"
@@ -63,5 +65,3 @@ endif # LICHEN
 # (a0yn/syn6/48xu/9nq6/z4oj/nm65/07am/8nhx). Cleaned stale bead refs (zrh2/da2q/5273) from
 # adaptive-SF/CCA/TDMA/multi-channel help texts per worker20. Fixed whitespace/indent from
 # parallel workers. Matches canonical style. No dead code.
-
-

@@ -12,6 +12,9 @@
 
 static const char * const valid_path[] = { "status", NULL };
 static const uint8_t cbor_payload[] = { 0xa0 };
+static const char overlong_component[] =
+	"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	"aaaaaaaaaaaaaaaa";
 
 static struct sockaddr_in6 test_addr(void)
 {
@@ -57,6 +60,18 @@ ZTEST(coap_client_api, test_request_rejects_null_payload_with_nonzero_length)
 	zassert_equal(lichen_coap_request(&req), LICHEN_COAP_ERR_INVALID_PARAM);
 }
 
+ZTEST(coap_client_api, test_request_payload_requires_content_format)
+{
+	struct lichen_coap_request req = valid_request();
+
+	req.method = COAP_METHOD_POST;
+	req.payload = cbor_payload;
+	req.payload_len = sizeof(cbor_payload);
+	req.content_format = LICHEN_COAP_FMT_UNSET;
+
+	zassert_equal(lichen_coap_request(&req), LICHEN_COAP_ERR_INVALID_PARAM);
+}
+
 ZTEST(coap_client_api, test_request_rejects_invalid_path_arrays)
 {
 	const char * const unterminated_path[LICHEN_COAP_MAX_PATH_COMPONENTS] = {
@@ -69,6 +84,28 @@ ZTEST(coap_client_api, test_request_rejects_invalid_path_arrays)
 
 	req = valid_request();
 	req.path = unterminated_path;
+	zassert_equal(lichen_coap_request(&req), LICHEN_COAP_ERR_INVALID_PARAM);
+
+	const char * const overlong_path[] = { overlong_component, NULL };
+	req = valid_request();
+	req.path = overlong_path;
+	zassert_equal(lichen_coap_request(&req), LICHEN_COAP_ERR_NO_MEMORY);
+}
+
+ZTEST(coap_client_api, test_request_rejects_invalid_method_and_destination)
+{
+	struct lichen_coap_request req = valid_request();
+
+	req.method = 0U;
+	zassert_equal(lichen_coap_request(&req), LICHEN_COAP_ERR_INVALID_PARAM);
+	req = valid_request();
+	req.method = UINT8_MAX;
+	zassert_equal(lichen_coap_request(&req), LICHEN_COAP_ERR_INVALID_PARAM);
+	req = valid_request();
+	req.addr.sin6_family = AF_UNSPEC;
+	zassert_equal(lichen_coap_request(&req), LICHEN_COAP_ERR_INVALID_PARAM);
+	req = valid_request();
+	req.addr.sin6_port = 0U;
 	zassert_equal(lichen_coap_request(&req), LICHEN_COAP_ERR_INVALID_PARAM);
 }
 

@@ -14,6 +14,27 @@ struct iid_vector {
 	uint8_t native[16];
 };
 
+struct eui64_iid_vector {
+	uint8_t eui64[8];
+	uint8_t iid[8];
+};
+
+/* Exact EUI-64 helper literals from test/vectors/ipv6-addresses.json. */
+static const struct eui64_iid_vector eui64_vectors[] = {
+	{
+		.eui64 = {0x10, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0},
+		.iid = {0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0},
+	},
+	{
+		.eui64 = {0},
+		.iid = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+	},
+	{
+		.eui64 = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+		.iid = {0xfd, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+	},
+};
+
 /* Exact literals from test/vectors/yggdrasil-derivation.json. */
 static const struct iid_vector vectors[] = {
 	{
@@ -88,6 +109,27 @@ int main(void)
 			},
 		},
 	};
+
+	for (size_t i = 0; i < sizeof(eui64_vectors) / sizeof(eui64_vectors[0]); i++) {
+		uint8_t input[8];
+
+		memcpy(input, eui64_vectors[i].eui64, sizeof(input));
+		memset(iid, 0xa5, sizeof(iid));
+		if (lichen_eui64_to_iid(input, iid) != 0 ||
+		    memcmp(iid, eui64_vectors[i].iid, sizeof(iid)) != 0 ||
+		    memcmp(input, eui64_vectors[i].eui64, sizeof(input)) != 0) {
+			fprintf(stderr, "EUI-64 U/L vector %zu failed\n", i);
+			return 1;
+		}
+
+		/* Exact in-place conversion must apply the same single-bit XOR. */
+		memcpy(iid, eui64_vectors[i].eui64, sizeof(iid));
+		if (lichen_eui64_to_iid(iid, iid) != 0 ||
+		    memcmp(iid, eui64_vectors[i].iid, sizeof(iid)) != 0) {
+			fprintf(stderr, "in-place EUI-64 U/L vector %zu failed\n", i);
+			return 1;
+		}
+	}
 
 	for (size_t i = 0; i < sizeof(link_local_vectors) / sizeof(link_local_vectors[0]); i++) {
 		memset(&link_local, 0xa5, sizeof(link_local));
@@ -194,7 +236,10 @@ int main(void)
 	memcpy(iid, sentinel, sizeof(iid));
 	memset(&link_local, 0xa5, sizeof(link_local));
 	addr_sentinel = link_local;
-	if (lichen_pubkey_to_iid(NULL, iid) != -EINVAL ||
+	if (lichen_eui64_to_iid(NULL, iid) != -EINVAL ||
+	    memcmp(iid, sentinel, sizeof(iid)) != 0 ||
+	    lichen_eui64_to_iid(eui64_vectors[0].eui64, NULL) != -EINVAL ||
+	    lichen_pubkey_to_iid(NULL, iid) != -EINVAL ||
 	    memcmp(iid, sentinel, sizeof(iid)) != 0 ||
 	    lichen_pubkey_to_iid(vectors[0].pubkey, NULL) != -EINVAL ||
 	    lichen_make_link_local(NULL, &link_local) != -EINVAL ||

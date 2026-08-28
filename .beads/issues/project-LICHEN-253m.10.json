@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-253m.10",
+  "title": "Multi-channel RX engine",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:17.426488Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:17.426488Z",
+  "labels": [
+    "c",
+    "hal",
+    "lora",
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-253m.10",
+      "depends_on_id": "project-LICHEN-253m",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:20.756734Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-9zfd.2",
+  "title": "Implement C++ TCP client for LICHEN simulator wire protocol",
+  "description": "Implement a C++ TCP client that speaks the LICHEN Medium simulator wire protocol.\n\nFunctions to implement:\n\n1. **Connection management**\n   - SimClient(host, port) - constructor with connection params\n   - connect() / disconnect() - TCP socket lifecycle\n   - is_connected() - connection status check\n\n2. **Wire protocol encoding**\n   - encode_register(node_id, x, y, z) - MSG_REGISTER (0x01)\n   - encode_tx(payload, sf, bw, cr, freq, power) - MSG_TX (0x02)\n   - encode_rx_enter() - MSG_RX_ENTER (0x03)\n   - encode_rx_exit() - MSG_RX_EXIT (0x04)\n   - encode_position_update(x, y, z) - MSG_POSITION (0x05)\n\n3. **Wire protocol decoding**\n   - decode_message() - read and dispatch incoming messages\n   - RxPacket struct: payload, rssi, snr, timestamp\n   - Handle MSG_RX_PACKET (0x82) responses\n\n4. **Threading considerations**\n   - Non-blocking receive with poll/select\n   - Thread-safe send queue if needed\n   - Timeout handling for connection drops\n\nLocation: meshtastic-bridge/src/sim_client.cpp and .h\n\nReference: python/lichen_sim/protocol.py for wire format details",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:49:05.410017Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:49:05.410017Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9zfd.2",
+      "depends_on_id": "project-LICHEN-worker6-9zfd",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:49:09.263812Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

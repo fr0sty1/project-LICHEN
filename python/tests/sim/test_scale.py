@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Scale tests for the LICHEN simulator.
 
-These tests verify the simulator handles larger meshes and higher message rates (exercises radio, medium, collisions, chaos for conference scenarios).
+These tests verify the simulator handles larger meshes and higher message rates
+(exercises radio, medium, collisions, chaos for conference scenarios).
 Run with:
     pytest tests/sim/test_scale.py -v --timeout=120
     LICHEN_SCALE_NODES=100 pytest tests/sim/test_scale.py -v  # Override node count
@@ -31,7 +32,7 @@ from lichen.radio.sim_client import SimRadio
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 
-# Configuration from environment (parameterized for flexibility, addresses hardcoded caps/roaming/kill counts)
+# Configuration from environment (parameterized for flexibility)
 SCALE_NODES = int(os.environ.get("LICHEN_SCALE_NODES", "50"))
 SCALE_MESSAGES = int(os.environ.get("LICHEN_SCALE_MESSAGES", "100"))
 SCALE_CAP = int(os.environ.get("LICHEN_SCALE_CAP", "100"))
@@ -416,8 +417,8 @@ class TestAnnounceFlood:
             print(f"  Heard set samples: {sample_heard}")
 
             if len(first_tx_times) > 1:
-                assert distinct_times >= max(2, n_nodes // 2), \
-                    f"Expected staggered first-TX, got {distinct_times} distinct out of {len(first_tx_times)}"
+                msg = f"Expected staggered first-TX, got {distinct_times} distinct"
+                assert distinct_times >= max(2, n_nodes // 2), msg
 
             assert collision_rate < 0.5, f"Collision rate too high: {collision_rate:.3f}"
 

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-oeg6",
+  "title": "[review] lichen-oscore: provisioning.rs orphaned (not declared in lib.rs), subtle dep dead",
+  "description": "P2 (pre-existing, surfaced by wave-1 review). rust/lichen-oscore/src/provisioning.rs (~900 lines, uses subtle/sha2/HKDF) is NOT declared in lib.rs -\u003e silently not compiled; subtle is an unused dependency in every configuration. Decide: declare the module (if provisioning API is wanted) or delete the file + dep. Note lichen-node has its own provisioning module (separate). Do not silently re-enable: check whether the API matches the current oscore crate version before declaring.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:31:58.598541Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:31:58.598541Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-oeg6",
+      "depends_on_id": "project-LICHEN-c0rb.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T05:31:59.492814Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

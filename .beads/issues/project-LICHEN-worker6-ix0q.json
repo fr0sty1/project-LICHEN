@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-ix0q",
+  "title": "deaddrop: private drop returns 4.04, spec 18.9 says 4.03",
+  "description": "deaddrop.rs:1159-1162 returns 4.04 concealing existence (security-positive, documented as matching Python reference) but spec/12-apps.md 18.9 says private drops require matching OSCORE context or return 4.03. Intentional wire-conformance divergence. Fix: reconcile - either update spec text to document the concealment rationale or change code to 4.03; add vector if wire-visible.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:24.077984Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T10:34:06.935643Z",
+  "started_at": "2026-08-28T07:58:09.506247Z",
+  "closed_at": "2026-08-28T10:34:06.935643Z",
+  "close_reason": "Evidence-driven spec amendment, no code change: python/src/lichen/coap/resources/deaddrop.py deliberately returns 404 for private drops with non-matching context (comment: hide existence) and 403 for group drops; Rust matches. Two independent implementations + security-positive rationale outweighed the spec text, so spec/12-apps.md 18.9 was amended to document 4.04-concealment for private drops and 4.03 for group drops. Tests unchanged and green (27/27). Commit \u003cdocs(deaddrop) on main\u003e."
+}

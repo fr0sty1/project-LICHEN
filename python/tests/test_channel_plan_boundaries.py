@@ -64,7 +64,7 @@ def test_channel_plan_selection_vector(case: dict[str, Any]) -> None:
     expected = case["expected_channel"]
     assert plan.select_channel(eui64, epoch, density) == expected
     assert select_channel(eui64, epoch, density, plan) == expected
-    assert 0 <= expected <= n_channels
+    assert 0 <= expected < n_channels
 
 
 @pytest.mark.parametrize("n_channels", _document()["invalid_counts"])
@@ -89,11 +89,11 @@ def test_exhaustive_epoch_boundaries_stay_deterministic_and_in_range(n_channels:
         first = plan.select_channel(eui64, epoch, density=8)
         second = select_channel(eui64, epoch, density=8, plan=plan)
         assert first == second
-        assert 0 <= first <= n_channels
+        assert 0 <= first < n_channels
         if n_channels == 1:
             assert first == 0
         elif n_channels == 2:
             assert first == 1
         else:
-            assert 1 <= first <= n_channels
+            assert 1 <= first < n_channels
         assert plan.select_channel(eui64, epoch, density=9) == 0

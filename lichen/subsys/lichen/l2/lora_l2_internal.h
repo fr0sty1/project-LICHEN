@@ -23,6 +23,7 @@
 #include <zephyr/logging/log.h>
 
 #include <lichen/hal.h>
+#include <lichen/csma.h>
 #include <lichen/tx_queue.h>
 
 #ifdef __cplusplus
@@ -59,6 +60,7 @@ enum lora_state {
     LORA_STOPPED,      /* Initialized, not running */
     LORA_RUNNING,      /* Initialized and running */
     LORA_ABORTED,      /* Thread was forcibly aborted, needs full reinit */
+    LORA_DESTROY_FAILED, /* Worker cleanup done; retry queue destruction */
     LORA_DEINITING,    /* Deinit in progress */
     LORA_STATE_COUNT
 };
@@ -135,6 +137,7 @@ struct lora_l2_data {
     lichen_lora_rx_cb_t rx_callback;
     void *rx_callback_user_data;
     bool cca_enabled;
+    struct lichen_csma csma;
     uint8_t rx_channel;
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     struct lichen_duty_cycle_ctx duty;

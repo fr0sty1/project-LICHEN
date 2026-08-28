@@ -205,6 +205,17 @@ typedef int (*kiss_hw_cmd_cb_t)(const uint8_t *data, size_t len,
 				void *user_ctx);
 
 /**
+ * @brief Write bytes to the local KISS stream
+ *
+ * The callback may consume fewer than @p len bytes.  The transport retries
+ * until the complete frame is written.  Returning zero is treated as a
+ * stalled transport and fails the send with -EIO.
+ *
+ * @return positive number of bytes consumed, or a negative errno
+ */
+typedef int (*kiss_write_cb_t)(const uint8_t *data, size_t len, void *user_ctx);
+
+/**
  * @brief KISS transport configuration
  */
 struct kiss_transport_config {
@@ -213,6 +224,7 @@ struct kiss_transport_config {
 	kiss_lci_ipv6_rx_cb_t lci_ipv6_cb; /**< Callback for LCI IPv6 (port 2, Meshtastic-style) */
 	kiss_lci_ctrl_rx_cb_t lci_ctrl_cb; /**< Callback for LCI control (port 3: config/status/keys) */
 	kiss_hw_cmd_cb_t hw_cmd_cb;        /**< Optional SetHardware callback */
+	kiss_write_cb_t write_cb;           /**< Optional non-UART stream writer */
 	void *user_ctx;                    /**< User context for callbacks */
 };
 
@@ -221,14 +233,16 @@ struct kiss_transport_config {
 /**
  * @brief Initialize the KISS transport
  *
- * Sets up the UART device, RX ring buffer, and processing thread.
+ * Sets up the UART device, RX ring buffer, and processing thread.  A caller
+ * may instead provide write_cb for another bounded local stream (for example,
+ * a BLE or IPC binding); UART RX remains available when configured.
  * The UART device is selected via devicetree:
  *   chosen { lichen,kiss-uart = &uart1; };
  *
  * @param config Transport configuration with callbacks
  * @return 0 on success
  * @return -EINVAL if config is NULL or missing required callbacks
- * @return -ENODEV if UART device not found or not ready
+ * @return -ENODEV if neither a ready UART nor write_cb is available
  * @return -EALREADY if already initialized
  */
 int kiss_transport_init(const struct kiss_transport_config *config);
@@ -317,6 +331,7 @@ int kiss_transport_send(uint8_t port, const uint8_t *data, size_t len);
  * @param params Output structure for parameters
  * @return 0 on success
  * @return -EINVAL if params is NULL
+ * @return -ENODEV if the transport is not initialized
  */
 int kiss_transport_get_params(struct kiss_params *params);
 
@@ -326,6 +341,7 @@ int kiss_transport_get_params(struct kiss_params *params);
  * @param params New timing parameters
  * @return 0 on success
  * @return -EINVAL if params is NULL
+ * @return -ENODEV if the transport is not initialized
  */
 int kiss_transport_set_params(const struct kiss_params *params);
 
@@ -335,6 +351,7 @@ int kiss_transport_set_params(const struct kiss_params *params);
  * @param stats Output structure for statistics
  * @return 0 on success
  * @return -EINVAL if stats is NULL
+ * @return -ENODEV if the transport is not initialized
  */
 int kiss_transport_get_stats(struct kiss_transport_stats *stats);
 
@@ -387,6 +404,14 @@ struct kiss_decode_ctx {
 void kiss_decode_init(struct kiss_decode_ctx *ctx);
 
 /**
+ * @brief Consume a completed frame and prepare for the next stream frame
+ *
+ * This preserves synchronization because the FEND that completed the prior
+ * frame is also the opening delimiter for the next frame.
+ */
+void kiss_decode_consume(struct kiss_decode_ctx *ctx);
+
+/**
  * @brief Process one byte through KISS decoder
  *
  * @param ctx  Decode context
@@ -395,6 +420,10 @@ void kiss_decode_init(struct kiss_decode_ctx *ctx);
  * @return 0 if more data needed
  * @return -EOVERFLOW if frame exceeds buffer size
  * @return -EILSEQ if invalid escape sequence
+ *
+ * Bytes before the first FEND are ignored.  After a complete frame, the
+ * caller must consume the output and call kiss_decode_consume() before feeding
+ * more bytes.
  */
 int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte);
 
@@ -406,7 +435,7 @@ int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte);
  *
  * @param data Raw bytes to inject
  * @param len  Length of data
- * @return Number of complete frames processed
+ * @return Number of complete frames processed, or a negative errno
  */
 int kiss_transport_test_inject_rx(const uint8_t *data, size_t len);
 

@@ -12,9 +12,10 @@
  *   Rule 1: global IPv6 + UDP + CoAP
  *   Rule 2: ICMPv6 Echo (link-local)
  *   Rule 3: RPL DIO (link-local ICMPv6)
- *   Rule 4: RPL DAO (routable ULA source for multi-hop)
+ *   Rule 4: RPL DAO with DODAGID (canonical link-local IPv6)
  *   Rule 5: link-local IPv6 + UDP + OSCORE-protected CoAP
  *   Rule 6: global IPv6 + UDP + OSCORE-protected CoAP
+ *   Rule 7: IPv6 + UDP + MQTT-SN (port 10883)
  *   Rule 255: uncompressed passthrough
  *
  * Compression target: 48+ byte IPv6/UDP header to 3-6 bytes.

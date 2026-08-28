@@ -245,7 +245,7 @@ async def _setup_packet_lci() -> tuple[
     server = await create_lichen_context(server_channel, "fe80::1", site=site)
     transport = PacketCoapResourceTransport(
         client_packets,
-        config=PacketCoapConfig(local_host="fe80::2", peer_host="fe80::1", timeout_s=1.0),
+        config=PacketCoapConfig(local_host="::1", peer_host="fe80::1", timeout_s=1.0),
     )
     client = LciClient(transport)
     await client.connect()

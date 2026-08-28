@@ -48,10 +48,15 @@ def _validate_u8(value: int, field: str) -> None:
         raise LoadngError(f"{field} out of range: {value}")
 
 
-def _parse_signature(data: bytes, offset: int) -> bytes:
-    sig = data[offset:]
+def _validate_signature(sig: bytes) -> None:
+    """Reject signature with invalid length (must be 0 or SIGNATURE_LENGTH)."""
     if len(sig) not in (0, SIGNATURE_LENGTH):
         raise LoadngError(f"invalid signature length: {len(sig)}, expected 0 or {SIGNATURE_LENGTH}")
+
+
+def _parse_signature(data: bytes, offset: int) -> bytes:
+    sig = data[offset:]
+    _validate_signature(sig)
     return sig
 
 
@@ -84,6 +89,7 @@ class RREQ:
             raise LoadngError(f"seq_num out of range: {self.seq_num}")
         _validate_hop(self.hop_limit, "hop_limit")
         _validate_u8(self.flags, "flags")
+        _validate_signature(self.signature)
         return (
             bytes([self.flags, self.hop_limit])
             + self.seq_num.to_bytes(2, "big")
@@ -129,6 +135,7 @@ class RREP:
             raise LoadngError(f"seq_num out of range: {self.seq_num}")
         _validate_hop(self.hop_count, "hop_count")
         _validate_u8(self.flags, "flags")
+        _validate_signature(self.signature)
         return (
             bytes([self.flags, self.hop_count])
             + self.seq_num.to_bytes(2, "big")
@@ -170,6 +177,7 @@ class RERR:
     def to_bytes(self) -> bytes:
         _validate_u8(self.error_code, "error_code")
         _validate_u8(self.flags, "flags")
+        _validate_signature(self.signature)
         return (
             bytes([self.flags, self.error_code])
             + IPv6Address(self.unreachable).packed

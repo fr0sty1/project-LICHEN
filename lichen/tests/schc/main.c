@@ -49,7 +49,7 @@ static size_t hex_decode(const char *hex, uint8_t *out, size_t out_len)
 		if (hi < 0 || lo < 0) {
 			return 0;
 		}
-		out[i] = (hi << 4) | lo;
+		out[i] = (uint8_t)((hi << 4) | lo);
 	}
 	return bytes;
 }
@@ -113,7 +113,7 @@ static int test_coap_linklocal(void)
 		"fe80000000000000000000000000000216331633001328dd"
 		"40011234ff737461747573",
 		/* Expected compressed */
-		"00400000000000000001000000000000000216331633000448d0"
+		"00400000000000000001000000000000000233000448d0"
 		"ff737461747573",
 		0 /* SCHC_RULE_LINK_LOCAL_COAP */
 	);
@@ -122,14 +122,15 @@ static int test_coap_linklocal(void)
 static int test_coap_global(void)
 {
 	return round_trip(
-		/* IPv6 + UDP + CoAP global (ULA fd00::/64) */
+		/* IPv6 + UDP + CoAP canonical global 0200::/8 addresses */
 		"6000000000131140"
-		"fd000000000000000000000000000001"
-		"fd000000000000000000000000000002"
-		"1633163300132bdd40011234ff737461747573",
-		/* Expected compressed (IIDs only) */
-		"014000000000000000010000000000000002"
-		"1633163340011234ff737461747573",
+		"027dd5cfc679ab637dd5cfc679ab6342"
+		"02f77a7baa1226b5f57a7baa1226b50c"
+		"1633163300132a9b40011234ff737461747573",
+		/* Expected Rule Set Version 3 residue. */
+		"01407dd5cfc679ab637dd5cfc679ab6342"
+		"f77a7baa1226b5f57a7baa1226b50c33000448d0"
+		"ff737461747573",
 		1 /* SCHC_RULE_GLOBAL_COAP */
 	);
 }
@@ -184,7 +185,7 @@ static int test_oscore_linklocal(void)
 		"fe800000000000000000000000000002163316330016517b42"
 		"0112340001920900ffdeadbeef",
 		/* Expected compressed */
-		"05400000000000000001000000000000000216331633080448d0"
+		"05400000000000000001000000000000000233080448d0"
 		"0001920900ffdeadbeef",
 		5 /* SCHC_RULE_LINK_LOCAL_OSCORE */
 	);
@@ -193,15 +194,16 @@ static int test_oscore_linklocal(void)
 static int test_oscore_global(void)
 {
 	return round_trip(
-		/* IPv6 + UDP + OSCORE-protected CoAP global (rule 6, ULA fd00::/64) */
+		/* IPv6 + UDP + OSCORE-protected CoAP global (rule 6) */
 		"6000000000161140"
-		"fd000000000000000000000000000001"
-		"fd000000000000000000000000000002"
-		"163316330016547b42"
+		"027dd5cfc679ab637dd5cfc679ab6342"
+		"02f77a7baa1226b5f57a7baa1226b50c"
+		"163316330016533942"
 		"0112340001920900ffdeadbeef",
-		/* Expected compressed (IIDs only) */
-		"064000000000000000010000000000000002"
-		"16331633080448d00001920900ffdeadbeef",
+		/* Expected Rule Set Version 3 residue. */
+		"06407dd5cfc679ab637dd5cfc679ab6342"
+		"f77a7baa1226b5f57a7baa1226b50c33080448d0"
+		"0001920900ffdeadbeef",
 		6 /* SCHC_RULE_GLOBAL_OSCORE */
 	);
 }
@@ -254,14 +256,13 @@ static int test_unknown_rule_id(void)
 
 static int test_truncated_coap_linklocal(void)
 {
-	/* Rule 0 (link-local CoAP) needs at least 26 bytes (1 rule + 25 residue).
-	 * Verify truncated packets are rejected with SCHC_ERR_TOO_SHORT. */
-	uint8_t data[25] = { 0 }; /* rule_id=0, plus 24 bytes (1 short) */
+	/* Rule 0 needs 23 bytes (one Rule ID plus 174 residue bits). */
+	uint8_t data[22] = { 0 };
 	uint8_t out[64];
 
 	int ret = lichen_schc_decompress(data, sizeof(data), out, sizeof(out));
 	if (ret != SCHC_ERR_TOO_SHORT) {
-		printf("  FAIL: expected SCHC_ERR_TOO_SHORT for 25-byte input (got %d)\n", ret);
+		printf("  FAIL: expected SCHC_ERR_TOO_SHORT for 22-byte input (got %d)\n", ret);
 		return 0;
 	}
 	return 1;
@@ -269,14 +270,13 @@ static int test_truncated_coap_linklocal(void)
 
 static int test_truncated_coap_global(void)
 {
-	/* Rule 1 (global CoAP) needs at least 26 bytes (1 rule + 25 residue).
-	 * Verify truncated packets are rejected with SCHC_ERR_TOO_SHORT. */
-	uint8_t data[25] = { 1 }; /* rule_id=1, plus 24 bytes (1 short) */
+	/* Rule 1 needs 37 bytes (one Rule ID plus 286 residue bits). */
+	uint8_t data[36] = { 1 };
 	uint8_t out[64];
 
 	int ret = lichen_schc_decompress(data, sizeof(data), out, sizeof(out));
 	if (ret != SCHC_ERR_TOO_SHORT) {
-		printf("  FAIL: expected SCHC_ERR_TOO_SHORT for 41-byte input (got %d)\n", ret);
+		printf("  FAIL: expected SCHC_ERR_TOO_SHORT for 36-byte input (got %d)\n", ret);
 		return 0;
 	}
 	return 1;

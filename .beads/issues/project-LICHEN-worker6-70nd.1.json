@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-70nd.1",
+  "title": "BLE GATT UUID to IPSO mapping registry",
+  "description": "Map standard BLE service/characteristic UUIDs to IPSO object/resource IDs.\n\n**Scope:**\n- Define data structure for UUID -\u003e IPSO mapping (service UUID, char UUID) -\u003e (object ID, resource ID, unit)\n- Implement lookup function: given service_uuid + char_uuid, return IPSO mapping or None\n- Populate registry with common BLE GATT services:\n  - 0x181A Environmental Sensing -\u003e IPSO 3303 (Temperature), 3304 (Humidity), 3315 (Barometer)\n  - 0x180F Battery Service -\u003e IPSO 3320 (Battery)\n  - 0x181C User Data -\u003e various IPSO mappings\n  - 0x1810 Blood Pressure -\u003e IPSO 3316\n  - 0x1809 Health Thermometer -\u003e IPSO 3303\n- Support both 16-bit short UUIDs and 128-bit full UUIDs\n\n**Reference:** spec/appendix-gatt-ipso.md (Appendix K)\n\n**Output:** python/src/lichen/ble/gatt_ipso_registry.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:52:29.446881Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:52:29.446881Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-70nd.1",
+      "depends_on_id": "project-LICHEN-worker6-70nd",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:52:30.714031Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

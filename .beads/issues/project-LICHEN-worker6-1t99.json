@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-1t99",
+  "title": "rangetest: interval_ms lacks floor; 1ms continuous test is a latent radio flood",
+  "description": "coap_rangetest.c:545-551 accepts any uint \u003e 0 for interval_ms, stored at :789-793; header documents it as the continuous-test period driving Observe notifications - once a scheduler consumes it, 1ms notifications to all observers floods the radio. Spec example is 5000. Fix: enforce floor (\u003e=1000ms suggested) and/or require OSCORE/local-admin to change it.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:21.206368Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T10:27:31.429695Z",
+  "started_at": "2026-08-28T08:01:39.46143Z",
+  "closed_at": "2026-08-28T10:27:31.429695Z",
+  "close_reason": "interval_ms now enforces an inclusive 1000 ms floor (RANGETEST_INTERVAL_MIN_MS): 999 rejected -EBADMSG, 1000 accepted (the valid vector uses exactly 1000; boundary vector rejects 0, unchanged). Auth note: the handler already routes through coap_oscore_unprotect_resource_request; the middleware-wide fail-open under LICHEN_COAP_SERVER_OSCORE=n is a middleware convention, not this module's call. Regression tests test_interval_floor_1000ms (999 reject, 1000 accept, atomicity). Twister 8/8. Commit 4c33ee2345."
+}

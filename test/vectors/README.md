@@ -3,11 +3,11 @@
 
 # LICHEN Test Vectors
 
-Language-neutral conformance vectors for the LICHEN protocol using **format_version=2** strict schema. The **Python prototype is the source of truth**; Rust, C, and Zephyr implementations MUST validate against these files (issue ajr, gate ijj). Schema enforces one vector family per file with dedicated ccp15/ccp_load_balancing_document defs.
+Language-neutral fixtures for the LICHEN protocol using **format_version=2** strict schema. Each file declares its oracle provenance: independently derived files support conformance claims, while implementation-generated files are regression baselines only. Rust, C, and Zephyr implementations validate applicable files (issue ajr, gate ijj). Schema enforces one vector family per file with dedicated ccp15/ccp_load_balancing_document defs.
 
 ## File Index
 
-Complete index of every vector file (112 files). Byte strings are lowercase hex (possibly empty).
+Complete index of every vector file (174 files, excluding `schema.json` and the per-family `*.schema.json` files). Byte strings are lowercase hex (possibly empty).
 
 ### Schema
 
@@ -19,7 +19,7 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 
 | File | Covers |
 |------|--------|
-| `edhoc.json` | EDHOC interop (Python initiator/responder with fixed seeds as reference) |
+| `edhoc.json` | Python-generated EDHOC deterministic regression baseline; not an independent conformance/interoperability oracle (official RFC 9528/9529 literals are tested in `python/tests/crypto/test_edhoc.py`) |
 | `hash_32.json` | `lichen_hash_32` FNV-1a32 primitive (basis 0x811c9dc5) |
 | `oscore.json` | OSCORE key derivation, request/response protection, replay detection (RFC 8613) |
 | `schnorr48.json` | 48-byte Schnorr signatures per draft-lichen-schnorr-00 (Appendix A vectors) |
@@ -38,6 +38,7 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | `mic_length_selector.json` | LLSec MIC-length selector bits 2–4 semantics (spec 02 §4.2) |
 | `replay_window.json` | 32-slot anti-replay window and 24-bit logical counter (spec 4.4) |
 | `short_addr_dad.json` | Short-address assignment + CRC32 DAD (spec 02 §4.5, 04 §12.3) |
+| `wire_format_v2.json` | Canonical wire-format v2 corpus: SI+S signed frames (normal/relay-resigned/malformed), hop re-signing inputs, announce epoch replay, native 0200::/8 Rule 1/3 residues, near-collisions, immutable multicast group IDs (spec 02 §4, 03 §5.5, 05 §9, 12 §18.8) |
 
 ### SCHC
 
@@ -46,6 +47,7 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | `rule_versioning.json` | SCHC Rule Version Option serialization in DIO (spec 5.7) |
 | `schc_adaptation.json` | Unknown rule IDs, Rule 255 uncompressed fallback, port behavior |
 | `schc_compression.json` | Whole-packet compression rules 0–7 (incl. OSCORE rules 5/6 per RFC 8824) + Rule-255 fallback and malformed cases (RFC 8724) |
+| `oscore_schc_roundtrip.json` | Independent OSCORE protect → Rule 5 compress → decompress → unprotect bytes derived from the Python/Rust OSCORE parity fixture and a standalone wire encoder |
 | `schc_fragment.json` | Generic fragmentation-codec exercises per RFC 8724 §8, including deliberately non-profile toy parameters, with a zlib CRC-32 oracle |
 | `schc_fragmentation.json` | Normative Rule Set Version 3 LICHEN fixed-profile ACK-on-Error bytes and state transitions, independently hand-derived |
 
@@ -117,6 +119,7 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | `gcp_psk_oscore.json` | PSK-based OSCORE HKDF derivation intermediates (RFC 8613) |
 | `gcp_slot_claim.json` | Slot-claim message Schnorr48 signing over CBOR-canonical form |
 | `gcp3_trust_models.json` | GCP-3 trust models (pubkey-derived keys, PSK, hybrid) |
+| `tofu_edge_cases.json` | Canonical TOFU contact, binding, malformed-input, persistence, reboot, rollback, concurrency, and replay invariants |
 | `gcp6_slot_coordination.json` | Superframe slot coordination (spec 08 §6) |
 | `node_handoff.json` | Node-handoff request/response (GCP-7) |
 
@@ -125,16 +128,23 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 | File | Covers |
 |------|--------|
 | `coap_lci_auth.json` | LCI authorization (`is_local_admin`) for mutable resources (spec 17) |
+| `coap_block.json` | RFC 7959 Block1/Block2 option values and CoAP messages (spec 07 §10.5) |
 | `coap_messages.json` | CoAP message wire formats (RFC 7252 §3, aiocoap oracle) |
 | `coap_observe_sequence.json` | Observe 24-bit sequence rollover/reordering (RFC 7641 §4.4) |
 | `coap_option_malformed.json` | Option delta/length overflow and reserved values (RFC 7252 §3.1) |
 | `coap_rd.json` | Resource Directory register/lookup/delete (RFC 9176, spec 10.6) |
 | `coap_token_validation.json` | Token TKL bounds and semantics (RFC 7252 §3) |
-| `coap_transport.json` | Transport bindings: UDP dispatch, LoRa CoAP params, duty cycle (spec 9–10) |
+| `coap_transport.json` | Transport bindings: UDP dispatch, LoRa CoAP params, duty cycle (spec 9-10) |
+| `mqtt_sn.json` | MQTT-SN 1.2 CONNECT/PUBLISH/SUBSCRIBE wire encodings (spec 07 §10.4) |
 | `compact_cot.json` | Compact CoT binary PLI and chat destination encoding (spec 07 §10.1.1) |
 | `confessions.json` | /confessions anonymous board resource (LCI) |
 | `confessions_rate.json` | Confessions rate limits: 1/30s and 12/hr (spec 18.10.3) |
 | `deaddrop.json` | /deaddrop DTN store-and-forward, OSCORE-wrapped SenML (RFC 7252/8613/8428) |
+| `groups_cbor.json` | Group document and list CBOR field sets (spec 18.8.1/18.8.4) |
+| `groups_membership.json` | Group invitation and removal maps (spec 18.8.2) |
+| `groups_membership_sequences.json` | Group membership protocol sequences (spec 18.8.2) |
+| `groups_messaging.json` | Group /msg/inbox POST and /pos PUT (spec 18.8.4) |
+| `groups_rekey.json` | Group rekey after member removal, 1-hour grace (spec 18.8.2) |
 | `keystore_iid.json` | Keystore IID format/path validation (LCI 17.5.5) |
 | `messaging.json` | Messaging /msg/inbox POST, /msg/sent GET, /msg/ack POST exchanges incl. rejects (LCI 17.5.7, spec 18.1) |
 | `neighbors_cbor.json` | GET /status/neighbors CBOR encoding (spec 8.4) |
@@ -204,6 +214,7 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 |------|--------|
 | `lr_fhss.json` | LR-FHSS airtime model (2× standard LoRa airtime) for simulator |
 | `lr_fhss_capability.json` | LR_FHSS_SUPPORTED capability exchange in gateway DIO (spec 02 §3.7) |
+| `packet_walkthrough.json` | Spec 09 §13.1 CoAP to SCHC Rule 0 to L2 to signed link frame to PHY airtime (independent oracle) |
 | `packets-formats.json` | Packets/timing wire formats (spec 09 §13, Python oracle) |
 | `packets-timing.json` | Trickle, DAO, duty cycle, airtime, CSMA, time sync (spec 09 §14) |
 | `propagation.json` | LoRa propagation model: path loss, RX power, SNR, range, budget |
@@ -240,6 +251,30 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 
 `addr_mode`: 0=none/broadcast, 1=16-bit short, 2=EUI-64, 3=elided.
 `mic_length`: compatibility selector 0 or 1; unsigned frames carry no MIC.
+
+**Wire-format v2** (`wire_format_v2.json`): for each `fields` vector,
+- decode `hex_decode(encoded)` MUST reproduce `fields` for positives; vectors
+  with `expect.error` MUST be discarded (S/SI parity, truncation).
+- `crypto.preimage` is the Link Signature Domain Version 1 transcript
+  (`"LICHEN-LINK-v1\0" || LENGTH || LLSec || EPO || SEQ || DST_LEN || DST ||
+  SIID-if-SI || Payload`); `crypto.signature` MUST verify under
+  `crypto.public_key` with Schnorr-48.
+- `wf2_hop_resign_inputs` re-signs the preserved payload of
+  `wf2_signed_broadcast_sender_iid_only` under the relay identity (seed
+  `0x01`×32); `wf2_announce_epoch_replay_hop_resigned` re-signs the
+  `wf2_announce_fresh_counter_accept` announce with hop 1 and a fresh link
+  counter and MUST be rejected as announce replay (originator seq 4 not
+  greater than pinned floor 4, spec 05 §9.3; hop is excluded from the
+  announce transcript).
+- SCHC vectors (`rule_id` 1/3/255): compress/decompress MUST round-trip
+  exactly; Rule 1 residue is 286 bits padded to 36 octets, Rule 3 residue is
+  exactly 39 octets (hop, src IID, dst IID, DIO base), Rule 255 is
+  `0xff || packet`. The group multicast destination is
+  `ff35:0040:<02xx /64>:0000:<16-bit SHA-256(group id)>` and MUST be
+  re-derivable from the group id string (immutable multicast IDs).
+- Not yet consumed by `python/tests/test_vectors.py`; Python/Rust/C
+  consumers are tracked separately. Generated by
+  `generate_wire_format_v2.py` (no production code imported).
 
 **L2 payload dispatch** (`l2_payload.json`): for each vector,
 - `wrapped` is the authenticated link inner payload.
@@ -287,6 +322,8 @@ Complete index of every vector file (112 files). Byte strings are lowercase hex 
 PYTHONPATH=python/src python3 test/vectors/generate.py link_frame.json
 # Bulk regeneration is intentionally guarded because it overwrites local files:
 PYTHONPATH=python/src python3 test/vectors/generate.py --all --yes-regenerate-all
+python3 test/vectors/generate_wire_format_v2.py        # wire_format_v2.json
+python3 test/vectors/generate_wire_format_v2.py --check
 cd python
 uv run --extra dev python ../test/vectors/generate_dao_origin_signature.py
 uv run --extra dev python ../test/vectors/generate_dao_origin_signature.py --check

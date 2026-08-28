@@ -52,6 +52,7 @@ import json
 import time
 from ipaddress import IPv6Address
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import aiocoap
@@ -98,6 +99,7 @@ from lichen.crypto.trust import (
     TrustLevel,
     TrustStore,
 )
+from lichen.ipv6.addr import make_link_local
 from lichen.rpl.dao_origin import DAO_ORIGIN_DOMAIN
 from lichen.senml.codec import SenmlRecord
 from lichen.senml.codec import pack as senml_pack
@@ -158,13 +160,20 @@ async def _stack(
     info = StaticNodeInfo(status={"rank": 256})
     site = build_site(info, **resources)
     server = await create_lichen_context(net.channel("srv"), "srv", site=site)
-    client = await create_lichen_context(net.channel("cli"), "cli")
+    client = await create_lichen_context(net.channel("::1"), "::1")
     return client, server
 
 
 async def _teardown(client: Any, server: Any) -> None:
     await client.shutdown()
     await server.shutdown()
+
+
+def _admin_post(payload: bytes) -> Message:
+    """POST bound to IPv6 loopback so /msg write gates accept it."""
+    request = Message(code=aiocoap.POST, payload=payload)
+    request.remote = SimpleNamespace(hostinfo="[::1]")
+    return request
 
 
 def _confession_payload(iid: str, content: str = "it was me who ate the cake") -> bytes:
@@ -175,6 +184,15 @@ def _confession_payload(iid: str, content: str = "it was me who ate the cake") -
         SenmlRecord(n="anonymous", v=1),
     ]
     return senml_pack(records)
+
+
+def _confession_request(iid: str, payload: bytes | None = None) -> Message:
+    """POST bound to the authenticated IPv6 IID *iid*, not the SenML bn."""
+    request = Message(
+        code=aiocoap.POST, payload=payload if payload is not None else _confession_payload(iid)
+    )
+    request.remote = SimpleNamespace(hostinfo=f"[{make_link_local(bytes.fromhex(iid))}]")
+    return request
 
 
 # ---------------------------------------------------------------------------
@@ -351,9 +369,7 @@ class TestSosSignatureVectors:
                 Message(
                     code=aiocoap.POST,
                     uri="coap://srv/sos",
-                    payload=_signed_sos_body(
-                        iid.hex(), 1716742800, signer_priv, signer_pub
-                    ),
+                    payload=_signed_sos_body(iid.hex(), 1716742800, signer_priv, signer_pub),
                     content_format=60,
                 )
             ).response
@@ -662,9 +678,7 @@ class TestSosRateLimitingVectors:
                 Message(
                     code=aiocoap.POST,
                     uri="coap://srv/sos",
-                    payload=_signed_sos_body(
-                        iid.hex(), 1716742800, priv, pub, seq=3
-                    ),
+                    payload=_signed_sos_body(iid.hex(), 1716742800, priv, pub, seq=3),
                     content_format=60,
                 )
             ).response
@@ -718,9 +732,7 @@ class TestSosRateLimitingVectors:
                 Message(
                     code=aiocoap.POST,
                     uri="coap://srv/sos",
-                    payload=_signed_sos_body(
-                        iid.hex(), 1716742800, priv, pub, seq=4
-                    ),
+                    payload=_signed_sos_body(iid.hex(), 1716742800, priv, pub, seq=4),
                     content_format=60,
                 )
             ).response
@@ -730,10 +742,10 @@ class TestSosRateLimitingVectors:
             await _teardown(client, server)
 
     async def test_hourly_window_slides_with_strict_pruning(self) -> None:
-        """At now=3600.001s only the t=0 entry is outside the strict `>` cutoff.
+        """At now=3601s the t=0 entry is outside the `>=` cutoff (3601-3600=1).
 
         The corrected vector pins sos_in_window=2: the 1 s and 2 s entries
-        are legitimately still inside their hour (a6qg 7b).
+        are at or after the cutoff and remain in the window.
         """
         vec = _vec(SOS_RATE_LIMITING, "hourly_window_slides")
         clock = _Clock()
@@ -822,10 +834,7 @@ class TestSosRateLimitingVectors:
 def _group_members() -> list[tuple[str, bytes, bytes]]:
     """(name, privkey, pubkey) triples for alice/bob/carol/dave."""
     names = ("alice", "bob", "carol", "dave")
-    return [
-        (name, *derive_keypair(bytes([ord("a") + i]) * 32))
-        for i, name in enumerate(names)
-    ]
+    return [(name, *derive_keypair(bytes([ord("a") + i]) * 32)) for i, name in enumerate(names)]
 
 
 def _group_manager(
@@ -880,10 +889,7 @@ class TestGroupOscoreKeyVectors:
         wrapped_bob = pairwise_wrap(group_key, pubkeys["bob"])
         # Unique per member; each unwraps to the same group key.
         assert wrapped_alice != wrapped_bob
-        assert (
-            pairwise_unwrap(wrapped_alice, seeds["alice"], pubkeys["alice"])
-            == group_key
-        )
+        assert pairwise_unwrap(wrapped_alice, seeds["alice"], pubkeys["alice"]) == group_key
         assert pairwise_unwrap(wrapped_bob, seeds["bob"], pubkeys["bob"]) == group_key
 
     def test_key_epoch_increment_monotonic(self) -> None:
@@ -949,11 +955,10 @@ class TestGroupOscoreKeyVectors:
         wrapped_carol_initial = mgr.add_member("carol", carol[2])
         # Carol could decrypt the epoch-1 key she was wrapped.
         assert (
-            pairwise_unwrap(wrapped_carol_initial, carol[1], carol[2])
-            == mgr.key_for_epoch(1).key
+            pairwise_unwrap(wrapped_carol_initial, carol[1], carol[2]) == mgr.key_for_epoch(1).key
         )
         mgr.remove_member(vec["remove"])
-        distribution = mgr.rekey(b"\x0A" * 16)
+        distribution = mgr.rekey(b"\x0a" * 16)
         # No new key material reaches the removed member...
         assert "carol" not in distribution
         assert vec["expected"]["carol_can_decrypt_new"] is False
@@ -984,9 +989,7 @@ class TestConfessionsRateVectors:
         conf = ConfessionsResource(time_func=_Clock())
         allowed, retry_after = conf.check_rate_limit(source)
         assert (allowed, retry_after) == (True, 0)
-        response = await conf.render_post(
-            Message(code=aiocoap.POST, payload=_confession_payload(source))
-        )
+        response = await conf.render_post(_confession_request(source))
         assert response.code.dotted == vec["expected"]["response_code"].split()[0] == "2.01"
         assert len(conf.confessions()) == 1
 
@@ -1003,9 +1006,7 @@ class TestConfessionsRateVectors:
         assert allowed is vec["expected"]["accept"] is False
         # Implementation uses math.ceil, matching the vector's exact integer pin.
         assert retry_after == vec["expected"]["retry_after_s"] == 15
-        response = await conf.render_post(
-            Message(code=aiocoap.POST, payload=_confession_payload(source))
-        )
+        response = await conf.render_post(_confession_request(source))
         assert response.code.dotted == vec["expected"]["response_code"].split()[0] == "4.29"
         assert cbor2.loads(response.payload) == {"retry_after": retry_after}
 
@@ -1019,9 +1020,7 @@ class TestConfessionsRateVectors:
         clock.t = vec["current_uptime_ms"] / 1000
         allowed, retry_after = conf.check_rate_limit(source)
         assert (allowed, retry_after) == (True, 0)
-        response = await conf.render_post(
-            Message(code=aiocoap.POST, payload=_confession_payload(source))
-        )
+        response = await conf.render_post(_confession_request(source))
         assert response.code.dotted == vec["expected"]["response_code"].split()[0] == "2.01"
 
     async def test_thirteenth_post_within_hour_rejected(self) -> None:
@@ -1035,9 +1034,7 @@ class TestConfessionsRateVectors:
         clock.t = vec["history_count_in_hour"] * 120.0 + CONFESSION_COOLDOWN_S
         allowed, _ = conf.check_rate_limit(source)
         assert allowed is vec["expected"]["accept"] is False
-        response = await conf.render_post(
-            Message(code=aiocoap.POST, payload=_confession_payload(source))
-        )
+        response = await conf.render_post(_confession_request(source))
         assert response.code.dotted == vec["expected"]["response_code"].split()[0] == "4.29"
 
     async def test_twelfth_post_at_hourly_limit_accepted(self) -> None:
@@ -1052,9 +1049,7 @@ class TestConfessionsRateVectors:
         assert len(conf._request_times[source]) == CONFESSION_HOURLY_MAX - 1
         allowed, retry_after = conf.check_rate_limit(source)
         assert (allowed, retry_after) == (True, 0)
-        response = await conf.render_post(
-            Message(code=aiocoap.POST, payload=_confession_payload(source))
-        )
+        response = await conf.render_post(_confession_request(source))
         assert response.code.dotted == vec["expected"]["response_code"].split()[0] == "2.01"
 
     async def test_hour_window_slides_with_strict_pruning(self) -> None:
@@ -1069,28 +1064,8 @@ class TestConfessionsRateVectors:
         clock.t = vec["current_uptime_ms"] / 1000
         allowed, _ = conf.check_rate_limit(source)
         assert allowed is vec["expected"]["accept"] is True
-        # Reality: the 300s/600s posts expire at 3900s/4200s, not 3601s.
-        assert len(conf._request_times[source]) == 2
-
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Vector pins posts_in_window=0 at now=3601s, but strict '>' pruning "
-            "retains the 300s/600s posts whose hour has not elapsed (bead "
-            "project-LICHEN-worker6-a6qg)"
-        ),
-    )
-    async def test_hour_window_zero_remaining_exact_pin(self) -> None:
-        vec = _vec(CONFESSIONS_RATE, "post_after_hour_window_slides")
-        source = vec["sender_iid"]
-        clock = _Clock()
-        conf = ConfessionsResource(time_func=clock)
-        for entry in vec["history"]:
-            clock.t = entry["uptime_ms"] / 1000
-            conf._record_request(source)
-        clock.t = vec["current_uptime_ms"] / 1000
-        assert conf.check_rate_limit(source)[0] is True
-        assert len(conf._request_times[source]) == vec["expected"]["posts_in_window"] == 0
+        # 0s expired at 3601s; 300s/600s remain (hour not elapsed).
+        assert len(conf._request_times[source]) == vec["expected"]["posts_in_window"] == 2
 
     async def test_different_nodes_independent(self) -> None:
         vec = _vec(CONFESSIONS_RATE, "different_nodes_independent")
@@ -1120,11 +1095,11 @@ class TestConfessionsRateVectors:
         assert retry_after == 26
         assert retry_after <= CONFESSION_COOLDOWN_S
 
-    def test_time_source_defaults_to_wall_clock_today(self) -> None:
+    def test_time_source_defaults_to_monotonic_uptime(self) -> None:
         vec = _vec(CONFESSIONS_RATE, "uptime_not_wallclock")
         assert vec["expected"]["time_source"] == "monotonic_uptime"
         conf = ConfessionsResource()
-        assert conf._time_func is time.time  # reality: wall clock, injectable
+        assert conf._time_func is time.monotonic
 
     async def test_retry_after_header_semantics(self) -> None:
         """POST at 10 s after last: retry_after matches the vector pin (20)."""
@@ -1139,9 +1114,7 @@ class TestConfessionsRateVectors:
         assert allowed is False
         # Implementation uses math.ceil matching the vector's exact integer pin.
         assert retry_after == vec["expected"]["retry_after_s"] == 20
-        response = await conf.render_post(
-            Message(code=aiocoap.POST, payload=_confession_payload(source))
-        )
+        response = await conf.render_post(_confession_request(source))
         assert response.code.dotted == vec["expected"]["response_code"].split()[0] == "4.29"
         assert cbor2.loads(response.payload) == {"retry_after": retry_after}
 
@@ -1152,13 +1125,13 @@ class TestConfessionsRateVectors:
         conf = ConfessionsResource(time_func=_Clock())
         oversized = _confession_payload(source, content="x" * 800)
         assert len(oversized) > vec["payload_size"] > CONFESSION_MAX_SIZE
-        response = await conf.render_post(Message(code=aiocoap.POST, payload=oversized))
+        response = await conf.render_post(_confession_request(source, oversized))
         assert response.code.dotted == vec["expected"]["response_code"].split()[0] == "4.13"
         assert conf.confessions() == []  # rejected before parse/store
         # Boundary: at or below 768 the size gate does not fire.
         small = _confession_payload(source, content="tiny")
         assert len(small) <= CONFESSION_MAX_SIZE
-        ok = await conf.render_post(Message(code=aiocoap.POST, payload=small))
+        ok = await conf.render_post(_confession_request(source, small))
         assert ok.code is not aiocoap.REQUEST_ENTITY_TOO_LARGE
 
 
@@ -1202,17 +1175,11 @@ class TestReceiptCborVectors:
         receipts = MessageReceiptsResource()
         for status in vec["valid_statuses"]:
             response = await receipts.render_post(
-                Message(
-                    code=aiocoap.POST,
-                    payload=cbor2.dumps({"id": 1, "status": status, "ts": 1716742900}),
-                )
+                _admin_post(cbor2.dumps({"id": 1, "status": status, "ts": 1716742900}))
             )
             assert response.code == aiocoap.CHANGED
         bad = await receipts.render_post(
-            Message(
-                code=aiocoap.POST,
-                payload=cbor2.dumps({"id": 1, "status": "unknown", "ts": 1716742900}),
-            )
+            _admin_post(cbor2.dumps({"id": 1, "status": "unknown", "ts": 1716742900}))
         )
         assert bad.code == aiocoap.BAD_REQUEST
         assert bad.code.dotted == "4.00"
@@ -1240,7 +1207,7 @@ class TestReceiptCborVectors:
         raw = cbor2.dumps(payload) if payload else b""
         if payload:
             assert MessageReceiptsResource._normalize(cbor2.loads(raw)) is None
-        response = await receipts.render_post(Message(code=aiocoap.POST, payload=raw))
+        response = await receipts.render_post(_admin_post(raw))
         assert response.code == aiocoap.BAD_REQUEST
         assert response.code.dotted == expected["response_code"]
         assert receipts.receipts() == []
@@ -1250,17 +1217,11 @@ class TestReceiptCborVectors:
         max_id = vec["cbor_payload"]["id"]
         receipts = MessageReceiptsResource()
         ok = await receipts.render_post(
-            Message(
-                code=aiocoap.POST,
-                payload=cbor2.dumps({"id": max_id, "status": "read", "ts": 4294967295}),
-            )
+            _admin_post(cbor2.dumps({"id": max_id, "status": "read", "ts": 4294967295}))
         )
         assert ok.code == aiocoap.CHANGED
         beyond = await receipts.render_post(
-            Message(
-                code=aiocoap.POST,
-                payload=cbor2.dumps({"id": max_id + 1, "status": "read", "ts": 4294967295}),
-            )
+            _admin_post(cbor2.dumps({"id": max_id + 1, "status": "read", "ts": 4294967295}))
         )
         assert beyond.code == aiocoap.BAD_REQUEST
 
@@ -1308,10 +1269,7 @@ class TestReceiptCborVectors:
         assert vec["expected"]["ts_type"] == "uint"
         receipts = MessageReceiptsResource()
         response = await receipts.render_post(
-            Message(
-                code=aiocoap.POST,
-                payload=cbor2.dumps({"id": 12345, "status": "delivered", "ts": bad_ts}),
-            )
+            _admin_post(cbor2.dumps({"id": 12345, "status": "delivered", "ts": bad_ts}))
         )
         assert response.code == aiocoap.BAD_REQUEST
         assert receipts.receipts() == []

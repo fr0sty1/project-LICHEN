@@ -21,6 +21,12 @@ const SNR_GOOD: i8 = 8;
 const LOAD_HIGH: u32 = FP_SCALE * 4 / 5;
 const LOAD_REBALANCE: u32 = FP_SCALE * 2 / 5;
 
+/// CCP-16 Section 2a.10.3: PER threshold for density bonus (100 permille = 10%).
+const DENSITY_PER_BONUS_PERMILLE: u16 = 100;
+
+/// CCP-16 Section 2a.10.3: RSSI threshold for density bonus in dBm.
+const DENSITY_RSSI_BONUS_DBM: i8 = -90;
+
 /// Outcome of applying one clear-channel-assessment indication.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CcaResult {
@@ -99,16 +105,62 @@ pub const fn interference_score_tenths(
     Some(busy_percent as u16 * 10 + packet_error_permille)
 }
 
+/// Estimate effective network density per CCP-16 Section 2a.10.3.
+///
+/// Combines raw neighbor count with loss and RSSI bonuses to account for
+/// hidden congestion and weak links implying larger effective cells.
+///
+/// # Arguments
+///
+/// * `neighbor_count` - Distinct link-layer peers heard in the metrics window.
+/// * `loss_permille` - Packet error rate in permille (0-1000).
+/// * `rssi_ema_dbm` - EMA-smoothed RSSI in dBm.
+///
+/// # Returns
+///
+/// Estimated density clamped to [0, 255].
+pub const fn estimate_density(neighbor_count: u8, loss_permille: u16, rssi_ema_dbm: i8) -> u8 {
+    let mut d = neighbor_count as u16;
+    // Persistent loss implies hidden congestion
+    if loss_permille > DENSITY_PER_BONUS_PERMILLE {
+        d = d.saturating_add(2);
+    }
+    // Weak links imply a larger effective cell
+    if rssi_ema_dbm < DENSITY_RSSI_BONUS_DBM {
+        d = d.saturating_add(1);
+    }
+    if d > 255 {
+        255
+    } else {
+        d as u8
+    }
+}
+
+/// Compute TDMA slot for a given EUI64, SFN, and slot count per CCP-16 Section 2a.2.
+///
+/// # Formula
+///
+/// `slot_id = ((fnv1a32(eui64) + sfn) mod 2^32) mod num_slots`
+///
+/// Returns `None` if `num_slots` is zero.
+pub fn slot_hash(eui64: &[u8; 8], sfn: u32, num_slots: u8) -> Option<u8> {
+    if num_slots == 0 {
+        return None;
+    }
+    let h = crate::lichen_hash_32(eui64);
+    Some(((h.wrapping_add(sfn)) % u32::from(num_slots)) as u8)
+}
+
 /// Select a CCP-15 data channel, or CH0 when density exceeds eight peers.
 pub fn select_channel(eui64: &[u8; 8], epoch: u32, density: u8, n_channels: u8) -> u8 {
-    if density > 8 {
+    if density > 8 || n_channels <= 1 {
         return 0;
     }
     let mut data = [0u8; 12];
     data[..8].copy_from_slice(eui64);
     data[8..].copy_from_slice(&epoch.to_le_bytes());
     let hash = crate::lichen_hash_32(&data);
-    let modulus = n_channels.max(3);
+    let modulus = n_channels - 1;
     1 + (hash % u32::from(modulus)) as u8
 }
 
@@ -745,5 +797,142 @@ mod tests {
                 _ => {}
             }
         }
+    }
+
+    fn hex_to_eui64(s: &str) -> [u8; 8] {
+        let mut out = [0u8; 8];
+        for (i, byte) in out.iter_mut().enumerate() {
+            *byte = u8::from_str_radix(&s[2 * i..2 * i + 2], 16).unwrap();
+        }
+        out
+    }
+
+    #[test]
+    fn select_channel_ccp15_frequency_agility_vectors() {
+        let content = include_str!("../../../test/vectors/ccp15.json");
+        let doc: Value = serde_json::from_str(content).unwrap();
+        let vectors = doc.get("vectors").and_then(|v| v.as_array()).unwrap();
+        for v in vectors {
+            if v.get("category").and_then(|x| x.as_str()) != Some("frequency_agility") {
+                continue;
+            }
+            let input = v.get("input").and_then(|x| x.as_object()).unwrap();
+            let expected = v.get("expected").and_then(|x| x.as_object()).unwrap();
+            let eui_hex = input.get("eui64_hex").and_then(|x| x.as_str()).unwrap();
+            let epoch = input.get("epoch").and_then(|x| x.as_u64()).unwrap() as u32;
+            let density = input.get("density").and_then(|x| x.as_u64()).unwrap() as u8;
+            let n_channels = input.get("n_channels").and_then(|x| x.as_u64()).unwrap() as u8;
+            let channel = expected.get("channel").and_then(|x| x.as_u64()).unwrap() as u8;
+            let eui = hex_to_eui64(eui_hex);
+            assert_eq!(select_channel(&eui, epoch, density, n_channels), channel);
+        }
+    }
+
+    #[test]
+    fn select_channel_matches_python_hop_channel_literals() {
+        // Cross-implementation oracle: identical literals to
+        // python/tests/sim/test_protocol_hop_channel.py. The rust epoch
+        // equals the python (sfn + epoch) mod 2^32 sum; density 0 stands
+        // for the python function's implicit uncongested path.
+        const EUI_ZERO: [u8; 8] = [0; 8];
+        const EUI_FF: [u8; 8] = [0xff; 8];
+        const EUI_SPEC: [u8; 8] = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
+
+        assert_eq!(select_channel(&EUI_ZERO, 0, 0, 8), 3);
+        assert_eq!(select_channel(&EUI_FF, 0xFFFF_FFFF, 0, 8), 4);
+        assert_eq!(select_channel(&EUI_SPEC, 1, 0, 8), 1);
+        assert_eq!(select_channel(&EUI_SPEC, 0, 0, 8), 4);
+        assert_eq!(select_channel(&EUI_ZERO, 49, 0, 16), 13);
+        assert_eq!(select_channel(&EUI_ZERO, 0xFFFF_FFFF, 0, 16), 15);
+        assert_eq!(select_channel(&EUI_ZERO, 42, 0, 8), 7);
+        assert_eq!(select_channel(&EUI_ZERO, 5, 0, 1), 0);
+        assert_eq!(select_channel(&EUI_ZERO, 8, 0, 8), 1);
+        assert_eq!(select_channel(&EUI_ZERO, 9, 9, 8), 0);
+    }
+
+    // =============================================================================
+    // CCP-16 estimate_density tests
+    // =============================================================================
+
+    #[test]
+    fn estimate_density_base_neighbor_count() {
+        // Base case: just neighbor count, no bonuses
+        assert_eq!(estimate_density(5, 0, 0), 5);
+        assert_eq!(estimate_density(10, 50, -80), 10); // below thresholds
+    }
+
+    #[test]
+    fn estimate_density_loss_bonus() {
+        // PER > 100 permille (10%) adds +2
+        assert_eq!(estimate_density(5, 100, -80), 5); // exactly at threshold, no bonus
+        assert_eq!(estimate_density(5, 101, -80), 7); // above threshold
+        assert_eq!(estimate_density(5, 500, -80), 7); // well above
+    }
+
+    #[test]
+    fn estimate_density_rssi_bonus() {
+        // RSSI < -90 dBm adds +1
+        assert_eq!(estimate_density(5, 0, -90), 5); // exactly at threshold, no bonus
+        assert_eq!(estimate_density(5, 0, -91), 6); // below threshold
+        assert_eq!(estimate_density(5, 0, -120), 6); // well below
+    }
+
+    #[test]
+    fn estimate_density_combined_bonuses() {
+        // Both bonuses apply
+        assert_eq!(estimate_density(5, 101, -91), 8); // +2 for loss, +1 for RSSI
+        assert_eq!(estimate_density(10, 200, -100), 13);
+    }
+
+    #[test]
+    fn estimate_density_saturation() {
+        // Saturates at 255
+        assert_eq!(estimate_density(255, 0, 0), 255);
+        assert_eq!(estimate_density(254, 101, -91), 255); // 254 + 3 = 257, clamped to 255
+        assert_eq!(estimate_density(253, 101, -91), 255); // 253 + 3 = 256, clamped
+    }
+
+    // =============================================================================
+    // CCP-16 slot_hash tests
+    // =============================================================================
+
+    #[test]
+    fn slot_hash_zero_slots_returns_none() {
+        let eui = [0u8; 8];
+        assert_eq!(slot_hash(&eui, 0, 0), None);
+    }
+
+    #[test]
+    fn slot_hash_basic() {
+        let eui = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
+        let slot = slot_hash(&eui, 0, 8).unwrap();
+        assert!(slot < 8);
+    }
+
+    #[test]
+    fn slot_hash_sfn_advances_slot() {
+        let eui = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
+        let slot0 = slot_hash(&eui, 0, 8).unwrap();
+        let slot1 = slot_hash(&eui, 1, 8).unwrap();
+        // Slot advances by 1 per SFN increment
+        assert_eq!((slot0 + 1) % 8, slot1);
+    }
+
+    #[test]
+    fn slot_hash_wrap_around() {
+        let eui = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11];
+        let slot_max = slot_hash(&eui, 0xFFFFFFFF, 16).unwrap();
+        let slot_zero = slot_hash(&eui, 0, 16).unwrap();
+        // hash + 0xFFFFFFFF wraps to hash - 1
+        let expected_diff = ((slot_max as i16 - slot_zero as i16) + 16) % 16;
+        assert_eq!(expected_diff, 15);
+    }
+
+    #[test]
+    fn slot_hash_deterministic() {
+        let eui = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
+        let s1 = slot_hash(&eui, 42, 8);
+        let s2 = slot_hash(&eui, 42, 8);
+        assert_eq!(s1, s2);
     }
 }

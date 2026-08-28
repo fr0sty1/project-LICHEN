@@ -5,6 +5,7 @@ zephyr_library()
 
 zephyr_library_sources(
 	hal_caps.c
+	hal_airtime.c
 	hal_device.c
 	hal_duty.c
 	hal_location.c

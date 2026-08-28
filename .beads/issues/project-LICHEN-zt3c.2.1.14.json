@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-zt3c.2.1.14",
+  "title": "Document security invariants: K retains private key/address/session endpoint; no delegation chains; direct-K precedence",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:49:03.904364Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:49:03.904364Z",
+  "labels": [
+    "gateway",
+    "global",
+    "networking",
+    "yggdrasil"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.2.1.14",
+      "depends_on_id": "project-LICHEN-zt3c.2.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:49:07.86934Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

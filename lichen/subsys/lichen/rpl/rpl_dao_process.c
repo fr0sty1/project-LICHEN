@@ -101,9 +101,11 @@ static bool extract_updates(const uint8_t *dao_bytes, size_t len,
 	int candidate_count = 0;
 	uint8_t path_sequence = 0;
 	uint8_t path_lifetime = 0;
+	bool external = false;
 	bool have_transit = false;
 	bool last_was_target = false;
 	bool routes_closed = false;
+	bool have_origin_signature = false;
 
 	if (opts == NULL || opts_len == 0) {
 		return false;
@@ -139,9 +141,10 @@ static bool extract_updates(const uint8_t *dao_bytes, size_t len,
 				candidate_count = 0;
 				have_transit = false;
 			}
-			if (opt.data_len < 2 ||
+			if (opt.data_len != LICHEN_RPL_TARGET_DATA_LEN ||
+			    opt.data[0] != 0 || opt.data[1] != 128U ||
 			    lichen_rpl_target_parse(&target, opt.data, opt.data_len) !=
-				LICHEN_RPL_OK || target.prefix_len == 0 ||
+				LICHEN_RPL_OK || target.prefix_len != 128U ||
 			    target_count == CONFIG_LICHEN_RPL_MAX_ROUTES) {
 				return false;
 			}
@@ -173,9 +176,13 @@ static bool extract_updates(const uint8_t *dao_bytes, size_t len,
 
 			if (routes_closed || target_count == 0 ||
 			    opt.data_len != LICHEN_RPL_TRANSIT_INFO_DATA_LEN ||
-			    opt.data[0] != 0 ||
+			    (opt.data[0] & 0x7fU) != 0U ||
 			    lichen_rpl_transit_info_parse(&transit, opt.data, opt.data_len) !=
 				LICHEN_RPL_OK) {
+				return false;
+			}
+			/* The current node-owned /128 profile rejects external routes. */
+			if (transit.external) {
 				return false;
 			}
 			transit.path_control &= LICHEN_RPL_PATH_CONTROL_MASK;
@@ -184,19 +191,21 @@ static bool extract_updates(const uint8_t *dao_bytes, size_t len,
 			}
 			last_was_target = false;
 			if (have_transit && (transit.path_sequence != path_sequence ||
-					     transit.path_lifetime != path_lifetime)) {
+					     transit.path_lifetime != path_lifetime ||
+					     transit.external != external)) {
 				return false;
 			}
 			if (!have_transit) {
 				path_sequence = transit.path_sequence;
 				path_lifetime = transit.path_lifetime;
+				external = transit.external;
 				have_transit = true;
 			}
 
 			struct lichen_rpl_dao_candidate candidate = {
 				.path_control = transit.path_control,
 				.path_lifetime = transit.path_lifetime,
-				.external = false,
+				.external = transit.external,
 			};
 			rpl_addr_copy(candidate.parent, transit.parent_address);
 			for (int i = 0; i < candidate_count; i++) {
@@ -221,11 +230,20 @@ duplicate_candidate:
 			 * persistence for newly-accepted ack_requested DAOs. Equal-seq exact
 			 * digest = idempotent retransmission (MAY resend ACK, MUST NOT rewrite
 			 * floor). Matches Rust. Reference project-LICHEN-et78.2 */
-			if (opt.data_len != 56) {
+			if (routes_closed || have_origin_signature || opt.data_len != 56 ||
+			    it.pos != it.len) {
 				return false;
 			}
+			if (!finish_group(staged, staged_count, targets, target_count,
+					  candidates, candidate_count, path_sequence)) {
+				return false;
+			}
+			target_count = 0;
+			candidate_count = 0;
 			/* Signature verification + replay floor update done by caller (link/OSCORE).
 			 * Enforces MUST before semantic parsing. */
+			have_origin_signature = true;
+			routes_closed = true;
 		} else {
 			return false;
 		}
@@ -411,14 +429,14 @@ static int count_active_snapshots(const struct lichen_rpl_dao_root_state *root)
 	return count;
 }
 
-static void preserve_prefix_routes(struct lichen_rpl_routing_table *new_rt,
+static bool preserve_prefix_routes(struct lichen_rpl_routing_table *new_rt,
 				   const struct lichen_rpl_routing_table *old_rt)
 {
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_ROUTES; i++) {
 		if (old_rt->routes[i].valid && old_rt->routes[i].is_prefix) {
 			struct lichen_rpl_route *slot = find_free_route(new_rt);
 			if (slot == NULL) {
-				return;
+				return false;
 			}
 			*slot = old_rt->routes[i];
 			new_rt->prefix_route_count++;
@@ -431,47 +449,29 @@ static void preserve_prefix_routes(struct lichen_rpl_routing_table *new_rt,
 	memcpy(new_rt->rpl_managed_hosts, old_rt->rpl_managed_hosts,
 	       sizeof(new_rt->rpl_managed_hosts));
 	new_rt->rpl_managed_host_count = old_rt->rpl_managed_host_count;
+	return true;
 }
 
-void rebuild_routes(struct lichen_rpl_dao_manager *dm)
+bool rebuild_routes(struct lichen_rpl_dao_manager *dm)
 {
 	struct lichen_rpl_dao_root_state *root = dm->root_state;
-	struct lichen_rpl_routing_table new_table;
+	struct lichen_rpl_routing_table *new_table = &root->workspace.rebuilt_table;
+	struct lichen_rpl_parent_edge *new_parent_map = root->workspace.rebuilt_parent_map;
 
-	lichen_rpl_routing_table_init(&new_table);
-	memset(root->parent_map, 0, sizeof(root->parent_map));
+	lichen_rpl_routing_table_init(new_table);
+	memset(new_parent_map, 0, sizeof(root->workspace.rebuilt_parent_map));
 
 	/* Preserve prefix routes from previous table before filling with host routes */
 	const struct lichen_rpl_routing_table *old_table = &root->routing_table;
-	preserve_prefix_routes(&new_table, old_table);
+	if (!preserve_prefix_routes(new_table, old_table)) {
+		return false;
+	}
 
 	/* Check capacity: host routes from snapshots + prefix routes must fit */
-	int prefix_count = (int)new_table.prefix_route_count;
+	int prefix_count = (int)new_table->prefix_route_count;
 	int free_slots_needed = count_active_snapshots(root);
 	if (prefix_count + free_slots_needed > CONFIG_LICHEN_RPL_MAX_ROUTES) {
-		/* Capacity exceeded - still build what we can, but mark managed
-		 * prefix routes whose egress is no longer reachable as expired. */
-		for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_ROUTES; i++) {
-			if (new_table.routes[i].valid && new_table.routes[i].is_prefix) {
-				/* Check if egress is in the snapshot set */
-				bool egress_found = false;
-				for (int j = 0; j < CONFIG_LICHEN_RPL_MAX_ROUTES; j++) {
-					if (root->snapshots[j].valid &&
-					    memcmp(root->snapshots[j].target,
-						   old_table->routes[i].path[old_table->routes[i].path_len - 1],
-						   16) == 0) {
-						egress_found = true;
-						break;
-					}
-				}
-				if (!egress_found) {
-					new_table.routes[i].valid = false;
-					if (new_table.prefix_route_count > 0) {
-						new_table.prefix_route_count--;
-					}
-				}
-			}
-		}
+		return false;
 	}
 
 	for (int pass = 0; pass < CONFIG_LICHEN_RPL_MAX_ROUTES; pass++) {
@@ -499,7 +499,7 @@ void rebuild_routes(struct lichen_rpl_dao_manager *dm)
 					candidate_len = 1;
 				} else {
 					const struct lichen_rpl_route *parent =
-						lichen_rpl_routing_table_lookup(&new_table,
+						lichen_rpl_routing_table_lookup(new_table,
 									candidate->parent);
 					if (parent == NULL || parent->path_len >= LICHEN_RPL_MAX_HOPS) {
 						continue;
@@ -521,20 +521,22 @@ void rebuild_routes(struct lichen_rpl_dao_manager *dm)
 				}
 			}
 			if (best_len > 0) {
-				struct lichen_rpl_route *old = find_route(&new_table,
+				struct lichen_rpl_route *old = find_route(new_table,
 								 snapshot->target);
 				if (old == NULL || old->path_len != best_len ||
 				    path_compare(old->path, best_path, best_len) != 0) {
-					(void)lichen_rpl_routing_table_add(&new_table,
-									 snapshot->target,
-									 best_path, best_len);
+					if (lichen_rpl_routing_table_add(new_table,
+								       snapshot->target,
+								       best_path, best_len) != LICHEN_RPL_OK) {
+						return false;
+					}
 					changed = true;
 				}
-				struct lichen_rpl_route *route = find_route(&new_table,
+				struct lichen_rpl_route *route = find_route(new_table,
 								       snapshot->target);
 				route->path_lifetime = best_lifetime;
 				route->last_updated = snapshot->last_updated;
-				struct lichen_rpl_parent_edge *edge = &root->parent_map[i];
+				struct lichen_rpl_parent_edge *edge = &new_parent_map[i];
 				rpl_addr_copy(edge->target, snapshot->target);
 				rpl_addr_copy(edge->parent, best_parent);
 				edge->path_lifetime = best_lifetime;
@@ -547,7 +549,9 @@ void rebuild_routes(struct lichen_rpl_dao_manager *dm)
 		}
 	}
 
-	root->routing_table = new_table;
+	root->routing_table = *new_table;
+	memcpy(root->parent_map, new_parent_map, sizeof(root->parent_map));
+	return true;
 }
 
 /* ── DAO processing ────────────────────────────────────────────────────────── */
@@ -676,11 +680,19 @@ static enum lichen_rpl_dao_process_result process_dao(
 
 	for (int i = 0; i < staged_count; i++) {
 		if (staged[i].changed) {
+			staged[i].previous = root->snapshots[staged[i].slot];
 			root->snapshots[staged[i].slot] = staged[i].snapshot;
 			changed = true;
 		}
 	}
-	rebuild_routes(dm);
+	if (!rebuild_routes(dm)) {
+		for (int i = 0; i < staged_count; i++) {
+			if (staged[i].changed) {
+				root->snapshots[staged[i].slot] = staged[i].previous;
+			}
+		}
+		return LICHEN_RPL_DAO_REJECTED;
+	}
 	for (int i = 0; i < staged_count; i++) {
 		if (lichen_rpl_routing_table_lookup(&root->routing_table,
 						    staged[i].snapshot.target) != NULL) {
@@ -710,13 +722,20 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 
 enum lichen_rpl_dao_process_result lichen_rpl_dao_manager_process_dao_ex(
 	struct lichen_rpl_dao_manager *dm, const uint8_t *dao_bytes, size_t len,
-	uint32_t now)
+	uint32_t now, uint8_t *ack_buf, size_t ack_buf_len)
 {
 	if (dm == NULL || dao_bytes == NULL) {
 		return LICHEN_RPL_DAO_REJECTED;
 	}
 	k_mutex_lock(&dm->lock, K_FOREVER);
 	enum lichen_rpl_dao_process_result result = process_dao(dm, dao_bytes, len, now, NULL, true);
+	if (result != LICHEN_RPL_DAO_REJECTED && (dao_bytes[1] & 0x80U) != 0U &&
+	    ack_buf != NULL && ack_buf_len >= 20U) {
+		if (lichen_rpl_dao_manager_build_dao_ack(dm, dao_bytes[3], 0,
+						     ack_buf, ack_buf_len) < 0) {
+			result = LICHEN_RPL_DAO_REJECTED;
+		}
+	}
 	k_mutex_unlock(&dm->lock);
 	return result;
 }
@@ -738,11 +757,15 @@ int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_ROUTES; i++) {
 		const struct lichen_rpl_dao_snapshot *snapshot = &root->snapshots[i];
 
-		if (snapshot->valid && snapshot->active &&
-		    snapshot->candidates[0].path_lifetime != 255) {
-			uint64_t max_age =
-				(uint64_t)snapshot->candidates[0].path_lifetime * lifetime_unit;
-
+		if (!snapshot->valid || !snapshot->active) {
+			continue;
+		}
+		for (int j = 0; j < snapshot->candidate_count; j++) {
+			if (snapshot->candidates[j].path_lifetime == 255) {
+				continue;
+			}
+			uint64_t max_age = (uint64_t)snapshot->candidates[j].path_lifetime *
+					   lifetime_unit;
 			if (max_age == 0 || max_age > INT32_MAX) {
 				k_mutex_unlock(&dm->lock);
 				return LICHEN_RPL_ERR_INVALID;
@@ -757,21 +780,35 @@ int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
 		if (!snapshot->valid || !snapshot->active) {
 			continue;
 		}
-		uint8_t lifetime = snapshot->candidates[0].path_lifetime;
-		if (lifetime == 255) {
-			continue;
+		bool any_active = false;
+		bool have_expiry_deadline = false;
+		uint32_t expiry_deadline = 0;
+		for (int j = 0; j < snapshot->candidate_count; j++) {
+			uint8_t lifetime = snapshot->candidates[j].path_lifetime;
+			if (lifetime == 255) {
+				any_active = true;
+				break;
+			}
+			uint32_t deadline = snapshot->last_updated +
+				(uint32_t)lifetime * lifetime_unit;
+			if (!have_expiry_deadline || (int32_t)(deadline - expiry_deadline) > 0) {
+				expiry_deadline = deadline;
+				have_expiry_deadline = true;
+			}
+			if (!time_reached(now, deadline)) {
+				any_active = true;
+				break;
+			}
 		}
-
-		uint32_t max_age = (uint32_t)lifetime * lifetime_unit;
-		uint32_t deadline = snapshot->last_updated + max_age;
-		if ((int32_t)(now - deadline) >= 0) {
-			snapshot->valid = false;
+		if (!any_active) {
 			snapshot->active = false;
+			snapshot->disposition = LICHEN_RPL_DAO_EXPIRED;
+			snapshot->retain_until = retain_deadline(expiry_deadline);
 			expired++;
 		}
 	}
 	if (expired > 0) {
-		rebuild_routes(dm);
+		(void)rebuild_routes(dm);
 	}
 
 	k_mutex_unlock(&dm->lock);

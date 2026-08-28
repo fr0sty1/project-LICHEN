@@ -484,9 +484,12 @@ config LICHEN_CHECKIN_PAYLOAD_MAX
 	  documents. Must bound the worst-case {"checkins":[...]} document
 	  for the configured store sizes; this is enforced at build time
 	  (MAX_CHECKINS x worst-case entry, LICHEN_CHECKIN_ENTRY_CBOR_MAX
-	  in lichen/checkin.h, plus wrapper). A build error here means the
-	  buffer cannot hold that document: raise this value or lower
-	  CONFIG_LICHEN_CHECKIN_MAX_CHECKINS.
+	  in lichen/checkin.h, plus wrapper). It must also hold one
+	  worst-case roll-call status document (LICHEN_ROLLCALL_RENDER_MAX
+	  plus wrapper, also enforced at build time); the all-roll-calls
+	  list document is clamped to what fits rather than failing. A
+	  build error here means the buffer cannot hold those documents:
+	  raise this value or lower the relevant store size.
 
 config LICHEN_CHECKIN_LOG_LEVEL
 	int "Check-In / Roll Call log level"

@@ -1,0 +1,272 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "wire_format_v2",
+  "description": "Canonical wire-format v2 link/SCHC conformance vectors: signed frames with SI+S sender-identity forms (normal, relay re-signed, malformed), hop re-signing inputs, announce epoch replay, native 0200::/8 SCHC residues, RPL source reconstruction, address near-collisions, and immutable multicast group IDs. Every byte is hand-derived from the spec tables plus independent oracles; legacy v1-schema fixtures stay as versioned migration data.",
+  "spec": "spec/02-physical-link.md 4.1-4.2; spec/03-adaptation.md 5.5-5.7; spec/appendix-schc.md; spec/05-routing.md 9.2-9.3; spec/12-apps.md 18.8; draft-lichen-link-01; draft-lichen-schnorr-00",
+  "provenance": {
+    "wire_format": "Wire-format v2 = the current signed link frame (LLSec bit 7 SI plus bit 5 S, 8-byte Signer Identifier after Dst Addr) and the Version 3 SCHC rule set with native 0200::/8 residues, per spec 02 sections 4.1-4.2, spec 03 section 5.5, and spec/appendix-schc.md. Legacy v1-schema fixtures (dash-named files) remain versioned migration data.",
+    "frames": "Frame octets hand-assembled from the spec 4.1 wire table and 4.2 LLSec bit table; signatures from reference_schnorr48.py (libsodium/PyNaCl), never from lichen.crypto.schnorr48.",
+    "schc": "Residues hand-packed bit-by-bit from the spec 5.5 field table (IPv6.hop_limit, address LSBs, UDP port LSB(4)s, CoAP type/tkl/code/mid for Rule 1; IIDs plus RPL base object for Rule 3); checksums from an in-file RFC 2460/4443 one's-complement implementation.",
+    "multicast": "Group multicast address per spec 18.8.3 (RFC 3306 ff35:0040 + 64-bit 02xx prefix + 16-bit group ID) with the 16-bit ID from SHA-256 of the group id string; spec 18.8.1 sanctions name-hash group ids. The spec example ':0001::0001' is internally inconsistent with its own 16-bit group-ID text; these vectors pin the normative :0000:<gid> layout.",
+    "announce": "Announce transcript per spec 05 section 9.2 (LICHEN-ANNOUNCE-v1\\0 domain, hop count excluded); replay rule per section 9.3: an originator sequence not greater than the pinned floor is a replay."
+  },
+  "vectors": [
+    {
+      "name": "wf2_signed_short_sender_id",
+      "description": "Normal signed frame in the short-address form: LLSec bit 7 SI and bit 5 S both set, a 2-byte short destination, and the 8-byte Signer Identifier EUI-64 (key-derived by toggling the U/L bit exactly once) carried between Dst Addr and Payload.",
+      "fields": {
+        "epoch": 5,
+        "seqnum": 100,
+        "dst_addr": "c001",
+        "payload": "77327368",
+        "mic": "c424e91fb04dc10b21398a193b6af04215ff407a06316513316a295a4620131f366cfabed188421b28509e46da340e05",
+        "addr_mode": 1,
+        "mic_length": 1,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342",
+        "signer_eui64_present": true
+      },
+      "encoded": "42a5050064c0017fd5cfc679ab634277327368c424e91fb04dc10b21398a193b6af04215ff407a06316513316a295a4620131f366cfabed188421b28509e46da340e05",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d76310042a505006402c0017fd5cfc679ab634277327368",
+        "wire_prefix": "42a5050064c0017fd5cfc679ab634277327368",
+        "signature": "c424e91fb04dc10b21398a193b6af04215ff407a06316513316a295a4620131f366cfabed188421b28509e46da340e05",
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=2. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "wf2_signed_broadcast_sender_iid_only",
+      "description": "Normal signed broadcast frame: no destination octets (the coordinator 0xffff 'no short address' case) so the sender is identified only by the SIID EUI-64; receivers bind identity to the verified public key, never to the hint (spec 4.2).",
+      "fields": {
+        "epoch": 5,
+        "seqnum": 101,
+        "dst_addr": "",
+        "payload": "77326263",
+        "mic": "eacd7aeb0bb7971a48362116a6e8ec174614dbf444da0d7f2b05b287ce62b03dcb13fb01eff7e801327e185a81bbe408",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342",
+        "signer_eui64_present": true
+      },
+      "encoded": "40a00500657fd5cfc679ab634277326263eacd7aeb0bb7971a48362116a6e8ec174614dbf444da0d7f2b05b287ce62b03dcb13fb01eff7e801327e185a81bbe408",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d76310040a0050065007fd5cfc679ab634277326263",
+        "wire_prefix": "40a00500657fd5cfc679ab634277326263",
+        "signature": "eacd7aeb0bb7971a48362116a6e8ec174614dbf444da0d7f2b05b287ce62b03dcb13fb01eff7e801327e185a81bbe408",
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "wf2_hop_resign_inputs",
+      "description": "Hop re-signing input: relay B (seed 0x01*32) received wf2_signed_broadcast_sender_iid_only, preserved the inner payload octet-for-octet, and signed a new enclosing frame with its own SIID and replay counter (epoch 6, seqnum 200). crypto.preimage is the exact re-sign transcript; the preserved payload equals the vector-2 payload and the origin frame's signature need not verify at the relay's receivers.",
+      "fields": {
+        "epoch": 6,
+        "seqnum": 200,
+        "dst_addr": "",
+        "payload": "77326263",
+        "mic": "6d87e00fc3bdb198624b4e4e0fc973388412f927254eb806eda5bdb710492e99cd7f06aebf9d2b1c2b4ea820f74f3c0a",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "3784728ae7309eab",
+        "signer_eui64_present": true
+      },
+      "encoded": "40a00600c83784728ae7309eab773262636d87e00fc3bdb198624b4e4e0fc973388412f927254eb806eda5bdb710492e99cd7f06aebf9d2b1c2b4ea820f74f3c0a",
+      "crypto": {
+        "seed": "0101010101010101010101010101010101010101010101010101010101010101",
+        "private_key": "58e86efb75fa4e2c410f46e16de9f6acae1a1703528651b69bc176c088bef36e",
+        "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "preimage": "4c494348454e2d4c494e4b2d76310040a00600c8003784728ae7309eab77326263",
+        "wire_prefix": "40a00600c83784728ae7309eab77326263",
+        "signature": "6d87e00fc3bdb198624b4e4e0fc973388412f927254eb806eda5bdb710492e99cd7f06aebf9d2b1c2b4ea820f74f3c0a",
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "wf2_announce_fresh_counter_accept",
+      "description": "Announce (originator sequence 4, rx_channel 0) inside a signed broadcast frame from the originator. First acceptance pins the persistent per-originator replay floor at sequence 4 for originator IID 7dd5cfc679ab6342; payload byte 0 is the 0x15 routing dispatch and bytes 1.. parse as the announce wire value.",
+      "fields": {
+        "epoch": 5,
+        "seqnum": 102,
+        "dst_addr": "",
+        "payload": "1501000000047dd5cfc679ab63423b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da290621c68fe37b06daa69207e9ca9bf00851d3754c7396536145a135aa70f22150b0002bb1fd0902bee74cdb89403716077766322d7265706c61792d70726f6265",
+        "mic": "b1c211b3d85e5878617e6f80ad53ad73574cfaed63d9d7fd5c9c7e6528a83e8d0714317f350307e4456340e397c6c10f",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342",
+        "signer_eui64_present": true
+      },
+      "encoded": "aaa00500667fd5cfc679ab63421501000000047dd5cfc679ab63423b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da290621c68fe37b06daa69207e9ca9bf00851d3754c7396536145a135aa70f22150b0002bb1fd0902bee74cdb89403716077766322d7265706c61792d70726f6265b1c211b3d85e5878617e6f80ad53ad73574cfaed63d9d7fd5c9c7e6528a83e8d0714317f350307e4456340e397c6c10f",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d763100aaa0050066007fd5cfc679ab63421501000000047dd5cfc679ab63423b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da290621c68fe37b06daa69207e9ca9bf00851d3754c7396536145a135aa70f22150b0002bb1fd0902bee74cdb89403716077766322d7265706c61792d70726f6265",
+        "wire_prefix": "aaa00500667fd5cfc679ab63421501000000047dd5cfc679ab63423b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da290621c68fe37b06daa69207e9ca9bf00851d3754c7396536145a135aa70f22150b0002bb1fd0902bee74cdb89403716077766322d7265706c61792d70726f6265",
+        "signature": "b1c211b3d85e5878617e6f80ad53ad73574cfaed63d9d7fd5c9c7e6528a83e8d0714317f350307e4456340e397c6c10f",
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "wf2_announce_epoch_replay_hop_resigned",
+      "description": "Announce epoch replay: relay B re-signed the same originator announce (sequence 4) with an incremented hop count and a completely fresh link epoch/seqnum (7/55). The link layer accepts the frame (valid relay signature, fresh counter) but the announce layer MUST reject it as STALE_SEQNUM: originator sequence 4 is not greater than the persistent floor 4 pinned by wf2_announce_fresh_counter_accept (spec 05 section 9.3, 16-bit modular ordering). The hop count is excluded from the announce transcript, so the recorded signature still verifies.",
+      "fields": {
+        "epoch": 7,
+        "seqnum": 55,
+        "dst_addr": "",
+        "payload": "1501000100047dd5cfc679ab63423b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da290621c68fe37b06daa69207e9ca9bf00851d3754c7396536145a135aa70f22150b0002bb1fd0902bee74cdb89403716077766322d7265706c61792d70726f6265",
+        "mic": "7468b439f3e46762175195bef5b99d931fb3d3269bd01868b825979f6d7386670d97b07603cf9711038ae81e696b1308",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "3784728ae7309eab",
+        "signer_eui64_present": true
+      },
+      "encoded": "aaa00700373784728ae7309eab1501000100047dd5cfc679ab63423b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da290621c68fe37b06daa69207e9ca9bf00851d3754c7396536145a135aa70f22150b0002bb1fd0902bee74cdb89403716077766322d7265706c61792d70726f62657468b439f3e46762175195bef5b99d931fb3d3269bd01868b825979f6d7386670d97b07603cf9711038ae81e696b1308",
+      "crypto": {
+        "seed": "0101010101010101010101010101010101010101010101010101010101010101",
+        "private_key": "58e86efb75fa4e2c410f46e16de9f6acae1a1703528651b69bc176c088bef36e",
+        "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "preimage": "4c494348454e2d4c494e4b2d763100aaa0070037003784728ae7309eab1501000100047dd5cfc679ab63423b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da290621c68fe37b06daa69207e9ca9bf00851d3754c7396536145a135aa70f22150b0002bb1fd0902bee74cdb89403716077766322d7265706c61792d70726f6265",
+        "wire_prefix": "aaa00700373784728ae7309eab1501000100047dd5cfc679ab63423b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da290621c68fe37b06daa69207e9ca9bf00851d3754c7396536145a135aa70f22150b0002bb1fd0902bee74cdb89403716077766322d7265706c61792d70726f6265",
+        "signature": "7468b439f3e46762175195bef5b99d931fb3d3269bd01868b825979f6d7386670d97b07603cf9711038ae81e696b1308",
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      }
+    },
+    {
+      "name": "wf2_sig_without_sender_id",
+      "description": "Malformed S/SI parity: bit 5 S set with bit 7 SI clear, so the signature has no on-wire Signer Identifier. The Schnorr-48 signature verifies over the recorded transcript, but a receiver MUST discard the frame because signed frames MUST set both S and SI (spec 4.2) and MUST NOT brute-force the signer.",
+      "fields": {
+        "epoch": 8,
+        "seqnum": 12,
+        "dst_addr": "",
+        "payload": "77327330",
+        "mic": "fffef25d4565c3d59e5625d93c19ceb6aee81a11440442d04fc7951ef9d6207200fc8e9bf991e2c14de54afd4a27cc06",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "",
+        "signer_eui64_present": false
+      },
+      "encoded": "382008000c77327330fffef25d4565c3d59e5625d93c19ceb6aee81a11440442d04fc7951ef9d6207200fc8e9bf991e2c14de54afd4a27cc06",
+      "crypto": {
+        "seed": "0000000000000000000000000000000000000000000000000000000000000000",
+        "private_key": "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f156",
+        "public_key": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "preimage": "4c494348454e2d4c494e4b2d763100382008000c0077327330",
+        "wire_prefix": "382008000c77327330",
+        "signature": "fffef25d4565c3d59e5625d93c19ceb6aee81a11440442d04fc7951ef9d6207200fc8e9bf991e2c14de54afd4a27cc06",
+        "provenance": "Independent PyNaCl reference signer over Link Signature Domain Version 1 and the normative transcript with non-wire DST_LEN=0. Frame octets hand-derived from the spec 4.1 wire table and spec 4.2 LLSec bit table."
+      },
+      "expect": {
+        "error": "s_si_mismatch_signature_without_sender_id"
+      }
+    },
+    {
+      "name": "wf2_sender_id_without_sig",
+      "description": "Malformed S/SI parity: bit 7 SI set with bit 5 S clear, so an unsigned frame carries a Signer Identifier with no signature. A receiver MUST discard it; the SIID is an unauthenticated hint and MUST NOT allocate replay, trust, routing, or fragmentation state (spec 4.2).",
+      "fields": {
+        "epoch": 4,
+        "seqnum": 13,
+        "dst_addr": "",
+        "payload": "77327530",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342",
+        "signer_eui64_present": true
+      },
+      "encoded": "108004000d7fd5cfc679ab634277327530",
+      "expect": {
+        "error": "s_si_mismatch_sender_id_without_signature"
+      }
+    },
+    {
+      "name": "wf2_signed_sender_id_truncated",
+      "description": "Malformed truncation: LLSec declares S and SI (needing an 8-byte Signer Identifier plus a 48-byte signature) but the LENGTH-bounded body ends four octets into the Signer Identifier. The frame MUST be rejected as truncated; the partial SIID MUST NOT be used to select or mutate any state.",
+      "fields": {
+        "epoch": 9,
+        "seqnum": 14,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64": "7fd5cfc679ab6342",
+        "signer_eui64_present": true
+      },
+      "encoded": "08a009000e7fd5cfc6",
+      "expect": {
+        "error": "truncated_signer_id"
+      }
+    },
+    {
+      "name": "wf2_schc_rule1_native_0200",
+      "description": "Rule 1 native 0200::/8 compression: 37-byte fixed compressed header (Rule ID + 286-bit residue zero-padded to 36 octets). Residue layout MSB-first: hop_limit(8), src LSB(120), dst LSB(120), src_port LSB(4)=3, dst_port LSB(4)=3, CoAP type(2)=0, tkl(4)=0, code(8)=1, mid(16)=0x1234; UDP length and both checksums are COMPUTE and absent. Decompression MUST reconstruct the exact packet.",
+      "rule_id": 1,
+      "packet": "60000000000c11400200123456789abc00000000000000010200123456789abc000000000000000216331633000c766640011234",
+      "compressed": "014000123456789abc000000000000000100123456789abc000000000000000233000448d0"
+    },
+    {
+      "name": "wf2_schc_rule1_native_collision_probe",
+      "description": "Native-address near-collision: destination differs from wf2_schc_rule1_native_0200 only in the final octet (\u20260003 vs \u20260002) yet the LSB(120) residues differ, so decompression MUST reconstruct each exact address; eliding more than the 0200::/8 MSB would collide distinct nodes.",
+      "rule_id": 1,
+      "packet": "60000000000c11400200123456789abc00000000000000010200123456789abc000000000000000316331633000c766440011235",
+      "compressed": "014000123456789abc000000000000000100123456789abc000000000000000333000448d4"
+    },
+    {
+      "name": "wf2_schc_rule1_ula_source_nonmatch_fallback255",
+      "description": "ULA fc00::/8 source with a native destination: Rule 1 MUST NOT match (source outside 0200::/8) and Rule 0 MUST NOT match, so the compressor selects fully validated Rule 255. Compressing under Rule 1 would collide the address by assuming the 0200::/8 MSB; there is no provisioned ULA context.",
+      "rule_id": 255,
+      "packet": "60000000000c1140fc0000000000000000000000000000010200123456789abc000000000000000216331633000c7fcc40011236",
+      "compressed": "ff60000000000c1140fc0000000000000000000000000000010200123456789abc000000000000000216331633000c7fcc40011236"
+    },
+    {
+      "name": "wf2_schc_rule3_rpl_source_reconstruction",
+      "description": "Rule 3 link-local RPL DIO: the 39-octet residue carries the explicit RPL source/destination IDs as IIDs (residue[1:9] = source IID 7dd5cfc679ab6342, residue[9:17] = destination IID 3584728ae7309eab) followed by the value-sent DIO base object (instance, version, rank, gmop, dtsn, DODAGID); ICMPv6 type 155 code 1 and all lengths/checksums are recomputed on reconstruction. Decompression MUST rebuild fe80::<src IID> and fe80::<dst IID> exactly. Options travel verbatim after the 39-octet residue.",
+      "rule_id": 3,
+      "packet": "6000000000203a40fe800000000000007dd5cfc679ab6342fe800000000000003584728ae7309eab9b010f750100010088010000027dd5cfc679ab637dd5cfc679ab634201020000",
+      "compressed": "03407dd5cfc679ab63423584728ae7309eab010001008801027dd5cfc679ab637dd5cfc679ab634201020000"
+    },
+    {
+      "name": "wf2_schc_rule3_multicast_dst_nonmatch_fallback255",
+      "description": "Canonical RPL multicast DIO to ff02::1a: Rule 3 does not match (destination outside fe80::/64) so the sender MUST use fully validated Rule 255; a decoder MUST NOT turn ff02::1a into fe80::1a (spec 03 section 5.5, appendix-schc.md A.5).",
+      "rule_id": 255,
+      "packet": "6000000000203a40fe800000000000007dd5cfc679ab6342ff02000000000000000000000000001a9b013cc40100010088010000027dd5cfc679ab637dd5cfc679ab634201020000",
+      "compressed": "ff6000000000203a40fe800000000000007dd5cfc679ab6342ff02000000000000000000000000001a9b013cc40100010088010000027dd5cfc679ab637dd5cfc679ab634201020000"
+    },
+    {
+      "name": "wf2_schc_rule255_group_multicast_id",
+      "description": "Rule 255 UDP packet whose destination is the spec 18.8.3 group multicast address ff35:0040:0200:1234:5678:9abc:0000:<gid> for group id 29c4834a95b3 (name-hash of 'team-alpha'); the 16-bit ID is SHA-256(group id)[:2] big-endian. Multicast IDs are immutable: consumers MUST derive the identical 16 destination bytes from the group id string and mesh prefix.",
+      "rule_id": 255,
+      "packet": "60000000000b11400200123456789abc0000000000000001ff3500400200123456789abc00007d8816331633000bb333676d31",
+      "compressed": "ff60000000000b11400200123456789abc0000000000000001ff3500400200123456789abc00007d8816331633000bb333676d31"
+    },
+    {
+      "name": "wf2_schc_rule255_group_multicast_id_stable_reissue",
+      "description": "Same group re-issued in a different packet (different UDP payload): the destination address octets ff3500400200123456789abc00007d88 are byte-identical to wf2_schc_rule255_group_multicast_id, pinning multicast-ID immutability across re-creation and invitation re-minting.",
+      "rule_id": 255,
+      "packet": "60000000000b11400200123456789abc0000000000000001ff3500400200123456789abc00007d8816331633000bb233676d32",
+      "compressed": "ff60000000000b11400200123456789abc0000000000000001ff3500400200123456789abc00007d8816331633000bb233676d32"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-h7t5.7.6.1.1.7",
+  "title": "Document host Bluetooth 6LoWPAN/IPSP tooling requirements",
+  "description": "Document what host-side tooling is required to use BLE IPSP/6LoWPAN as a local-client transport. Cover Linux bluetooth_6lowpan kernel module, BlueZ configuration, macOS limitations, Windows BLE stack capabilities. Determine whether host tooling complexity favors or disfavors IPSP versus the SLIP-over-GATT approach.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:49:03.906782Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:49:03.906782Z",
+  "labels": [
+    "ble",
+    "ipsp",
+    "host",
+    "tooling",
+    "local-ok",
+    "board-support",
+    "bringup",
+    "coap",
+    "firmware",
+    "follow-up",
+    "hal",
+    "hardware",
+    "lci",
+    "lilygo",
+    "native-interface",
+    "owner-reserved",
+    "partner-handoff",
+    "serial",
+    "slip",
+    "t-deck",
+    "zephyr"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.1.1.7",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.1.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:49:08.073111Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-5dek",
+  "title": "wire::array silently truncates lengths \u003e65535 producing corrupt CBOR",
+  "description": "rust/lichen-client/src/checkin.rs:239-249 and deaddrop.rs:438-448: final branch emits 0x99 with len as u16 - silently truncated for len\u003e65535 instead of erroring (text writers truncate above u32::MAX, unreachable). Latent only today but violates deterministic-writer contract and reachable via \u003e64k-entry RollcallStatus re-encode. wire::map has a debug_assert; array has none. Fix: add u32 branch + debug_assert! or return Error::Encode for lengths beyond supported range; unit test the error path.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:17.448978Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T06:53:17.448978Z"
+}

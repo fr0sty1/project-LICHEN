@@ -13,7 +13,6 @@ from ipaddress import IPv6Address
 
 from lichen.announce.coords import decode_congestion, decode_coords
 from lichen.announce.messages import (
-    MAX_ANNOUNCE_HOPS,
     AnnounceMessage,
 )
 from lichen.crypto.identity import PeerIdentity, _pubkey_to_iid

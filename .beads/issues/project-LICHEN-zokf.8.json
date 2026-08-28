@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zokf.8",
+  "title": "Extract core LoRa peripheral models (SX1262, SX127x, LR1110) - decouple from LICHEN-specific interfaces",
+  "description": "Expand peripheral coverage beyond SX126x:\n- SX1262 (already done in ddcu)\n- SX127x series (SX1276/77/78/79) - new peripheral needed\n- LR1110 - new peripheral needed\n\nAll peripherals should have generic APIs decoupled from LICHEN-specific interfaces.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:07.4959Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:07.4959Z",
+  "labels": [
+    "blocked:hardware",
+    "defer-boardconfig",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zokf.8",
+      "depends_on_id": "project-LICHEN-zokf",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:16.917264Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

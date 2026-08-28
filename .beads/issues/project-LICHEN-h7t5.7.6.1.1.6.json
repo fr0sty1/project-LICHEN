@@ -1,0 +1,43 @@
+{
+  "id": "project-LICHEN-h7t5.7.6.1.1.6",
+  "title": "Evaluate Zephyr 3.7 IPSP L2 removal and restoration path",
+  "description": "Analyze why CONFIG_NET_L2_BT was removed from Zephyr v3.7.0, whether this was intentional deprecation or refactoring, and what path exists to restore IPSP network L2 support. Check Zephyr commit history, mailing list, and upstream issues. Document whether restoration requires backporting, upstreaming a patch, or if IPSP is being replaced by a different mechanism.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:52.789214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:52.789214Z",
+  "labels": [
+    "ble",
+    "ipsp",
+    "zephyr",
+    "local-ok",
+    "board-support",
+    "bringup",
+    "coap",
+    "firmware",
+    "follow-up",
+    "hal",
+    "hardware",
+    "lci",
+    "lilygo",
+    "native-interface",
+    "owner-reserved",
+    "partner-handoff",
+    "serial",
+    "slip",
+    "t-deck"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.1.1.6",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.1.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:55.380146Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

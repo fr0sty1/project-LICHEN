@@ -78,6 +78,13 @@
     </div>
 
     <div class="card" style="grid-column: span 2;">
+      <h2>Telemetry Metrics <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/metrics" hx-trigger="load, every 5s" hx-indicator="closest .card">
+        Loading metrics&#8230;
+      </div>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
       <h2>Live Mesh Stats <span class="htmx-indicator">&#8635;</span></h2>
       <div id="mesh-stats" hx-get="/partial/mesh-stats" hx-trigger="load, every 5s" hx-indicator="closest .card">
         Loading mesh stats...

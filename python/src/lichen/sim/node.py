@@ -97,7 +97,7 @@ class SimNode:
         self.started = started
         self.heard_set = heard_set if heard_set is not None else set()
         if current_channel == 0:
-            self.current_channel = synchronized_hop_channel(sfn, seed, max(num_channels, 3))
+            self.current_channel = synchronized_hop_channel(sfn, seed, num_channels)
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,

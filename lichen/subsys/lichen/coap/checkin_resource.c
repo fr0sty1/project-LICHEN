@@ -50,6 +50,13 @@ BUILD_ASSERT(CONFIG_LICHEN_CHECKIN_MAX_CHECKINS *
 	     "CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX cannot hold the worst-case "
 	     "check-in list document; raise it or lower "
 	     "CONFIG_LICHEN_CHECKIN_MAX_CHECKINS");
+/* The roll-call GET must always be able to render one full status
+ * document (single-id path); the all-roll-calls list path clamps its
+ * item count to what fits (see lichen_rollcall_list_encode). */
+BUILD_ASSERT(CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX >=
+		     LICHEN_ROLLCALL_RENDER_MAX + 16,
+	     "CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX cannot hold the worst-case "
+	     "roll-call status document; raise it");
 
 static bool s_time_overridden;
 static uint64_t s_time_override;

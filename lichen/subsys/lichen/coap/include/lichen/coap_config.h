@@ -80,6 +80,7 @@ struct lichen_config_radio {
  */
 struct lichen_config_identity {
 	uint8_t eui64[8];                            /* EUI-64 address */
+	bool eui64_valid;                             /* True if EUI-64 is set */
 	uint8_t pubkey[32];                          /* Ed25519 public key */
 	bool pubkey_valid;                           /* True if pubkey is set */
 	char link_local[LICHEN_CONFIG_ADDR_MAX_LEN]; /* fe80::... */
@@ -104,6 +105,11 @@ struct lichen_config_provider {
 	/**
 	 * @brief Set node configuration
 	 * @param[in] config New configuration values
+	 *
+	 * The provider MUST commit the complete configuration atomically,
+	 * including persistence, and MUST leave the active configuration
+	 * unchanged when returning an error.
+	 *
 	 * @return 0 on success, -EINVAL on validation failure, other negative errno
 	 */
 	int (*node_set)(const struct lichen_config_node *config);
@@ -118,6 +124,13 @@ struct lichen_config_provider {
 	/**
 	 * @brief Set radio configuration
 	 * @param[in] config New configuration values
+	 *
+	 * The provider MUST validate the complete candidate against the active
+	 * provisioned regional channel plan, including permitted frequency,
+	 * bandwidth, SF, coding rate, and regional TX-power ceiling. It MUST commit
+	 * radio state and persistence atomically and leave both unchanged on error.
+	 * Return -ERANGE for a candidate outside the provisioned regional limits.
+	 *
 	 * @return 0 on success, -EINVAL on validation failure, other negative errno
 	 */
 	int (*radio_set)(const struct lichen_config_radio *config);
@@ -193,8 +206,8 @@ int lichen_config_decode_node_cbor(const uint8_t *buf, size_t len,
  *   "sync_word": "0x34"
  * }
  *
- * Note: freq_mhz is encoded as a scaled integer (freq_khz / 1000.0) using
- * CBOR float16/32 for spec compliance.
+ * Note: freq_mhz is converted from freq_khz / 1000.0 and encoded as CBOR
+ * float64, matching the canonical LCI vector.
  *
  * @param[out] buf Output buffer
  * @param[in] buf_size Buffer size
@@ -223,14 +236,12 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
  * Output format (per LCI spec 17.5.2):
  * {
  *   "eui64": "0x0011223344556677",
- *   "pubkey": "<base64 Ed25519 public key>",
+ *   "pubkey": "<lowercase-hex Ed25519 public key>",
  *   "pubkey_fingerprint": "SHA256:xY7...",
-  *   "addrs": {
-  *     "link_local": "fe80::0211:22ff:fe33:4455",
-  *     "primary": "0200:1234:5678:9abc::0211:22ff:fe33:4455",
-  *     "gua": null
-  *   }
-
+ *   "addrs": {
+ *     "link_local": "fe80::0211:22ff:fe33:4455",
+ *     "primary": "0200:1234:5678:9abc::0211:22ff:fe33:4455"
+ *   }
  * }
  *
  * @param[out] buf Output buffer

@@ -15,6 +15,9 @@ Message types:
     TX (0x10): Transmit with u8 channel after len
     TX_DONE (0x11): Transmit complete with airtime
     TX_FAIL (0x12): Transmit failed
+    RX (0x20): Legacy receive request with timeout_ms
+    RX_OK (0x21): Legacy receive response with payload/RSSI/SNR
+    RX_TIMEOUT (0x22): Legacy receive timeout response
     RX_ENTER (0x24): RX enter with timeout_us + u8 channel
     RX_EXIT (0x26): Renode -> Sim: leaving RX mode
     RX_PACKET (0x27): Sim -> Renode: packet arrived, unsolicited
@@ -27,10 +30,11 @@ Message types:
 
 from __future__ import annotations
 
+import math
 import struct
 from typing import Final
 
-from .tdma import hash_32
+from lichen.timing.sfn import hash_32
 
 # Message type constants
 MSG_OK: Final[int] = 0x00
@@ -38,6 +42,9 @@ MSG_REGISTER: Final[int] = 0x01
 MSG_TX: Final[int] = 0x10
 MSG_TX_DONE: Final[int] = 0x11
 MSG_TX_FAIL: Final[int] = 0x12
+MSG_RX: Final[int] = 0x20
+MSG_RX_OK: Final[int] = 0x21
+MSG_RX_TIMEOUT: Final[int] = 0x22
 MSG_RX_ENTER: Final[int] = 0x24
 MSG_RX_EXIT: Final[int] = 0x26
 MSG_RX_PACKET: Final[int] = 0x27
@@ -56,6 +63,7 @@ MAX_ERR_MSG_LENGTH: Final[int] = 255
 # Fixed-width integer field bounds
 _UINT8_MAX: Final[int] = 0xFF
 _UINT32_MAX: Final[int] = 0xFFFFFFFF
+_UINT64_MAX: Final[int] = 0xFFFFFFFFFFFFFFFF
 _INT16_MIN: Final[int] = -32768
 _INT16_MAX: Final[int] = 32767
 
@@ -70,8 +78,25 @@ def _check_range(name: str, value: int, lo: int, hi: int) -> None:
     Raises:
         ProtocolError: If value is outside [lo, hi].
     """
-    if not lo <= value <= hi:
+    if type(value) is not int or not lo <= value <= hi:
         raise ProtocolError(f"{name} out of range: {value} not in [{lo}, {hi}]")
+
+
+def _check_exact_length(name: str, data: bytes, expected: int) -> None:
+    """Reject both truncated messages and trailing bytes."""
+    if len(data) != expected:
+        raise ProtocolError(f"{name} message has invalid length: {len(data)} != {expected}")
+
+
+def _check_coordinates(x: float, y: float, z: float) -> None:
+    """Require finite coordinates that can be encoded as IEEE-754 doubles."""
+    for name, value in (("x", x), ("y", y), ("z", z)):
+        try:
+            finite = math.isfinite(value)
+        except (TypeError, OverflowError):
+            finite = False
+        if not finite:
+            raise ProtocolError(f"{name} coordinate must be a finite float")
 
 
 def encode_register(sim_id: str, node_id: str, x: float, y: float, z: float) -> bytes:
@@ -107,6 +132,7 @@ def encode_register(sim_id: str, node_id: str, x: float, y: float, z: float) -> 
         raise ProtocolError(f"sim_id too long: {len(sim_id_bytes)} > {MAX_ID_LENGTH}")
     if len(node_id_bytes) > MAX_ID_LENGTH:
         raise ProtocolError(f"node_id too long: {len(node_id_bytes)} > {MAX_ID_LENGTH}")
+    _check_coordinates(x, y, z)
 
     return (
         struct.pack("<B", MSG_REGISTER)
@@ -162,7 +188,10 @@ def decode_register(data: bytes) -> tuple[str, str, float, float, float]:
     # Read coordinates
     if offset + 24 > len(data):
         raise ProtocolError("REGISTER message truncated at coordinates")
+    if offset + 24 != len(data):
+        raise ProtocolError("REGISTER message has trailing bytes")
     x, y, z = struct.unpack_from("<ddd", data, offset)
+    _check_coordinates(x, y, z)
 
     return (sim_id, node_id, x, y, z)
 
@@ -178,14 +207,18 @@ def decode_tx(data: bytes) -> tuple[bytes, int]:
     if len(data) < 2:
         raise ProtocolError("TX message too short")
     payload_len = struct.unpack_from("<H", data, 0)[0]
-    if len(data) >= 3 + payload_len:
+    legacy_length = 2 + payload_len
+    channel_length = 3 + payload_len
+    if len(data) == channel_length:
         channel = data[2]
         payload_start = 3
-    else:
+    elif len(data) == legacy_length:
         channel = 0
         payload_start = 2
-    if len(data) < payload_start + payload_len:
+    elif len(data) < legacy_length:
         raise ProtocolError("TX message truncated at payload")
+    else:
+        raise ProtocolError("TX message has invalid length")
     return data[payload_start : payload_start + payload_len], channel
 
 
@@ -223,6 +256,7 @@ def decode_tx_done(data: bytes) -> int:
     """
     if len(data) < 4:
         raise ProtocolError("TX_DONE message too short")
+    _check_exact_length("TX_DONE", data, 4)
 
     (airtime_us,) = struct.unpack_from("<I", data, 0)
     return int(airtime_us)
@@ -240,6 +274,35 @@ def encode_tx_fail() -> bytes:
     return struct.pack("<B", MSG_TX_FAIL)
 
 
+def encode_rx(timeout_ms: int) -> bytes:
+    """Encode the legacy request/response RX message used by SimClient."""
+    _check_range("timeout_ms", timeout_ms, 0, _UINT32_MAX)
+    return struct.pack("<BI", MSG_RX, timeout_ms)
+
+
+def decode_rx(data: bytes) -> int:
+    """Decode a legacy RX payload (without its message type)."""
+    if len(data) < 4:
+        raise ProtocolError("RX message too short")
+    _check_exact_length("RX", data, 4)
+    return int(struct.unpack("<I", data)[0])
+
+
+def encode_rx_ok(payload: bytes, rssi: int, snr: int) -> bytes:
+    """Encode the legacy successful RX response used by SimClient."""
+    return _encode_received_packet(MSG_RX_OK, payload, rssi, snr)
+
+
+def decode_rx_ok(data: bytes) -> tuple[bytes, int, int]:
+    """Decode a legacy RX_OK payload (without its message type)."""
+    return _decode_received_packet("RX_OK", data)
+
+
+def encode_rx_timeout() -> bytes:
+    """Encode the legacy request/response RX timeout message."""
+    return struct.pack("<B", MSG_RX_TIMEOUT)
+
+
 def encode_rx_enter(timeout_us: int, channel: int = 0) -> bytes:
     _check_range("timeout_us", timeout_us, 0, _UINT32_MAX)
     _check_range("channel", channel, 0, _UINT8_MAX)
@@ -250,7 +313,12 @@ def decode_rx_enter(data: bytes) -> tuple[int, int]:
     if len(data) < 4:
         raise ProtocolError("RX_ENTER message too short")
     timeout_us = struct.unpack_from("<I", data, 0)[0]
-    channel = data[4] if len(data) >= 5 else 0
+    if len(data) == 4:
+        channel = 0
+    elif len(data) == 5:
+        channel = data[4]
+    else:
+        raise ProtocolError("RX_ENTER message has invalid length")
     return timeout_us, channel
 
 
@@ -264,6 +332,15 @@ def encode_rx_exit() -> bytes:
         Encoded message bytes.
     """
     return struct.pack("<B", MSG_RX_EXIT)
+
+
+def _encode_received_packet(msg_type: int, payload: bytes, rssi: int, snr: int) -> bytes:
+    """Encode the common RX_OK/RX_PACKET body."""
+    if len(payload) > MAX_PAYLOAD_LENGTH:
+        raise ProtocolError(f"payload too long: {len(payload)} > {MAX_PAYLOAD_LENGTH}")
+    _check_range("rssi", rssi, _INT16_MIN, _INT16_MAX)
+    _check_range("snr", snr, _INT16_MIN, _INT16_MAX)
+    return struct.pack("<BH", msg_type, len(payload)) + payload + struct.pack("<hh", rssi, snr)
 
 
 def encode_rx_packet(payload: bytes, rssi: int, snr: int) -> bytes:
@@ -288,12 +365,24 @@ def encode_rx_packet(payload: bytes, rssi: int, snr: int) -> bytes:
         ProtocolError: If payload exceeds 65535 bytes or rssi/snr do not fit
             in an int16.
     """
-    if len(payload) > MAX_PAYLOAD_LENGTH:
-        raise ProtocolError(f"payload too long: {len(payload)} > {MAX_PAYLOAD_LENGTH}")
-    _check_range("rssi", rssi, _INT16_MIN, _INT16_MAX)
-    _check_range("snr", snr, _INT16_MIN, _INT16_MAX)
+    return _encode_received_packet(MSG_RX_PACKET, payload, rssi, snr)
 
-    return struct.pack("<BH", MSG_RX_PACKET, len(payload)) + payload + struct.pack("<hh", rssi, snr)
+
+def _decode_received_packet(name: str, data: bytes) -> tuple[bytes, int, int]:
+    """Decode the common RX_OK/RX_PACKET payload."""
+    if len(data) < 2:
+        raise ProtocolError(f"{name} message too short")
+
+    (payload_len,) = struct.unpack_from("<H", data, 0)
+    expected = 2 + payload_len + 4
+    if len(data) < expected:
+        raise ProtocolError(f"{name} message truncated")
+    if len(data) > expected:
+        raise ProtocolError(f"{name} message has trailing bytes")
+
+    payload = data[2 : 2 + payload_len]
+    rssi, snr = struct.unpack_from("<hh", data, 2 + payload_len)
+    return (payload, rssi, snr)
 
 
 def decode_rx_packet(data: bytes) -> tuple[bytes, int, int]:
@@ -308,18 +397,7 @@ def decode_rx_packet(data: bytes) -> tuple[bytes, int, int]:
     Raises:
         ProtocolError: If data is malformed or too short.
     """
-    if len(data) < 2:
-        raise ProtocolError("RX_PACKET message too short")
-
-    (payload_len,) = struct.unpack_from("<H", data, 0)
-
-    if len(data) < 2 + payload_len + 4:
-        raise ProtocolError("RX_PACKET message truncated")
-
-    payload = data[2 : 2 + payload_len]
-    rssi, snr = struct.unpack_from("<hh", data, 2 + payload_len)
-
-    return (payload, rssi, snr)
+    return _decode_received_packet("RX_PACKET", data)
 
 
 def encode_rx_timeout_push() -> bytes:
@@ -359,6 +437,7 @@ def encode_time_ok(time_us: int) -> bytes:
     Returns:
         Encoded message bytes.
     """
+    _check_range("time_us", time_us, 0, _UINT64_MAX)
     return struct.pack("<BQ", MSG_TIME_OK, time_us)
 
 
@@ -376,6 +455,7 @@ def decode_time_ok(data: bytes) -> int:
     """
     if len(data) < 8:
         raise ProtocolError("TIME_OK message too short")
+    _check_exact_length("TIME_OK", data, 8)
 
     (time_us,) = struct.unpack_from("<Q", data, 0)
     return int(time_us)
@@ -388,9 +468,15 @@ def encode_cad(timeout_ms: int, channel: int = 0) -> bytes:
 
 
 def decode_cad(data: bytes) -> tuple[int, int]:
-    if len(data) < 5:
+    if len(data) < 4:
         raise ProtocolError("CAD message too short")
-    timeout_ms, channel = struct.unpack_from("<IB", data, 0)
+    timeout_ms = struct.unpack_from("<I", data, 0)[0]
+    if len(data) == 4:
+        channel = 0
+    elif len(data) == 5:
+        channel = data[4]
+    else:
+        raise ProtocolError("CAD message has invalid length")
     return timeout_ms, channel
 
 
@@ -424,8 +510,10 @@ def decode_cad_result(data: bytes) -> bool:
     """
     if len(data) < 1:
         raise ProtocolError("CAD_RESULT message too short")
-
-    return data[0] != 0
+    _check_exact_length("CAD_RESULT", data, 1)
+    if data[0] not in (0, 1):
+        raise ProtocolError(f"CAD_RESULT detected value is not canonical: {data[0]}")
+    return data[0] == 1
 
 
 def encode_ok() -> bytes:
@@ -489,6 +577,8 @@ def decode_err(data: bytes) -> tuple[int, str]:
 
     if len(data) < 2 + msg_len:
         raise ProtocolError("ERR message truncated at message")
+    if len(data) > 2 + msg_len:
+        raise ProtocolError("ERR message has trailing bytes")
 
     try:
         msg = data[2 : 2 + msg_len].decode("utf-8")
@@ -533,8 +623,32 @@ def get_message_payload(data: bytes) -> bytes:
 
 
 def hop_channel(sfn: int, eui64: bytes, num_channels: int = 8, epoch: int = 0) -> int:
-    """Deterministic synchronized hop per spec 02a-coordinated-capacity.md:120-125."""
+    """Deterministic synchronized hop channel per spec SelectChannel.
+
+    Implements the SelectChannel pseudocode from
+    spec/02a-coordinated-capacity.md:190-196 and
+    spec/appendix-ccp12-hopping.md:81-86: FNV-1a32 over
+    ``EUI64 || ((sfn + epoch) mod 2^32 as LE u32)``, then
+    ``1 + hash % (num_channels - 1)`` (CH0 reserved for control).
+
+    Args:
+        sfn: Superframe number (unsigned 32-bit wraparound applies).
+        eui64: Peer EUI-64, exactly 8 bytes, big-endian.
+        num_channels: Total channels in the regional plan, including CH0.
+        epoch: Network epoch offset added to sfn before the u32 wrap.
+
+    Returns:
+        Data channel index in ``[1, num_channels)`` or CH0 when the plan has
+        no data channel.
+
+    Raises:
+        ValueError: If eui64 is not exactly 8 bytes.
+
+    Independent literals: python/tests/sim/test_protocol_hop_channel.py.
+    """
+    if len(eui64) != 8:
+        raise ValueError(f"eui64 must be exactly 8 bytes, got {len(eui64)}")
     data = eui64 + ((sfn + epoch) & 0xFFFFFFFF).to_bytes(4, "little")
     h = hash_32(data)
-    n = max(num_channels, 3)
-    return 1 + (h % n)
+    data_channels = num_channels - 1
+    return 0 if data_channels <= 0 else 1 + (h % data_channels)

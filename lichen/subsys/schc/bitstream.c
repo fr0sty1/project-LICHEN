@@ -54,7 +54,8 @@ int schc_bit_writer_write(struct schc_bit_writer *writer,
 	if (remaining > 0) {
 		uint8_t partial = (uint8_t)(value & ((1U << remaining) - 1));
 
-		writer->buf[writer->nbits / 8] = partial << (8 - remaining);
+		writer->buf[writer->nbits / 8] =
+			(uint8_t)(partial << (8 - remaining));
 		writer->nbits += remaining;
 	}
 

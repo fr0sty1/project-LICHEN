@@ -1,0 +1,54 @@
+{
+  "name": "oscore_schc_roundtrip",
+  "format_version": 2,
+  "description": "Independent protect -> Rule 5 compress -> decompress -> unprotect vectors. OSCORE bytes are pinned by independent Python/Rust outputs; IPv6/UDP/CoAP and Rule 5 bytes are encoded directly by this generator.",
+  "source_vectors": [
+    "test/vectors/oscore.json",
+    "test/vectors/oscore_cross_exchange.json"
+  ],
+  "generator": "test/vectors/generate_oscore_schc_roundtrip.py",
+  "vectors": [
+    {
+      "name": "roundtrip_simple_request",
+      "source_exchange": "roundtrip_simple_request",
+      "master_secret": "0102030405060708090a0b0c0d0e0f10",
+      "master_salt": "9e7ca92223786340",
+      "sender_id": "00",
+      "recipient_id": "01",
+      "id_context": null,
+      "sender_seq": 0,
+      "plaintext": {
+        "code": 1,
+        "options": "",
+        "payload": "68656c6c6f"
+      },
+      "outer_code": 2,
+      "message_id": 4660,
+      "oscore_option": "090000",
+      "ciphertext": "f90ea201beb6962690e28a69fa27ad",
+      "ipv6_packet": "6000000000201140fe800000000000000000000000000001fe8000000000000000000000000000021633163300208f504002123493090000fff90ea201beb6962690e28a69fa27ad",
+      "schc_rule5": "05400000000000000001000000000000000233000848d093090000fff90ea201beb6962690e28a69fa27ad"
+    },
+    {
+      "name": "roundtrip_request_with_payload",
+      "source_exchange": "roundtrip_request_with_payload",
+      "master_secret": "deadbeefcafebabedeadbeefcafebabe",
+      "master_salt": "0011223344556677",
+      "sender_id": "aa",
+      "recipient_id": "bb",
+      "id_context": null,
+      "sender_seq": 42,
+      "plaintext": {
+        "code": 2,
+        "options": "",
+        "payload": "7b226d657373616765223a2274657374227d"
+      },
+      "outer_code": 2,
+      "message_id": 4661,
+      "oscore_option": "092aaa",
+      "ciphertext": "f9adeb44451048d53aed056c45408ec3a91cf389dff92692e8c8e2ec",
+      "ipv6_packet": "60000000002d1140fe800000000000000000000000000001fe80000000000000000000000000000216331633002da9474002123593092aaafff9adeb44451048d53aed056c45408ec3a91cf389dff92692e8c8e2ec",
+      "schc_rule5": "05400000000000000001000000000000000233000848d493092aaafff9adeb44451048d53aed056c45408ec3a91cf389dff92692e8c8e2ec"
+    }
+  ]
+}

@@ -6,6 +6,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(trickle_test C)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/test_common.cmake)
+
 # Include paths
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/rpl/include
@@ -17,5 +19,7 @@ add_executable(trickle_test
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/rpl/trickle.c
 )
 
-# Enable warnings
-target_compile_options(trickle_test PRIVATE -Wall -Wextra -Werror)
+lichen_test_target(trickle_test)
+
+enable_testing()
+add_test(NAME trickle_test COMMAND trickle_test)

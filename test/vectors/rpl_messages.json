@@ -157,12 +157,18 @@
     {
       "name": "dis_solicited_no_dodagid_match",
       "type": "dis",
-      "description": "No-DODAGID solicitation via Solicited Information option (RFC 6550 6.6): type 7 length 18, RPLInstanceID 0, VID flags 0xC0 (V+I set, D clear so the carried DODAGID is not matched), AddrForKey DODAGID of the deterministic all-zero identity seed.",
-      "options_hex": "071200c0027dd5cfc679ab637dd5cfc679ab6342",
-      "encoded": "0000071200c0027dd5cfc679ab637dd5cfc679ab6342",
+      "description": "No-DODAGID solicitation via Solicited Information option (RFC 6550 6.7.9): type 7 length 19, RPLInstanceID 0, VID flags 0xC0 (V+I set, D clear so the carried DODAGID is not matched), AddrForKey DODAGID of the deterministic all-zero identity seed, and DODAGVersionNumber 66.",
+      "options_hex": "071300c0027dd5cfc679ab637dd5cfc679ab634242",
+      "encoded": "0000071300c0027dd5cfc679ab637dd5cfc679ab634242",
       "fields": {
         "flags": 0,
-        "reserved": 0
+        "reserved": 0,
+        "solicited_information": {
+          "rpl_instance_id": 0,
+          "flags": 192,
+          "dodag_id": "027d:d5cf:c679:ab63:7dd5:cfc6:79ab:6342",
+          "version": 66
+        }
       }
     },
     {
@@ -231,6 +237,241 @@
       "description": "D flag set without the sixteen DODAGID bytes that must follow is rejected instead of misparsed.",
       "encoded": "00800500",
       "expect_error": "missing_dodagid"
+    },
+    {
+      "name": "dao_ack_status_alternate_parent_boundary",
+      "type": "dao_ack",
+      "description": "Status 127 is preserved as the upper alternate-parent recommendation boundary.",
+      "encoded": "0000077f",
+      "fields": {
+        "rpl_instance_id": 0,
+        "flags": 0,
+        "dao_sequence": 7,
+        "status": 127,
+        "dodag_id": null
+      }
+    },
+    {
+      "name": "dao_ack_status_rejection_boundary",
+      "type": "dao_ack",
+      "description": "Status 128 is preserved as the lower outright-rejection boundary.",
+      "encoded": "00000880",
+      "fields": {
+        "rpl_instance_id": 0,
+        "flags": 0,
+        "dao_sequence": 8,
+        "status": 128,
+        "dodag_id": null
+      }
+    },
+    {
+      "name": "dao_ack_status_maximum",
+      "type": "dao_ack",
+      "description": "The complete Status octet is significant, including rejection code 255.",
+      "encoded": "000009ff",
+      "fields": {
+        "rpl_instance_id": 0,
+        "flags": 0,
+        "dao_sequence": 9,
+        "status": 255,
+        "dodag_id": null
+      }
+    },
+    {
+      "name": "dao_ack_nonzero_reserved_flags",
+      "type": "dao_ack",
+      "description": "Reserved DAO-ACK flag bits are rejected by the strict LICHEN wire profile.",
+      "encoded": "00010500",
+      "expect_error": "nonzero_reserved_flags"
+    },
+    {
+      "name": "dao_ack_malformed_options_d0",
+      "type": "dao_ack",
+      "description": "D=0 followed by a truncated type-5 option is rejected.",
+      "encoded": "00000500050401",
+      "expect_error": "malformed_options"
+    },
+    {
+      "name": "dao_ack_malformed_options_d1",
+      "type": "dao_ack",
+      "description": "D=1 followed by a truncated type-5 option is rejected.",
+      "encoded": "00800900027dd5cfc679ab637dd5cfc679ab6342050401",
+      "expect_error": "malformed_options"
+    },
+    {
+      "name": "dodag_config_type4_default",
+      "type": "option",
+      "option_type": 4,
+      "description": "Canonical DODAG Configuration with the LICHEN defaults and all flags clear.",
+      "encoded": "040e00080c0a08000100000100ff003c",
+      "fields": {
+        "pcs": 0,
+        "authentication_enabled": false,
+        "gateway_centric": false,
+        "dio_int_doublings": 8,
+        "dio_int_min": 12,
+        "dio_redundancy_const": 10,
+        "max_rank_increase": 2048,
+        "min_hop_rank_increase": 256,
+        "ocp": 1,
+        "default_lifetime": 255,
+        "lifetime_unit": 60
+      }
+    },
+    {
+      "name": "dodag_config_type4_all_defined_flags",
+      "type": "option",
+      "option_type": 4,
+      "description": "Gateway-centric, RFC A, and PCS fields occupy bits 7, 3, and 2..0 respectively and every numeric field round-trips.",
+      "encoded": "040e8d070b03123402000002001e0e10",
+      "fields": {
+        "pcs": 5,
+        "authentication_enabled": true,
+        "gateway_centric": true,
+        "dio_int_doublings": 7,
+        "dio_int_min": 11,
+        "dio_redundancy_const": 3,
+        "max_rank_increase": 4660,
+        "min_hop_rank_increase": 512,
+        "ocp": 2,
+        "default_lifetime": 30,
+        "lifetime_unit": 3600
+      }
+    },
+    {
+      "name": "dodag_config_type4_short_data",
+      "type": "option",
+      "option_type": 4,
+      "description": "Data Length 13 truncates Lifetime Unit and is rejected.",
+      "encoded": "040d00080c0a08000100000100ff00",
+      "expect_error": "invalid_length"
+    },
+    {
+      "name": "dodag_config_type4_trailing_data",
+      "type": "option",
+      "option_type": 4,
+      "description": "Data Length 15 is rejected rather than partially parsing a canonical option plus trailing data.",
+      "encoded": "040f00080c0a08000100000100ff003c00",
+      "expect_error": "invalid_length"
+    },
+    {
+      "name": "dodag_config_type4_reserved_flag",
+      "type": "option",
+      "option_type": 4,
+      "description": "LICHEN reserves flag bits 6..4 and rejects them before state mutation.",
+      "encoded": "040e40080c0a08000100000100ff003c",
+      "expect_error": "nonzero_reserved_flags"
+    },
+    {
+      "name": "dodag_config_type4_reserved_octet",
+      "type": "option",
+      "option_type": 4,
+      "description": "The Reserved octet after OCP must be zero.",
+      "encoded": "040e00080c0a08000100000101ff003c",
+      "expect_error": "nonzero_reserved_octet"
+    },
+    {
+      "name": "rpl_target_type5_host",
+      "type": "option",
+      "option_type": 5,
+      "description": "Canonical LICHEN RPL Target: Data Length 18, zero flags, Prefix Length 128, and a complete IPv6 address.",
+      "encoded": "0512008002000000000000000000000000000001",
+      "fields": {
+        "prefix_length": 128,
+        "prefix": "200::1"
+      }
+    },
+    {
+      "name": "rpl_target_type5_nonzero_flags",
+      "type": "option",
+      "option_type": 5,
+      "description": "LICHEN reserves all RPL Target flags and rejects any nonzero value.",
+      "encoded": "0512018002000000000000000000000000000001",
+      "expect_error": "nonzero_flags"
+    },
+    {
+      "name": "rpl_target_type5_short_data",
+      "type": "option",
+      "option_type": 5,
+      "description": "A type-5 option with Data Length 17 is not the canonical /128 LICHEN profile.",
+      "encoded": "05110080020000000000000000000000000000",
+      "expect_error": "invalid_length"
+    },
+    {
+      "name": "rpl_target_type5_trailing_data",
+      "type": "option",
+      "option_type": 5,
+      "description": "A type-5 option with trailing data and Data Length 19 is rejected rather than partially parsed.",
+      "encoded": "051300800200000000000000000000000000000100",
+      "expect_error": "invalid_length"
+    },
+    {
+      "name": "rpl_target_type5_non_host_prefix",
+      "type": "option",
+      "option_type": 5,
+      "description": "The LICHEN DAO profile permits only host routes, so Prefix Length 127 is rejected even with Data Length 18.",
+      "encoded": "0512007f02000000000000000000000000000001",
+      "expect_error": "invalid_prefix_length"
+    },
+    {
+      "name": "transit_type6_node_owned",
+      "type": "option",
+      "option_type": 6,
+      "description": "Canonical node-owned Transit Information: Data Length 20, E clear, and the mandatory Parent Address.",
+      "encoded": "0614008007fffe800000000000000000000000000001",
+      "fields": {
+        "external": false,
+        "path_control": 128,
+        "path_sequence": 7,
+        "path_lifetime": 255,
+        "parent_address": "fe80::1"
+      }
+    },
+    {
+      "name": "transit_type6_external",
+      "type": "option",
+      "option_type": 6,
+      "description": "The E bit represents external reachability while the Parent Address remains mandatory.",
+      "encoded": "06148040091efe800000000000000000000000000002",
+      "fields": {
+        "external": true,
+        "path_control": 64,
+        "path_sequence": 9,
+        "path_lifetime": 30,
+        "parent_address": "fe80::2"
+      }
+    },
+    {
+      "name": "transit_type6_short_data",
+      "type": "option",
+      "option_type": 6,
+      "description": "Data Length 19 truncates the mandatory Parent Address and is rejected.",
+      "encoded": "0613008007fffe8000000000000000000000000000",
+      "expect_error": "invalid_length"
+    },
+    {
+      "name": "transit_type6_trailing_data",
+      "type": "option",
+      "option_type": 6,
+      "description": "Data Length 21 is rejected rather than partially parsing a canonical option plus trailing data.",
+      "encoded": "0615008007fffe80000000000000000000000000000100",
+      "expect_error": "invalid_length"
+    },
+    {
+      "name": "transit_type6_missing_parent",
+      "type": "option",
+      "option_type": 6,
+      "description": "The RFC four-byte form is outside the LICHEN non-storing profile because it omits the Parent Address.",
+      "encoded": "0604008007ff",
+      "expect_error": "invalid_length"
+    },
+    {
+      "name": "transit_type6_reserved_flag",
+      "type": "option",
+      "option_type": 6,
+      "description": "Reserved Transit flag bits must be zero; E is the only defined flag.",
+      "encoded": "0614018007fffe800000000000000000000000000001",
+      "expect_error": "nonzero_reserved_flags"
     }
   ]
 }

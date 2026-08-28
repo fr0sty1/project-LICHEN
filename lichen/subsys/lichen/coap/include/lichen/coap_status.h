@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <stdbool.h>
+#include <zephyr/net/socket.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,18 @@ extern "C" {
 #define LICHEN_COAP_STATUS_CBOR_MAX_SIZE    512U
 #define LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE 512U
 #define LICHEN_COAP_ROUTES_CBOR_MAX_SIZE    512U
+#define LICHEN_COAP_TIME_SOURCE_CLASS_MAX_LEN 16U
+#define LICHEN_COAP_TIME_SOURCE_NAME_MAX_LEN 32U
+
+#ifndef CONFIG_LICHEN_COAP_STATUS_MAX_OBSERVERS
+#define CONFIG_LICHEN_COAP_STATUS_MAX_OBSERVERS 4
+#endif
+
+#define LICHEN_COAP_STATUS_OBSERVE_MIN_INTERVAL_MS 1000U
+#define LICHEN_COAP_STATUS_OBSERVE_MAX_INTERVAL_MS 60000U
+#define LICHEN_COAP_STATUS_OBSERVER_TTL_MS 300000U
+#define LICHEN_COAP_STATUS_OBSERVE_RETRY_MS 250U
+#define LICHEN_COAP_STATUS_OBSERVE_MAX_RETRIES 3U
 
 /* Maximum neighbors/routes in response */
 #ifndef CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS
@@ -52,6 +65,7 @@ extern "C" {
  * @brief Radio statistics for /status endpoint
  */
 struct lichen_coap_radio_stats {
+	bool valid;
 	uint32_t rx_packets;
 	uint32_t tx_packets;
 	uint32_t rx_errors;
@@ -62,6 +76,7 @@ struct lichen_coap_radio_stats {
  * @brief DODAG state for /status endpoint
  */
 struct lichen_coap_dodag_state {
+	bool valid;
 	bool joined;
 	uint16_t rank;
 	uint8_t parent[16];       /**< Preferred parent IPv6 address (valid if joined) */
@@ -74,11 +89,23 @@ struct lichen_coap_dodag_state {
  * @brief Time state for /status endpoint (per LCI spec)
  */
 struct lichen_coap_time_state {
+	bool valid;
 	bool wall_clock_valid;
 	uint32_t unix_time;       /**< Unix timestamp (valid if wall_clock_valid) */
-	const char *source_class; /**< "gnss", "network", "local-client", etc. */
-	const char *source_name;  /**< Human-readable source name */
+	char source_class[LICHEN_COAP_TIME_SOURCE_CLASS_MAX_LEN]; /**< Empty if unknown */
+	char source_name[LICHEN_COAP_TIME_SOURCE_NAME_MAX_LEN];   /**< Empty if unknown */
 	uint32_t age_s;           /**< Seconds since last time sample */
+	bool age_valid;
+};
+
+/**
+ * @brief Coordinated Capacity Protocol state for /status endpoint
+ */
+struct lichen_coap_ccp_state {
+	bool valid;
+	uint8_t rx_channel;
+	bool scheduler_active;
+	uint32_t preferred_rx_valid_until_sfn;
 };
 
 /**
@@ -86,14 +113,18 @@ struct lichen_coap_time_state {
  */
 struct lichen_coap_node_status {
 	uint32_t uptime_s;
+	bool uptime_valid;
 	uint8_t battery_pct;         /**< Battery percentage (0-100) */
 	bool battery_pct_valid;
 	uint16_t battery_mv;         /**< Battery voltage in mV */
 	bool battery_mv_valid;
 	uint32_t mem_free_kb;
+	bool mem_free_kb_valid;
 	struct lichen_coap_time_state time;
 	struct lichen_coap_dodag_state dodag;
 	struct lichen_coap_radio_stats radio;
+	struct lichen_coap_ccp_state ccp;
+	bool capacity_valid;
 	uint8_t txq_used;
 	uint8_t txq_cap;
 	uint8_t fwd_used;
@@ -181,6 +212,22 @@ struct lichen_coap_status_config {
 	lichen_coap_routes_get_cb routes_get;
 };
 
+enum lichen_coap_status_observe_result {
+	LICHEN_COAP_STATUS_OBSERVE_IDLE = 0,
+	LICHEN_COAP_STATUS_OBSERVE_NOTIFIED = 1,
+	LICHEN_COAP_STATUS_OBSERVE_DEFERRED = 2,
+};
+
+struct lichen_coap_status_observe_stats {
+	uint32_t sequence;
+	uint32_t notifications;
+	uint32_t backpressure;
+	uint32_t failures;
+	uint32_t expired;
+	uint8_t observers;
+	int last_error;
+};
+
 /**
  * @brief Initialize status resource handlers with callbacks
  *
@@ -198,6 +245,34 @@ int lichen_coap_status_init(const struct lichen_coap_status_config *config);
  * DODAG state change, etc.) to push updates to Observe clients.
  */
 void lichen_coap_status_notify(void);
+
+/** Poll the provider and notify /status observers when the canonical snapshot
+ * changes or the maximum refresh interval expires. The monotonic timestamp is
+ * caller-supplied so simulation and low-power schedulers share the same policy.
+ */
+int lichen_coap_status_observe_poll(int64_t now_ms);
+
+/** Cancel all /status observations and clear cached delivery state. */
+void lichen_coap_status_observe_reset(void);
+
+/** Copy bounded /status Observe counters. */
+int lichen_coap_status_observe_get_stats(
+	struct lichen_coap_status_observe_stats *stats);
+
+/**
+ * Send one initial Observe response or notification. The default weak
+ * implementation constructs an RFC 7641 response and uses coap_resource_send;
+ * focused platforms/tests may override it without changing observer policy.
+ */
+int lichen_coap_status_observe_send(
+	const struct sockaddr *addr, socklen_t addr_len,
+	const uint8_t *token, uint8_t token_len, uint32_t sequence,
+	const uint8_t *payload, size_t payload_len, bool initial,
+	uint8_t request_type, uint16_t request_id);
+
+#if defined(CONFIG_ZTEST)
+int lichen_coap_status_observe_set_sequence_for_test(uint32_t sequence);
+#endif
 
 /**
  * @brief Trigger neighbor table notification to observers
@@ -217,7 +292,8 @@ void lichen_coap_status_routes_notify(void);
  * @param[out] buf Output buffer
  * @param[in]  buf_size Buffer size
  * @param[in]  status Status to encode
- * @return Encoded byte count on success, -ENOBUFS if buffer too small
+ * @return Encoded byte count on success, -ENOBUFS if the buffer is too small,
+ *         or -EINVAL if the provider snapshot is internally inconsistent
  */
 ssize_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 				       const struct lichen_coap_node_status *status);
@@ -261,8 +337,8 @@ ssize_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
  * standard compressed IPv6 format (no snprintf truncation issues).
  *
  * @param addr 16-byte IPv6 address
- * @param buf Output buffer (recommend >=46 bytes)
- * @param buf_size Size of buf
+ * @param buf Output buffer (must be at least LICHEN_CONFIG_ADDR_MAX_LEN bytes)
+ * @param buf_size Size of buf; -ENOBUFS if below LICHEN_CONFIG_ADDR_MAX_LEN
  * @return 0 on success, -ENOBUFS on buffer error
  */
 int lichen_coap_format_ipv6(const uint8_t *addr, char *buf, size_t buf_size);

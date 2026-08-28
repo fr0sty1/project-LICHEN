@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dldn.7",
+  "title": "Implement lighting/color characteristic mappings (K.3.5)",
+  "description": "Add to gatt_ipso.c static table, lighting/color characteristics:\n\n- Illuminance 0x2AFB -\u003e 3301/5700, lux\n- Chromaticity Coordinates 0x2AE4 -\u003e 3335/5701, 1\n- Color Temperature 0x2AE5 -\u003e 3311/5706, K\n- Luminous Intensity 0x2AFF -\u003e 3311/5700, cd\n- Luminous Flux 0x2AFE -\u003e 3311/5701, lm\n- Luminous Energy 0x2AFD -\u003e 3331/5700, lm*s\n- Luminous Exposure 0x2AFC -\u003e 26259/5700, lx*s\n- CIE xy Coordinates 0x2AE3 -\u003e 3335/5701, 1\n\n~8 entries. Reference: spec/appendix-gatt-ipso.md K.3.5",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:53:50.093273Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:53:50.093273Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dldn.7",
+      "depends_on_id": "project-LICHEN-worker6-dldn",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:53:51.012772Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

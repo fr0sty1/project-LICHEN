@@ -181,7 +181,9 @@ class TxQueueStats:
         packets_dropped_deadline: Packets dropped due to deadline expiry.
         packets_dropped_preempt: Packets evicted by higher-priority preemption.
         packets_dropped_full: Packets rejected with QueueFullError.
-        packets_transmitted: Packets confirmed transmitted by the radio.
+        packets_transmitted: Packets handed to the radio and counted as
+            transmitted (on pop(), confirm_transmitted(), or
+            complete(success=True)).
         max_latency_ms: Maximum time any packet spent in queue.
         avg_latency_ms: Smoothed average queue latency (EMA, alpha=0.1).
     """
@@ -403,6 +405,9 @@ class TxQueue:
         priority value (highest urgency). If multiple packets have the
         same priority, returns the oldest (FIFO within priority).
 
+        Counted as a transmission (packets_transmitted + latency stats),
+        identically to confirm_transmitted() and complete(success=True).
+
         Returns:
             Frame bytes to transmit, or None if queue empty.
         """
@@ -411,7 +416,7 @@ class TxQueue:
         if not self._entries:
             return None
 
-        return self._entries.pop(0).data
+        return self._remove_first().data
 
     def confirm_transmitted(self, expected: bytes) -> None:
         """Remove the front packet after the radio confirms transmission.
@@ -502,7 +507,7 @@ class TxQueue:
     def complete(self, entry: TxQueueEntry, success: bool) -> None:
         """Signal completion of a reserved entry.
 
-        success=True: removes entry, updates stats/latency, signals reservation True.
+        success=True: removes entry (wherever it is), updates stats, signals True.
         success=False: leaves entry queued with ORIGINAL deadline for retry.
             Reservation is NOT signaled here - it will be signaled False when
             the entry is definitively dropped (expired or preempted).
@@ -511,36 +516,49 @@ class TxQueue:
             raise TypeError("entry must be an exact TxQueueEntry")
         if type(success) is not bool:
             raise TypeError("success must be bool")
-        if not self._entries or self._entries[0] is not entry:
-            logger.warning("complete but entry not head of queue")
-            return
+
         if success:
-            if self._entries and self._entries[0] is entry:
-                popped = self._entries.pop(0)
-                if popped.reservation is not None:
-                    popped.reservation.set_result(True)
-                latency = self._clock() - popped.enqueue_time_ms
+            # Remove entry from queue (may have shifted position)
+            try:
+                self._entries.remove(entry)
+            except ValueError:
+                # Entry was already removed (expired/preempted) - reservation
+                # already signaled by whoever removed it, but we set_result
+                # anyway (idempotent, first-wins semantic)
+                pass
+            else:
+                # Entry removed - update stats
+                latency = self._clock() - entry.enqueue_time_ms
                 if latency > self.stats.max_latency_ms:
                     self.stats.max_latency_ms = latency
                 self._avg_latency_ema = (
-                    self._EMA_ALPHA * latency + (1 - self._EMA_ALPHA) * self._avg_latency_ema
+                    self._EMA_ALPHA * latency
+                    + (1 - self._EMA_ALPHA) * self._avg_latency_ema
                 )
                 self.stats.avg_latency_ms = int(self._avg_latency_ema)
                 self.stats.packets_transmitted += 1
                 logger.debug(
                     "TX complete success: priority=%s latency=%dms avg=%dms len=%d/%d",
-                    Priority(popped.priority).name,
+                    Priority(entry.priority).name,
                     latency,
                     self.stats.avg_latency_ms,
                     len(self._entries),
                     self._capacity,
                 )
+            # Always signal reservation (idempotent if already signaled)
+            if entry.reservation is not None:
+                entry.reservation.set_result(True)
         else:
             # re-queued with original deadline_ms - prevents lifetime extension
-            logger.debug(
-                "TX re-queued after failure, preserved deadline=%d",
-                entry.deadline_ms,
-            )
+            if entry not in self._entries:
+                logger.warning(
+                    "complete(success=False) but entry not in queue"
+                )
+            else:
+                logger.debug(
+                    "TX re-queued after failure, preserved deadline=%d",
+                    entry.deadline_ms,
+                )
 
     def fail(self, entry: TxQueueEntry) -> None:
         """Terminally fail and remove one exact reserved entry."""

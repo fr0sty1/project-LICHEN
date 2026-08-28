@@ -1,0 +1,44 @@
+{
+  "id": "project-LICHEN-h7t5.7.6.1.1.5",
+  "title": "Test Zephyr upstream ESP32-S3 IPSP sample build",
+  "description": "Build the Zephyr upstream IPSP sample (samples/bluetooth/ipsp) targeting ESP32-S3 to establish whether the sample compiles and links. Document any missing Kconfig options, driver gaps, or L2 layer issues. This provides concrete evidence of ESP32-S3 IPSP support status in current Zephyr.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:39.212048Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:39.212048Z",
+  "labels": [
+    "ble",
+    "ipsp",
+    "zephyr",
+    "esp32-s3",
+    "local-ok",
+    "board-support",
+    "bringup",
+    "coap",
+    "firmware",
+    "follow-up",
+    "hal",
+    "hardware",
+    "lci",
+    "lilygo",
+    "native-interface",
+    "owner-reserved",
+    "partner-handoff",
+    "serial",
+    "slip",
+    "t-deck"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.1.1.5",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.1.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:43.579703Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

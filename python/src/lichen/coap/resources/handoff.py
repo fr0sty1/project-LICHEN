@@ -97,8 +97,27 @@ class HandoffResource(resource.Resource):
             )
             return self._cbor_response(response.encode())
 
-        # Process the handoff request
+        # Process the handoff request (marks node as pending, does not remove)
         handoff_response = self._registry.handle_handoff_request(handoff_request)
+
+        # SECURITY: Two-phase commit. Node is marked pending_handoff but NOT
+        # removed from registry. The caller (typically a separate confirmation
+        # handler or timeout mechanism) must call finalize_handoff() after
+        # confirming the target gateway received the state.
+        #
+        # DO NOT finalize here. If the response is lost in transit:
+        # - Target gateway never receives the OSCORE master_secret
+        # - On retry, NODE_NOT_FOUND would be returned (wrongly signaling success)
+        # - Node becomes orphaned: source removed it, target never got state
+        # - OSCORE secret is lost forever; manual re-provisioning required
+        #
+        # The correct flow:
+        # 1. Target gateway sends handoff request
+        # 2. Source gateway marks node pending, returns state (this method)
+        # 3. Target gateway sends explicit confirmation (separate resource)
+        # 4. Source gateway calls finalize_handoff() on confirmation
+        # 5. Stale pending handoffs are cleaned up via get_pending_handoffs()
+        #    and rollback_handoff() after timeout (separate maintenance task)
 
         # Use CHANGED (2.04) for successful state transfer, or for errors
         # that still return a valid response. Only use BAD_REQUEST for

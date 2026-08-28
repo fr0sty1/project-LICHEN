@@ -1,0 +1,722 @@
+{
+  "$schema": "./schema.json",
+  "vector_type": "root_dio_signature",
+  "format_version": 1,
+  "description": "COSE_Sign1 Root DIO Signature vectors per spec/06-security.md Section 8.10.1. Uses Schnorr48-Ed25519 (alg -65537) with RFC 9052 Sig_structure and integer-keyed payloads. Root DIOs carry optional defense-in-depth signature proving origin from DODAG root.",
+  "oracle": {
+    "basis": "LICHEN spec/06-security.md Section 8.10.1",
+    "sig_structure": "[\"Signature1\", protected, h\"\", payload] per RFC 9052",
+    "signature_input": "SHA256(CBOR(Sig_structure))",
+    "dodagid_binding": "DODAGID must equal AddrForKey(root_pubkey)",
+    "generator_command": "python3 test/vectors/generate_root_dio_signature.py",
+    "cross_check": "independent PyNaCl-backed reference_schnorr48.py"
+  },
+  "constants": {
+    "algorithm": {
+      "id": -65537,
+      "name": "Schnorr48-Ed25519",
+      "signature_length": 48
+    },
+    "payload_keys": {
+      "1": "dodag_id (bstr 16)",
+      "2": "instance (uint)",
+      "3": "version (uint)",
+      "4": "rank (uint)",
+      "5": "expiry (uint)",
+      "6": "root_seq (uint)",
+      "7": "mop (uint)"
+    },
+    "rpl_constants": {
+      "root_rank": 256,
+      "default_mop": 2
+    }
+  },
+  "vectors": [
+    {
+      "name": "root_dio_signature_valid_basic",
+      "description": "Valid Root DIO Signature with correct DODAGID binding.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 0,
+      "version": 1,
+      "rank": 256,
+      "expiry": 1735689600,
+      "root_seq": 1,
+      "mop": 2,
+      "protected_header": "a1013a00010000",
+      "protected_header_decoded": {
+        "alg": -65537,
+        "alg_name": "Schnorr48-Ed25519"
+      },
+      "unprotected_header_decoded": {
+        "kid": "203df4662ab81f5a"
+      },
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "payload_decoded": {
+        "1_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+        "2_instance": 0,
+        "3_version": 1,
+        "4_rank": 256,
+        "5_expiry": 1735689600,
+        "6_root_seq": 1,
+        "7_mop": 2
+      },
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a1013a00010000",
+        "external_aad": "",
+        "payload": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702"
+      },
+      "sig_structure_hash": "3f77678a47361f118acd5d59483d9fd19ac10eea5eecd14d233eb9a09346b6af",
+      "signature": "4f9a6d7554edcaf70301635bddb2618a5e7165bb02e9ff1ec86f276bcfff356ba61171e0cef7861ce3a6be76c6d7fd00",
+      "signature_components": {
+        "challenge": "4f9a6d7554edcaf70301635bddb2618a",
+        "response": "5e7165bb02e9ff1ec86f276bcfff356ba61171e0cef7861ce3a6be76c6d7fd00"
+      },
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a677485800601070258304f9a6d7554edcaf70301635bddb2618a5e7165bb02e9ff1ec86f276bcfff356ba61171e0cef7861ce3a6be76c6d7fd00",
+      "expected_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "expected_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": true,
+        "overall_valid": true,
+        "error": null
+      }
+    },
+    {
+      "name": "root_dio_signature_valid_version_42",
+      "description": "Valid Root DIO Signature with non-default version number.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 0,
+      "version": 42,
+      "rank": 256,
+      "expiry": 1735689600,
+      "root_seq": 1,
+      "mop": 2,
+      "protected_header": "a1013a00010000",
+      "protected_header_decoded": {
+        "alg": -65537,
+        "alg_name": "Schnorr48-Ed25519"
+      },
+      "unprotected_header_decoded": {
+        "kid": "203df4662ab81f5a"
+      },
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a020003182a04190100051a6774858006010702",
+      "payload_decoded": {
+        "1_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+        "2_instance": 0,
+        "3_version": 42,
+        "4_rank": 256,
+        "5_expiry": 1735689600,
+        "6_root_seq": 1,
+        "7_mop": 2
+      },
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405826a7015002203df4662ab81f203df4662ab81f5a020003182a04190100051a6774858006010702",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a1013a00010000",
+        "external_aad": "",
+        "payload": "a7015002203df4662ab81f203df4662ab81f5a020003182a04190100051a6774858006010702"
+      },
+      "sig_structure_hash": "a633703ba6d268d5731297077982b31f5b996787a4dbcf4158b2c96d26a55064",
+      "signature": "cbea794ee49c7de9a2e6934d5ab508ee70ae2f5180145f899818feb4a5957daddbb48c7db44e80934b44ee0d1b469805",
+      "signature_components": {
+        "challenge": "cbea794ee49c7de9a2e6934d5ab508ee",
+        "response": "70ae2f5180145f899818feb4a5957daddbb48c7db44e80934b44ee0d1b469805"
+      },
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5826a7015002203df4662ab81f203df4662ab81f5a020003182a04190100051a67748580060107025830cbea794ee49c7de9a2e6934d5ab508ee70ae2f5180145f899818feb4a5957daddbb48c7db44e80934b44ee0d1b469805",
+      "expected_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "expected_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": true,
+        "overall_valid": true,
+        "error": null
+      }
+    },
+    {
+      "name": "root_dio_signature_valid_instance_1",
+      "description": "Valid Root DIO Signature with non-default RPL instance.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 1,
+      "version": 1,
+      "rank": 256,
+      "expiry": 1735689600,
+      "root_seq": 1,
+      "mop": 2,
+      "protected_header": "a1013a00010000",
+      "protected_header_decoded": {
+        "alg": -65537,
+        "alg_name": "Schnorr48-Ed25519"
+      },
+      "unprotected_header_decoded": {
+        "kid": "203df4662ab81f5a"
+      },
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0201030104190100051a6774858006010702",
+      "payload_decoded": {
+        "1_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+        "2_instance": 1,
+        "3_version": 1,
+        "4_rank": 256,
+        "5_expiry": 1735689600,
+        "6_root_seq": 1,
+        "7_mop": 2
+      },
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0201030104190100051a6774858006010702",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a1013a00010000",
+        "external_aad": "",
+        "payload": "a7015002203df4662ab81f203df4662ab81f5a0201030104190100051a6774858006010702"
+      },
+      "sig_structure_hash": "bd162f9f03d6ccc78079546153a612d110d73b6e674e9c41050cb3ac685e76a0",
+      "signature": "e7da5f7481e6a3f37049e9740739b164fe0b2d066ed6cfd47806ca463b29ce2b91e7767f1b52de9dd482583716689808",
+      "signature_components": {
+        "challenge": "e7da5f7481e6a3f37049e9740739b164",
+        "response": "fe0b2d066ed6cfd47806ca463b29ce2b91e7767f1b52de9dd482583716689808"
+      },
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5825a7015002203df4662ab81f203df4662ab81f5a0201030104190100051a67748580060107025830e7da5f7481e6a3f37049e9740739b164fe0b2d066ed6cfd47806ca463b29ce2b91e7767f1b52de9dd482583716689808",
+      "expected_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "expected_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": true,
+        "overall_valid": true,
+        "error": null
+      }
+    },
+    {
+      "name": "root_dio_signature_valid_seq_max",
+      "description": "Valid Root DIO Signature with maximum 32-bit root_seq.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 0,
+      "version": 1,
+      "rank": 256,
+      "expiry": 1735689600,
+      "root_seq": 4294967295,
+      "mop": 2,
+      "protected_header": "a1013a00010000",
+      "protected_header_decoded": {
+        "alg": -65537,
+        "alg_name": "Schnorr48-Ed25519"
+      },
+      "unprotected_header_decoded": {
+        "kid": "203df4662ab81f5a"
+      },
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a67748580061affffffff0702",
+      "payload_decoded": {
+        "1_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+        "2_instance": 0,
+        "3_version": 1,
+        "4_rank": 256,
+        "5_expiry": 1735689600,
+        "6_root_seq": 4294967295,
+        "7_mop": 2
+      },
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405829a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a67748580061affffffff0702",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a1013a00010000",
+        "external_aad": "",
+        "payload": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a67748580061affffffff0702"
+      },
+      "sig_structure_hash": "08ffb504018b63ef0aa2974ba89b52d932d514d81b7246ffa003468f207d5fa5",
+      "signature": "424c0f7912f52bbf09a02ae5cabe8dedc59fe437d4fd9e81521f869a1c6f23f5bd7237c61b92b3073d3a694bdc1a6a09",
+      "signature_components": {
+        "challenge": "424c0f7912f52bbf09a02ae5cabe8ded",
+        "response": "c59fe437d4fd9e81521f869a1c6f23f5bd7237c61b92b3073d3a694bdc1a6a09"
+      },
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5829a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a67748580061affffffff07025830424c0f7912f52bbf09a02ae5cabe8dedc59fe437d4fd9e81521f869a1c6f23f5bd7237c61b92b3073d3a694bdc1a6a09",
+      "expected_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "expected_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": true,
+        "overall_valid": true,
+        "error": null
+      }
+    },
+    {
+      "name": "root_dio_signature_valid_mop_3",
+      "description": "Valid Root DIO Signature with storing mode without multicast.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 0,
+      "version": 1,
+      "rank": 256,
+      "expiry": 1735689600,
+      "root_seq": 1,
+      "mop": 3,
+      "protected_header": "a1013a00010000",
+      "protected_header_decoded": {
+        "alg": -65537,
+        "alg_name": "Schnorr48-Ed25519"
+      },
+      "unprotected_header_decoded": {
+        "kid": "203df4662ab81f5a"
+      },
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010703",
+      "payload_decoded": {
+        "1_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+        "2_instance": 0,
+        "3_version": 1,
+        "4_rank": 256,
+        "5_expiry": 1735689600,
+        "6_root_seq": 1,
+        "7_mop": 3
+      },
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010703",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a1013a00010000",
+        "external_aad": "",
+        "payload": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010703"
+      },
+      "sig_structure_hash": "bbefe4b361f480b135bf82724a80b49ed53567592e8505c7ecde272df58147c4",
+      "signature": "24d183b59556b5f4d25766bed6b93f58893131da2d804e2928d3c5a589f96149a0cdecd4f435f6ef2a7be796b6e46508",
+      "signature_components": {
+        "challenge": "24d183b59556b5f4d25766bed6b93f58",
+        "response": "893131da2d804e2928d3c5a589f96149a0cdecd4f435f6ef2a7be796b6e46508"
+      },
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010703583024d183b59556b5f4d25766bed6b93f58893131da2d804e2928d3c5a589f96149a0cdecd4f435f6ef2a7be796b6e46508",
+      "expected_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "expected_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": true,
+        "overall_valid": true,
+        "error": null
+      }
+    },
+    {
+      "name": "root_dio_signature_valid_far_expiry",
+      "description": "Valid Root DIO Signature with far future expiry.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 0,
+      "version": 1,
+      "rank": 256,
+      "expiry": 4102444800,
+      "root_seq": 1,
+      "mop": 2,
+      "protected_header": "a1013a00010000",
+      "protected_header_decoded": {
+        "alg": -65537,
+        "alg_name": "Schnorr48-Ed25519"
+      },
+      "unprotected_header_decoded": {
+        "kid": "203df4662ab81f5a"
+      },
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051af486570006010702",
+      "payload_decoded": {
+        "1_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+        "2_instance": 0,
+        "3_version": 1,
+        "4_rank": 256,
+        "5_expiry": 4102444800,
+        "6_root_seq": 1,
+        "7_mop": 2
+      },
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051af486570006010702",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a1013a00010000",
+        "external_aad": "",
+        "payload": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051af486570006010702"
+      },
+      "sig_structure_hash": "aadd7f8a46938c7387fac5d1ebe16d95eeac4aed8bf05234bc79f9e8cec90e0a",
+      "signature": "50609e4870a67cf1ce7900e4ceb960464711a7da6e59fbafc2334a83d47b53560bb27e8faec1df8873b5d91c73e67503",
+      "signature_components": {
+        "challenge": "50609e4870a67cf1ce7900e4ceb96046",
+        "response": "4711a7da6e59fbafc2334a83d47b53560bb27e8faec1df8873b5d91c73e67503"
+      },
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051af486570006010702583050609e4870a67cf1ce7900e4ceb960464711a7da6e59fbafc2334a83d47b53560bb27e8faec1df8873b5d91c73e67503",
+      "expected_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "expected_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": true,
+        "overall_valid": true,
+        "error": null
+      }
+    },
+    {
+      "name": "root_dio_signature_rank_non_root",
+      "description": "Root DIO Signature with non-root rank (512). Signature valid but receivers should verify rank matches expected ROOT_RANK per spec.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 0,
+      "version": 1,
+      "rank": 512,
+      "expiry": 1735689600,
+      "root_seq": 1,
+      "mop": 2,
+      "protected_header": "a1013a00010000",
+      "protected_header_decoded": {
+        "alg": -65537,
+        "alg_name": "Schnorr48-Ed25519"
+      },
+      "unprotected_header_decoded": {
+        "kid": "203df4662ab81f5a"
+      },
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190200051a6774858006010702",
+      "payload_decoded": {
+        "1_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+        "2_instance": 0,
+        "3_version": 1,
+        "4_rank": 512,
+        "5_expiry": 1735689600,
+        "6_root_seq": 1,
+        "7_mop": 2
+      },
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0200030104190200051a6774858006010702",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a1013a00010000",
+        "external_aad": "",
+        "payload": "a7015002203df4662ab81f203df4662ab81f5a0200030104190200051a6774858006010702"
+      },
+      "sig_structure_hash": "9bc6e683cc9fc99a0edc4528845a153968ff5e0d89b4402239e4e7aea798c576",
+      "signature": "cec9b1c4abac49619ab81f0b87c19e55e80c4dbebbbc41b107402615720cfff257f785623fc2fe2444271dfaf6897903",
+      "signature_components": {
+        "challenge": "cec9b1c4abac49619ab81f0b87c19e55",
+        "response": "e80c4dbebbbc41b107402615720cfff257f785623fc2fe2444271dfaf6897903"
+      },
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5825a7015002203df4662ab81f203df4662ab81f5a0200030104190200051a67748580060107025830cec9b1c4abac49619ab81f0b87c19e55e80c4dbebbbc41b107402615720cfff257f785623fc2fe2444271dfaf6897903",
+      "expected_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "expected_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": true,
+        "overall_valid": true,
+        "error": null
+      }
+    },
+    {
+      "name": "root_dio_signature_seq_zero",
+      "description": "Root DIO Signature with root_seq=0. Valid but spec recommends >0.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 0,
+      "version": 1,
+      "rank": 256,
+      "expiry": 1735689600,
+      "root_seq": 0,
+      "mop": 2,
+      "protected_header": "a1013a00010000",
+      "protected_header_decoded": {
+        "alg": -65537,
+        "alg_name": "Schnorr48-Ed25519"
+      },
+      "unprotected_header_decoded": {
+        "kid": "203df4662ab81f5a"
+      },
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006000702",
+      "payload_decoded": {
+        "1_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+        "2_instance": 0,
+        "3_version": 1,
+        "4_rank": 256,
+        "5_expiry": 1735689600,
+        "6_root_seq": 0,
+        "7_mop": 2
+      },
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006000702",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a1013a00010000",
+        "external_aad": "",
+        "payload": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006000702"
+      },
+      "sig_structure_hash": "126c71241fed51274adf0eb04fbbda8def1c08fa827593a47b6c3c90ee00dccd",
+      "signature": "70be7384f24c3e376ee35ea4ade9afb61ba84e85f49996f10f3a5af4e3827f3809bacf75c27a3ca3871c9dbcd475d60b",
+      "signature_components": {
+        "challenge": "70be7384f24c3e376ee35ea4ade9afb6",
+        "response": "1ba84e85f49996f10f3a5af4e3827f3809bacf75c27a3ca3871c9dbcd475d60b"
+      },
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006000702583070be7384f24c3e376ee35ea4ade9afb61ba84e85f49996f10f3a5af4e3827f3809bacf75c27a3ca3871c9dbcd475d60b",
+      "expected_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "expected_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": true,
+        "overall_valid": true,
+        "error": null
+      }
+    },
+    {
+      "name": "root_dio_signature_tampered",
+      "description": "Signature with one bit flipped (MUST fail verification).",
+      "coverage": "root_dio_signature_security",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 0,
+      "version": 1,
+      "rank": 256,
+      "expiry": 1735689600,
+      "root_seq": 1,
+      "mop": 2,
+      "protected_header": "a1013a00010000",
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure_hash": "3f77678a47361f118acd5d59483d9fd19ac10eea5eecd14d233eb9a09346b6af",
+      "original_signature": "4f9a6d7554edcaf70301635bddb2618a5e7165bb02e9ff1ec86f276bcfff356ba61171e0cef7861ce3a6be76c6d7fd00",
+      "tampered_signature": "4e9a6d7554edcaf70301635bddb2618a5e7165bb02e9ff1ec86f276bcfff356ba61171e0cef7861ce3a6be76c6d7fd00",
+      "tampered_byte_index": 0,
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a677485800601070258304e9a6d7554edcaf70301635bddb2618a5e7165bb02e9ff1ec86f276bcfff356ba61171e0cef7861ce3a6be76c6d7fd00",
+      "expected": {
+        "signature_valid": false,
+        "overall_valid": false,
+        "error": "signature_invalid"
+      }
+    },
+    {
+      "name": "root_dio_signature_zero",
+      "description": "All-zero signature (MUST fail verification).",
+      "coverage": "root_dio_signature_security",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "protected_header": "a1013a00010000",
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure_hash": "3f77678a47361f118acd5d59483d9fd19ac10eea5eecd14d233eb9a09346b6af",
+      "signature": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "cose_sign1": "d28447a1013a00010000a10448203df4662ab81f5a5825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a67748580060107025830000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expected": {
+        "signature_valid": false,
+        "overall_valid": false,
+        "error": "signature_invalid"
+      }
+    },
+    {
+      "name": "root_dio_signature_impersonation",
+      "description": "Attacker signs DIO claiming victim root's DODAGID. DODAGID != AddrForKey(attacker_pubkey), so binding check MUST fail.",
+      "coverage": "root_dio_signature_security",
+      "attacker_seed": "a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7",
+      "attacker_pubkey": "68ae16cc01f1e740b25753ba11736cfb65748460658e67d13b75edf5f2f50487",
+      "attacker_iid": "b0b6498d1d369486",
+      "attacker_dodag_id": "02b2b6498d1d3694b0b6498d1d369486",
+      "victim_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "victim_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "claimed_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "protected_header": "a1013a00010000",
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure_hash": "3f77678a47361f118acd5d59483d9fd19ac10eea5eecd14d233eb9a09346b6af",
+      "signature": "8e2006480ffd1f55ffeada2d21f07660a4a435d6f6d9fbf09ce35a90f9526549251dbb74620e6082fea81aac01933502",
+      "cose_sign1": "d28447a1013a00010000a10448b0b6498d1d3694865825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a677485800601070258308e2006480ffd1f55ffeada2d21f07660a4a435d6f6d9fbf09ce35a90f9526549251dbb74620e6082fea81aac01933502",
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": false,
+        "overall_valid": false,
+        "error": "dodagid_mismatch",
+        "note": "Attacker's pubkey does not derive to claimed DODAGID"
+      }
+    },
+    {
+      "name": "root_dio_signature_kid_mismatch",
+      "description": "kid in unprotected header does not match root's IID. Per spec 8.10.1 step 1, kid must match DIO source address IID.",
+      "coverage": "root_dio_signature_validation",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "correct_iid": "203df4662ab81f5a",
+      "wrong_kid_iid": "0102030405060708",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "protected_header": "a1013a00010000",
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure_hash": "3f77678a47361f118acd5d59483d9fd19ac10eea5eecd14d233eb9a09346b6af",
+      "signature": "4f9a6d7554edcaf70301635bddb2618a5e7165bb02e9ff1ec86f276bcfff356ba61171e0cef7861ce3a6be76c6d7fd00",
+      "cose_sign1": "d28447a1013a00010000a1044801020304050607085825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a677485800601070258304f9a6d7554edcaf70301635bddb2618a5e7165bb02e9ff1ec86f276bcfff356ba61171e0cef7861ce3a6be76c6d7fd00",
+      "expected": {
+        "signature_valid": true,
+        "kid_iid_valid": false,
+        "overall_valid": false,
+        "error": "kid_mismatch"
+      }
+    },
+    {
+      "name": "root_dio_signature_wrong_algorithm",
+      "description": "Protected header specifies ES256 instead of Schnorr48. Algorithm check MUST fail per spec 8.10.1 step 2.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "0001020304050607000102030405060700010203040506070001020304050607",
+      "public_key": "e7a96ef07e66ea9237f03a4674bbf43a8c1c9eb27edd239fb5ac098735afb0df",
+      "root_iid": "203df4662ab81f5a",
+      "dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "instance": 0,
+      "version": 1,
+      "rank": 256,
+      "expiry": 1735689600,
+      "root_seq": 1,
+      "mop": 2,
+      "protected_header": "a10126",
+      "protected_header_decoded": {
+        "alg": -7,
+        "alg_name": "ES256"
+      },
+      "unprotected_header_decoded": {
+        "kid": "203df4662ab81f5a"
+      },
+      "payload_cbor": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "payload_decoded": {
+        "1_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+        "2_instance": 0,
+        "3_version": 1,
+        "4_rank": 256,
+        "5_expiry": 1735689600,
+        "6_root_seq": 1,
+        "7_mop": 2
+      },
+      "sig_structure": "846a5369676e61747572653143a10126405825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a10126",
+        "external_aad": "",
+        "payload": "a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a6774858006010702"
+      },
+      "sig_structure_hash": "8eb64d6c82c0165a8c1e1b187e3796285f986617e22fe8b2e6bbb4b8b520935f",
+      "signature": "662873f441c225a8742545cb11cdede5d8e00215c18e1b48e90ae630ce1fed508a46d9f0b77bcedeec3381e774ff080a",
+      "signature_components": {
+        "challenge": "662873f441c225a8742545cb11cdede5",
+        "response": "d8e00215c18e1b48e90ae630ce1fed508a46d9f0b77bcedeec3381e774ff080a"
+      },
+      "cose_sign1": "d28443a10126a10448203df4662ab81f5a5825a7015002203df4662ab81f203df4662ab81f5a0200030104190100051a67748580060107025830662873f441c225a8742545cb11cdede5d8e00215c18e1b48e90ae630ce1fed508a46d9f0b77bcedeec3381e774ff080a",
+      "expected_dodag_id": "02203df4662ab81f203df4662ab81f5a",
+      "expected_dodag_id_ipv6": "220:3df4:662a:b81f:203d:f466:2ab8:1f5a",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": false,
+        "overall_valid": false,
+        "error": "algorithm_invalid"
+      }
+    },
+    {
+      "name": "root_dio_signature_alternate_identity",
+      "description": "Second valid vector with different seed for cross-implementation determinism verification.",
+      "coverage": "root_dio_signature_cose_sign1",
+      "signing_seed": "a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7a0a1a2a3a4a5a6a7",
+      "public_key": "68ae16cc01f1e740b25753ba11736cfb65748460658e67d13b75edf5f2f50487",
+      "root_iid": "b0b6498d1d369486",
+      "dodag_id": "02b2b6498d1d3694b0b6498d1d369486",
+      "dodag_id_ipv6": "2b2:b649:8d1d:3694:b0b6:498d:1d36:9486",
+      "instance": 0,
+      "version": 1,
+      "rank": 256,
+      "expiry": 1735689600,
+      "root_seq": 1,
+      "mop": 2,
+      "protected_header": "a1013a00010000",
+      "protected_header_decoded": {
+        "alg": -65537,
+        "alg_name": "Schnorr48-Ed25519"
+      },
+      "unprotected_header_decoded": {
+        "kid": "b0b6498d1d369486"
+      },
+      "payload_cbor": "a7015002b2b6498d1d3694b0b6498d1d3694860200030104190100051a6774858006010702",
+      "payload_decoded": {
+        "1_dodag_id": "02b2b6498d1d3694b0b6498d1d369486",
+        "2_instance": 0,
+        "3_version": 1,
+        "4_rank": 256,
+        "5_expiry": 1735689600,
+        "6_root_seq": 1,
+        "7_mop": 2
+      },
+      "sig_structure": "846a5369676e61747572653147a1013a00010000405825a7015002b2b6498d1d3694b0b6498d1d3694860200030104190100051a6774858006010702",
+      "sig_structure_layout": {
+        "context": "Signature1",
+        "protected": "a1013a00010000",
+        "external_aad": "",
+        "payload": "a7015002b2b6498d1d3694b0b6498d1d3694860200030104190100051a6774858006010702"
+      },
+      "sig_structure_hash": "38d1976aa67ab0629cb4e89267421d9c350c48aca2d4a7e3a59a19d7dec55b93",
+      "signature": "81d936b9edeb097d6b697edb3160d54dab845f7de1052de027e5ce3ec678def76d74da11d1d07137a22a76657491b903",
+      "signature_components": {
+        "challenge": "81d936b9edeb097d6b697edb3160d54d",
+        "response": "ab845f7de1052de027e5ce3ec678def76d74da11d1d07137a22a76657491b903"
+      },
+      "cose_sign1": "d28447a1013a00010000a10448b0b6498d1d3694865825a7015002b2b6498d1d3694b0b6498d1d3694860200030104190100051a6774858006010702583081d936b9edeb097d6b697edb3160d54dab845f7de1052de027e5ce3ec678def76d74da11d1d07137a22a76657491b903",
+      "expected_dodag_id": "02b2b6498d1d3694b0b6498d1d369486",
+      "expected_dodag_id_ipv6": "2b2:b649:8d1d:3694:b0b6:498d:1d36:9486",
+      "cross_verify_passed": true,
+      "expected": {
+        "signature_valid": true,
+        "dodagid_binding_valid": true,
+        "kid_iid_valid": true,
+        "algorithm_valid": true,
+        "overall_valid": true,
+        "error": null
+      }
+    }
+  ]
+}

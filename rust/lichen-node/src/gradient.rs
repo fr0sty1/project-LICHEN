@@ -155,17 +155,40 @@ impl GradientTable {
     }
 
     /// Lookup gradient for destination. Returns None if absent or expired.
-    pub fn lookup(&self, destination: &[u8; 16], now_ms: u32) -> Option<&GradientEntry> {
-        self.entries
+    ///
+    /// A successful lookup promotes the entry to the most-recently-used end
+    /// of the bounded table. Missing and expired lookups do not perturb the
+    /// eviction order.
+    pub fn lookup(&mut self, destination: &[u8; 16], now_ms: u32) -> Option<&GradientEntry> {
+        let index = self
+            .entries
             .iter()
-            .find(|e| e.destination == *destination && !is_expired(e.expires_ms, now_ms))
+            .position(|e| e.destination == *destination)?;
+        if is_expired(self.entries[index].expires_ms, now_ms) {
+            return None;
+        }
+        Some(self.promote(index))
     }
 
     /// Lookup gradient for destination by IID (last 8 bytes).
-    pub fn lookup_by_iid(&self, iid: &[u8; 8], now_ms: u32) -> Option<&GradientEntry> {
-        self.entries
+    pub fn lookup_by_iid(&mut self, iid: &[u8; 8], now_ms: u32) -> Option<&GradientEntry> {
+        let index = self
+            .entries
             .iter()
-            .find(|e| &e.destination[8..] == iid && !is_expired(e.expires_ms, now_ms))
+            .position(|e| &e.destination[8..] == iid)?;
+        if is_expired(self.entries[index].expires_ms, now_ms) {
+            return None;
+        }
+        Some(self.promote(index))
+    }
+
+    fn promote(&mut self, index: usize) -> &GradientEntry {
+        let last = self.entries.len() - 1;
+        if index != last {
+            let entry = self.entries.remove(index);
+            self.entries.push(entry);
+        }
+        self.entries.last().expect("promoted entry remains present")
     }
 
     /// Insert or update a gradient entry.
@@ -185,10 +208,8 @@ impl GradientTable {
             let expired = is_expired(existing.expires_ms, now_ms);
 
             if expired || entry.should_replace(existing) {
-                self.entries[idx] = entry;
-                // Move to end for LRU (most recently used)
-                let last = self.entries.len() - 1;
-                self.entries.swap(idx, last);
+                self.entries.remove(idx);
+                self.entries.push(entry);
                 return true;
             }
             return false;
@@ -286,7 +307,7 @@ mod tests {
 
     #[test]
     fn lookup_returns_none_for_missing() {
-        let table = GradientTable::new(10);
+        let mut table = GradientTable::new(10);
         assert!(table.lookup(&link_local(1), 1000).is_none());
     }
 
@@ -424,6 +445,56 @@ mod tests {
         assert_eq!(table.len(), 3);
         assert!(table.lookup(&link_local(1), 1000).is_none());
         assert!(table.lookup(&link_local(4), 1000).is_some());
+    }
+
+    #[test]
+    fn successful_lookup_promotes_entry_before_eviction() {
+        let mut table = GradientTable::new(3);
+
+        table.update(make_entry(1, 10, 1, 1, GradientSource::Announce), 1000);
+        table.update(make_entry(2, 10, 1, 1, GradientSource::Announce), 1000);
+        table.update(make_entry(3, 10, 1, 1, GradientSource::Announce), 1000);
+
+        assert!(table.lookup(&link_local(1), 1000).is_some());
+        table.update(make_entry(4, 10, 1, 1, GradientSource::Announce), 1000);
+
+        assert!(table.lookup(&link_local(1), 1000).is_some());
+        assert!(table.lookup(&link_local(2), 1000).is_none());
+        assert!(table.lookup(&link_local(3), 1000).is_some());
+        assert!(table.lookup(&link_local(4), 1000).is_some());
+    }
+
+    #[test]
+    fn successful_update_preserves_relative_lru_order() {
+        let mut table = GradientTable::new(3);
+
+        table.update(make_entry(1, 10, 1, 1, GradientSource::Announce), 1000);
+        table.update(make_entry(2, 10, 1, 1, GradientSource::Announce), 1000);
+        table.update(make_entry(3, 10, 1, 1, GradientSource::Announce), 1000);
+        table.update(make_entry(1, 11, 1, 2, GradientSource::Announce), 1000);
+        table.update(make_entry(4, 10, 1, 1, GradientSource::Announce), 1000);
+
+        assert!(table.lookup(&link_local(1), 1000).is_some());
+        assert!(table.lookup(&link_local(2), 1000).is_none());
+        assert!(table.lookup(&link_local(3), 1000).is_some());
+        assert!(table.lookup(&link_local(4), 1000).is_some());
+    }
+
+    #[test]
+    fn failed_lookup_does_not_change_eviction_order() {
+        let mut table = GradientTable::new(2);
+        let mut expired = make_entry(9, 10, 1, 1, GradientSource::Announce);
+        expired.expires_ms = 1000;
+
+        table.update(make_entry(1, 10, 1, 1, GradientSource::Announce), 0);
+        table.update(expired, 0);
+        assert!(table.lookup(&link_local(99), 500).is_none());
+        assert!(table.lookup(&link_local(9), 1001).is_none());
+        table.update(make_entry(3, 10, 1, 1, GradientSource::Announce), 500);
+
+        assert!(table.lookup(&link_local(1), 500).is_none());
+        assert!(table.lookup(&link_local(9), 500).is_some());
+        assert!(table.lookup(&link_local(3), 500).is_some());
     }
 
     #[test]

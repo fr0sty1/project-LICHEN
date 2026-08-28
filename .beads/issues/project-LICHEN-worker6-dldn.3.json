@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dldn.3",
+  "title": "Implement environmental sensing characteristic mappings (K.3.1)",
+  "description": "Add to gatt_ipso.c static table, environmental sensing characteristics:\n\n- Temperature 0x2A6E -\u003e 3303/5700, Cel\n- Humidity 0x2A6F -\u003e 3304/5700, %RH\n- Pressure 0x2A6D -\u003e 3315/5700, Pa\n- True Wind Speed 0x2A70 -\u003e 26253/5700, m/s\n- True Wind Direction 0x2A71 -\u003e 26253/5701, deg\n- Apparent Wind Speed 0x2A72 -\u003e 26253/5702, m/s\n- Apparent Wind Direction 0x2A73 -\u003e 26253/5703, deg\n- Gust Factor 0x2A74 -\u003e 26253/5704, 1\n- Pollen Concentration 0x2A75 -\u003e 3325/5700, /m3\n- UV Index 0x2A76 -\u003e 26254/5700, 1\n- Irradiance 0x2A77 -\u003e 3301/5700, W/m2\n- Rainfall 0x2A78 -\u003e 26255/5700, mm\n- Magnetic Declination 0x2A2C -\u003e 26256/5700, deg\n- Magnetic Flux 2D 0x2AA0 -\u003e 3314/5702, T\n- Magnetic Flux 3D 0x2AA1 -\u003e 3314/5702, T\n- Elevation 0x2A6C -\u003e 3338/5700, m\n- Dew Point 0x2A7B -\u003e 3303/5701, Cel\n- Heat Index 0x2A7A -\u003e 3303/5702, Cel\n- Wind Chill 0x2A79 -\u003e 3303/5703, Cel\n\n~19 entries. Reference: spec/appendix-gatt-ipso.md K.3.1",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:53:34.280109Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:53:34.280109Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dldn.3",
+      "depends_on_id": "project-LICHEN-worker6-dldn",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:53:35.20518Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

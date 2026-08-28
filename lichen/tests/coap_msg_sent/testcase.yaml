@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  lichen.coap_msg_sent:
+    platform_allow: qemu_x86 native_sim
+    tags: coap messaging security

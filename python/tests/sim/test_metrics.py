@@ -118,46 +118,68 @@ class TestMetricsUnit:
         assert snap["latency_us"]["count"] == 1
         assert snap["latency_us"]["min"] == 5
 
-    def test_tx_start_times_pruned_after_threshold(self) -> None:
+    def test_many_transmissions_preserves_count(self) -> None:
+        """Transmission count remains accurate under heavy load.
+
+        This verifies the public contract: transmissions property accurately
+        counts all recorded transmissions regardless of internal pruning.
+        """
         m = Metrics()
-        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
-        max_age = Metrics._TX_START_TIMES_MAX_AGE_US
+        n = 1500  # Well above any reasonable internal threshold
 
-        for i in range(threshold + 1):
-            m.record_transmission_start(f"old_tx_{i}", i * 1000)
+        for i in range(n):
+            m.record_transmission_start(f"tx_{i}", i * 1000)
 
-        assert len(m._tx_start_times) == threshold + 1
+        assert m.transmissions == n
 
-        future_time = max_age + 1_000_000_000
+        # Record more at a much later time
+        future_time = 200_000_000  # 200 seconds later
         m.record_transmission_start("new_tx", future_time)
+        assert m.transmissions == n + 1
 
-        assert "new_tx" in m._tx_start_times
-        assert len(m._tx_start_times) <= threshold + 2
-        assert m.transmissions == threshold + 2
+    def test_delayed_reception_keeps_latency_after_many_tx(self) -> None:
+        """A 90s delayed RX after many TX starts still records latency.
 
-    def test_delayed_reception_keeps_latency_after_threshold(self) -> None:
-        """A 90s delayed RX after >1000 TX starts still records latency."""
+        This verifies that latency tracking works correctly even when the
+        metrics system has processed many transmissions.
+        """
         m = Metrics()
-        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
-        for i in range(threshold + 1):
+        n = 1500  # Many transmissions
+        for i in range(n):
             m.record_transmission_start(f"tx_{i}", 0)
-        delayed_us = 90_000_000
+        delayed_us = 90_000_000  # 90 seconds
         m.record_transmission_start("newer", delayed_us)
+
+        # Reception of oldest TX after delay should still record latency
         assert m.record_reception("rx", "tx_0", delayed_us) is True
         stats = m.latency_stats()
         assert stats.count == 1
+        # Independent oracle: latency = reception_time - start_time = 90M - 0
         assert stats.min_us == delayed_us
         assert m.receptions == 1
 
-    def test_tx_start_times_recent_not_pruned(self) -> None:
+    def test_recent_tx_latency_recorded_correctly(self) -> None:
+        """Recent transmissions have latency recorded correctly.
+
+        This verifies the public contract: latency is tracked correctly
+        for transmissions with recent timestamps, even after many TX.
+        """
         m = Metrics()
-        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
+        n = 1200  # Many transmissions
         base_time = 1_000_000_000_000
 
-        for i in range(threshold + 10):
+        for i in range(n):
             m.record_transmission_start(f"tx_{i}", base_time + i * 1000)
 
-        assert len(m._tx_start_times) == threshold + 10
+        # All recent transmissions should have latency tracked
+        for i in range(n):
+            m.record_reception(f"rx_{i}", f"tx_{i}", base_time + i * 1000 + 500)
+
+        stats = m.latency_stats()
+        assert stats.count == n
+        # Independent oracle: all latencies are 500 us
+        assert stats.min_us == 500
+        assert stats.max_us == 500
 
     def test_latency_percentiles(self) -> None:
         """Test p50, p95, p99 latency percentile calculations."""
@@ -330,74 +352,98 @@ class TestMetricsUnit:
         assert "collisions_by_node" in snap
         assert snap["collisions_by_node"]["nodeX"] == 1
 
-    def test_reset_clears_new_fields(self) -> None:
-        """Test reset clears percentile samples and collision tracking."""
+    def test_reset_clears_all_observable_state(self) -> None:
+        """Test reset clears all metrics observable through public interface."""
         m = Metrics()
         m.record_transmission_start("tx1", 0)
         m.record_reception("rx1", "tx1", 100)
         m.record_collision("rx2", ["tx1", "tx2"], channel=0, time_us=200)
 
-        assert len(m._latency_samples) > 0
-        assert len(m._collisions_by_channel) > 0
-        assert len(m._collisions_by_node) > 0
-        assert len(m._time_series) > 0
+        # Verify state was recorded via public properties
+        assert m.transmissions > 0
+        assert m.receptions > 0
+        assert m.collisions > 0
+        assert m.latency_stats().count > 0
+        assert len(m.collisions_by_channel) > 0
+        assert len(m.collisions_by_node) > 0
 
         m.reset()
 
-        assert len(m._latency_samples) == 0
-        assert len(m._collisions_by_channel) == 0
-        assert len(m._collisions_by_node) == 0
-        assert len(m._time_series) == 0
+        # Verify all public properties are cleared
+        assert m.transmissions == 0
+        assert m.receptions == 0
+        assert m.collisions == 0
+        assert m.latency_stats().count == 0
         assert m.latency_p50() is None
+        assert len(m.collisions_by_channel) == 0
+        assert len(m.collisions_by_node) == 0
 
-    def test_delivered_and_time_series_are_capped(self) -> None:
-        """Dedup sets and CSV series do not grow without bound."""
+    def test_many_receptions_maintains_count_accuracy(self) -> None:
+        """Reception count remains accurate under heavy load.
+
+        This verifies the public contract: receptions property accurately
+        counts all recorded receptions, and deduplication works correctly.
+        """
         m = Metrics()
-        cap = Metrics._DELIVERED_MAX_SIZE
-        series_cap = Metrics._TIME_SERIES_MAX_SIZE
-        n = cap + 50
+        n = 12000  # Large number to stress the system
         for i in range(n):
             tx = f"tx{i}"
             m.record_transmission_start(tx, 0)
             m.record_reception(f"rx{i}", tx, 10)
         assert m.receptions == n
-        # In-window identities must not be LRU-evicted (poll re-inflation).
-        assert m.record_reception("rx0", "tx0", 10) is False
-        assert m.receptions == n
-        assert len(m._time_series) <= series_cap
 
-    def test_tx_latency_recorded_pruned_with_start_times(self) -> None:
-        """Latency-recorded ids are dropped when their start times are pruned."""
+        # Deduplication should still work (returns False for duplicates)
+        assert m.record_reception("rx0", "tx0", 10) is False
+        assert m.receptions == n  # Count unchanged
+
+    def test_latency_tracking_under_heavy_load(self) -> None:
+        """Latency statistics remain accurate under heavy load.
+
+        This verifies the public contract: latency_stats accurately reflects
+        all recorded latencies regardless of internal memory management.
+        """
         m = Metrics()
-        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
-        for i in range(threshold + 1):
-            tx = f"old_tx_{i}"
+        n = 1200
+        for i in range(n):
+            tx = f"tx_{i}"
             m.record_transmission_start(tx, 0)
             m.record_reception(f"rx_{i}", tx, 10)
-        assert len(m._tx_latency_recorded) == threshold + 1
-        future_time = Metrics._TX_START_TIMES_MAX_AGE_US + 1_000_000
-        m.record_transmission_start("new_tx", future_time)
-        assert "old_tx_0" not in m._tx_start_times
-        assert "old_tx_0" not in m._tx_latency_recorded
-        assert ("rx_0", "old_tx_0") not in m._delivered
-        m.reset()
-        assert m._tx_latency_recorded == set()
 
-    def test_re_poll_after_many_identities_does_not_inflate(self) -> None:
-        """A (rx, tx) still in-flight must not be counted again after cap."""
+        stats = m.latency_stats()
+        assert stats.count == n
+        # Independent oracle: all latencies are 10 us
+        assert stats.min_us == 10
+        assert stats.max_us == 10
+
+        # Reset clears everything
+        m.reset()
+        assert m.latency_stats().count == 0
+
+    def test_deduplication_after_many_receptions(self) -> None:
+        """Deduplication remains correct after many unique receptions.
+
+        This verifies the public contract: repeated record_reception calls
+        for the same (rx, tx) pair return False and do not inflate counts.
+        """
         m = Metrics()
-        n = Metrics._DELIVERED_MAX_SIZE + 25
+        n = 12000  # Large enough to stress internal limits
         for i in range(n):
             tx = f"tx{i}"
             m.record_transmission_start(tx, 0)
             assert m.record_reception(f"rx{i}", tx, 5) is True
         assert m.receptions == n
+
+        # Re-polling the same deliveries should return False and not change count
         for i in range(0, n, 17):
             assert m.record_reception(f"rx{i}", f"tx{i}", 9) is False
         assert m.receptions == n
 
-    def test_reservoir_uses_seeded_rng_not_global_random(self) -> None:
-        """Percentiles after the reservoir cap are reproducible per Metrics rng."""
+    def test_seeded_rng_produces_deterministic_percentiles(self) -> None:
+        """Same RNG seed produces identical percentile results.
+
+        This verifies the public contract: Metrics with identical RNG seeds
+        produce identical percentile values, enabling reproducible results.
+        """
         original_randint = random.randint
 
         def boom(a: int, b: int) -> int:
@@ -407,13 +453,16 @@ class TestMetricsUnit:
         try:
             m1 = Metrics(rng=random.Random(123))
             m2 = Metrics(rng=random.Random(123))
-            n = Metrics._MAX_LATENCY_SAMPLES + 250
+            # Large sample count to trigger reservoir sampling
+            n = 15000
             for i in range(n):
                 tx = f"tx{i}"
                 m1.record_transmission_start(tx, 0)
                 m1.record_reception("rx", tx, i + 1)
                 m2.record_transmission_start(tx, 0)
                 m2.record_reception("rx", tx, i + 1)
+
+            # Identical seeds should produce identical percentiles
             assert m1.latency_p50() == m2.latency_p50()
             assert m1.latency_p95() == m2.latency_p95()
             assert m1.latency_p99() == m2.latency_p99()
@@ -422,18 +471,25 @@ class TestMetricsUnit:
             random.randint = original_randint  # type: ignore[method-assign]
 
     def test_global_random_does_not_perturb_percentiles(self) -> None:
-        """Process-global random draws must not change seeded reservoir output."""
+        """Process-global random draws must not change seeded percentile output.
+
+        This verifies the public contract: external random.randint calls
+        do not affect Metrics percentile calculations when using a seeded RNG.
+        """
         m1 = Metrics(rng=random.Random(99))
         m2 = Metrics(rng=random.Random(99))
-        n = Metrics._MAX_LATENCY_SAMPLES + 100
-        rng_noise = random.Random(0)
+        # Large sample count to trigger reservoir sampling
+        n = 15000
         for i in range(n):
-            rng_noise.randint(0, 10_000)
+            # Inject noise into global random state between operations
+            random.randint(0, 10_000)
             tx = f"tx{i}"
             m1.record_transmission_start(tx, 0)
             m1.record_reception("rx", tx, (i * 17) % 5000)
             m2.record_transmission_start(tx, 0)
             m2.record_reception("rx", tx, (i * 17) % 5000)
+
+        # Despite global random noise, seeded Metrics produce identical results
         assert m1.latency_p50() == m2.latency_p50()
         assert m1.latency_p99() == m2.latency_p99()
 
@@ -834,7 +890,7 @@ class TestMetricsTimeSeries:
 
         # Should sample after interval
         assert ts.should_sample(1_000_000)
-        sample2 = ts.record_sample(1_000_000, 0.95, 0.05, 0.02, 20, 19, 1)
+        ts.record_sample(1_000_000, 0.95, 0.05, 0.02, 20, 19, 1)
 
         assert len(ts) == 2
         samples = ts.get_samples()

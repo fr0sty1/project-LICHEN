@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-yqy6.2.13",
+  "title": "R1 Neo: on-hardware validation sweep",
+  "description": "Physical-hardware validation remainder for the Muzi Works R1 Neo board (nRF52840 + SX1262 + RX8130CE). All items below require Mark's bench and are NOT agent-closeable; follow the port-safety rules in docs/bench-operations.md before opening any device port. Items from the epic text: (1) SX1262 radio reset line validation (RESET=P1.06 is provisional pending project-LICHEN-ev5b.9); (2) bootloader / UF2 flashing flow validation against the real R1 Neo bootloader (Muzi/Adafruit-style flash layout is provisional); (3) GNSS UART bring-up (P0.24/P0.25 direction + AG3335 control lines still unmodeled, uart1 disabled in board DTS); (4) battery ADC telemetry sanity vs measured vbatt; (5) USB flashing (serial DFU initial flash + SMP OTA). Items added by the RTC work (project-LICHEN-worker6-yqy6.2.11): (6) probe RX8130CE on I2C0 at address 0x32 and confirm the rtc device registers/get_time after time is set; (7) confirm the backup-battery supply topology and set battery-switchover mode in the board DTS accordingly (left at power-on default); (8) validate i2c0 pinctrl pins against the actual board. Compile-verified only so far (Zephyr 4.1.0 workspace + SDK 0.16.8; v3.7.0 pin not locally buildable). Closes only when every item is verified on physical hardware.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:46:55.798719Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:46:55.798719Z",
+  "labels": [
+    "human"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yqy6.2.13",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.2",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:00.617071Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

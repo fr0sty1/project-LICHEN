@@ -6,6 +6,7 @@
 //! `test/vectors/ccp_load_balancing.json` and rpl_route_state_vectors.rs for
 //! canonical test vectors and independent oracles).
 //! Modules:
+//! - `address_assignment` - Coordinator short-address assignment via DAO-ACK
 //! - `dao_timing` — Initial, retry, and periodic DAO transmission timing
 //! - `message`  — DIO / DAO / DIS / DAO-ACK wire codec + TLV option parser
 //! - `dodag`    — DODAG state machine with MRHOF parent selection (CCP-16)
@@ -17,6 +18,7 @@
 #![no_std]
 #![forbid(unsafe_code)]
 
+pub mod address_assignment;
 pub mod announce;
 pub mod dao_origin;
 pub mod dao_timing;

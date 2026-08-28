@@ -65,18 +65,22 @@ def synchronized_hop_channel(sfn: int, seed: int = 0, n_channels: int = 64) -> i
     All nodes with the same seed and n_channels will be on the same channel
     for a given superframe number, enabling network-wide coordination.
 
+    Per spec/appendix-ccp12-hopping.md SynchronizedHopChannel:
+    - N = NChannels - 1 (exclude reserved CH0)
+    - Returns 1 + (Hash MOD N), yielding channels 1..NChannels-1
+
     Args:
         sfn: Superframe number.
         seed: Network seed for channel hopping (default 0).
         n_channels: Number of available channels (default 64).
 
     Returns:
-        Channel number (1 to n_channels-1, avoiding CH0 control channel).
+        Channel number in [1, n_channels) or 0 when no data channel exists.
     """
     data = (seed & 0xFFFFFFFF).to_bytes(4, "little") + (sfn & 0xFFFFFFFF).to_bytes(4, "little")
     h = hash_32(data)
-    n = max(n_channels - 1, 1)
-    return 1 + (h % n)
+    data_channels = n_channels - 1
+    return 0 if data_channels <= 0 else 1 + (h % data_channels)
 
 
 def select_channel(
@@ -105,10 +109,14 @@ def select_channel(
     Returns:
         Channel number (0 to n_channels-1).
     """
-    # Priority 1: announce-driven
+    # Priority 1: announce-driven (with bounds validation)
     if announce_rx_channel is not None and peer_known:
-        logger.debug("select_channel: announce-driven channel=%d", announce_rx_channel)
-        return announce_rx_channel
+        if 0 <= announce_rx_channel < n_channels:
+            logger.debug("select_channel: announce-driven channel=%d", announce_rx_channel)
+            return announce_rx_channel
+        logger.debug(
+            "select_channel: announce_rx_channel=%d out of bounds, skipping", announce_rx_channel
+        )
 
     # Priority 2: GNSS-synced (when enabled and time available)
     if (
@@ -117,6 +125,8 @@ def select_channel(
         and time_provider
         and time_provider.wall_clock_valid
     ):
+        if n_channels <= 1:
+            return 0
         unix_us = time_provider.unix_time_us()
         if unix_us is not None:
             computed_sfn = sfn_from_unix_time(
@@ -130,6 +140,8 @@ def select_channel(
 
     # Priority 3: hash-based for known peers
     if peer_known and peer_eui64 is not None and len(peer_eui64) == 8:
+        if n_channels <= 1:
+            return 0
         data = (
             peer_eui64
             + (epoch & 0xFFFFFFFF).to_bytes(4, "little")

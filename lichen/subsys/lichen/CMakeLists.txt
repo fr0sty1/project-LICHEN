@@ -4,6 +4,9 @@
 # LICHEN protocol subsystem for Zephyr
 
 add_subdirectory_ifdef(CONFIG_LICHEN_COAP coap)
+if(CONFIG_LICHEN_COMPACT_COT_PLI OR CONFIG_LICHEN_COMPACT_COT_CHAT)
+  add_subdirectory(compact_cot)
+endif()
 add_subdirectory_ifdef(CONFIG_LICHEN_APP_IDENTITY app_identity)
 add_subdirectory_ifdef(CONFIG_LICHEN_APP_INTERFACE app_interface)
 if(CONFIG_LICHEN_CRYPTO_MONOCYPHER OR CONFIG_LICHEN_CRYPTO_AES_CCM)
@@ -11,6 +14,7 @@ if(CONFIG_LICHEN_CRYPTO_MONOCYPHER OR CONFIG_LICHEN_CRYPTO_AES_CCM)
 endif()
 add_subdirectory_ifdef(CONFIG_LICHEN_EDHOC edhoc)
 add_subdirectory_ifdef(CONFIG_LICHEN_GCP gcp)
+add_subdirectory_ifdef(CONFIG_LICHEN_TUNNEL_AUTH gateway)
 add_subdirectory_ifdef(CONFIG_LICHEN_HAL hal)
 add_subdirectory_ifdef(CONFIG_LICHEN_LINK link)
 add_subdirectory_ifdef(CONFIG_LICHEN_MESHCORE_CODEC meshcore)

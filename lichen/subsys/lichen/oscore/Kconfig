@@ -33,6 +33,17 @@ config LICHEN_OSCORE_REPLAY_WINDOW
 	  Size of the OSCORE replay window in sequence numbers.
 	  Larger values tolerate more out-of-order delivery.
 
+config LICHEN_OSCORE_SETTINGS
+	bool "Persist OSCORE sequence and replay state"
+	depends on SETTINGS
+	default y
+	help
+	  Persist sender sequence reservations and authenticated recipient replay
+	  windows in the namespace-separated lichen/oscore Settings subtree. A
+	  platform-protected monotonic authority must be registered before OSCORE
+	  contexts are created; missing, corrupt, deleted, torn, or rolled-back
+	  state fails closed.
+
 config LICHEN_OSCORE_PLAINTEXT_MAX
 	int "Maximum OSCORE plaintext size"
 	default 256

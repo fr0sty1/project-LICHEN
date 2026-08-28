@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-zt3c.2.1.19",
+  "title": "Build offline simulation for revocation, loops, and DoS scenarios",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:50:02.821791Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:50:02.821791Z",
+  "labels": [
+    "gateway",
+    "global",
+    "networking",
+    "yggdrasil"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.2.1.19",
+      "depends_on_id": "project-LICHEN-zt3c.2.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:50:05.573645Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

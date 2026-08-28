@@ -9,15 +9,17 @@ lichen-sim for RF propagation simulation.
 Usage:
     # Build firmware first (nrf52840_lichen is the Renode platform, not a
     # Zephyr board; build for the real t_echo/nrf52840 board):
+    RENODE_SUPPORT=$PWD/lichen/boards/renode/nrf52840_lichen/support
     west build -b t_echo/nrf52840 lichen/samples/lora_ping -d build/lora_ping -- \
-        -DEXTRA_DTC_OVERLAY_FILE=$PWD/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
-        -DEXTRA_CONF_FILE=$PWD/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
+        -DEXTRA_DTC_OVERLAY_FILE=$RENODE_SUPPORT/renode_console.overlay \
+        -DEXTRA_CONF_FILE=$RENODE_SUPPORT/renode_console.conf
 
     # Run 2-node test:
     python scripts/renode-multinode.py --nodes 2 --firmware build/lora_ping/zephyr/zephyr.elf
 
     # Run 5-node mesh test:
-    python scripts/renode-multinode.py --nodes 5 --firmware build/puck/zephyr/zephyr.elf --duration 60
+    python scripts/renode-multinode.py --nodes 5 \
+        --firmware build/puck/zephyr/zephyr.elf --duration 60
 
 Requirements:
     - Renode installed and in PATH
@@ -31,6 +33,7 @@ import asyncio
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 # Add project to path
@@ -162,6 +165,7 @@ async def run_multinode_test(
 
     renode_servers = []
     renode_procs = []
+    bridge_ports = []
 
     try:
         # Create nodes
@@ -174,6 +178,7 @@ async def run_multinode_test(
                 sim, node_id, port=0, position=position
             )
             renode_servers.append(renode_srv)
+            bridge_ports.append(port)
             print(f"  {node_id}: sim bridge port {port}, position {position}")
 
             # Start Renode instance
@@ -189,17 +194,29 @@ async def run_multinode_test(
             renode_procs.append(proc)
 
         print(f"\nRunning {n_nodes} nodes for {duration_s}s...")
-        await asyncio.sleep(duration_s)
+        deadline = time.monotonic() + duration_s
+        while time.monotonic() < deadline:
+            for index, proc in enumerate(renode_procs):
+                return_code = proc.poll()
+                if return_code is not None:
+                    stdout, stderr = proc.communicate()
+                    raise RuntimeError(
+                        f"Renode node-{index} exited early with status {return_code}; "
+                        f"stdout={stdout.decode(errors='replace')!r}; "
+                        f"stderr={stderr.decode(errors='replace')!r}"
+                    )
+            await asyncio.sleep(min(0.25, max(0.0, deadline - time.monotonic())))
 
         # Collect results
         results = {
             "nodes": n_nodes,
             "duration_s": duration_s,
             "spacing_m": spacing_m,
+            "bridge_ports": bridge_ports,
             "logs": [],
         }
 
-        for i, proc in enumerate(renode_procs):
+        for i, _proc in enumerate(renode_procs):
             log_file = log_dir / f"node-{i}.log"
             if log_file.exists():
                 log_content = log_file.read_text()
@@ -221,6 +238,7 @@ async def run_multinode_test(
                 proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 proc.kill()
+                proc.wait(timeout=5)
 
         for srv in renode_servers:
             await srv.stop()
@@ -255,6 +273,7 @@ def main():
     print("\n=== Results ===")
     print(f"Nodes: {results['nodes']}")
     print(f"Duration: {results['duration_s']}s")
+    print(f"RenodeServer ports: {results['bridge_ports']}")
     for log in results["logs"]:
         tx_rx = []
         if log["has_tx"]:

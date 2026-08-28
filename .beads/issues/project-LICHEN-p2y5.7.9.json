@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.7.9",
+  "title": "Add authentication layer mapping IRC nicks to LICHEN identities (or anonymous gateway mode)",
+  "description": "Implement an authentication layer that maps IRC nicks/hostmasks to LICHEN identities. Support two modes: (1) Authenticated mode where IRC users are mapped to specific LICHEN /128 identities based on configuration, with cryptographic verification where possible. (2) Anonymous gateway mode where IRC messages are relayed with a gateway-sourced identity clearly marked as bridge-originated. In both modes, preserve verified LICHEN native /128 origin metadata in a stable displayed form. Do not allow impersonation of arbitrary IRC accounts or LICHEN identities.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:37.343489Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:37.343489Z",
+  "labels": [
+    "core",
+    "gateway",
+    "python",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.7.9",
+      "depends_on_id": "project-LICHEN-p2y5.7",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:42.978137Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

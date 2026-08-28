@@ -132,6 +132,11 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     .await
                     .map(|outcome| Some(RplBorderIngressOutcome::Control(outcome)))
             }
+            L2PayloadKind::Unknown if frame.payload().first() == Some(&L2_DISPATCH_ROUTING) => {
+                Ok(Some(RplBorderIngressOutcome::Control(
+                    RplReceiveOutcome::AnnouncementRejected(AnnounceRejectReason::Malformed),
+                )))
+            }
             L2PayloadKind::Unknown => Err(RplReceiveError::Receive(RxError::SchcDecompress)),
         }
     }
@@ -286,6 +291,11 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     return Ok(Some(RplReceiveOutcome::RplRejected));
                 }
                 self.process_rpl(frame, received, now_ms).await.map(Some)
+            }
+            L2PayloadKind::Unknown if frame.payload().first() == Some(&L2_DISPATCH_ROUTING) => {
+                Ok(Some(RplReceiveOutcome::AnnouncementRejected(
+                    AnnounceRejectReason::Malformed,
+                )))
             }
             L2PayloadKind::Unknown => Err(RplReceiveError::Receive(RxError::SchcDecompress)),
         }

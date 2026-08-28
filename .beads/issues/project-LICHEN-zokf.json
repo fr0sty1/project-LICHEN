@@ -6,10 +6,12 @@
   "status": "open",
   "priority": 3,
   "issue_type": "epic",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:51:04.616504Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T19:57:09.001892Z",
+  "updated_at": "2026-08-28T04:52:11.333124Z",
+  "started_at": "2026-08-28T04:48:42.670374Z",
   "labels": [
     "defer-boardconfig",
     "renode",

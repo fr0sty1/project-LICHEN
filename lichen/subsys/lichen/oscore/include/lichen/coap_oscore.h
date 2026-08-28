@@ -60,9 +60,14 @@ struct coap_oscore_unprotect_result {
  * When CONFIG_LICHEN_COAP_SERVER_OSCORE is disabled or the request is not
  * protected, this function returns the raw payload from the CoAP packet.
  *
- * Caller must check result->payload and result->payload_len after return;
- * if the request is OSCORE-protected but unprotect fails, the function
- * returns a CoAP error response code.
+ * This function NEVER sends a response itself. On failure it returns a
+ * positive CoAP response code and the caller MUST return that code without
+ * sending anything and without touching result->payload (it is not valid);
+ * the CoAP server framework then delivers exactly one response carrying
+ * that code. Failure cases: no OSCORE context for the peer (4.01),
+ * unprotect failure (4.01), or method mismatch (4.05). These responses are
+ * delivered unprotected, which is correct per RFC 8613 section 8.1 since
+ * the request was not (fully) decrypted.
  *
  * @param[in]  resource    CoAP resource
  * @param[in]  request     CoAP request packet
@@ -70,7 +75,8 @@ struct coap_oscore_unprotect_result {
  * @param[in]  addr_len    Address length
  * @param[in]  expected_method Expected CoAP method code (checked after unprotect)
  * @param[out] result      Unprotect result (ctx, piv, payload)
- * @return 0 on success, CoAP response code on error (caller should return it)
+ * @return 0 on success (result->payload valid), positive CoAP response code
+ *         on error (caller must return it without sending)
  */
 int coap_oscore_unprotect_resource_request(struct coap_resource *resource,
 					   struct coap_packet *request,

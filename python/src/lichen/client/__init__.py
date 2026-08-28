@@ -2,6 +2,19 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Shared client model for native LICHEN applications."""
 
+from lichen.client.addressing import (
+    DEFAULT_ROUTE_PREFIX,
+    STATIC_CLIENT_ADDRESS,
+    STATIC_NODE_ADDRESS,
+    LciAddressAssignment,
+    LciAddressError,
+    LciAddressProfile,
+    LciRoute,
+    client_link_local,
+    eui64_assignment,
+    node_link_local,
+    static_assignment,
+)
 from lichen.client.ble import (
     LICHEN_LCI_CAPABILITY_SLIP_IPV6,
     LICHEN_LCI_PROFILE,
@@ -67,6 +80,9 @@ from lichen.client.packet_coap import (
 from lichen.client.transport import PacketTransport
 
 __all__ = [
+    "DEFAULT_ROUTE_PREFIX",
+    "STATIC_CLIENT_ADDRESS",
+    "STATIC_NODE_ADDRESS",
     "Capabilities",
     "CoapResult",
     "ConfigSnapshot",
@@ -78,8 +94,12 @@ __all__ = [
     "LICHEN_LCI_CAPABILITY_SLIP_IPV6",
     "LICHEN_LCI_PROFILE",
     "LICHEN_LCI_VERSION",
+    "LciAddressAssignment",
+    "LciAddressError",
+    "LciAddressProfile",
     "LciClient",
     "LciClientError",
+    "LciRoute",
     "LciSecurityError",
     "LocalRFStats",
     "MessageDraft",
@@ -118,6 +138,10 @@ __all__ = [
     "CoapTransportError",
     "IpCoapConfig",
     "ServiceUnavailableError",
+    "client_link_local",
     "discover_lci_devices",
+    "eui64_assignment",
+    "node_link_local",
     "read_lci_metadata",
+    "static_assignment",
 ]

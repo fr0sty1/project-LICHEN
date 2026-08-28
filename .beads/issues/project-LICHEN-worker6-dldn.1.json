@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dldn.1",
+  "title": "Define gatt_ipso_mapping struct and API in gatt_ipso.h",
+  "description": "Create header lichen/include/lichen/gatt_ipso.h with:\n\n- struct gatt_ipso_mapping { gatt_uuid, ipso_object, ipso_resource, senml_unit, unit_scale, unit_offset }\n- const struct gatt_ipso_mapping *gatt_to_ipso(uint16_t gatt_uuid);\n- const struct gatt_ipso_mapping *gatt_service_to_ipso(uint16_t service_uuid);\n- Include guards, Zephyr compatibility, SPDX header\n\n~50 LOC header. Reference: spec/appendix-gatt-ipso.md",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:53:23.899705Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:53:23.899705Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dldn.1",
+      "depends_on_id": "project-LICHEN-worker6-dldn",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:53:26.118506Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

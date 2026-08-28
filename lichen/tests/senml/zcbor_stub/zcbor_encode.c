@@ -130,6 +130,17 @@ bool zcbor_tstr_put_term(zcbor_state_t *state, const char *str, size_t maxlen)
 	return emit(state, (const uint8_t *)str, len);
 }
 
+bool zcbor_bstr_encode_ptr(zcbor_state_t *state, const char *str, size_t len)
+{
+	if (str == NULL && len != 0U) {
+		return false;
+	}
+	if (!encode_uint(state, 0x40, len)) {
+		return false;
+	}
+	return len == 0U || emit(state, (const uint8_t *)str, len);
+}
+
 bool zcbor_float32_put(zcbor_state_t *state, float value)
 {
 	/* CBOR float32: major type 7, additional info 26 (0xfa) */

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-4yer",
+  "title": "[review] coap micro-hardening bundle: is_local_admin NULL-addr ZTEST default, missing-trust CBOR default, GET /keys OSCORE gap, rate-limit burn + iid7 bucket collapse, s_provider lock scope",
+  "description": "P3 bundle from wave-1 security+robustness review: (1) coap_keys.c:53-56 lichen_coap_is_local_admin returns IS_ENABLED(CONFIG_ZTEST) for addr==NULL -\u003e security predicate with config-dependent true default; return false unconditionally, adjust ztests to pass loopback addr. (2) coap_keys_cbor.c:302 decode_key_put_cbor defaults *trust=LICHEN_KEY_TRUST_VERIFIED when trust key absent -\u003e fail-closed: reject or default lowest. (3) GET /keys + /keys/{iid} have no OSCORE handling even when CONFIG_LICHEN_COAP_SERVER_OSCORE=y -\u003e inconsistent with PUT/DELETE; at minimum document, better mirror the unprotect+guard pattern. (4) coap_dtn.c:136,254 rate-limit window consumed even when store fails (availability polish) and iid7 single-byte key collapses non-IPv6/loopback peers into one bucket (cross-peer interference) -\u003e key on full EUI64, burn only on accepted store. (5) coap_dtn.c:95/100-104 s_provider read outside mutex + addr NULL unchecked (framework guarantees non-NULL today) -\u003e tighten.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:33:11.13386Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:33:11.13386Z",
+  "labels": [
+    "local-ok"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-4yer",
+      "depends_on_id": "project-LICHEN-6mij.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T05:33:12.023102Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

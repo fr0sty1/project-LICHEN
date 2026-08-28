@@ -14,8 +14,8 @@
 //! these types with a CoAP transport such as `lichen-coap`.
 
 pub mod checkin;
-pub mod config;
 pub mod confessions;
+pub mod config;
 pub mod deaddrop;
 pub mod identity;
 pub mod keys;
@@ -38,6 +38,12 @@ pub use checkin::{
     CheckIn, CheckInStatus, RollcallMissing, RollcallRequest, RollcallResponder, RollcallStatus,
     CHECKIN_STATUS_VALUES, DEFAULT_TIMEOUT_S, MAX_CHECKINS, MAX_ROLLCALLS, MAX_TIMEOUT_S,
 };
+pub use confessions::{
+    code as confession_code, is_confession_id, ConfessionEntry, ConfessionListing,
+    ConfessionPayload, ConfessionQuery, ConfessionStore, EntryDetail, ListingEntry, RateDecision,
+    RateLimitReason, CONFESSION_COOLDOWN_S, CONFESSION_HOURLY_MAX, CONFESSION_MAX_SIZE,
+    CONFESSION_MAX_TTL, CONFESSION_STORAGE_BR, CONFESSION_STORAGE_LEAF, TTL_EXPIRED,
+};
 #[cfg(feature = "tokio")]
 pub use config::{ConfigClient, ConfigClientError};
 pub use config::{ConfigUpdate, ConfigUpdateError, NodeConfig, NodeRole};
@@ -47,13 +53,6 @@ pub use deaddrop::{
     PostRequest, Privacy, SenmlRecord, StorageInfo, DEFAULT_TTL, MAX_DROP_SIZE, MAX_TTL,
     POSTS_PER_HOUR, STORAGE_BR, STORAGE_LEAF,
 };
-pub use confessions::{
-    is_confession_id, code as confession_code, AddConfessionParams, ConfessionEntry,
-    ConfessionListing, ConfessionPayload, ConfessionQuery, ConfessionStore, EntryDetail,
-    ListingEntry, RateDecision, RateLimitReason, CONFESSION_COOLDOWN_S, CONFESSION_HOURLY_MAX,
-    CONFESSION_MAX_SIZE, CONFESSION_MAX_TTL, CONFESSION_STORAGE_BR, CONFESSION_STORAGE_LEAF,
-    TTL_EXPIRED,
-};
 pub use identity::{IdentityAddresses, NodeIdentity};
 #[cfg(feature = "tokio")]
 pub use identity::{IdentityClient, IdentityClientError};
@@ -61,6 +60,12 @@ pub use identity::{IdentityClient, IdentityClientError};
 pub use keystore::KeyStoreClient;
 pub use keystore::{validate_iid, IidError, KeyStoreError};
 pub use link_format::{parse_link_format, Capabilities, LinkFormatError};
+pub use presence::{
+    age_s_at, apply_automatic_status, Activity, Presence, PresenceCache, PresenceCacheEntry,
+    PresenceStatus, AWAY_AFTER_S, LOW_BATTERY_PCT, STATIONARY_AFTER_S,
+};
+#[cfg(feature = "tokio")]
+pub use presence::{PresenceClient, PresenceClientError};
 pub use radio_config::{RadioConfig, RadioConfigUpdate};
 #[cfg(feature = "tokio")]
 pub use radio_config::{RadioConfigClient, RadioConfigClientError};

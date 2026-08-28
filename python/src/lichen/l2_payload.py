@@ -27,7 +27,9 @@ class L2PayloadKind(Enum):
 
 def classify_l2_payload(payload: bytes) -> L2PayloadKind:
     """Classify an authenticated link inner payload by dispatch byte."""
-    if not payload:
+    # Defined dispatches always include at least the SCHC rule ID or routing
+    # message type after the dispatch octet (draft-lichen-link section 3.1).
+    if len(payload) < 2:
         return L2PayloadKind.UNKNOWN
     if payload[0] == L2_DISPATCH_SCHC:
         return L2PayloadKind.SCHC

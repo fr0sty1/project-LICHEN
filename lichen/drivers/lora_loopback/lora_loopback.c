@@ -13,6 +13,10 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/lora.h>
 #include <zephyr/logging/log.h>
+
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+#include <lichen/lora_cad.h>
+#endif
 #include <zephyr/sys/atomic.h>
 #include <string.h>
 
@@ -165,6 +169,20 @@ static int lora_loopback_recv(const struct device *dev,
 	return pkt.len;
 }
 
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+static int lora_loopback_cad(const struct device *dev, k_timeout_t timeout,
+			     bool *busy)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(timeout);
+	if (busy == NULL) {
+		return -EINVAL;
+	}
+	*busy = false;
+	return 0;
+}
+#endif
+
 static int lora_loopback_init(const struct device *dev)
 {
 	struct lora_loopback_data *data = dev->data;
@@ -177,6 +195,9 @@ static int lora_loopback_init(const struct device *dev)
 	LOG_INF("LoRa loopback driver initialized (queue depth=%d)",
 		LOOPBACK_QUEUE_DEPTH);
 
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+	return lichen_lora_cad_register(dev, lora_loopback_cad);
+#endif
 	return 0;
 }
 

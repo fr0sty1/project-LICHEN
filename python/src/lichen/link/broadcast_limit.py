@@ -5,18 +5,17 @@
 Per-sender hourly budgets tiered by hop limit; sender state expires after
 two hours idle, resetting the budget.
 
-Conformed against ``test/vectors/broadcast_rate_limiting.json``.
+Budget zones:
+- Green zone (count < budget*0.5): deterministic relay
+- Yellow zone (budget*0.5 <= count < budget): probabilistic relay (50% drop)
+- Red zone (count >= budget): hard drop
 
-Note: the vector file's ``yellow_zone_probabilistic`` case (count at 50%
-of budget labelled ``probabilistic``) cannot be reconciled with its own
-``count=budget-1 -> relay`` case by any deterministic rule; the yellow-zone
-RNG contract is flagged for human decision (bead project-LICHEN-worker6-heog).
-This oracle implements the deterministic subset: budgets, hard drop at the
-budget, per-sender independence, and idle-state expiry.
+Conformed against ``test/vectors/broadcast_rate_limiting.json``.
 """
 
 from __future__ import annotations
 
+import random
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -49,7 +48,7 @@ def broadcast_budget(hop_limit: int) -> int:
 
 
 def classify_broadcast(hop_limit: int, count_in_window: int) -> tuple[str, int]:
-    """Deterministic budget decision for one candidate relay.
+    """Budget decision for one candidate relay, per spec 04-network.md 6.3.3.
 
     Args:
         hop_limit: Broadcast hop limit (1-7).
@@ -57,25 +56,37 @@ def classify_broadcast(hop_limit: int, count_in_window: int) -> tuple[str, int]:
             current rolling hour.
 
     Returns:
-        ``(action, budget)`` where action is ``"relay"`` or ``"drop"``.
-        Drop occurs when the incoming packet would be number
-        ``count_in_window + 1`` and that exceeds the budget.
+        ``(action, budget)`` where action is one of:
+        - ``"relay"``: count is below yellow-zone threshold (green zone)
+        - ``"probabilistic"``: count is in yellow zone [budget*0.5, budget),
+          caller should relay with 50% probability
+        - ``"drop"``: count >= budget, hard drop
     """
     budget = broadcast_budget(hop_limit)
-    action = "relay" if count_in_window + 1 <= budget else "drop"
-    return action, budget
+    # Next packet would be number count_in_window + 1
+    if count_in_window >= budget:
+        return "drop", budget
+    if count_in_window >= budget // 2:
+        return "probabilistic", budget
+    return "relay", budget
 
 
 class BroadcastRateLimiter:
-    """Stateful per-sender hourly windows with idle-state expiry."""
+    """Stateful per-sender hourly windows with idle-state expiry.
+
+    Per spec 04-network.md 6.3.3, the yellow zone (50-100% of budget) uses
+    probabilistic relay with 50% drop probability.
+    """
 
     def __init__(
         self,
         window_s: float = 3600.0,
         clock: Callable[[], float] | None = None,
+        rng: random.Random | None = None,
     ) -> None:
         self._window_s = window_s
         self._clock = clock
+        self._rng = rng if rng is not None else random.Random()
         self._counts: dict[str, list[float]] = defaultdict(list)
         self._last_seen: dict[str, float] = {}
 
@@ -83,7 +94,12 @@ class BroadcastRateLimiter:
         return time.monotonic() if self._clock is None else self._clock()
 
     def admit(self, sender_iid: str, hop_limit: int) -> tuple[str, int]:
-        """Record one candidate relay and return the decision."""
+        """Record one candidate relay and return the decision.
+
+        Returns:
+            ``(action, budget)`` where action is ``"relay"`` or ``"drop"``.
+            In the yellow zone, the probabilistic decision is resolved here.
+        """
         now = self._now()
         last = self._last_seen.get(sender_iid)
         if last is not None and now - last > SENDER_STATE_IDLE_S:
@@ -96,6 +112,11 @@ class BroadcastRateLimiter:
             stamps.pop(0)
 
         action, budget = classify_broadcast(hop_limit, len(stamps))
+
+        # Resolve probabilistic action per spec: 50% relay, 50% drop
+        if action == "probabilistic":
+            action = "relay" if self._rng.random() < 0.5 else "drop"
+
         if action == "relay":
             stamps.append(now)
         return action, budget

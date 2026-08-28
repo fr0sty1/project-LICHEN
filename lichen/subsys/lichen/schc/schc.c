@@ -3,7 +3,7 @@
 
 /**
  * @file schc.c
- * @brief SCHC compress/decompress (RFC 8724) - rules 0-4 + uncompressed fallback
+ * @brief SCHC compress/decompress (RFC 8724) - rules 0-7 + uncompressed fallback
  *
  * Ported from rust/lichen-schc/src/codec.rs.
  * Bit order: MSB-first (network bit order). The residue is zero-padded to
@@ -78,39 +78,79 @@
 /* ─── OSCORE detection ────────────────────────────────────────────────────── */
 
 /**
- * @brief Check if a CoAP packet contains the OSCORE option (option 9).
+ * @brief Validate that split CoAP fixed/tail data contains one OSCORE option.
  *
  * OSCORE-protected CoAP packets have the Object-Security option present
  * in the option list. This function scans the CoAP options to detect it.
  *
- * @param coap     Pointer to CoAP header (after UDP)
- * @param coap_len Total length of CoAP data (header + options + payload)
- * @return true if OSCORE option is present, false otherwise
+ * @param first_byte CoAP Version/Type/TKL octet
+ * @param tail       Token, options, and optional payload after the fixed header
+ * @param tail_len   Length of @p tail
+ * @return true if the framing and single OSCORE option are valid
  */
-static bool coap_has_oscore_option(const uint8_t *coap, size_t coap_len)
+static bool valid_oscore_option(const uint8_t *value, size_t value_len)
 {
-	if (coap_len < SCHC_COAP_FIXED_LEN) {
-		return false;
+	if (value_len == 0) {
+		return true;
 	}
-	if (coap_version(coap) != 1) {
+	/* RFC 8613 encodes the option length in one octet in the external AAD. */
+	if (value_len > UINT8_MAX) {
 		return false;
 	}
 
-	uint8_t tkl = coap_tkl(coap);
+	uint8_t flags = value[0];
+	size_t partial_iv_len = flags & 0x07u;
+	if ((flags & 0xE0u) != 0 || partial_iv_len > 5u || flags == 0) {
+		return false;
+	}
+
+	size_t offset = 1u + partial_iv_len;
+	if (offset > value_len ||
+	    (partial_iv_len > 1u && value[1] == 0)) {
+		return false;
+	}
+	if ((flags & 0x10u) != 0) {
+		if (offset >= value_len) {
+			return false;
+		}
+		size_t context_len = value[offset++];
+		if (context_len > value_len - offset) {
+			return false;
+		}
+		offset += context_len;
+	}
+
+	/* A set K bit permits the remaining bytes to carry the KID. */
+	return (flags & 0x08u) != 0 || offset == value_len;
+}
+
+bool schc_coap_has_valid_oscore(uint8_t first_byte,
+				const uint8_t *tail, size_t tail_len)
+{
+	if (first_byte >> 6 != 1) {
+		return false;
+	}
+
+	uint8_t tkl = first_byte & 0x0Fu;
 	if (tkl > 8) {
 		/* Invalid TKL (reserved values 9-15) */
 		return false;
 	}
 
-	size_t offset = SCHC_COAP_FIXED_LEN + tkl;
-	uint16_t option_number = 0;
+	size_t offset = tkl;
+	if (offset > tail_len) {
+		return false;
+	}
+	size_t option_number = 0;
+	bool oscore_found = false;
 
-	while (offset < coap_len) {
-		uint8_t byte = coap[offset];
+	while (offset < tail_len) {
+		uint8_t byte = tail[offset];
 
 		/* Check for payload marker (0xFF) */
 		if (byte == 0xFF) {
-			break;
+			/* A marker without at least one payload octet is malformed. */
+			return oscore_found && offset + 1u < tail_len;
 		}
 
 		/* Parse option delta */
@@ -121,16 +161,16 @@ static bool coap_has_oscore_option(const uint8_t *coap, size_t coap_len)
 		offset++;
 
 		if (delta == 13) {
-			if (offset >= coap_len) {
+			if (offset >= tail_len) {
 				return false;
 			}
-			delta = coap[offset] + 13;
+			delta = tail[offset] + 13;
 			offset++;
 		} else if (delta == 14) {
-			if (offset + 1 >= coap_len) {
+			if (offset + 1 >= tail_len) {
 				return false;
 			}
-			delta = read_be16(&coap[offset]) + 269;
+			delta = read_be16(&tail[offset]) + 269;
 			offset += 2;
 		} else if (delta == 15) {
 			/* Reserved for payload marker context */
@@ -139,39 +179,53 @@ static bool coap_has_oscore_option(const uint8_t *coap, size_t coap_len)
 
 		/* Parse option length */
 		if (length == 13) {
-			if (offset >= coap_len) {
+			if (offset >= tail_len) {
 				return false;
 			}
-			length = coap[offset] + 13;
+			length = tail[offset] + 13;
 			offset++;
 		} else if (length == 14) {
-			if (offset + 1 >= coap_len) {
+			if (offset + 1 >= tail_len) {
 				return false;
 			}
-			length = read_be16(&coap[offset]) + 269;
+			length = read_be16(&tail[offset]) + 269;
 			offset += 2;
 		} else if (length == 15) {
 			/* Reserved */
 			return false;
 		}
 
-		option_number += delta;
+		if ((size_t)delta > SIZE_MAX - option_number) {
+			return false;
+		}
+		option_number += (size_t)delta;
+		if (length > tail_len - offset) {
+			return false;
+		}
 
 		/* Check if this is the OSCORE option */
 		if (option_number == COAP_OPTION_OSCORE) {
-			return true;
-		}
-
-		/* If we've passed option 9, no need to continue */
-		if (option_number > COAP_OPTION_OSCORE) {
-			return false;
+			if (oscore_found ||
+			    !valid_oscore_option(&tail[offset], length)) {
+				return false;
+			}
+			oscore_found = true;
 		}
 
 		/* Skip option value */
 		offset += length;
 	}
 
-	return false;
+	return oscore_found;
+}
+
+static bool coap_has_oscore_option(const uint8_t *coap, size_t coap_len)
+{
+	if (coap_len < SCHC_COAP_FIXED_LEN) {
+		return false;
+	}
+	return schc_coap_has_valid_oscore(coap[0], coap_tail(coap),
+					 coap_len - SCHC_COAP_FIXED_LEN);
 }
 
 /* ─── rule wrappers ───────────────────────────────────────────────────────── */
@@ -183,6 +237,16 @@ static int lichen_rule_compress_coap(const struct schc_rule *rule,
 	if (pkt_len < IPV6_HDR_LEN || ipv6_version(packet) != 6 ||
 	    ipv6_next_header(packet) != IPV6_NH_UDP) {
 		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+	/* OSCORE content must never be relabeled as plaintext merely because its
+	 * Rule 5/6 address, port, or fixed-field constraints did not match. */
+	if (pkt_len >= IPV6_HDR_LEN + UDP_HDR_LEN + SCHC_COAP_FIXED_LEN) {
+		const uint8_t *coap = udp_payload(ipv6_payload(packet));
+		size_t coap_len = pkt_len - IPV6_HDR_LEN - UDP_HDR_LEN;
+
+		if (coap_has_oscore_option(coap, coap_len)) {
+			return SCHC_ERR_NO_MATCHING_RULE;
+		}
 	}
 
 	return compress_coap(packet, pkt_len, out, out_len, rule->rule_id);
@@ -207,9 +271,13 @@ static int lichen_rule_compress_icmpv6_echo(const struct schc_rule *rule,
 
 	if ((type != ICMPV6_TYPE_ECHO_REQUEST &&
 	     type != ICMPV6_TYPE_ECHO_REPLY) ||
-	    icmpv6_code(icmp) != 0 ||
-	    !is_link_local(src) ||
-	    (!is_link_local(dst) && !is_ula(dst) && dst[0] != 0x02 && !is_global(dst))) {
+	    icmpv6_code(icmp) != 0) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+	if (pkt_len - IPV6_HDR_LEN > UINT16_MAX ||
+	    !icmpv6_checksum_valid(src, dst, icmp,
+				   (uint16_t)(pkt_len - IPV6_HDR_LEN))) {
+		/* Match Rust/Python: corrupt ICMPv6 is preserved by Rule 255. */
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 
@@ -234,8 +302,13 @@ static int lichen_rule_compress_rpl_dio(const struct schc_rule *rule,
 	const uint8_t *icmp = ipv6_payload(packet);
 
 	if (icmpv6_type(icmp) != ICMPV6_TYPE_RPL ||
-	    icmpv6_code(icmp) != ICMPV6_CODE_RPL_DIO ||
-	    !is_link_local(src) || !is_link_local(dst)) {
+	    icmpv6_code(icmp) != ICMPV6_CODE_RPL_DIO) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+	if (pkt_len - IPV6_HDR_LEN > UINT16_MAX ||
+	    !icmpv6_checksum_valid(src, dst, icmp,
+				   (uint16_t)(pkt_len - IPV6_HDR_LEN))) {
+		/* Match Rust/Python: corrupt ICMPv6 is preserved by Rule 255. */
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 
@@ -260,13 +333,13 @@ static int lichen_rule_compress_rpl_dao(const struct schc_rule *rule,
 	const uint8_t *icmp = ipv6_payload(packet);
 
 	if (icmpv6_type(icmp) != ICMPV6_TYPE_RPL ||
-	    icmpv6_code(icmp) != ICMPV6_CODE_RPL_DAO ||
-	    !is_link_local(src) || !is_link_local(dst)) {
+	    icmpv6_code(icmp) != ICMPV6_CODE_RPL_DAO) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
-
-	uint8_t kd_flags = rpl_dao_kd_flags(icmpv6_body(icmp));
-	if ((kd_flags & 0x40) == 0) {
+	if (pkt_len - IPV6_HDR_LEN > UINT16_MAX ||
+	    !icmpv6_checksum_valid(src, dst, icmp,
+				   (uint16_t)(pkt_len - IPV6_HDR_LEN))) {
+		/* Match Rust/Python: corrupt ICMPv6 is preserved by Rule 255. */
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 
@@ -305,6 +378,28 @@ static int lichen_rule_decompress_rpl_dao(const struct schc_rule *rule,
 	(void)rule;
 
 	return decompress_rpl_dao(data, data_len, out, out_len);
+}
+
+static int lichen_rule_compress_mqtt_sn(const struct schc_rule *rule,
+					const uint8_t *packet, size_t pkt_len,
+					uint8_t *out, size_t out_len)
+{
+	(void)rule;
+
+	if (pkt_len < IPV6_HDR_LEN + UDP_HDR_LEN || ipv6_version(packet) != 6 ||
+	    ipv6_next_header(packet) != IPV6_NH_UDP) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+	return compress_mqtt_sn(packet, pkt_len, out, out_len);
+}
+
+static int lichen_rule_decompress_mqtt_sn(const struct schc_rule *rule,
+					  const uint8_t *data, size_t data_len,
+					  uint8_t *out, size_t out_len)
+{
+	(void)rule;
+
+	return decompress_mqtt_sn(data, data_len, out, out_len);
 }
 
 /**
@@ -373,6 +468,11 @@ static int lichen_rule_decompress_oscore(const struct schc_rule *rule,
 /* ─── rule table ──────────────────────────────────────────────────────────── */
 
 static const struct schc_rule lichen_schc_rules[] = {
+	{
+		.rule_id = SCHC_RULE_MQTT_SN,
+		.compress = lichen_rule_compress_mqtt_sn,
+		.decompress = lichen_rule_decompress_mqtt_sn,
+	},
 	/*
 	 * OSCORE rules must come before regular CoAP rules so that
 	 * OSCORE-protected packets match on rules 5/6, not 0/1.
@@ -433,6 +533,9 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 	}
 
 	if (out == NULL) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
+	if (pkt_len > SCHC_FRAGMENT_MAX_PACKET_SIZE) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 

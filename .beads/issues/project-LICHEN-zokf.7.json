@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zokf.7",
+  "title": "Write user documentation and peripheral API reference",
+  "description": "Documentation deliverables:\n- README with quick start guide\n- Peripheral API reference (register maps, timing behavior)\n- Board definition format documentation\n- Integration guide for custom boards\n- Troubleshooting guide",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:50:38.933706Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:50:38.933706Z",
+  "labels": [
+    "blocked:hardware",
+    "defer-boardconfig",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zokf.7",
+      "depends_on_id": "project-LICHEN-zokf",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:50:42.462525Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

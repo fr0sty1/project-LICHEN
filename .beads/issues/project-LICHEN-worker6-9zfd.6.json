@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-9zfd.6",
+  "title": "Add comparative benchmarking scenarios: LICHEN vs Meshtastic",
+  "description": "Add benchmark scenarios comparing LICHEN and Meshtastic performance.\n\nBenchmark metrics:\n\n1. **Delivery rate**\n   - Percentage of messages successfully delivered\n   - Measure under varying load conditions\n   - Track per-hop vs end-to-end delivery\n\n2. **Latency**\n   - Time from send to receive confirmation\n   - Median, 95th percentile, 99th percentile\n   - Breakdown by hop count\n\n3. **Scalability**\n   - Performance vs node count (10, 25, 50, 100 nodes)\n   - Concurrent conversations (1, 5, 10, 20)\n   - Channel utilization percentage\n\nBenchmark scenarios:\n\n1. **Baseline: 50 nodes, 10 conversations**\n   - Random message pattern\n   - Run LICHEN-only, Meshtastic-only\n   - Measure all three metrics\n\n2. **Flood routing stress test**\n   - Maximum message rate\n   - Observe collision storms\n   - Compare flood vs RPL routing\n\n3. **Mixed network**\n   - 25 LICHEN + 25 Meshtastic nodes\n   - Test interop layer (if applicable)\n   - Measure overhead of translation\n\n4. **Long-haul multi-hop**\n   - Linear topology, 10 hops\n   - Single message traversal time\n   - Routing convergence time\n\nOutput format:\n- JSON results with all raw measurements\n- Summary tables for documentation\n- Optional: matplotlib charts\n\nLocation: python/benchmarks/lichen_vs_meshtastic.py\n\nDepends on: Integration tests passing, stable harness",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:49:46.087294Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:49:46.087294Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9zfd.6",
+      "depends_on_id": "project-LICHEN-worker6-9zfd",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:49:49.472221Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

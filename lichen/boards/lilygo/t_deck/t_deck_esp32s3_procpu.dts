@@ -66,6 +66,13 @@
 			compatible = "sitronix,st7789v";
 			reg = <1>;
 			status = "disabled";
+			/*
+			 * TODO(verify): 20 MHz exceeds the ST7789V 66 ns
+			 * serial write cycle (~15 MHz); common T-Deck
+			 * firmware runs faster successfully.  Confirm on
+			 * hardware during display bring-up and lower here
+			 * (or in the app overlay) if the panel misbehaves.
+			 */
 			mipi-max-frequency = <20000000>;
 
 			width = <240>;
@@ -141,10 +148,38 @@
 };
 
 /*
+ * Shared SPI3 bus: the SX1262 LoRa radio (reg 0), the ST7789 display
+ * (reg 1, reached through tdeck_mipi_dbi) and the SD card (reg 2) all
+ * hang off this controller.  Chip selects are bus-level cs-gpios indexed
+ * by child reg, so exactly one client is selected per transaction:
+ *   reg 0 = CS0 GPIO9  LoRa (enabled)
+ *   reg 1 = CS1 GPIO12 TFT  (disabled; t_deck_tft_cs_hog holds it
+ *          inactive until an overlay /delete-node/'s the hog)
+ *   reg 2 = CS2 GPIO39 SD   (disabled; t_deck_sd_cs_hog as above)
+ * SPIM3 hardware CSEL is deliberately not muxed in pinctrl so the GPIO
+ * CS lines cannot fight a hardware chip select.
+ *
+ * Per-client SCLK constraints (documented, per-device; the SPI core
+ * applies each client's limit to its own transactions):
+ *   LoRa    16 MHz - SX1262 datasheet maximum SCLK.
+ *   Display 20 MHz - above the ST7789V 66 ns serial write cycle
+ *           (~15 MHz); tolerated by common T-Deck firmware, confirm on
+ *           hardware before trusting (see display node TODO(verify)).
+ *   SD      12 MHz - within the SD spec SPI-mode 25 MHz cap; the SD
+ *           stack still identifies the card at <= 400 kHz.
+ * Physical bus coexistence with the SX1262 is verified on hardware
+ * under project-LICHEN-h7t5.7.19.
+ */
+
+/*
  * SX1262 LoRa radio on SPI3.
  *   CS=GPIO9  RESET=GPIO17  BUSY=GPIO13  DIO1=GPIO45
  *   DIO2 drives the internal RF TX/RX switch (dio2-tx-enable).
  *   DIO3 supplies the module TCXO at 1.8 V.
+ * TODO(verify): pins are from the LilyGO T-Deck ESP32-S3 pinmap
+ * (utilities.h / Meshtastic variant.h); BUSY=GPIO13 and DIO1=GPIO45
+ * are revision-sensitive and still need physical confirmation of the
+ * exact board revision.
  */
 &spi3 {
 	#address-cells = <1>;
@@ -165,6 +200,7 @@
 		dio2-tx-enable;
 		dio3-tcxo-voltage = <SX126X_DIO3_TCXO_1V8>;
 		tcxo-power-startup-delay-ms = <5>;
+		/* SX1262 datasheet maximum SCLK; do not raise. */
 		spi-max-frequency = <16000000>;
 	};
 
@@ -172,6 +208,9 @@
 		compatible = "zephyr,sdhc-spi-slot";
 		reg = <2>;
 		status = "disabled";
+		/* SD SPI mode tops out at 25 MHz; 12 MHz is conservative.
+		 * The SD stack identifies the card at <= 400 kHz first,
+		 * and the validation overlay caps the bus at 4 MHz. */
 		spi-max-frequency = <12000000>;
 		mmc {
 			compatible = "zephyr,sdmmc-disk";

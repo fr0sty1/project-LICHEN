@@ -32,3 +32,14 @@ def test_l2_payload_vector_oracle(vector):
     }[vector["kind"]]
     assert classify_l2_payload(wrapped) is expected_kind
     assert l2_payload_body(wrapped) == body
+
+
+@pytest.mark.parametrize("dispatch", range(256))
+def test_dispatch_namespace_is_exhaustive_and_single_octet_is_malformed(dispatch):
+    expected = {
+        0x14: L2PayloadKind.SCHC,
+        0x15: L2PayloadKind.ROUTING,
+    }.get(dispatch, L2PayloadKind.UNKNOWN)
+
+    assert classify_l2_payload(bytes([dispatch, 0x00])) is expected
+    assert classify_l2_payload(bytes([dispatch])) is L2PayloadKind.UNKNOWN

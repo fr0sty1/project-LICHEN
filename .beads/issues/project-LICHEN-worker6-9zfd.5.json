@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-9zfd.5",
+  "title": "Write integration tests: Meshtastic node in Medium simulator, TX/RX verification",
+  "description": "Write integration tests verifying Meshtastic nodes work correctly in the Medium simulator.\n\nTest scenarios:\n\n1. **Single node registration**\n   - Spawn one Meshtastic node\n   - Verify it registers with Medium\n   - Verify radio enters receive mode\n\n2. **Single node TX**\n   - Trigger Meshtastic to send a packet\n   - Verify Medium receives MSG_TX with correct payload\n   - Verify Meshtastic gets TX complete callback\n\n3. **Single node RX**\n   - Inject packet via Medium directly\n   - Verify Meshtastic receives and processes it\n   - Check RSSI/SNR reported correctly\n\n4. **Two Meshtastic nodes**\n   - Spawn two nodes in range\n   - Send message from A to B\n   - Verify B receives message\n   - Test bidirectional communication\n\n5. **Out-of-range behavior**\n   - Place two nodes beyond radio range\n   - Verify no direct reception\n   - Add relay node, verify message delivery\n\n6. **Radio parameter validation**\n   - Verify SF/BW/CR propagate to Medium\n   - Test frequency/power configuration\n   - Confirm CAD behavior if applicable\n\nLocation: python/tests/test_meshtastic_integration.py\n\nTest infrastructure: pytest, Medium simulator fixture, portduino binary",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:49:37.959182Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:49:37.959182Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9zfd.5",
+      "depends_on_id": "project-LICHEN-worker6-9zfd",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:49:41.178586Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

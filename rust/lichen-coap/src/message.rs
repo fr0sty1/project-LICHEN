@@ -30,6 +30,7 @@ impl MessageCode {
     pub const VALID: Self = Self(0x43); // 2.03
     pub const CHANGED: Self = Self(0x44); // 2.04
     pub const CONTENT: Self = Self(0x45); // 2.05
+    pub const CONTINUE: Self = Self(0x5F); // 2.31 (RFC 7959)
 
     // 4.xx Client Error
     pub const BAD_REQUEST: Self = Self(0x80); // 4.00

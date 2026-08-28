@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.7.7",
+  "title": "Implement LICHEN to IRC relay: observe /msg/inbox, filter by group, format and send to IRC channels",
+  "description": "Implement the LICHEN-to-IRC direction of the bridge. Observe the gateway /msg/inbox CoAP endpoint for incoming authenticated LICHEN messages. Filter messages by configured group/realm mappings. Format messages for IRC with origin provenance (native /128 address and timestamp) using IRCv3 message tags when negotiated, falling back to readable text prefix. Apply rate limiting, queue bounds, and UTF-8 validation. Sanitize IRC control codes and CTCP. Implement deduplication using persistent message IDs and bridge-instance IDs.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:10.262198Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:10.262198Z",
+  "labels": [
+    "core",
+    "gateway",
+    "python",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.7.7",
+      "depends_on_id": "project-LICHEN-p2y5.7",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:20.790832Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

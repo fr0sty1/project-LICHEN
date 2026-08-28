@@ -8,9 +8,8 @@ import time
 from ipaddress import IPv6Address
 from unittest.mock import MagicMock
 
-import cbor2
 import pytest
-from aiocoap import CHANGED, Message, UNAUTHORIZED
+from aiocoap import CHANGED, UNAUTHORIZED, Message
 from aiocoap.numbers import ContentFormat
 
 from lichen.coap.resources.handoff import HandoffResource
@@ -108,8 +107,13 @@ class TestHandoffResource:
         assert handoff_response.path_sequence == 10
         assert handoff_response.oscore_state == oscore_state
 
-        # Node should be removed from registry
-        assert node_address not in registry
+        # Two-phase commit: node stays in registry with pending_handoff=True.
+        # This prevents orphaning if the response is lost in transit.
+        # Caller must explicitly call finalize_handoff() after confirmation.
+        assert node_address in registry
+        entry = registry.get(node_address)
+        assert entry is not None
+        assert entry.pending_handoff is True
 
     @pytest.mark.asyncio
     async def test_node_not_found(

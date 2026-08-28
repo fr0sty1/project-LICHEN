@@ -57,9 +57,10 @@ class TestAirtimeFallback:
 
         assert _airtime_us_fallback(10, sf=6, implicit_header=True) > 0
 
-    def test_invalid_sf_high_raises(self) -> None:
+    @pytest.mark.parametrize("sf", [5, 13])
+    def test_invalid_sf_raises(self, sf: int) -> None:
         with pytest.raises(ValueError, match="sf must be 6..12"):
-            _airtime_us_fallback(10, sf=13)
+            _airtime_us_fallback(10, sf=sf)
 
     def test_sf_range_valid(self) -> None:
         # All explicit-header SF values should work.
@@ -143,6 +144,15 @@ class TestAirtimeEdgeCases:
         with pytest.raises(ValueError, match="0..255"):
             _airtime_us_fallback(256)
 
+    @pytest.mark.parametrize("payload_len", [True, 1.0, "1", None])
+    def test_payload_length_requires_exact_integer(self, payload_len: object) -> None:
+        with pytest.raises(TypeError, match="payload_len must be an integer"):
+            _airtime_us_fallback(payload_len)  # type: ignore[arg-type]
+
+    def test_huge_payload_rejected_before_formula_conversion(self) -> None:
+        with pytest.raises(ValueError, match="0..255"):
+            _airtime_us_fallback(1 << 4096)
+
     def test_preamble_variation(self) -> None:
         # Longer preamble = longer airtime
         at_p8 = _airtime_us_fallback(60, preamble_symbols=8)
@@ -193,14 +203,27 @@ class TestAirtimeSfBwCombinations:
         with pytest.raises(ValueError, match="cr must be 5..8"):
             _airtime_us_fallback(60, cr=cr)
 
-    def test_invalid_bandwidth_rejected(self) -> None:
+    @pytest.mark.parametrize("bw_hz", [0, 125_001])
+    def test_invalid_bandwidth_rejected(self, bw_hz: int) -> None:
         with pytest.raises(ValueError, match="bw_hz must be one of"):
-            _airtime_us_fallback(60, bw_hz=0)
+            _airtime_us_fallback(60, bw_hz=bw_hz)
 
     @pytest.mark.parametrize("preamble", [5, 65_536])
     def test_invalid_preamble_rejected(self, preamble: int) -> None:
         with pytest.raises(ValueError, match="preamble_symbols must be 6..65535"):
             _airtime_us_fallback(60, preamble_symbols=preamble)
+
+    @pytest.mark.parametrize("preamble", [6, 65_535])
+    def test_preamble_boundaries_are_valid(self, preamble: int) -> None:
+        assert _airtime_us_fallback(60, preamble_symbols=preamble) > 0
+
+    def test_modem_parameters_require_exact_integers(self) -> None:
+        with pytest.raises(TypeError, match="sf must be an integer"):
+            _airtime_us_fallback(60, sf=10.0)  # type: ignore[arg-type]
+        with pytest.raises(TypeError, match="bw_hz must be an integer"):
+            _airtime_us_fallback(60, bw_hz=125_000.0)  # type: ignore[arg-type]
+        with pytest.raises(TypeError, match="cr must be an integer"):
+            _airtime_us_fallback(60, cr=5.0)  # type: ignore[arg-type]
 
     def test_header_and_crc_flags_match_datasheet_terms(self) -> None:
         explicit_crc = _airtime_us_fallback(0, sf=7)

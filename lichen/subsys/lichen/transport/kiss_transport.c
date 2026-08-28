@@ -35,9 +35,12 @@ LOG_MODULE_REGISTER(kiss_transport, CONFIG_KISS_TRANSPORT_LOG_LEVEL);
 
 struct kiss_transport_ctx {
 	const struct device *uart_dev;
-	bool initialized;
+	atomic_t initialized;
 	atomic_t shutdown;
+	atomic_t active_sends;
+	struct k_sem sends_drained;
 	struct kiss_transport_config config;
+	atomic_t isr_overflow_errors;
 
 	/* KISS timing parameters */
 	struct kiss_params params;
@@ -65,9 +68,12 @@ struct kiss_transport_ctx {
 };
 
 static struct kiss_transport_ctx s_ctx;
+K_MUTEX_DEFINE(s_lifecycle_mutex);
 
 /* Forward declarations */
 static void kiss_rx_thread_fn(void *p1, void *p2, void *p3);
+static int kiss_write_all(struct kiss_transport_ctx *ctx,
+			  const uint8_t *data, size_t len);
 
 /* RX thread */
 static K_THREAD_STACK_DEFINE(s_rx_stack, RX_THREAD_STACK_SIZE);
@@ -77,7 +83,26 @@ static struct k_thread s_rx_thread;
 
 void kiss_decode_init(struct kiss_decode_ctx *ctx)
 {
+	if (ctx == NULL) {
+		return;
+	}
 	memset(ctx, 0, sizeof(*ctx));
+}
+
+static void kiss_decode_resync(struct kiss_decode_ctx *ctx, bool at_delimiter)
+{
+	ctx->len = 0;
+	ctx->cmd = 0;
+	ctx->has_cmd = false;
+	ctx->escape_next = false;
+	ctx->in_frame = at_delimiter;
+}
+
+void kiss_decode_consume(struct kiss_decode_ctx *ctx)
+{
+	if (ctx != NULL) {
+		kiss_decode_resync(ctx, true);
+	}
 }
 
 int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte)
@@ -87,25 +112,25 @@ int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte)
 	}
 
 	if (byte == KISS_FEND) {
-		if (ctx->in_frame && ctx->has_cmd && ctx->len > 0) {
+		if (ctx->escape_next) {
+			/* A delimiter cannot complete a dangling escape.  It does,
+			 * however, immediately re-synchronize the next frame. */
+			kiss_decode_resync(ctx, true);
+			return -EILSEQ;
+		}
+		if (ctx->in_frame && ctx->has_cmd) {
 			/* Complete frame ready */
 			ctx->in_frame = false;
 			return 1;
 		}
 		/* Start of new frame or empty frame */
-		ctx->in_frame = true;
-		ctx->has_cmd = false;
-		ctx->len = 0;
-		ctx->escape_next = false;
+		kiss_decode_resync(ctx, true);
 		return 0;
 	}
 
 	if (!ctx->in_frame) {
-		/* Data before first FEND - start frame implicitly */
-		ctx->in_frame = true;
-		ctx->has_cmd = false;
-		ctx->len = 0;
-		ctx->escape_next = false;
+		/* Ignore noise and the remainder of a rejected frame until FEND. */
+		return 0;
 	}
 
 	if (ctx->escape_next) {
@@ -117,8 +142,7 @@ int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte)
 		} else {
 			/* Invalid escape sequence - reset frame */
 			LOG_WRN("KISS: invalid escape sequence 0x%02x", byte);
-			ctx->in_frame = false;
-			ctx->len = 0;
+			kiss_decode_resync(ctx, false);
 			return -EILSEQ;
 		}
 	} else if (byte == KISS_FESC) {
@@ -138,8 +162,7 @@ int kiss_decode_byte(struct kiss_decode_ctx *ctx, uint8_t byte)
 		ctx->buf[ctx->len++] = byte;
 	} else {
 		LOG_WRN("KISS: frame overflow");
-		ctx->in_frame = false;
-		ctx->len = 0;
+		kiss_decode_resync(ctx, false);
 		return -EOVERFLOW;
 	}
 
@@ -151,33 +174,35 @@ int kiss_encode(uint8_t port, uint8_t cmd,
 		uint8_t *frame, size_t frame_max, size_t *frame_len)
 {
 	size_t fi = 0;
+	size_t needed = 2u;
 	uint8_t cmd_byte;
 
 	if ((data == NULL && data_len > 0) || frame == NULL || frame_len == NULL) {
 		return -EINVAL;
 	}
 
-	if (port > KISS_PORT_MAX) {
+	if (port > KISS_PORT_MAX || cmd > 0x0fu) {
 		return -EINVAL;
 	}
+	if (data_len > KISS_MAX_PAYLOAD) {
+		return -EMSGSIZE;
+	}
 
-	if (frame_max < 3u) {
+	cmd_byte = KISS_CMD_MAKE(port, cmd);
+	needed += (cmd_byte == KISS_FEND || cmd_byte == KISS_FESC) ? 2u : 1u;
+	for (size_t i = 0; i < data_len; i++) {
+		needed += (data[i] == KISS_FEND || data[i] == KISS_FESC) ? 2u : 1u;
+	}
+	if (needed > frame_max) {
 		return -ENOMEM;
 	}
 
+	/* No output is modified until the exact encoded size is known to fit. */
 	frame[fi++] = KISS_FEND;
-
-	cmd_byte = KISS_CMD_MAKE(port, cmd);
 	if (cmd_byte == KISS_FEND) {
-		if (fi + 2 > frame_max) {
-			return -ENOMEM;
-		}
 		frame[fi++] = KISS_FESC;
 		frame[fi++] = KISS_TFEND;
 	} else if (cmd_byte == KISS_FESC) {
-		if (fi + 2 > frame_max) {
-			return -ENOMEM;
-		}
 		frame[fi++] = KISS_FESC;
 		frame[fi++] = KISS_TFESC;
 	} else {
@@ -188,28 +213,16 @@ int kiss_encode(uint8_t port, uint8_t cmd,
 		uint8_t b = data[i];
 
 		if (b == KISS_FEND) {
-			if (fi + 2 > frame_max) {
-				return -ENOMEM;
-			}
 			frame[fi++] = KISS_FESC;
 			frame[fi++] = KISS_TFEND;
 		} else if (b == KISS_FESC) {
-			if (fi + 2 > frame_max) {
-				return -ENOMEM;
-			}
 			frame[fi++] = KISS_FESC;
 			frame[fi++] = KISS_TFESC;
 		} else {
-			if (fi + 1 > frame_max) {
-				return -ENOMEM;
-			}
 			frame[fi++] = b;
 		}
 	}
 
-	if (fi + 1 > frame_max) {
-		return -ENOMEM;
-	}
 	frame[fi++] = KISS_FEND;
 
 	*frame_len = fi;
@@ -221,7 +234,7 @@ int kiss_encode(uint8_t port, uint8_t cmd,
 static void handle_timing_command(struct kiss_transport_ctx *ctx,
 				  uint8_t cmd, const uint8_t *data, size_t len)
 {
-	if (len < 1) {
+	if (len != 1u) {
 		LOG_WRN("KISS: timing command without parameter");
 		return;
 	}
@@ -278,18 +291,21 @@ static void handle_sethardware(struct kiss_transport_ctx *ctx,
 
 	resp_len = ctx->config.hw_cmd_cb(data, len, response, sizeof(response),
 					 ctx->config.user_ctx);
-	if (resp_len > 0) {
+	if (resp_len > 0 && (size_t)resp_len <= sizeof(response)) {
 		uint8_t resp_frame[132];
 		size_t resp_frame_len;
-		uint8_t resp_cmd = KISS_CMD_SETHARDWARE | 0x80u;
+		/* KISS marks a SetHardware response by setting bit 7 of the
+		 * complete command byte.  In the split API that is port bit 3. */
+		uint8_t resp_port = port | 0x08u;
 
-		if (kiss_encode(0, resp_cmd, response, (size_t)resp_len,
+		if (kiss_encode(resp_port, KISS_CMD_SETHARDWARE,
+				response, (size_t)resp_len,
 				resp_frame, sizeof(resp_frame), &resp_frame_len) == 0) {
 			k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
-			if (ctx->uart_dev != NULL) {
-				for (size_t i = 0; i < resp_frame_len; i++) {
-					uart_poll_out(ctx->uart_dev, resp_frame[i]);
-				}
+			int ret = kiss_write_all(ctx, resp_frame, resp_frame_len);
+
+			if (ret < 0) {
+				LOG_WRN("KISS: SetHardware response write failed: %d", ret);
 			}
 			k_mutex_unlock(&ctx->tx_mutex);
 		}
@@ -300,6 +316,23 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 {
 	uint8_t port = KISS_CMD_PORT(ctx->rx_ctx.cmd);
 	uint8_t cmd_type = KISS_CMD_TYPE(ctx->rx_ctx.cmd);
+	bool valid = true;
+
+	if (cmd_type >= KISS_CMD_TXDELAY && cmd_type <= KISS_CMD_FULLDUPLEX) {
+		valid = ctx->rx_ctx.len == 1u;
+	} else if (cmd_type == KISS_CMD_RETURN) {
+		valid = ctx->rx_ctx.len == 0u;
+	} else if (cmd_type != KISS_CMD_DATA && cmd_type != KISS_CMD_SETHARDWARE) {
+		valid = false;
+	}
+
+	if (!valid) {
+		LOG_WRN("KISS: invalid command %u length %zu", cmd_type, ctx->rx_ctx.len);
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+		ctx->stats.frame_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
+		return;
+	}
 
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	ctx->stats.rx_frames++;
@@ -391,7 +424,7 @@ static void uart_rx_callback(const struct device *dev, void *user_data)
 
 			if (written == 0) {
 				LOG_WRN("KISS RX: ring buffer overflow");
-				atomic_inc((atomic_t *)&ctx->stats.overflow_errors);
+				atomic_inc(&ctx->isr_overflow_errors);
 			}
 			k_sem_give(&ctx->rx_sem);
 		}
@@ -423,7 +456,7 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 				int ret = kiss_decode_byte(&ctx->rx_ctx, buf[i]);
 				if (ret == 1) {
 					dispatch_frame(ctx);
-					kiss_decode_init(&ctx->rx_ctx);
+					kiss_decode_consume(&ctx->rx_ctx);
 				} else if (ret < 0) {
 					if (ret == -EOVERFLOW) {
 						overflow_count++;
@@ -435,7 +468,8 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 
 			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 			ctx->stats.rx_bytes += n;
-			ctx->stats.overflow_errors += overflow_count;
+			ctx->stats.overflow_errors += overflow_count +
+				(uint32_t)atomic_set(&ctx->isr_overflow_errors, 0);
 			ctx->stats.frame_errors += frame_error_count;
 			k_mutex_unlock(&ctx->stats_mutex);
 		}
@@ -445,6 +479,36 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 }
 
 /* ─── TX helper ───────────────────────────────────────────────────────────── */
+
+static int kiss_write_all(struct kiss_transport_ctx *ctx,
+			  const uint8_t *data, size_t len)
+{
+	if (ctx->config.write_cb != NULL) {
+		size_t offset = 0;
+
+		while (offset < len) {
+			int written = ctx->config.write_cb(&data[offset], len - offset,
+							   ctx->config.user_ctx);
+
+			if (written < 0) {
+				return written;
+			}
+			if (written == 0 || (size_t)written > len - offset) {
+				return -EIO;
+			}
+			offset += (size_t)written;
+		}
+		return 0;
+	}
+
+	if (ctx->uart_dev == NULL) {
+		return -ENODEV;
+	}
+	for (size_t i = 0; i < len; i++) {
+		uart_poll_out(ctx->uart_dev, data[i]);
+	}
+	return 0;
+}
 
 static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
 			 uint8_t port, const uint8_t *data, size_t len)
@@ -477,11 +541,8 @@ static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
 	ctx->last_tx_len = frame_len;
 #endif
 
-	if (ctx->uart_dev != NULL) {
-		for (size_t i = 0; i < frame_len; i++) {
-			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
-		}
-
+	ret = kiss_write_all(ctx, ctx->tx_frame, frame_len);
+	if (ret == 0) {
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_frames++;
 		ctx->stats.tx_bytes += (uint32_t)frame_len;
@@ -497,13 +558,49 @@ static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
 		k_mutex_unlock(&ctx->stats_mutex);
 	} else {
 		k_mutex_unlock(&ctx->tx_mutex);
-		return -ENODEV;
+		return ret;
 	}
 
 	k_mutex_unlock(&ctx->tx_mutex);
 
 	LOG_DBG("KISS TX: port=%u len=%zu -> %zu bytes framed", port, len, frame_len);
 	return 0;
+}
+
+static bool kiss_send_begin(struct kiss_transport_ctx *ctx)
+{
+	if (atomic_get(&ctx->initialized) == 0) {
+		return false;
+	}
+	atomic_inc(&ctx->active_sends);
+	/* Close the check/increment race with deinit(). */
+	if (atomic_get(&ctx->initialized) == 0) {
+		if (atomic_dec(&ctx->active_sends) == 1) {
+			k_sem_give(&ctx->sends_drained);
+		}
+		return false;
+	}
+	return true;
+}
+
+static void kiss_send_end(struct kiss_transport_ctx *ctx)
+{
+	if (atomic_dec(&ctx->active_sends) == 1) {
+		k_sem_give(&ctx->sends_drained);
+	}
+}
+
+static int kiss_transport_send_port(uint8_t port, const uint8_t *data, size_t len)
+{
+	struct kiss_transport_ctx *ctx = &s_ctx;
+	int ret;
+
+	if (!kiss_send_begin(ctx)) {
+		return -ENODEV;
+	}
+	ret = kiss_tx_frame(ctx, port, data, len);
+	kiss_send_end(ctx);
+	return ret;
 }
 
 /* ─── Public API ──────────────────────────────────────────────────────────── */
@@ -516,15 +613,18 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 	if (config == NULL) {
 		return -EINVAL;
 	}
+	k_mutex_lock(&s_lifecycle_mutex, K_FOREVER);
 
 	/* At least one RX callback required */
 	if (config->ax25_rx_cb == NULL && config->raw_rx_cb == NULL &&
 	    config->lci_ipv6_cb == NULL && config->lci_ctrl_cb == NULL) {
 		LOG_ERR("KISS: at least one RX callback required");
+		k_mutex_unlock(&s_lifecycle_mutex);
 		return -EINVAL;
 	}
 
-	if (ctx->initialized) {
+	if (atomic_get(&ctx->initialized) != 0) {
+		k_mutex_unlock(&s_lifecycle_mutex);
 		return -EALREADY;
 	}
 
@@ -533,8 +633,11 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 	k_mutex_init(&ctx->params_mutex);
 	k_mutex_init(&ctx->stats_mutex);
 	k_sem_init(&ctx->rx_sem, 0, K_SEM_MAX_LIMIT);
+	k_sem_init(&ctx->sends_drained, 0, 1);
 	ring_buf_init(&ctx->rx_ring, sizeof(ctx->rx_ring_buf), ctx->rx_ring_buf);
 	atomic_set(&ctx->shutdown, 0);
+	atomic_set(&ctx->isr_overflow_errors, 0);
+	atomic_set(&ctx->active_sends, 0);
 
 	/* Initialize RX decoder */
 	kiss_decode_init(&ctx->rx_ctx);
@@ -563,13 +666,25 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 		ctx->uart_dev = uart_dev;
 
 		/* Configure UART interrupts for RX */
-		uart_irq_callback_user_data_set(uart_dev, uart_rx_callback, ctx);
+		int ret = uart_irq_callback_user_data_set(uart_dev, uart_rx_callback, ctx);
+
+		if (ret < 0) {
+			ctx->uart_dev = NULL;
+			memset(&ctx->config, 0, sizeof(ctx->config));
+			k_mutex_unlock(&s_lifecycle_mutex);
+			return ret;
+		}
 		uart_irq_rx_enable(uart_dev);
 
 		LOG_INF("KISS transport: UART %s ready", uart_dev->name);
 	} else {
 		LOG_WRN("KISS transport: no UART device available");
 		ctx->uart_dev = NULL;
+	}
+	if (ctx->uart_dev == NULL && ctx->config.write_cb == NULL) {
+		memset(&ctx->config, 0, sizeof(ctx->config));
+		k_mutex_unlock(&s_lifecycle_mutex);
+		return -ENODEV;
 	}
 
 	/* Start RX processing thread */
@@ -578,7 +693,8 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 			RX_THREAD_PRIORITY, 0, K_NO_WAIT);
 	k_thread_name_set(&s_rx_thread, "kiss_rx");
 
-	ctx->initialized = true;
+	atomic_set(&ctx->initialized, 1);
+	k_mutex_unlock(&s_lifecycle_mutex);
 	LOG_INF("KISS transport initialized");
 
 	return 0;
@@ -588,8 +704,15 @@ void kiss_transport_deinit(void)
 {
 	struct kiss_transport_ctx *ctx = &s_ctx;
 
-	if (!ctx->initialized) {
+	k_mutex_lock(&s_lifecycle_mutex, K_FOREVER);
+	if (atomic_get(&ctx->initialized) == 0) {
+		k_mutex_unlock(&s_lifecycle_mutex);
 		return;
+	}
+	/* Prevent new sends while the RX thread and backends are torn down. */
+	atomic_set(&ctx->initialized, 0);
+	while (atomic_get(&ctx->active_sends) != 0) {
+		k_sem_take(&ctx->sends_drained, K_FOREVER);
 	}
 
 	if (ctx->uart_dev != NULL) {
@@ -611,7 +734,9 @@ void kiss_transport_deinit(void)
 	kiss_decode_init(&ctx->rx_ctx);
 	atomic_set(&ctx->shutdown, 0);
 
-	ctx->initialized = false;
+	ctx->uart_dev = NULL;
+	memset(&ctx->config, 0, sizeof(ctx->config));
+	k_mutex_unlock(&s_lifecycle_mutex);
 	LOG_INF("KISS transport deinitialized");
 }
 
@@ -619,66 +744,40 @@ bool kiss_transport_is_ready(void)
 {
 	struct kiss_transport_ctx *ctx = &s_ctx;
 
-	return ctx->initialized;
+	k_mutex_lock(&s_lifecycle_mutex, K_FOREVER);
+	bool ready = atomic_get(&ctx->initialized) != 0 &&
+		(ctx->uart_dev != NULL || ctx->config.write_cb != NULL);
+	k_mutex_unlock(&s_lifecycle_mutex);
+	return ready;
 }
 
 int kiss_transport_send_ax25(const uint8_t *data, size_t len)
 {
-	struct kiss_transport_ctx *ctx = &s_ctx;
-
-	if (!ctx->initialized) {
-		return -ENODEV;
-	}
-
-	return kiss_tx_frame(ctx, KISS_PORT_AX25, data, len);
+	return kiss_transport_send_port(KISS_PORT_AX25, data, len);
 }
 
 int kiss_transport_send_raw(const uint8_t *data, size_t len)
 {
-	struct kiss_transport_ctx *ctx = &s_ctx;
-
-	if (!ctx->initialized) {
-		return -ENODEV;
-	}
-
-	return kiss_tx_frame(ctx, KISS_PORT_LICHEN_RAW, data, len);
+	return kiss_transport_send_port(KISS_PORT_LICHEN_RAW, data, len);
 }
 
 int kiss_transport_send_lci_ipv6(const uint8_t *data, size_t len)
 {
-	struct kiss_transport_ctx *ctx = &s_ctx;
-
-	if (!ctx->initialized) {
-		return -ENODEV;
-	}
-
-	return kiss_tx_frame(ctx, KISS_PORT_LCI_IPV6, data, len);
+	return kiss_transport_send_port(KISS_PORT_LCI_IPV6, data, len);
 }
 
 int kiss_transport_send_lci_ctrl(const uint8_t *data, size_t len)
 {
-	struct kiss_transport_ctx *ctx = &s_ctx;
-
-	if (!ctx->initialized) {
-		return -ENODEV;
-	}
-
-	return kiss_tx_frame(ctx, KISS_PORT_LCI_CTRL, data, len);
+	return kiss_transport_send_port(KISS_PORT_LCI_CTRL, data, len);
 }
 
 int kiss_transport_send(uint8_t port, const uint8_t *data, size_t len)
 {
-	struct kiss_transport_ctx *ctx = &s_ctx;
-
-	if (!ctx->initialized) {
-		return -ENODEV;
-	}
-
 	if (port > KISS_PORT_MAX) {
 		return -EINVAL;
 	}
 
-	return kiss_tx_frame(ctx, port, data, len);
+	return kiss_transport_send_port(port, data, len);
 }
 
 int kiss_transport_get_params(struct kiss_params *params)
@@ -687,6 +786,9 @@ int kiss_transport_get_params(struct kiss_params *params)
 
 	if (params == NULL) {
 		return -EINVAL;
+	}
+	if (atomic_get(&ctx->initialized) == 0) {
+		return -ENODEV;
 	}
 
 	k_mutex_lock(&ctx->params_mutex, K_FOREVER);
@@ -703,6 +805,9 @@ int kiss_transport_set_params(const struct kiss_params *params)
 	if (params == NULL) {
 		return -EINVAL;
 	}
+	if (atomic_get(&ctx->initialized) == 0) {
+		return -ENODEV;
+	}
 
 	k_mutex_lock(&ctx->params_mutex, K_FOREVER);
 	ctx->params = *params;
@@ -718,9 +823,13 @@ int kiss_transport_get_stats(struct kiss_transport_stats *stats)
 	if (stats == NULL) {
 		return -EINVAL;
 	}
+	if (atomic_get(&ctx->initialized) == 0) {
+		return -ENODEV;
+	}
 
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	*stats = ctx->stats;
+	stats->overflow_errors += (uint32_t)atomic_get(&ctx->isr_overflow_errors);
 	k_mutex_unlock(&ctx->stats_mutex);
 
 	return 0;
@@ -730,8 +839,12 @@ void kiss_transport_reset_stats(void)
 {
 	struct kiss_transport_ctx *ctx = &s_ctx;
 
+	if (atomic_get(&ctx->initialized) == 0) {
+		return;
+	}
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
+	atomic_set(&ctx->isr_overflow_errors, 0);
 	k_mutex_unlock(&ctx->stats_mutex);
 }
 
@@ -742,16 +855,34 @@ int kiss_transport_test_inject_rx(const uint8_t *data, size_t len)
 {
 	struct kiss_transport_ctx *ctx = &s_ctx;
 	int frames = 0;
+	uint32_t overflow_count = 0;
+	uint32_t frame_error_count = 0;
+
+	if (data == NULL && len > 0u) {
+		return -EINVAL;
+	}
+	if (atomic_get(&ctx->initialized) == 0) {
+		return -ENODEV;
+	}
 
 	for (size_t i = 0; i < len; i++) {
 		int ret = kiss_decode_byte(&ctx->rx_ctx, data[i]);
 
 		if (ret == 1) {
 			dispatch_frame(ctx);
-			kiss_decode_init(&ctx->rx_ctx);
+			kiss_decode_consume(&ctx->rx_ctx);
 			frames++;
+		} else if (ret == -EOVERFLOW) {
+			overflow_count++;
+		} else if (ret < 0) {
+			frame_error_count++;
 		}
 	}
+	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+	ctx->stats.rx_bytes += (uint32_t)len;
+	ctx->stats.overflow_errors += overflow_count;
+	ctx->stats.frame_errors += frame_error_count;
+	k_mutex_unlock(&ctx->stats_mutex);
 
 	return frames;
 }
@@ -763,6 +894,9 @@ int kiss_transport_test_get_last_tx(uint8_t *buf, size_t max, size_t *len)
 
 	if (buf == NULL || len == NULL) {
 		return -EINVAL;
+	}
+	if (atomic_get(&ctx->initialized) == 0) {
+		return -ENODEV;
 	}
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
@@ -781,6 +915,10 @@ int kiss_transport_test_get_last_tx(uint8_t *buf, size_t max, size_t *len)
 void kiss_transport_test_reset(void)
 {
 	struct kiss_transport_ctx *ctx = &s_ctx;
+
+	if (atomic_get(&ctx->initialized) == 0) {
+		return;
+	}
 
 	kiss_decode_init(&ctx->rx_ctx);
 	ring_buf_reset(&ctx->rx_ring);

@@ -1260,4 +1260,31 @@ mod tests {
         decode(&wire_bytes, &mut buf).unwrap();
         assert_eq!(buf[0].bool_value, Some(true));
     }
+
+    /// Regression test for bead project-LICHEN-23fv: skip_one_depth must use
+    /// checked arithmetic to prevent overflow on 16-bit platforms when
+    /// processing byte/text strings with 2-byte length encodings.
+    ///
+    /// A byte string claiming 65535 bytes with header adv=3 would cause
+    /// `pos + adv + len` to wrap around on 16-bit usize. The decoder must
+    /// reject this as truncated input rather than accepting a wrapped index.
+    #[test]
+    fn skip_one_rejects_length_overflow() {
+        // Craft: [{99: bstr(len=65535)}] but truncate the actual bytes.
+        // 0x81 array(1)
+        // 0xa1 map(1)
+        // 0x18 0x63 key 99 (unknown)
+        // 0x59 0xff 0xff byte string claiming 65535 bytes
+        // ...but only provide a few bytes, not 65535
+        let wire_bytes: [u8; 12] = [
+            0x81, // array(1)
+            0xa1, // map(1)
+            0x18, 0x63, // key 99
+            0x59, 0xff, 0xff, // bstr header: 2-byte len = 65535
+            0x00, 0x00, 0x00, 0x00, 0x00, // only 5 bytes, not 65535
+        ];
+        let mut buf = [const { Record::empty() }; 1];
+        // Must reject as InvalidInput (truncated), not wrap around.
+        assert_eq!(decode(&wire_bytes, &mut buf), Err(CborError::InvalidInput));
+    }
 }

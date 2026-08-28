@@ -92,6 +92,17 @@ class FakeResourceSubscription:
         for result in self._result_rows:
             yield result
 
+    async def __aenter__(self) -> FakeResourceSubscription:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        await self.close()
+
 
 class FakeMessagingClient:
     def __init__(
@@ -389,6 +400,9 @@ class FakeResourceTransport:
 
     async def observe(self, path: str, *, method: str = "GET") -> FakeResourceSubscription:
         return FakeResourceSubscription()
+
+    def check_security_for_path(self, path: str) -> None:
+        """No-op security check for test transport."""
 
 
 def message_record(

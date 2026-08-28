@@ -199,7 +199,33 @@ This is a blocking rule. Failure to sync causes builds to pass in isolation but 
 cd lichen/tests/schnorr48 && rm -rf build && mkdir build && cd build && cmake .. && make
 ```
 
-### 8. AWS EC2 Access and Safety
+### 8. Local Zephyr/C Development
+
+C and Zephyr beads are enabled. Do not skip them. Use the Attic toolchain
+before AWS. Full policy and version split: `AGENTS.md` (Local Zephyr/C).
+
+```bash
+export ZEPHYR_SDK_INSTALL_DIR=/Volumes/Attic/zephyr-sdk-0.16.8
+export ZEPHYR_BASE=/Volumes/Attic/Developer/zephyr-workspace/zephyr
+export PATH="/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin:/opt/homebrew/opt/llvm/bin:$PATH"
+. /Volumes/Attic/Developer/zephyr-venv/bin/activate
+
+# Host C tests (preferred on this Mac), from repo root:
+./scripts/lint-c.sh
+( cd lichen/tests/schnorr48 && rm -rf build && mkdir build && cd build \
+  && cmake .. && cmake --build . && ctest --output-on-failure )
+```
+
+SDK 0.16.8 is at `/Volumes/Attic/zephyr-sdk-0.16.8`; compatible CMake 3.31.3 is
+at `/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin`
+(Homebrew CMake 4.4 is incompatible). The shared west
+workspace (`/Volumes/Attic/Developer/zephyr-workspace`) is Zephyr **4.1.0**;
+LICHEN pins **v3.7.0**. Do not reinitialize that workspace. `native_sim` on
+macOS is unreliable -- use host CMake tests, or the AWS EBS builder for
+pinned v3.7.0 / Linux `native_sim`. Unique build dir per bead; never `/tmp`.
+Hardware ports: `docs/bench-operations.md`.
+
+### 9. AWS EC2 Access and Safety
 
 **Authentication:**
 ```bash

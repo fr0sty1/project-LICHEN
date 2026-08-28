@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-rgxt",
+  "title": "[review] lichen-oscore hygiene: gate sha2 behind edhoc, vectors.rs slice guard, RFC number typo, zeroization doc claim",
+  "description": "P3 bundle, rust/lichen-oscore: (1) Cargo.toml:22 sha2 is unconditional but only used under edhoc feature -\u003e optional = true + edhoc = [\"dep:sha2\", ...]; (2) tests/vectors.rs:790-793 msg2[2..34] can panic OOB on a truncated fixture before the g_y_len assert reads claimed length -\u003e add msg2.len() \u003e= 34 assert first; (3) transcript.rs:46,49 + test name say RFC 9529 where the transcript construction is RFC 9528 (9529 is the signature trace doc) -\u003e correct; (4) lib.rs:189 doc claims dropping previous Context zeroizes key material — property lives in upstream oscore crate, verify or soften the claim.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:33:02.935087Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:33:02.935087Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rgxt",
+      "depends_on_id": "project-LICHEN-c0rb.1",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T05:33:09.970331Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

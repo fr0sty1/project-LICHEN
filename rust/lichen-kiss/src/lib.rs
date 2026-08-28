@@ -42,6 +42,9 @@ pub mod aprs;
 #[cfg(feature = "kiss-ble")]
 pub mod ble;
 
+#[cfg(feature = "kiss-ble")]
+pub mod ble_platform;
+
 #[cfg(feature = "bridge")]
 pub mod bridge;
 

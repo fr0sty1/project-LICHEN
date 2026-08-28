@@ -370,22 +370,22 @@ ZTEST(link_crypto, test_derived_node_keys_authenticate_cross_node)
 
 	/* A signs; B verifies with the derived pubkey */
 	memcpy(signed_payload, payload, sizeof(payload));
-	ret = schnorr48_sign_frame(60, 0x20, 1, 42, NULL, 0U,
-				   NULL, 0U,
+	ret = schnorr48_sign_frame(68, 0xa0, 1, 42, NULL, 0U,
+				   eui_a, sizeof(eui_a),
 				   payload, sizeof(payload),
 				   node_a.ed25519_sk, node_a.ed25519_pk,
 				   &signed_payload[sizeof(payload)]);
 	zassert_equal(ret, 0, "sign failed: %d", ret);
-	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
-				     NULL, 0U,
+	ret = schnorr48_verify_frame(68, 0xa0, 1, 42, NULL, 0U,
+				     eui_a, sizeof(eui_a),
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
 				     SCHNORR48_SIG_LEN, pk_a);
 	zassert_equal(ret, 1, "verify with derived pubkey failed: %d", ret);
 
 	/* B's key must NOT verify A's signature */
-	ret = schnorr48_verify_frame(60, 0x20, 1, 42, NULL, 0U,
-				     NULL, 0U,
+	ret = schnorr48_verify_frame(68, 0xa0, 1, 42, NULL, 0U,
+				     eui_a, sizeof(eui_a),
 				     payload, sizeof(payload),
 				     &signed_payload[sizeof(payload)],
 				     SCHNORR48_SIG_LEN, pk_b);
@@ -719,7 +719,7 @@ ZTEST(link_crypto, test_rx_fallback_eui64_is_canonical_key_derived)
 	zassert_true(ret > 0, "frame pre-write failed: %d", ret);
 	ret = schnorr48_sign_frame(wire[0], wire[1], f.epoch, f.seqnum,
 				   f.dst_addr, f.dst_addr_len,
-				   NULL, 0U,
+				   f.signer_iid, f.signer_iid_len,
 				   payload, sizeof(payload),
 				   tx.ed25519_sk, tx.ed25519_pk, f.mic);
 	zassert_equal(ret, 0, "sign failed: %d", ret);

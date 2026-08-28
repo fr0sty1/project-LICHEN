@@ -72,8 +72,9 @@ def select_channel(
     1. IF Density > 8 THEN RETURN 0 (CH0 fallback for high density)
     2. Data = CONCAT(EUI64 as BE bytes, Epoch as LE u32 bytes)
     3. Hash = FNV1A32(Data)
-    4. N = MAX(NChannels, 3)
-    5. RETURN 1 + (Hash MOD N)
+    4. IF NChannels <= 1 THEN RETURN 0
+    5. N = NChannels - 1 (exclude reserved CH0)
+    6. RETURN 1 + (Hash MOD N)
 
     Args:
         eui64: 8-byte EUI-64 identifier (big-endian).
@@ -82,10 +83,21 @@ def select_channel(
         n_channels: Number of available channels (default 8).
 
     Returns:
-        Selected channel index. 0 for CH0 (control), 1-N for data channels.
+        Selected channel index. 0 for CH0 (control), otherwise a data-channel
+        index strictly below ``n_channels``.
+
+    Raises:
+        ValueError: If eui64 is not exactly 8 bytes or n_channels is
+            less than 1.
     """
+    if len(eui64) != 8:
+        raise ValueError("eui64 must be 8 bytes")
+
+    if n_channels <= 0:
+        raise ValueError("n_channels must be a positive integer")
+
     # Step 1: High density forces CH0 fallback
-    if density > 8:
+    if density > 8 or n_channels <= 1:
         return 0
 
     # Step 2: Concatenate EUI64 (BE) with epoch (LE u32)
@@ -94,9 +106,8 @@ def select_channel(
     # Step 3: Compute hash
     h = hash_32(data)
 
-    # Step 4-5: Select channel (output range [1, n_channels])
-    n = max(n_channels, 3)
-    return 1 + (h % n)
+    # Step 4-5: n_channels includes reserved CH0.
+    return 1 + (h % (n_channels - 1))
 
 
 class SFResult(NamedTuple):
@@ -212,8 +223,9 @@ def adaptive_sf_select(
     Returns:
         SFResult with selected SF and tx_allowed flag.
     """
-    # Step 1-2: Start with assigned SF or default of 10
+    # Step 1-2: Start with assigned SF or default of 10, clamped to valid range
     sf = assigned_sf if assigned_sf is not None else 10
+    sf = max(7, min(12, sf))
 
     # Step 3: High density or high utilization triggers SF +2
     if density > 10 or utilization > 150:
@@ -227,7 +239,7 @@ def adaptive_sf_select(
     if ema_loss > 0.25 or utilization > 200:
         sf = min(12, sf + 1)
         if utilization > 200:
-            # Per spec: utilization > 200 forces SF=12 and blocks tx
+            # Test vectors specify SF=12 when utilization > 200; blocks tx
             return SFResult(12, False)
 
     # Threshold table rules (applied after pseudocode)

@@ -118,6 +118,57 @@ Keywords per RFC 2119. Device classes:
 - Constrained nodes use unicast forwarding only (no opportunistic).
 - All MAY features are independently optional; implement any subset.
 
+### 7.4. Backbone-to-LoRa Path Transition
+
+When a node that was reachable via backbone (gateway-to-gateway relay) moves
+into direct LoRa range, routing SHOULD transition to the direct path. This
+occurs when a remote mesh peer physically moves closer (e.g., coming over a
+mountain ridge) and becomes a local mesh neighbor.
+
+**Detection:**
+
+The mobile node hears DIOs from local mesh nodes and evaluates RPL rank. If
+the direct LoRa path offers better rank than the backbone path, the node
+switches preferred parent and sends DAO to the new parent.
+
+**Transition:**
+
+1. Mobile node joins local DODAG (sends DAO to local parent)
+2. Local gateway (root) receives DAO, learns node is now local
+3. Gateway performs handoff with remote gateway (GCP-7, if federated)
+4. Local nodes update routes; `is_off_mesh(mobile)` becomes False
+5. Traffic switches from backbone relay to direct LoRa
+
+**Configurable Thresholds:**
+
+Implementations SHOULD provide configurable thresholds to control transition
+behavior:
+
+| Parameter | Description | Recommended Default |
+|-----------|-------------|---------------------|
+| `PATH_SWITCH_HYSTERESIS` | Rank improvement required before switching (prevents flapping) | 2 (rank units) |
+| `PATH_SWITCH_HOLD_TIME` | Minimum time on current path before considering switch | 30 seconds |
+| `PREFER_LORA` | Bias toward LoRa even if backbone rank is similar | true |
+
+**Hysteresis:** A node near the boundary (marginal LoRa signal) may see the
+direct path appear and disappear. Without hysteresis, the node flaps between
+paths. `PATH_SWITCH_HYSTERESIS` requires the new path to be meaningfully
+better, not just marginally better.
+
+**Hold time:** After switching, the node commits to the new path for at least
+`PATH_SWITCH_HOLD_TIME` before re-evaluating. This dampens oscillation.
+
+**LoRa preference:** When paths have similar rank, `PREFER_LORA=true` favors
+the direct LoRa path (lower latency, no backbone dependency, often lower
+power). Set to false for deployments where backbone reliability is preferred.
+
+**Security considerations:**
+
+- OSCORE contexts survive path change (keyed by identity, not route)
+- Tunnel authorizations for the old path are stale; the new root issues fresh
+  authorizations as routes establish (see 06-security.md section 8.11)
+- Link-layer trust with new neighbors established via EDHOC on first contact
+
 ---
 
 ## 8. RPL (Border Router Traffic)
@@ -200,6 +251,47 @@ accepted and MUST be relayed byte-for-byte. Lollipop comparison still decides
 whether an authenticated version is newer; authorization does not make stale
 or incomparable values acceptable.
 
+#### 8.4.2. DODAG Configuration Option
+
+The DODAG Configuration Option uses type 4 and Data Length 14 exactly. Its
+first data octet assigns bit 7 to the LICHEN gateway-centric extension, keeps
+RFC 6550's Authentication Enabled (`A`) flag in bit 3, and carries `PCS` in
+bits 2 through 0. Bits 6 through 4 are reserved. Senders MUST set those bits
+and the Reserved data octet to zero. Receivers MUST reject a non-canonical
+length, nonzero reserved bits, or a nonzero Reserved octet before changing
+DODAG, neighbor, parent, or Trickle state. All multi-octet fields use network
+byte order, and relays MUST preserve every decoded configuration value.
+
+#### 8.4.3. DAO-ACK Wire Profile
+
+DAO-ACK uses the four-octet RFC 6550 base, followed by the 16-octet DODAGID
+only when `D=1`. The base length is therefore 4 or 20 octets. Any remaining
+bytes MUST form a complete RPL TLV option chain; the short-address assignment
+extension, for example, uses that chain. Receivers MUST reject arbitrary or
+truncated trailing bytes before changing acknowledgement or neighbor state.
+The seven reserved flag bits MUST be zero and a receiver MUST reject a nonzero
+value before changing state. DAOSequence is echoed unchanged.
+Status is an opaque full-width octet: 0 is acceptance, 1 through 127 recommend
+an alternate parent, and 128 through 255 reject parent service. Receivers MUST
+preserve every Status value without remapping it.
+
+#### 8.4.4. Leaf DAO Origination
+
+The unsigned semantic core emitted by the default leaf builder is exactly 62
+octets: a 20-octet DAO base with `D=1`, one canonical 20-octet RPL Target
+option advertising the leaf's own `/128`, and one canonical 22-octet Transit
+Information option naming its preferred parent. `K` is clear unless a caller
+explicitly requests acknowledgement, all reserved bits and octets are zero,
+the Transit `E` flag is clear, and Path Control is `0x80`. Authenticated
+origination appends the DAO Origin Signature Option defined below.
+
+A new logical update increments both DAOSequence and Path Sequence before
+encoding. An exact copy increments only DAOSequence and reuses the preceding
+logical update's parent, lifetime, and Path Sequence. Serialization MUST accept
+an exact-size output buffer. Any rejected or undersized build MUST leave the
+output bytes, both sequence counters, and the cached last successful logical
+update unchanged.
+
 ### 8.5. Downward Routing
 
 Non-storing mode: the root source-routes downward packets to a mesh node's
@@ -269,8 +361,13 @@ an incorrect length, trailing bytes, truncation, or any other malformed option
 framing MUST reject the entire DAO without semantic parsing or state mutation.
 Each RPL Target Option in `.44.7` MUST have Data Length 18 exactly. Prefix
 Length 128 and equality with the origin are checked during semantic parsing.
+The reserved RPL Target Flags octet MUST be zero; a nonzero value rejects the
+DAO before any route-state mutation.
 Each Transit Information Option MUST have Data Length 20 and carry its 16-octet
-Parent Address, as required by this non-storing profile. The DAO Origin
+Parent Address, as required by this non-storing profile. Its `E` bit describes
+external reachability and does not signal Parent Address presence; all other
+flag bits are reserved and MUST be zero. A non-canonical length or nonzero
+reserved flag bit MUST reject the DAO before route-state mutation. The DAO Origin
 Signature Option MUST have Data Length 56.
 
 The verification key MUST be the 32-octet public key from an already
@@ -388,6 +485,151 @@ delegations; successful provenance MUST NOT imply authorization for any
 prefix. `/0` is authorized only by an explicit exact delegation of `::/0` to
 that origin. Prefix-authorization policy is specified separately in Section
 .44.9.2.
+
+### 8.7.2. Prefix Delegation Authorization
+
+Prefix delegation enables DAO targets beyond a node's own /128 address. The
+DODAG root delegates prefix authority to mesh nodes via COSE_Sign1 signed
+authorization tokens. A node holding a valid delegation may originate DAOs
+advertising that prefix.
+
+**Relationship to DAO Origin Signature:**
+
+Prefix delegation complements Section 8.6 (DAO Origin Signature). The origin
+signature proves "this DAO was sent by this node"; the prefix delegation proves
+"this node is authorized to advertise this prefix." Both are required for
+generalized DAO targets.
+
+```
+Root (delegates)  -->  Delegate (originates DAO)  -->  Root (validates)
+     [8.7.2]                  [8.6]                        [8.6 + 8.7.2]
+```
+
+**Authorization Delivery:**
+
+Root delivers prefix delegation via CoAP as a COSE_Sign1 structure:
+
+```
+POST coap://[delegate]/.well-known/prefix-delegation
+Content-Format: application/cose; cose-type="cose-sign1" (TBD)
+OSCORE: <root-delegate pairwise context>
+
+COSE_Sign1 = [
+  h'a10139ffff',          ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<root-iid>'},     ; unprotected: {kid: root 8-byte IID}
+  h'<payload>',           ; see Payload below
+  h'<48-byte signature>'  ; Schnorr48 signature
+]
+```
+
+Message is OSCORE-protected using the pairwise context between root and
+delegate (established via EDHOC). Delivery uses standard source-routing.
+
+**Payload Structure (CBOR map):**
+
+| Key | Name | Type | Description |
+|-----|------|------|-------------|
+| 1 | prefix | bstr | Prefix bytes, ceil(prefix_len/8), zero-padded |
+| 2 | prefix_len | uint | Prefix length in bits (0-128) |
+| 3 | delegate_iid | bstr(8) | 8-byte IID of the authorized delegate |
+| 4 | expiry | uint | Unix timestamp when delegation expires |
+| 5 | delegation_seq | uint | Monotonic sequence for replay protection |
+| 6 | flags | uint | Delegation flags (see below) |
+
+```cbor
+{
+  1: h'<prefix bytes>',   ; prefix: ceil(prefix_len/8) bytes, zero-padded
+  2: <0-128>,             ; prefix_len: uint
+  3: h'<8-byte IID>',     ; delegate_iid: binds delegation to this node
+  4: <unix timestamp>,    ; expiry: uint
+  5: <uint>,              ; delegation_seq: monotonically increasing
+  6: <uint>               ; flags: see Delegation Flags
+}
+```
+
+Integer keys minimize payload size. The payload is the serialized CBOR map.
+
+**Delegation Flags:**
+
+| Bit | Name | Description |
+|-----|------|-------------|
+| 0 | E (external) | Delegate may set Transit `E` flag (external reachability) |
+| 1-7 | reserved | Reserved for future use; MUST be zero |
+
+When `E=0`, the delegate may only advertise the prefix as node-owned
+reachability. When `E=1`, the delegate may also advertise external reachability
+through it (e.g., a border router advertising a downstream network).
+
+**Signature Computation (COSE_Sign1):**
+
+Per RFC 9052, the Sig_structure for COSE_Sign1:
+
+```
+Sig_structure = [
+  "Signature1",           ; context string
+  protected,              ; protected header bytes
+  h'',                    ; external_aad (empty)
+  payload                 ; payload bytes
+]
+sig = Schnorr48(root_privkey, SHA256(CBOR(Sig_structure)))
+```
+
+Root's Ed25519 private key signs the canonical CBOR encoding of Sig_structure.
+
+**Delegate Validation:**
+
+On receiving prefix-delegation POST:
+
+1. Verify OSCORE protection (authenticates root as sender)
+2. Decode COSE_Sign1 structure
+3. Extract `kid` from unprotected header; verify matches current DODAG root IID
+4. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+5. Reconstruct Sig_structure per RFC 9052 and verify signature using root pubkey
+6. Decode payload; verify `delegate_iid` matches own IID
+7. Verify `expiry` > now
+8. Verify `delegation_seq` > cached seq for this prefix, or no cached entry
+9. Verify reserved flag bits (1-7) are zero
+10. Cache delegation keyed by (prefix, prefix_len)
+11. Respond 2.04 Changed
+
+On validation failure, respond 4.03 Forbidden and do not cache.
+
+**Root Validation of Delegated DAO:**
+
+When root receives a DAO with a Target prefix other than the origin's /128:
+
+1. Complete DAO Origin Signature validation per Section 8.6
+2. Lookup delegation for (target_prefix, target_prefix_len)
+3. Verify delegation exists and is not expired
+4. Verify delegation's `delegate_iid` matches DAO origin IID
+5. If Target uses Transit `E=1`, verify delegation's `E` flag is set
+6. If all checks pass, install route; otherwise reject DAO
+
+**Delegation Table:**
+
+Implementations MUST bound the delegation table. Recommended: 64 entries
+with LRU eviction. Exceeding capacity evicts least-recently-used entry.
+
+**Security Considerations:**
+
+| Consideration | Behavior |
+|--------------|----------|
+| Root re-election | All delegations invalid; rebuild with mesh reconvergence |
+| delegation_seq wrap | MUST NOT wrap; uint64 provides ~500 years at 1/sec |
+| Expired delegation | DAO with that Target is rejected |
+| Prefix overlap | More-specific delegation wins; /128 self-owned needs no delegation |
+| External flag abuse | Delegate without E flag cannot claim external reachability |
+
+**Trigger Conditions:**
+
+Root SHOULD send prefix-delegation when:
+- A node announces prefix-delegation capability (see 06-security.md 8.12)
+- Administrator configures a prefix delegation
+- Approaching expiry of a valid delegation (refresh)
+
+Root MUST verify the delegate's identity and capability before issuing a
+delegation. Delegations are not transitive; a delegate cannot sub-delegate
+without explicit root authorization.
 
 ### 8.8. Grouping and Route State
 
@@ -998,6 +1240,55 @@ def select_next_hop(candidates):
 Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip backpressure tracking--the memory cost exceeds the benefit at low traffic volumes.
 
 <!-- ponytail: no per-flow fairness, add if starvation observed -->
+
+### 11.5. Monotonic Time Contract
+
+Gradient and neighbor tables use monotonic timestamps for expiry and age
+comparison. Implementations MUST observe the following contract to avoid
+ambiguous age ordering after long idle gaps or clock exhaustion:
+
+**Time Source:**
+- All timestamps MUST come from one nondecreasing monotonic clock per node.
+- Implementations SHOULD use 64-bit milliseconds to avoid wrap within any
+  practical device lifetime (584 million years at u64). 32-bit milliseconds
+  wrap after 49 days and are NOT RECOMMENDED.
+
+**Monotonic Progression:**
+- Tables MUST track a high-water mark (`last_now_ms`) of the greatest timestamp
+  passed to any update, prune, or lookup method.
+- On each call, the effective `now_ms` is `max(now_ms, last_now_ms)`.
+- This ensures time never appears to go backward even if callers provide stale
+  or out-of-order timestamps.
+
+**Age Calculation:**
+- Age is `now_ms - last_seen_ms` using saturating subtraction.
+- Entries whose age exceeds the configured timeout are stale and MUST be pruned
+  or treated as expired.
+
+**Observation Bound:**
+- For implementations constrained to 32-bit timestamps, the maximum observation
+  gap between two timestamps is 2^31 - 1 milliseconds (~24.8 days). Beyond this
+  half-range, relative age is ambiguous and wrap cannot be distinguished from
+  stale data.
+- Implementations using 32-bit timestamps MUST either prune entries before this
+  bound or reject the timestamp pair as incomparable.
+
+**Long Idle Resumption:**
+- After a long idle period (e.g., deep sleep), the first `now_ms` passed to the
+  table establishes a new baseline. Entries from before the gap whose
+  `last_seen_ms` is more than the timeout before the new baseline are stale.
+- Tables MUST NOT assume entries survive across reboots unless backed by
+  persistent storage with crash-safe monotonic anchors.
+
+**Rust Implementation:**
+- NeighborTable uses u64 `last_seen_ms` and tracks `last_now_ms`.
+- Router owns one high-water epoch across DIO, DAO, route lookup, pruning, and
+  Trickle; direct timer fields are private.
+
+**Python Implementation:**
+- Python `int` is unbounded, so wrap is not a concern.
+- GradientTable expiry uses caller-supplied `now` without internal tracking;
+  callers MUST provide nondecreasing values.
 
 ---
 

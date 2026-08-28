@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "description": "Canonical LICHEN OSCORE active-context key-update vectors. Context IDs use SHA-256 over the directional sender context; generations advance by exactly one and the replacement sender sequence starts at zero only after an atomic durable swap.",
+  "vectors": [
+    {
+      "name": "generation_7_to_8",
+      "initial_generation": 7,
+      "initial": {
+        "master_secret": "0102030405060708090a0b0c0d0e0f10",
+        "master_salt": "9e7ca92223786340",
+        "sender_id": "00",
+        "recipient_id": "01",
+        "id_context": null,
+        "context_id": "294944e72fc0b46d091d511fce11cedd5d1415f415817dec1d1e420861d8ee31"
+      },
+      "replacement_generation": 8,
+      "replacement": {
+        "master_secret": "deadbeefcafebabedeadbeefcafebabe",
+        "master_salt": "0011223344556677",
+        "sender_id": "00",
+        "recipient_id": "01",
+        "id_context": null,
+        "context_id": "39f08bbc846175053ae9198f2217657570df5a2744aee631fe7fd51ec2391093"
+      },
+      "replacement_sender_high_water": 0
+    },
+    {
+      "name": "generation_41_to_42_with_id_context",
+      "initial_generation": 41,
+      "initial": {
+        "master_secret": "deadbeefcafebabedeadbeefcafebabe",
+        "master_salt": "0011223344556677",
+        "sender_id": "00",
+        "recipient_id": "01",
+        "id_context": null,
+        "context_id": "39f08bbc846175053ae9198f2217657570df5a2744aee631fe7fd51ec2391093"
+      },
+      "replacement_generation": 42,
+      "replacement": {
+        "master_secret": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+        "master_salt": "0102030405060708",
+        "sender_id": "00",
+        "recipient_id": "01",
+        "id_context": "37cbf3210017a2d3",
+        "context_id": "c4a1a65e0fd3b023945acb805ed3cbd39b3bd2179879d5b6055a3056f48ed25c"
+      },
+      "replacement_sender_high_water": 0
+    }
+  ],
+  "negative_cases": [
+    {"name": "same_generation", "current": 7, "requested": 7, "result": "reject"},
+    {"name": "skipped_generation", "current": 7, "requested": 9, "result": "reject"},
+    {"name": "rollback_generation", "current": 7, "requested": 6, "result": "reject"},
+    {"name": "generation_overflow", "current": 4294967295, "requested": 0, "result": "reject"},
+    {"name": "reused_context", "current": 7, "requested": 8, "result": "reject"},
+    {"name": "atomic_store_conflict", "current": 7, "requested": 8, "result": "old_context_remains_active"},
+    {"name": "atomic_store_error", "current": 7, "requested": 8, "result": "old_context_remains_active"}
+  ]
+}

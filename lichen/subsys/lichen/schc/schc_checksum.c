@@ -55,7 +55,11 @@ static uint16_t finalize_checksum(uint32_t sum)
 	while (sum >> 16) {
 		sum = (sum & 0xFFFF) + (sum >> 16);
 	}
-	return ~((uint16_t)sum);
+	uint16_t checksum = (uint16_t)~((uint16_t)sum);
+
+	/* RFC 768: a computed zero is transmitted as all ones.  IPv6 UDP never
+	 * permits the on-wire zero value. */
+	return checksum == 0 ? UINT16_MAX : checksum;
 }
 
 /* ─── protocol checksums ──────────────────────────────────────────────────── */
@@ -100,4 +104,19 @@ uint16_t icmpv6_checksum(const uint8_t src[16], const uint8_t dst[16],
 
 	sum = oc_add(sum, checksum_bytes(icmpv6_payload, len));
 	return finalize_checksum(sum);
+}
+
+bool icmpv6_checksum_valid(const uint8_t src[16], const uint8_t dst[16],
+			   const uint8_t *icmpv6_payload, uint16_t len)
+{
+	if (len < SCHC_ICMPV6_BODY_OFFSET) {
+		return false;
+	}
+	uint32_t sum = pseudo_sum(src, dst, IPV6_NH_ICMPV6, len);
+
+	sum = oc_add(sum, checksum_bytes(icmpv6_payload, len));
+	while (sum >> 16) {
+		sum = (sum & 0xFFFF) + (sum >> 16);
+	}
+	return (uint16_t)sum == UINT16_MAX;
 }

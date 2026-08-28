@@ -319,7 +319,7 @@ See appendix-schc.md:A.3, RFC 8824, and the CoAP fields in Rules 0/1/5/6 above. 
 | Regular tile size | 179 bytes | Fits the signed EUI-64 unicast envelope including SIID |
 | Final tile | 1-179 bytes in All-1 | One fixed tile-size policy |
 | RCS | CRC-32/ISO-HDLC, 32 bits | RFC 8724 integrity check |
-| Retransmission timer | 10 seconds | LoRa latency tolerance |
+| Retransmission timer | 10 seconds, fixed | LoRa latency tolerance; no exponential backoff |
 | MAX_ACK_REQUESTS | 4 | Initial All-1 plus at most 3 retries |
 | Inactivity timer | 60 seconds | Clean up stale state |
 
@@ -369,6 +369,9 @@ In ACK-on-Error mode:
    Receiver-Abort instead and enters terminal hold-down.
 4. The sender retransmits tiles whose bitmap bits are zero, then sends ACK REQ
    for the packet's final W unless the retransmission batch included All-1.
+   On retransmission-timer expiry with no ACK received, it sends a bare ACK REQ
+   for the last window (RFC 8724 Section 8.4.3.1); a full All-1 is resent only
+   when the final tile itself is among the tiles being retransmitted.
 5. Before any All-1 or ACK REQ transmission, the sender checks Attempts. If
    Attempts equals MAX_ACK_REQUESTS, it sends Sender-Abort instead. Otherwise
    it transmits the request and increments Attempts. This check applies after a
@@ -410,6 +413,61 @@ parameters, timers, retry limit, and buffer limits listed in Section 5.1.
    8 bit  1b   6 bit   32 bit    1-179 bytes     1 bit
 ```
 
+**ACK REQ (sender requests a SCHC ACK):**
+```
++--------+---+--------+--------+
+| RuleID | W | 000000 | pad(0) |
++--------+---+--------+--------+
+   8 bit  1b   6 bit    1 bit
+```
+Exactly 2 octets. W carries the window for which the ACK is requested (the
+last window). Under Rule ID 0x78: W=0 encodes `78 00`, W=1 encodes `78 80`;
+Rule ID 0x79 mirrors (`79 00`, `79 80`). No RCS and no payload are present
+(RFC 8724 Section 8.3.3).
+
+**Sender-Abort:**
+```
++--------+------+--------+--------+
+| RuleID | W=1  | 111111 | pad(0) |
++--------+------+--------+--------+
+   8 bit   1b      6 bit    1 bit
+```
+Exactly 2 octets: `78 fe` or `79 fe`. W MUST be all-ones; a Sender-Abort whose
+W differs MUST be ignored (RFC 8724 Section 8.3.4).
+
+**Receiver-Abort:**
+```
++--------+------+---+-----------------+-----------------+
+| RuleID | W=1  |C=1| ones to octet   | one full octet  |
+|        |      |   | boundary        | of ones         |
++--------+------+---+-----------------+-----------------+
+   8 bit   1b    1b       6 bits            8 bits
+```
+Exactly 3 octets: `78 ff ff` or `79 ff ff`. The all-ones tail distinguishes a
+Receiver-Abort from a C=1 ACK, whose padding bits are zero (RFC 8724
+Section 8.3.5).
+
+All control messages MUST NOT be acknowledged (RFC 8724 Sections 8.3.3 through
+8.3.5) and MUST be exactly the octet lengths shown; trailing octets beyond
+those lengths MUST be rejected, not reinterpreted as padding
+(`test/vectors/schc_fragmentation.json`: `control_messages`,
+`ack_success_extra_octet`, `sender_abort_trailing_octet`,
+`receiver_abort_trailing_octet`, `malformed_control`). The size
+distinguishability required by RFC 8724 Sections 8.3.1.1 and 8.3.1.2 holds
+structurally in this profile: an All-0 Regular Fragment is always 181 octets
+versus a 2-octet ACK REQ, and an All-1 is at least 7 octets (RCS plus the
+mandatory non-empty final tile) versus a 2-octet Sender-Abort.
+
+The 32-bit RCS occupies the All-1 immediately after the 15-bit fragment
+header, bit-contiguously, with no alignment octet; the single zero padding bit
+follows the final tile. Per RFC 8724 Section 8.2.3 the RCS is CRC-32/ISO-HDLC
+(reflected polynomial 0xEDB88320) computed over the full reassembled SCHC
+Packet concatenated with the All-1's padding bits, zero-extended to the next
+octet boundary. Because the All-1 header and RCS total 47 bits and this
+profile's tiles are whole octets, every All-1 carries exactly one zero padding
+bit, so the RCS input is always the reassembled SCHC Packet followed by exactly
+one 0x00 octet.
+
 Rule 255 is REQUIRED as a sender-selected fallback for valid IPv6 packets that
 match no compression rule.  Receivers MUST drop unknown Rule IDs; they MUST NOT
 reinterpret those residues as Rule 255.  During a rule-version mismatch, a
@@ -445,7 +503,25 @@ ACK (C=0, NACK bitmap):
    8 bit  1b  1b       variable        variable
 ```
 
-C=1 (success, no bitmap) encodes as `78 c0` (for Rule 0x78, W=1). Bitmap is MSB-first (1=received, 0=missing), compressed by removing the maximal trailing run of 1-bits. Sender uses windowed FCN countdown (m=1, n=6). Receiver sends NACK on loss or C=1 after successful RCS verification on All-1. All-1 carries RCS (CRC-32). Retransmission timeout is 10 seconds, MAX_ACK_REQUESTS is 4, and inactivity timeout is 60 seconds. Receivers MUST support 1,281-byte SCHC Packets; statically provisioned receiver limits MAY extend to the 22,554-byte encoded SCHC Packet ceiling. The Rule ID counts toward that ceiling: Rule 255 carries at most 22,553 raw IPv6 octets, while a compressible raw IPv6 packet may be larger only when its final encoding remains at most 22,554 bytes. A sender MUST NOT exceed the known receiver limit, as specified in Section 5.1. Applications MAY still chunk larger payloads, for example SenML batches described by `spec/12-apps.md`. Parameters cross-reference `spec/03-adaptation.md` Section 5.6, `constants.toml`, and `lichen-schc`.
+C=1 (success, no bitmap) encodes as exactly 2 octets: `78 40` (W=0) or `78 c0`
+(W=1) for Rule ID 0x78; `79 40` / `79 c0` for Rule ID 0x79. Each window Bitmap
+is WINDOW_SIZE (63) bits: the leftmost bit corresponds to tile 62 and
+consecutive bits rightward to decreasing tile indices; in a non-final window
+the rightmost bit is tile 0, and in the final window the rightmost bit
+corresponds to the final tile carried in All-1 (RFC 8724 Section 8.2.2.3).
+A 1 bit means the tile was received and a 0 bit means missing. Bitmap
+positions for tiles that do not exist in a short final window MUST be 0
+(vector `unassigned_bitmap_bit`). The Compressed Bitmap is produced by the
+RFC 8724 Section 8.3.2.1 algorithm: elide the maximal trailing run of 1-bits,
+then, if Bitmap bits remain to the right of the cut, extend the cut rightward
+to the next octet boundary and drop the remainder, so the transmitted ACK
+always ends on an octet boundary. The sender reconstructs the full 63-bit
+Bitmap from the W field and the received message length. When the RCS check
+fails after All-1, the receiver sends C=0 and reports the final tile's Bitmap
+bit as 0, so the sender resends the complete All-1 (vectors `rcs_failure_ack`
+and `next_sender_message`); a C=0 ACK reporting no missing tiles when the
+final tile is carried in All-1 is a protocol error, and the sender MUST send
+Sender-Abort (RFC 8724 Section 8.4.3.1). Sender uses windowed FCN countdown (m=1, n=6). Receiver sends NACK on loss or C=1 after successful RCS verification on All-1. All-1 carries RCS (CRC-32). Retransmission timeout is 10 seconds, MAX_ACK_REQUESTS is 4, and inactivity timeout is 60 seconds. Receivers MUST support 1,281-byte SCHC Packets; statically provisioned receiver limits MAY extend to the 22,554-byte encoded SCHC Packet ceiling. The Rule ID counts toward that ceiling: Rule 255 carries at most 22,553 raw IPv6 octets, while a compressible raw IPv6 packet may be larger only when its final encoding remains at most 22,554 bytes. A sender MUST NOT exceed the known receiver limit, as specified in Section 5.1. Applications MAY still chunk larger payloads, for example SenML batches described by `spec/12-apps.md`. Parameters cross-reference `spec/03-adaptation.md` Section 5.6, `constants.toml`, and `lichen-schc`.
 
 ## 6. Rule Versioning and DIO Advertisement
 

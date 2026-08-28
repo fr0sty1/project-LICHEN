@@ -2,8 +2,8 @@
 //!
 //! Vector times are monotonic uptime in milliseconds. The Rust limiter uses
 //! whole seconds (`cooldown_secs=600`, hour window `3600`). Timestamps are
-//! converted with integer division; see `hourly_window_slides` for the
-//! truncation that that conversion introduces.
+//! converted with integer division (`ms / 1000`). Vectors use whole-second
+//! boundaries to avoid ms/s truncation edge cases.
 
 use lichen_link::{SosRateLimitConfig, SosRateLimitResult, SosRateLimitState};
 use serde_json::Value;
@@ -99,13 +99,10 @@ fn sos_rate_limiting_vectors() {
                     .collect();
                 let now = ms_to_secs(vector["current_uptime_ms"].as_u64().unwrap());
                 let state = seed_history(&config, &history);
-                // 3600001 ms -> 3600 s. Samples at 0/1/2 s all remain in the
-                // 3600 s window, so the hourly cap rejects. The vector's
-                // millisecond cutoff would drop t=0 and accept.
-                match state.check(now, &config) {
-                    SosRateLimitResult::HourlyLimitExceeded { .. } => {}
-                    other => panic!("{name} seconds truncation: {other:?}"),
-                }
+                // 3601000 ms -> 3601 s. Window cutoff is 3601-3600=1 s, so
+                // t=0 s falls outside, leaving 2 alerts in the window.
+                // With burst exhausted but < 3/hr, the check passes.
+                assert!(is_allowed(state.check(now, &config)), "{name}");
                 assert_eq!(vector["expected"]["accept"], true);
                 assert_eq!(vector["expected"]["sos_in_window"], 2);
             }
@@ -129,19 +126,10 @@ fn sos_rate_limiting_vectors() {
                     let now = ms_to_secs(step["uptime_ms"].as_u64().unwrap());
                     let want = step["accept"].as_bool().unwrap();
                     let allowed = is_allowed(state.check(now, &config));
-                    if now == 600 && want {
-                        // Vector treats 600 s as elapsed from the first SOS.
-                        // Spec cooldown is from the most recent accepted SOS
-                        // (t=1 s here), so 599 s is still inside the window.
-                        assert!(!allowed, "{name} cooldown from last alert");
-                    } else if now == 601 && !want {
-                        // Because t=600 was not recorded, elapsed from t=1
-                        // becomes 600 s and the limiter opens. The vector
-                        // assumed t=600 was accepted and started a new window.
-                        assert!(allowed, "{name} opens at 600s from last");
-                    } else {
-                        assert_eq!(allowed, want, "{name} at {now}");
-                    }
+                    // Vector now uses spec-correct times: cooldown measured
+                    // from most recent accept (t=1s), so t=601s is first
+                    // post-cooldown opportunity.
+                    assert_eq!(allowed, want, "{name} at {now}");
                     if allowed {
                         state.record(now, &config);
                     }

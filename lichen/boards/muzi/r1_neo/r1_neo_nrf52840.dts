@@ -112,8 +112,11 @@
 };
 
 /*
- * RX8130CE RTC is present at 0x32, but no Zephyr binding is enabled here.
- * The bus is available for future RTC bring-up.
+ * RX8130CE RTC at I2C address 0x32 (project-LICHEN-ev5b.1 hardware fact).
+ * Driven by the LICHEN out-of-tree driver (lichen,rx8130ce-rtc) because the
+ * pinned Zephyr v3.7.0 has no RX8130CE driver. Battery-backup switchover
+ * mode is intentionally left at its power-on default until the on-hardware
+ * validation sweep confirms the backup supply topology.
  */
 &i2c0 {
 	compatible = "nordic,nrf-twim";
@@ -122,6 +125,17 @@
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-1 = <&i2c0_sleep>;
 	pinctrl-names = "default", "sleep";
+
+	/*
+	 * Node label is the chip name: Nordic SoC validation statically
+	 * asserts that labels rtc/rtc0/rtc1/rtc2 are nRF SoC RTC peripherals,
+	 * which an external I2C RTC must not claim.
+	 */
+	rx8130ce: rtc@32 {
+		compatible = "lichen,rx8130ce-rtc";
+		reg = <0x32>;
+		status = "okay";
+	};
 };
 
 /*

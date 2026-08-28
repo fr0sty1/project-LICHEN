@@ -44,7 +44,8 @@ static inline int coap_err_to_oscore(int err)
 
 int coap_oscore_unprotect_resource_request(struct coap_resource *resource,
 					   struct coap_packet *request,
-					   struct sockaddr *addr, socklen_t addr_len,
+					   struct sockaddr *addr, /* cppcheck-suppress constParameterPointer ; non-const to match all callers and test stubs */
+					   socklen_t addr_len,
 					   uint8_t expected_method,
 					   struct coap_oscore_unprotect_result *result)
 {
@@ -61,7 +62,7 @@ int coap_oscore_unprotect_resource_request(struct coap_resource *resource,
 		}
 		if (oscore_ctx_get_by_eui64(peer_eui64, &result->ctx) != OSCORE_OK ||
 		    result->ctx == NULL) {
-			return coap_oscore_send_unauthorized(resource, request, addr, addr_len);
+			return COAP_RESPONSE_CODE_UNAUTHORIZED;
 		}
 		uint8_t orig_code;
 		uint8_t opts[32];
@@ -167,6 +168,7 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 	const uint8_t *ciphertext;
 	uint16_t ciphertext_len;
 	struct oscore_option opt;
+	size_t request_piv_capacity;
 	int ret;
 
 	/* Validate all output pointers (defensive despite _Nonnull) */
@@ -175,6 +177,7 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 	    request_piv_len == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
+	request_piv_capacity = *request_piv_len;
 
 	/* Get OSCORE option */
 	ret = coap_oscore_get_option(request, oscore_opt, &oscore_opt_len);
@@ -188,15 +191,12 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 		return ret;
 	}
 
-	/* Save request PIV for response */
-	if (opt.has_piv && opt.piv_len > 0) {
-		if (*request_piv_len < opt.piv_len) {
-			return OSCORE_ERR_BUFFER_TOO_SMALL;
-		}
-		memcpy(request_piv, opt.piv, opt.piv_len);
-		*request_piv_len = opt.piv_len;
-	} else {
-		*request_piv_len = 0;
+	/* Validate correlation output capacity, but publish only after auth. */
+	if (!opt.has_piv || opt.piv_len == 0) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	if (request_piv_capacity < opt.piv_len) {
+		return OSCORE_ERR_BUFFER_TOO_SMALL;
 	}
 
 	/* Get encrypted payload */
@@ -216,6 +216,9 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 		LOG_WRN("OSCORE unprotect failed: %d", ret);
 		return ret;
 	}
+
+	memcpy(request_piv, opt.piv, opt.piv_len);
+	*request_piv_len = opt.piv_len;
 
 	LOG_DBG("Unprotected OSCORE request: code=0x%02x, payload=%zu",
 		*original_code, *payload_len);

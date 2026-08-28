@@ -38,6 +38,8 @@ class DaoError(Exception):
 class RplTarget:
     """RPL Target option (RFC 6550 6.7.7); a full /128 target by default."""
 
+    DATA_LENGTH = 18
+
     target: IPv6Address
     prefix_length: int = 128
 
@@ -46,36 +48,31 @@ class RplTarget:
             raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
 
     def to_option(self) -> RplOption:
-        if not (0 <= self.prefix_length <= 128):
-            raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
-        nbytes = (self.prefix_length + 7) // 8
-        data = bytes([0, self.prefix_length]) + self.target.packed[:nbytes]
+        if self.prefix_length != 128:
+            raise DaoError("LICHEN RPL Target prefix_length must be 128")
+        data = bytes([0, self.prefix_length]) + self.target.packed
         return RplOption(RplOptionType.RPL_TARGET, data)
 
     @classmethod
     def from_option(cls, opt: RplOption) -> RplTarget:
         if opt.type != RplOptionType.RPL_TARGET:
             raise DaoError(f"not an RPL Target option: type {opt.type}")
-        if len(opt.data) < 2:
-            raise DaoError("RPL Target option too short")
+        if len(opt.data) != cls.DATA_LENGTH:
+            raise DaoError("RPL Target option must have Data Length 18")
+        if opt.data[0] != 0:
+            raise DaoError("RPL Target flags must be zero")
         prefix_length = opt.data[1]
-        if not (0 <= prefix_length <= 128):
-            raise DaoError(f"prefix_length must be between 0 and 128, got {prefix_length}")
-        nbytes = (prefix_length + 7) // 8
-        if len(opt.data) != 2 + nbytes:
-            raise DaoError("RPL Target option has non-canonical length")
-        prefix = bytearray(opt.data[2:])
-        if prefix_length % 8 and prefix:
-            prefix[-1] &= 0xFF << (8 - prefix_length % 8)
-        return cls(IPv6Address(bytes(prefix).ljust(16, b"\x00")), prefix_length)
+        if prefix_length != 128:
+            raise DaoError("LICHEN RPL Target prefix_length must be 128")
+        return cls(IPv6Address(opt.data[2:]), prefix_length)
 
 
 @dataclass
 class TransitInformation:
-    """Transit Information option (RFC 6550 6.7.8) carrying the parent address.
+    """LICHEN Transit Information option (RFC 6550 6.7.8).
 
     The RFC E bit describes external ownership; it is not a parent-presence
-    bit. The optional Parent Address is determined by the option Data Length.
+    bit. This profile always carries the Parent Address using Data Length 20.
     """
 
     parent_address: IPv6Address | None = None
@@ -85,22 +82,24 @@ class TransitInformation:
     external: bool = False
 
     def to_option(self) -> RplOption:
+        if self.parent_address is None:
+            raise DaoError("LICHEN Transit Information requires a Parent Address")
         e_flag = 0x80 if self.external else 0x00
-        data = bytes([e_flag, self.path_control, self.path_sequence, self.path_lifetime])
-        if self.parent_address is not None:
-            data += self.parent_address.packed
+        data = bytes(
+            [e_flag, self.path_control, self.path_sequence, self.path_lifetime]
+        ) + self.parent_address.packed
         return RplOption(RplOptionType.TRANSIT_INFORMATION, data)
 
     @classmethod
     def from_option(cls, opt: RplOption) -> TransitInformation:
         if opt.type != RplOptionType.TRANSIT_INFORMATION:
             raise DaoError(f"not a Transit Information option: type {opt.type}")
-        if len(opt.data) not in (4, 20):
-            raise DaoError("Transit Information option must have Data Length 4 or 20")
+        if len(opt.data) != 20:
+            raise DaoError("Transit Information option must have Data Length 20")
         if (opt.data[0] & 0x7F) != 0:
             raise DaoError("flags must be zero")
         external = bool(opt.data[0] & 0x80)
-        parent = IPv6Address(opt.data[4:20]) if len(opt.data) == 20 else None
+        parent = IPv6Address(opt.data[4:20])
         return cls(
             parent_address=parent,
             path_control=opt.data[1],

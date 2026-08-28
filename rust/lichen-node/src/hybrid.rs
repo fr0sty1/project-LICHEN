@@ -247,7 +247,7 @@ impl HybridRouter {
     ///
     /// Returns the decision and optional next-hop. For Queue decisions,
     /// the packet should be passed to `queue_pending`.
-    pub fn route(&self, dst: &[u8; 16], now_ms: u32) -> RouteResult {
+    pub fn route(&mut self, dst: &[u8; 16], now_ms: u32) -> RouteResult {
         // Check for local delivery first
         if *dst == self.node_address {
             return RouteResult::deliver_local();
@@ -266,7 +266,7 @@ impl HybridRouter {
     }
 
     /// Route to a native or legacy mesh-local address.
-    fn route_mesh_local(&self, dst: &[u8; 16], now_ms: u32) -> RouteResult {
+    fn route_mesh_local(&mut self, dst: &[u8; 16], now_ms: u32) -> RouteResult {
         // Check gradient table for existing route
         if let Some(entry) = self.gradient_table.lookup(dst, now_ms) {
             return RouteResult::forward(entry.next_hop);
@@ -727,7 +727,7 @@ mod tests {
 
     #[test]
     fn route_link_local_is_forward() {
-        let router = HybridRouter::new(link_local(1));
+        let mut router = HybridRouter::new(link_local(1));
         let result = router.route(&link_local(2), 1000);
         assert_eq!(result.decision, RouteDecision::Forward);
         assert_eq!(result.next_hop, Some(link_local(2)));
@@ -735,21 +735,21 @@ mod tests {
 
     #[test]
     fn route_self_is_deliver_local() {
-        let router = HybridRouter::new(link_local(1));
+        let mut router = HybridRouter::new(link_local(1));
         let result = router.route(&link_local(1), 1000);
         assert_eq!(result.decision, RouteDecision::DeliverLocal);
     }
 
     #[test]
     fn route_mesh_local_no_gradient_is_queue() {
-        let router = HybridRouter::new(link_local(1));
+        let mut router = HybridRouter::new(link_local(1));
         let result = router.route(&ula(2), 1000);
         assert_eq!(result.decision, RouteDecision::Queue);
     }
 
     #[test]
     fn route_mesh_local_yggdrasil_no_gradient_is_queue() {
-        let router = HybridRouter::new(link_local(1));
+        let mut router = HybridRouter::new(link_local(1));
         let ygg = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5];
         let result = router.route(&ygg, 1000);
         assert_eq!(result.decision, RouteDecision::Queue);
@@ -835,7 +835,7 @@ mod tests {
 
     #[test]
     fn route_external_unjoined_is_drop() {
-        let router = HybridRouter::new(link_local(1));
+        let mut router = HybridRouter::new(link_local(1));
         let result = router.route(&gua(2), 1000);
         assert_eq!(result.decision, RouteDecision::Drop);
     }

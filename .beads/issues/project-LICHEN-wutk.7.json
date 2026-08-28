@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-wutk.7",
+  "title": "Spec compliance: KISS transport vs spec/07-transport-app.md",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:07.293138Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:07.293138Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wutk.7",
+      "depends_on_id": "project-LICHEN-wutk",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:12.958551Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

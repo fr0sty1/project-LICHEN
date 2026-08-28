@@ -63,7 +63,6 @@ LOG_MODULE_REGISTER(ble_uart, LOG_LEVEL_INF);
 
 #define BLE_LCI_VERSION_1 0x0001u
 #define BLE_LCI_CAP_SLIP_IPV6 BIT(0)
-#define BLE_LCI_CAP_KISS     BIT(1)  /* KISS for local CoAP/IPv6/control per umb4 */
 
 static struct bt_uuid_128 ble_uart_svc_uuid =
 	BT_UUID_INIT_128(BLE_UART_SERVICE_UUID_VAL);
@@ -81,10 +80,10 @@ static const uint8_t s_lci_version[] = {
 	(BLE_LCI_VERSION_1 >> 8) & 0xffu,
 };
 static const uint8_t s_lci_capabilities[] = {
-	(BLE_LCI_CAP_SLIP_IPV6 | BLE_LCI_CAP_KISS) & 0xffu,
-	((BLE_LCI_CAP_SLIP_IPV6 | BLE_LCI_CAP_KISS) >> 8) & 0xffu,
-	((BLE_LCI_CAP_SLIP_IPV6 | BLE_LCI_CAP_KISS) >> 16) & 0xffu,
-	((BLE_LCI_CAP_SLIP_IPV6 | BLE_LCI_CAP_KISS) >> 24) & 0xffu,
+	BLE_LCI_CAP_SLIP_IPV6 & 0xffu,
+	(BLE_LCI_CAP_SLIP_IPV6 >> 8) & 0xffu,
+	(BLE_LCI_CAP_SLIP_IPV6 >> 16) & 0xffu,
+	(BLE_LCI_CAP_SLIP_IPV6 >> 24) & 0xffu,
 };
 #endif
 
@@ -97,6 +96,7 @@ static K_MUTEX_DEFINE(s_tx_mutex);
 #ifdef CONFIG_ZTEST
 static uint16_t s_test_mtu = 23U;
 static int s_test_notify_ret;
+static bool s_test_notify_enabled;
 static struct ble_uart_test_tx_state s_test_tx_state;
 #endif
 
@@ -290,6 +290,18 @@ static int uart_bt_gatt_notify(struct bt_conn *conn,
 #endif
 }
 
+static bool uart_bt_gatt_is_subscribed(struct bt_conn *conn,
+				       const struct bt_gatt_attr *attr)
+{
+#ifdef CONFIG_ZTEST
+	ARG_UNUSED(conn);
+	ARG_UNUSED(attr);
+	return s_test_notify_enabled;
+#else
+	return bt_gatt_is_subscribed(conn, attr, BT_GATT_CCC_NOTIFY);
+#endif
+}
+
 /* --------------------------------------------------------------------------
  * Connection management
  * -------------------------------------------------------------------------- */
@@ -315,6 +327,11 @@ static void on_connected(struct bt_conn *conn, uint8_t err,
 	s_rx_esc = false;
 	s_rx_overflow = false;
 	k_mutex_unlock(&s_rx_mutex);
+#ifdef CONFIG_ZTEST
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+	s_test_notify_enabled = false;
+	k_mutex_unlock(&s_tx_mutex);
+#endif
 	LOG_INF("BLE phone connected");
 }
 
@@ -329,6 +346,11 @@ static void on_disconnected(struct bt_conn *conn, uint8_t reason,
 	s_rx_esc = false;
 	s_rx_overflow = false;
 	k_mutex_unlock(&s_rx_mutex);
+#ifdef CONFIG_ZTEST
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+	s_test_notify_enabled = false;
+	k_mutex_unlock(&s_tx_mutex);
+#endif
 
 	LOG_INF("BLE phone disconnected (reason %u)", reason);
 	(void)ble_app_owner_restart(BLE_APP_OWNER_SURFACE_NATIVE);
@@ -364,6 +386,11 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 	}
 
 	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+	if (!uart_bt_gatt_is_subscribed(conn,
+					&nus_svc.attrs[NUS_TX_VAL_IDX])) {
+		rc = -EACCES;
+		goto out;
+	}
 
 	/* Encode SLIP frame — check space before each write to prevent overflow */
 	s_tx_frame[fi++] = SLIP_END;
@@ -630,6 +657,10 @@ int ble_uart_test_copy_state(struct ble_uart_test_state *state)
 	state->rx_overflow = s_rx_overflow;
 	k_mutex_unlock(&s_rx_mutex);
 
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+	state->notify_enabled = s_test_notify_enabled;
+	k_mutex_unlock(&s_tx_mutex);
+
 	return 0;
 }
 
@@ -639,6 +670,13 @@ void ble_uart_test_set_tx_backend(uint16_t mtu, int notify_ret)
 	s_test_mtu = mtu;
 	s_test_notify_ret = notify_ret;
 	memset(&s_test_tx_state, 0, sizeof(s_test_tx_state));
+	k_mutex_unlock(&s_tx_mutex);
+}
+
+void ble_uart_test_set_notify_enabled(bool enabled)
+{
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+	s_test_notify_enabled = enabled;
 	k_mutex_unlock(&s_tx_mutex);
 }
 
@@ -652,51 +690,6 @@ int ble_uart_test_copy_tx_state(struct ble_uart_test_tx_state *state)
 	*state = s_test_tx_state;
 	k_mutex_unlock(&s_tx_mutex);
 
-	return 0;
-}
-
-static int kiss_encode(const uint8_t *payload, size_t len, uint8_t cmd,
-		       uint8_t *buf, size_t buf_len)
-{
-	size_t pos = 0;
-
-	if (buf == NULL || buf_len < 4 || len > buf_len - 4) {
-		return -EMSGSIZE; /* error handling per umb4 */
-	}
-
-	buf[pos++] = KISS_FEND;
-	buf[pos++] = cmd;
-
-	for (size_t i = 0; i < len; i++) {
-		uint8_t b = payload[i];
-		if (b == KISS_FEND) {
-			if (pos + 2 > buf_len) return -EMSGSIZE;
-			buf[pos++] = KISS_FESC;
-			buf[pos++] = KISS_TFEND;
-		} else if (b == KISS_FESC) {
-			if (pos + 2 > buf_len) return -EMSGSIZE;
-			buf[pos++] = KISS_FESC;
-			buf[pos++] = KISS_TFESC;
-		} else {
-			if (pos >= buf_len) return -EMSGSIZE;
-			buf[pos++] = b;
-		}
-	}
-
-	buf[pos++] = KISS_FEND;
-
-	return (int)pos; /* returns encoded length */
-}
-
-static int kiss_decode(const uint8_t *frame, size_t len, uint8_t *cmd_out,
-		       uint8_t *payload_out, size_t *payload_len_out)
-{
-	/* Basic decoder stub; full state machine in handlers child. */
-	if (len < 4 || frame[0] != KISS_FEND || frame[len-1] != KISS_FEND) {
-		return -EINVAL; /* error for invalid frame */
-	}
-	*cmd_out = frame[1];
-	*payload_len_out = 0; /* TODO: unescape into payload_out */
 	return 0;
 }
 

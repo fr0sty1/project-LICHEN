@@ -248,6 +248,7 @@ int lichen_router_route(struct lichen_router *router,
 				return 0;
 			}
 		}
+		return route_external(router, result);
 	}
 	case LICHEN_ADDR_EXTERNAL:
 		return route_external(router, result);
@@ -255,6 +256,403 @@ int lichen_router_route(struct lichen_router *router,
 		result->decision = LICHEN_ROUTE_DROP;
 		return 0;
 	}
+}
+
+#define IPV6_FIXED_HEADER_LEN 40U
+#define IPV6_NH_HOP_BY_HOP 0U
+#define IPV6_NH_UDP 17U
+#define IPV6_NH_ROUTING 43U
+#define IPV6_NH_FRAGMENT 44U
+#define IPV6_NH_ICMPV6 58U
+#define IPV6_NH_NONE 59U
+#define IPV6_NH_DEST_OPTIONS 60U
+#define RPL_SRH_TYPE 3U
+#define RPL_SRH_FIXED_LEN 8U
+#define RPL_SRH_ADDRESS_LEN 16U
+#define RPL_SRH_MAX_ADDRESSES 8U
+
+struct ipv6_dispatch_view {
+	const uint8_t *source;
+	const uint8_t *destination;
+	const uint8_t *source_route_next_hop;
+	uint8_t hop_limit;
+	uint8_t upper_next_header;
+	uint8_t source_route_segments_left;
+	size_t source_route_header_offset;
+	size_t source_route_address_offset;
+};
+
+static bool addr_is_zero(const uint8_t addr[16])
+{
+	uint8_t combined = 0U;
+
+	for (size_t i = 0U; i < 16U; i++) {
+		combined |= addr[i];
+	}
+	return combined == 0U;
+}
+
+static bool addr_is_multicast(const uint8_t addr[16])
+{
+	return addr[0] == 0xffU;
+}
+
+static bool addr_is_same(const uint8_t lhs[16], const uint8_t rhs[16])
+{
+	return memcmp(lhs, rhs, 16U) == 0;
+}
+
+/*
+ * Validate the complete extension chain before returning a view.  LICHEN's
+ * constrained profile accepts only HBH/Destination options, uncompressed RPL
+ * source routing, UDP, and ICMPv6.  Fragment headers are rejected because SCHC
+ * fragmentation belongs below IPv6 and accepting both fragments would create
+ * ambiguous ownership and reassembly limits.
+ */
+static int parse_ipv6_dispatch(const uint8_t *data, size_t len,
+			       struct ipv6_dispatch_view *view)
+{
+	uint16_t payload_len;
+	uint8_t next_header;
+	size_t offset = IPV6_FIXED_HEADER_LEN;
+	bool saw_routing = false;
+	bool saw_hop_by_hop = false;
+
+	if (data == NULL || view == NULL || len < IPV6_FIXED_HEADER_LEN) {
+		return -EINVAL;
+	}
+	if ((data[0] >> 4) != 6U) {
+		return -EBADMSG;
+	}
+	payload_len = (uint16_t)(((uint16_t)data[4] << 8) | data[5]);
+	if ((size_t)payload_len != len - IPV6_FIXED_HEADER_LEN) {
+		return -EMSGSIZE;
+	}
+	if (addr_is_zero(&data[8]) || addr_is_multicast(&data[8])) {
+		return -EBADMSG;
+	}
+	if (data[7] == 0U) {
+		return -EHOSTUNREACH;
+	}
+
+	memset(view, 0, sizeof(*view));
+	view->source = &data[8];
+	view->destination = &data[24];
+	view->hop_limit = data[7];
+	next_header = data[6];
+
+	for (size_t extension_count = 0U; extension_count < 4U; extension_count++) {
+		if (next_header == IPV6_NH_UDP) {
+			if (len - offset < 8U) {
+				return -EMSGSIZE;
+			}
+			view->upper_next_header = next_header;
+			return 0;
+		}
+		if (next_header == IPV6_NH_ICMPV6) {
+			if (len - offset < 4U) {
+				return -EMSGSIZE;
+			}
+			view->upper_next_header = next_header;
+			return 0;
+		}
+		if (next_header == IPV6_NH_NONE) {
+			if (offset != len) {
+				return -EBADMSG;
+			}
+			view->upper_next_header = next_header;
+			return 0;
+		}
+		if (next_header == IPV6_NH_FRAGMENT) {
+			return -EPROTONOSUPPORT;
+		}
+		if (next_header != IPV6_NH_HOP_BY_HOP &&
+		    next_header != IPV6_NH_DEST_OPTIONS &&
+		    next_header != IPV6_NH_ROUTING) {
+			return -EPROTONOSUPPORT;
+		}
+		if (next_header == IPV6_NH_HOP_BY_HOP) {
+			/* RFC 8200: Hop-by-Hop is unique and immediately follows IPv6. */
+			if (saw_hop_by_hop || offset != IPV6_FIXED_HEADER_LEN) {
+				return -EBADMSG;
+			}
+			saw_hop_by_hop = true;
+		}
+		if (len - offset < 8U) {
+			return -EMSGSIZE;
+		}
+
+		uint8_t extension_next = data[offset];
+		size_t extension_len = ((size_t)data[offset + 1U] + 1U) * 8U;
+		if (extension_len < 8U || extension_len > len - offset) {
+			return -EMSGSIZE;
+		}
+
+		if (next_header == IPV6_NH_ROUTING) {
+			uint8_t segments_left;
+			size_t address_count;
+
+			if (saw_routing || data[offset + 2U] != RPL_SRH_TYPE) {
+				return -EPROTONOSUPPORT;
+			}
+			saw_routing = true;
+			segments_left = data[offset + 3U];
+			if ((extension_len - RPL_SRH_FIXED_LEN) % RPL_SRH_ADDRESS_LEN != 0U ||
+			    data[offset + 4U] != 0U || (data[offset + 5U] & 0xf0U) != 0U) {
+				return -EBADMSG;
+			}
+			address_count = (extension_len - RPL_SRH_FIXED_LEN) /
+					RPL_SRH_ADDRESS_LEN;
+			if (address_count > RPL_SRH_MAX_ADDRESSES ||
+			    segments_left > address_count) {
+				return -EBADMSG;
+			}
+			for (size_t i = 0U; i < address_count; i++) {
+				const uint8_t *address = &data[offset + RPL_SRH_FIXED_LEN +
+							      i * RPL_SRH_ADDRESS_LEN];
+
+				if (addr_is_zero(address) || addr_is_multicast(address) ||
+				    addr_is_same(address, view->source) ||
+				    addr_is_same(address, view->destination)) {
+					return -EBADMSG;
+				}
+				for (size_t j = 0U; j < i; j++) {
+					const uint8_t *prior = &data[offset + RPL_SRH_FIXED_LEN +
+								    j * RPL_SRH_ADDRESS_LEN];
+					if (addr_is_same(address, prior)) {
+						return -EBADMSG;
+					}
+				}
+			}
+			if (segments_left != 0U) {
+				if (segments_left >= view->hop_limit || address_count == 0U) {
+					return -EHOSTUNREACH;
+				}
+				view->source_route_next_hop =
+					&data[offset + RPL_SRH_FIXED_LEN +
+					      (address_count - segments_left) * RPL_SRH_ADDRESS_LEN];
+				view->source_route_segments_left = segments_left;
+				view->source_route_header_offset = offset;
+				view->source_route_address_offset =
+					offset + RPL_SRH_FIXED_LEN +
+					(address_count - segments_left) * RPL_SRH_ADDRESS_LEN;
+			}
+		}
+
+		next_header = extension_next;
+		offset += extension_len;
+	}
+
+	/* A longer chain is outside the bounded embedded profile. */
+	return -E2BIG;
+}
+
+static uint8_t forwarded_hop_limit(const struct lichen_route_packet *packet,
+				   uint8_t hop_limit)
+{
+	return packet->ingress == LICHEN_ROUTE_INGRESS_LOCAL ? hop_limit :
+		(uint8_t)(hop_limit - 1U);
+}
+
+static enum lichen_route_path gradient_path(enum lichen_gradient_source source)
+{
+	if (source == LICHEN_GRADIENT_ANNOUNCE) {
+		return LICHEN_ROUTE_PATH_ANNOUNCE;
+	}
+	if (source == LICHEN_GRADIENT_RREP) {
+		return LICHEN_ROUTE_PATH_LOADNG;
+	}
+	return LICHEN_ROUTE_PATH_GRADIENT;
+}
+
+static void set_drop(struct lichen_packet_route_result *result)
+{
+	memset(result, 0, sizeof(*result));
+	result->route.decision = LICHEN_ROUTE_DROP;
+}
+
+int lichen_router_route_packet(struct lichen_router *router,
+			       const struct lichen_route_packet *packet,
+			       uint32_t now_ms,
+			       struct lichen_packet_route_result *result)
+{
+	struct ipv6_dispatch_view view;
+	struct lichen_packet_route_result next;
+	uint8_t destination_iid[8];
+	int ret;
+
+	if (router == NULL || packet == NULL || result == NULL || packet->data == NULL ||
+	    packet->ingress > LICHEN_ROUTE_INGRESS_BACKBONE) {
+		return -EINVAL;
+	}
+	ret = parse_ipv6_dispatch(packet->data, packet->len, &view);
+	if (ret < 0) {
+		return ret;
+	}
+
+	set_drop(&next);
+	next.upper_next_header = view.upper_next_header;
+	memcpy(destination_iid, &view.destination[8], sizeof(destination_iid));
+
+	/* A relayed packet claiming our own source address is a forwarding loop. */
+	if (packet->ingress != LICHEN_ROUTE_INGRESS_LOCAL &&
+	    addr_is_same(view.source, router->node_address)) {
+		*result = next;
+		return 0;
+	}
+
+	/* RFC 6554 downward routing takes precedence over local delivery. */
+	if (view.source_route_next_hop != NULL) {
+		if (!addr_is_same(view.destination, router->node_address) ||
+		    addr_is_same(view.source_route_next_hop, router->node_address) ||
+		    addr_is_same(view.source_route_next_hop, view.source)) {
+			*result = next;
+			return 0;
+		}
+		next.route.decision = LICHEN_ROUTE_FORWARD;
+		memcpy(next.route.next_hop, view.source_route_next_hop, 16U);
+		next.path = LICHEN_ROUTE_PATH_RPL_SOURCE_ROUTE;
+		next.forward_hop_limit = (uint8_t)(view.hop_limit - 1U);
+		next.source_route_header_offset = view.source_route_header_offset;
+		next.source_route_address_offset = view.source_route_address_offset;
+		next.source_route_segments_left =
+			(uint8_t)(view.source_route_segments_left - 1U);
+		*result = next;
+		return 0;
+	}
+
+	if (addr_is_multicast(view.destination)) {
+		uint8_t scope = view.destination[1] & 0x0fU;
+		bool crosses_boundary = packet->ingress == LICHEN_ROUTE_INGRESS_BACKBONE &&
+			!packet->multicast_peering;
+		bool relay = false;
+
+		/* Scope 0 and reserved scope 15 are invalid; node-local never relays. */
+		if (scope == 0U || scope == 15U) {
+			return -EBADMSG;
+		}
+		if (crosses_boundary) {
+			*result = next;
+			return 0;
+		}
+		if (packet->ingress == LICHEN_ROUTE_INGRESS_LOCAL) {
+			relay = scope >= 2U;
+		} else if (scope >= 3U && view.hop_limit > 1U) {
+			relay = true;
+		}
+		next.route.decision = relay ? LICHEN_ROUTE_DELIVER_AND_FORWARD :
+			LICHEN_ROUTE_DELIVER_LOCAL;
+		if (relay) {
+			memcpy(next.route.next_hop, view.destination, 16U);
+			next.forward_hop_limit = forwarded_hop_limit(packet, view.hop_limit);
+		}
+		next.path = LICHEN_ROUTE_PATH_MULTICAST;
+		*result = next;
+		return 0;
+	}
+
+	if (addr_is_same(view.destination, router->node_address)) {
+		next.route.decision = LICHEN_ROUTE_DELIVER_LOCAL;
+		next.path = LICHEN_ROUTE_PATH_LOCAL;
+		*result = next;
+		return 0;
+	}
+
+	/* Relays must not emit a packet with Hop Limit zero. */
+	if (packet->ingress != LICHEN_ROUTE_INGRESS_LOCAL && view.hop_limit <= 1U) {
+		*result = next;
+		return 0;
+	}
+
+	enum lichen_addr_class address_class =
+		lichen_router_classify(router, view.destination);
+	struct lichen_gradient_entry *entry = NULL;
+
+	if (address_class == LICHEN_ADDR_MESH_LOCAL ||
+	    address_class == LICHEN_ADDR_YGGDRASIL) {
+		entry = lichen_gradient_lookup(&router->gradient_table,
+					       destination_iid, now_ms);
+		if (entry != NULL) {
+			next.route.decision = LICHEN_ROUTE_FORWARD;
+			memcpy(next.route.next_hop, entry->next_hop, 16U);
+			next.path = gradient_path(entry->source);
+		} else if (packet->destination_coords_valid &&
+			   lichen_router_gpsr_forward(router,
+				packet->destination_lat_e7,
+				packet->destination_lon_e7,
+				next.route.next_hop) == 0) {
+			next.route.decision = LICHEN_ROUTE_FORWARD;
+			next.path = LICHEN_ROUTE_PATH_GPSR;
+		} else if (router->loadng.discover != NULL) {
+			if (packet->len > CONFIG_LICHEN_ROUTER_MAX_PENDING_PACKET_SIZE) {
+				return -EMSGSIZE;
+			}
+			ret = router->loadng.discover(router->loadng.user_data,
+						      destination_iid);
+			if (ret == 0) {
+				ret = lichen_router_queue_pending(router, destination_iid,
+							  packet->data, packet->len, now_ms);
+				if (ret < 0) {
+					return ret;
+				}
+				next.route.decision = LICHEN_ROUTE_QUEUE;
+				next.path = LICHEN_ROUTE_PATH_LOADNG;
+			}
+		}
+
+		/* Native identities fall back to the identity-preserving BR path. */
+		if (next.route.decision == LICHEN_ROUTE_DROP &&
+		    address_class == LICHEN_ADDR_YGGDRASIL) {
+			ret = route_external(router, &next.route);
+			if (ret < 0) {
+				return ret;
+			}
+			if (next.route.decision == LICHEN_ROUTE_FORWARD) {
+				next.path = LICHEN_ROUTE_PATH_RPL_UPWARD;
+			}
+		}
+	} else if (address_class == LICHEN_ADDR_LINK_LOCAL) {
+		next.route.decision = LICHEN_ROUTE_FORWARD;
+		memcpy(next.route.next_hop, view.destination, 16U);
+		next.path = LICHEN_ROUTE_PATH_DIRECT;
+	} else {
+		ret = route_external(router, &next.route);
+		if (ret < 0) {
+			return ret;
+		}
+		if (next.route.decision == LICHEN_ROUTE_FORWARD) {
+			next.path = LICHEN_ROUTE_PATH_RPL_UPWARD;
+		}
+	}
+
+	if (next.route.decision == LICHEN_ROUTE_FORWARD) {
+		if (addr_is_zero(next.route.next_hop) ||
+		    addr_is_multicast(next.route.next_hop) ||
+		    addr_is_same(next.route.next_hop, router->node_address) ||
+		    (packet->ingress != LICHEN_ROUTE_INGRESS_LOCAL &&
+		     addr_is_same(next.route.next_hop, view.source))) {
+			set_drop(&next);
+			next.upper_next_header = view.upper_next_header;
+		} else {
+			next.forward_hop_limit = forwarded_hop_limit(packet, view.hop_limit);
+		}
+	}
+
+#if CONFIG_LICHEN_ROUTER_DTN_BUFFER_SIZE > 0
+	if (next.route.decision == LICHEN_ROUTE_DROP && packet->dtn_expiry_unix != 0U &&
+	    packet->dtn_expiry_unix > packet->now_unix) {
+		ret = lichen_router_dtn_buffer(router, destination_iid, packet->data,
+					      packet->len, packet->dtn_expiry_unix, now_ms);
+		if (ret < 0) {
+			return ret;
+		}
+		next.route.decision = LICHEN_ROUTE_STORE_DTN;
+		next.path = LICHEN_ROUTE_PATH_DTN;
+	}
+#endif
+
+	*result = next;
+	return 0;
 }
 
 int lichen_router_queue_pending(struct lichen_router *router,
@@ -671,6 +1069,33 @@ int lichen_router_dtn_buffer(struct lichen_router *router,
 	 * CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGE_SIZE. */
 	if (len > CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGE_SIZE) {
 		return -EMSGSIZE;
+	}
+	if (len > CONFIG_LICHEN_ROUTER_DTN_BUFFER_SIZE) {
+		return -ENOBUFS;
+	}
+
+	/* Enforce the byte budget independently of the record-count budget. */
+	while (router->dtn_buffer_bytes >
+	       (size_t)CONFIG_LICHEN_ROUTER_DTN_BUFFER_SIZE - len) {
+		struct lichen_router_dtn_message *oldest_by_bytes = NULL;
+
+		for (size_t i = 0U; i < CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGES; i++) {
+			struct lichen_router_dtn_message *candidate = &router->dtn_buffer[i];
+
+			if (!candidate->valid) {
+				continue;
+			}
+			if (oldest_by_bytes == NULL ||
+			    (int32_t)(candidate->buffered_at_ms -
+				      oldest_by_bytes->buffered_at_ms) < 0) {
+				oldest_by_bytes = candidate;
+			}
+		}
+		if (oldest_by_bytes == NULL || oldest_by_bytes->len > router->dtn_buffer_bytes) {
+			return -EIO;
+		}
+		router->dtn_buffer_bytes -= oldest_by_bytes->len;
+		memset(oldest_by_bytes, 0, sizeof(*oldest_by_bytes));
 	}
 
 	/* Find free slot or evict oldest */

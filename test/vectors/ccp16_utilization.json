@@ -3,7 +3,7 @@
   "format_version": 2,
   "vector_type": "ccp16_utilization",
   "description": "Channel utilization and tx_allowed test vectors per spec/02-physical-link.md section 3.5 and spec/02a-coordinated-capacity.md section 2a.7. Utilization is uint8 0..255 representing fractional airtime: util_norm = utilization / 255. select_tx_sf() returns (sf, tx_allowed) where tx_allowed=false when utilization > 200.",
-  "oracle_provenance": "Independent calculation from spec pseudocode. AdaptiveSFSelect: if utilization > 150: SF += 2; if utilization > 200: return (SF, false).",
+  "oracle_provenance": "Independent calculation from spec pseudocode. AdaptiveSFSelect: if utilization > 150: SF += 2; if utilization > 200: return (12, false).",
   "spec_reference": "spec/02-physical-link.md section 3.5 pseudocode select_tx_sf()",
   "vectors": [
     {
@@ -122,7 +122,7 @@
       "output": {
         "sf": 12,
         "tx_allowed": false,
-        "sf_adjustment_reason": "SF7 + 2 (utilization>150) capped to 12; utilization>200 blocks tx"
+        "sf_adjustment_reason": "utilization>200 forces return (12, false) per spec"
       }
     },
     {

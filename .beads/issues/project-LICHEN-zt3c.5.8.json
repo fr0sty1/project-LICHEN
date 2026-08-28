@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-zt3c.5.8",
+  "title": "Write integration tests for bidirectional cross-mesh communication via Yggdrasil backbone",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:27.301813Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:27.301813Z",
+  "labels": [
+    "testing",
+    "integration",
+    "yggdrasil",
+    "blocked:hardware",
+    "defer-external",
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.5.8",
+      "depends_on_id": "project-LICHEN-zt3c.5",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:33.025213Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

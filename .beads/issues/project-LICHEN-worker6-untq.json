@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-untq",
+  "title": "checkin_resource.c: shared s_payload used outside its mutex",
+  "description": "read_payload() memcpys request bytes into module-static s_payload BEFORE locking (callers :96 :151 :229) and GET handlers respond from s_payload AFTER unlocking (:128-142, :202-221). Safe only because coap service is single-threaded today; any second execution context interleaving serves torn/foreign bytes - the mutex exists precisely because the module does not trust that forever. Fix: hold s_lock across lichen_coap_respond for handlers emitting s_payload and move the payload copy under the lock.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:13.314274Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T06:53:13.314274Z"
+}

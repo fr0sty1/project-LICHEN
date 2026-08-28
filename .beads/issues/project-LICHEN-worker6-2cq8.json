@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-2cq8",
+  "title": "[review] NON-type requests get silent drop on handler error paths (codebase convention decision)",
+  "description": "P3. Handlers return positive COAP_RESPONSE_CODE_* on errors; Zephyr framework only auto-ACKs positive returns for CON (coap_server.c:274 in 4.1, :235 in 3.7) -\u003e NON requests get NO error response. Affected: coap_dtn.c:96,122,240, coap_keys.c:267,270,430,433, helper coap_oscore.c:75,78, plus pre-existing status_get/msg_inbox_post (codebase-wide convention, not a wave regression). Over LoRa mesh NON is common. Decide the convention: explicit lichen_coap_respond/coap_oscore_respond_resource on error paths (single response for both CON and NON) vs document CON-only feedback. Implement the decision repo-wide for LCI handlers.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:33:13.042291Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:33:13.042291Z",
+  "labels": [
+    "local-ok"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2cq8",
+      "depends_on_id": "project-LICHEN-6mij.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T05:33:14.012518Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

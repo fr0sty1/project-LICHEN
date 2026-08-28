@@ -11,13 +11,13 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/app_identity/app_identity.h>
-#include <lichen/coap_keys.h>
 
 #ifndef ENOKEY
 #define ENOKEY ENOENT
 #endif
 #include <lichen/link_ctx.h>
 #include <monocypher.h>
+#include <monocypher-ed25519.h>
 
 BUILD_ASSERT(LICHEN_APP_IDENTITY_EUI64_LEN == LICHEN_EUI64_LEN,
 	     "app identity EUI-64 length must match link context");
@@ -35,16 +35,27 @@ static struct peer_slot s_peers[CONFIG_LICHEN_APP_IDENTITY_MAX_PEERS];
 static K_MUTEX_DEFINE(s_mutex);
 
 /*
- * Derive IPv6 IID from Ed25519 public key per project-LICHEN-oxul,
- * spec/03-addressing.md, and lichen_key_pubkey_to_iid() (SHA-256
- * first 8 bytes with U/L bit cleared for locally-administered IID).
- * This provides unified identity for LCI, mesh routing, and backbone.
+ * App identity is usable without CONFIG_LICHEN_IPV6 or
+ * CONFIG_LICHEN_COAP_KEYS, so its address derivation must not depend on
+ * translation units owned by either optional feature.  Both addresses use
+ * the canonical SHA-512 identity digest from specs 6.1 and 8.5/8.7.
  */
-static void derive_iid(
+static void derive_addresses(
 	const uint8_t pubkey[_Nonnull LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN],
-	uint8_t iid[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN])
+	uint8_t iid[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
+	uint8_t ygg_addr[_Nonnull 16])
 {
-	(void)lichen_key_pubkey_to_iid(pubkey, iid);
+	uint8_t hash[64];
+
+	crypto_sha512(hash, pubkey, LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN);
+	memcpy(iid, hash, LICHEN_APP_IDENTITY_EUI64_LEN);
+	iid[0] &= (uint8_t)~0x02U;
+
+	ygg_addr[0] = 0x02U;
+	memcpy(&ygg_addr[1], hash, 7U);
+	memcpy(&ygg_addr[8], hash, 8U);
+	ygg_addr[8] &= (uint8_t)~0x02U;
+	crypto_wipe(hash, sizeof(hash));
 }
 
 static int copy_string(char *dst, size_t dst_len, const char *src)
@@ -122,7 +133,8 @@ int lichen_app_identity_set_self(
 	memcpy(normalized.public_key, identity->public_key,
 	       sizeof(normalized.public_key));
 	normalized.has_public_key = true;
-	lichen_identity_ygg_addr_from_ed25519(normalized.public_key, normalized.ygg_addr);
+	derive_addresses(normalized.public_key, normalized.iid,
+			 normalized.ygg_addr);
 	ret = copy_string(normalized.display_name,
 			  sizeof(normalized.display_name),
 			  identity->display_name);
@@ -135,8 +147,6 @@ int lichen_app_identity_set_self(
 	if (ret < 0) {
 		return ret;
 	}
-	derive_iid(normalized.public_key, normalized.iid);
-
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	s_self = normalized;
 	s_has_self = true;
@@ -247,8 +257,8 @@ int lichen_app_identity_upsert_peer(
 	size_t len = strlen(peer->display_name);
 	memset(normalized.display_name + len + 1, 0,
 	       sizeof(normalized.display_name) - len - 1);
-	derive_iid(normalized.public_key, normalized.iid);
-	lichen_identity_ygg_addr_from_ed25519(normalized.public_key, normalized.ygg_addr);
+	derive_addresses(normalized.public_key, normalized.iid,
+			 normalized.ygg_addr);
 	s_peers[slot].peer = normalized;
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);

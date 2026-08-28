@@ -6,6 +6,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(senml_test C)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/test_common.cmake)
+
 # Include paths
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/senml/include
@@ -23,5 +25,7 @@ add_executable(senml_test
   ${ZCBOR_STUB_DIR}/zcbor_encode.c
 )
 
-# Enable warnings
-target_compile_options(senml_test PRIVATE -Wall -Wextra -Werror)
+lichen_test_target(senml_test)
+
+include(CTest)
+add_test(NAME senml COMMAND senml_test)

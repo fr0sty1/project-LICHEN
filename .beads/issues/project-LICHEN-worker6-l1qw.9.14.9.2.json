@@ -1,15 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.14.9.2",
   "title": "Rust: Confessions implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:26.030416Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-28T03:42:00.887239Z",
+  "updated_at": "2026-08-28T10:18:23.59368Z",
   "started_at": "2026-08-28T03:13:47.586845Z",
+  "closed_at": "2026-08-28T10:18:23.59368Z",
+  "close_reason": "Rust Confessions implementation complete, committed 483d6e8afe (lib.rs staged HEAD+my-hunks to avoid the concurrent worker's in-flight presence WIP). Completed the dead session's partial module: fixed compile errors (undeclared payload_had_anonymous, missing helpers), rewrote to_senml for canonical byte-parity, added ConfessionStore mirroring the Python oracle (rate limits 1/30s + 12/h on monotonic uptime with Retry-After and vector reasons 30s_limit / hourly_limit_exceeded, FIFO eviction no back-pressure, TTL clamp 12h/48h, CSPRNG 6-hex ids with bounded retries, listing sorted newest-first per vector, RAM-only clear(), sender stored only when claimed bn == authenticated IID, Error::Config for zero storage per h443 convention). tests/confessions_vectors.rs drives all 17 vectors: the one byte-pinned hex (anonymous_confession_default, repaired by 2yps) decodes and re-encodes byte-exact; store sequences (rate 12th/13th, 30s window, FIFO 600B, BR budget, reboot warm/crash, size 768/769, ttl_expiry, get metadata, no-log) assert against vector expectations. Results: confessions_vectors 17/17, lichen-client --lib 130/130, checkin_rollcall_vectors 13/13, deaddrop_vectors 27/27; Python oracle test_confessions_resource.py 56/56; cargo fmt + clippy clean for the module. Note: listing is ts-descending (vector-pinned) which matches the Python oracle for chronological inserts; wire bytes only pinned for the default vector.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.14.9.2",

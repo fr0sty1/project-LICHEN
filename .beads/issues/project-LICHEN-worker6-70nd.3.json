@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-70nd.3",
+  "title": "BLE SenML relay driver",
+  "description": "Consume BLE scan data, lookup IPSO mapping, create SenML records, emit to mesh.\n\n**Scope:**\n- Accept (MAC, service_uuid, char_uuid, raw_value) tuples from BLE scanner\n- Lookup IPSO mapping via gatt_ipso_registry\n- Parse raw_value via gatt_value_parser\n- Construct SenML record:\n  - bn (base name): 'ble:\u003cMAC\u003e/'\n  - n (name): '\u003cobject_id\u003e/\u003cresource_id\u003e' or IPSO path\n  - v (value): parsed physical value\n  - u (unit): SenML unit from IPSO mapping\n  - t (time): relative timestamp if aggregating\n- Aggregate multiple readings within configurable window\n- Apply rate limiting (per-device and global)\n- Emit SenML pack to configured destination\n\n**CoAP config interface:**\n- GET/PUT /config/ble-relay for runtime configuration\n- enabled, max_pkt_per_device_min, max_pkt_global_min, aggregation_window_ms, destination\n\n**Dependencies:**\n- gatt_ipso_registry (subtask 1)\n- gatt_value_parser (subtask 2)\n- SenML codec (existing)\n\n**Output:** python/src/lichen/ble/senml_relay.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:52:37.897409Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:52:37.897409Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-70nd.3",
+      "depends_on_id": "project-LICHEN-worker6-70nd",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:52:38.826497Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

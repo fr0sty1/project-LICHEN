@@ -29,6 +29,13 @@ class Event:
 
     time_us: int
 
+    def __post_init__(self) -> None:
+        """Reject timestamps that cannot represent simulation microseconds."""
+        if type(self.time_us) is not int:
+            raise TypeError("time_us must be an exact integer")
+        if self.time_us < 0:
+            raise ValueError("time_us must be non-negative")
+
 
 @dataclass(frozen=True)
 class TxStartEvent(Event):
@@ -80,13 +87,11 @@ class DelayedRxReadyEvent(Event):
 def _same_tick_priority(event: Event) -> int:
     """Heap tie-break after time_us: lower runs first.
 
-    Delayed RX eligibility must beat RxTimeout at the same tick.
-    Same event types keep FIFO via insertion_order.
+    Delayed RX eligibility must beat other events at the same tick. All
+    ordinary events keep FIFO via insertion_order, including RxTimeoutEvent.
     """
     if isinstance(event, DelayedRxReadyEvent):
         return 0
-    if isinstance(event, RxTimeoutEvent):
-        return 2
     return 1
 
 
@@ -103,9 +108,9 @@ class _PrioritizedEvent:
 class EventQueue:
     """Priority queue of simulation events ordered by time.
 
-    Events are sorted by time_us. At equal time, DelayedRxReadyEvent
-    precedes other events and RxTimeoutEvent is last; remaining ties
-    break by insertion order (FIFO). Uses a heap for O(log n) push/pop.
+    Events are sorted by time_us. At equal time, DelayedRxReadyEvent precedes
+    ordinary events; ordinary-event ties break by insertion order (FIFO).
+    Uses a heap for O(log n) push/pop.
     """
 
     def __init__(self) -> None:

@@ -107,8 +107,18 @@ static inline bool snapshot_equal(const struct lichen_rpl_dao_snapshot *a,
 	if (a->candidate_count != b->candidate_count) {
 		return false;
 	}
+	bool matched[CONFIG_LICHEN_RPL_MAX_PARENTS] = { false };
 	for (int i = 0; i < a->candidate_count; i++) {
-		if (!candidate_equal(&a->candidates[i], &b->candidates[i])) {
+		bool found = false;
+
+		for (int j = 0; j < b->candidate_count; j++) {
+			if (!matched[j] && candidate_equal(&a->candidates[i], &b->candidates[j])) {
+				matched[j] = true;
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
 			return false;
 		}
 	}
@@ -155,7 +165,7 @@ static inline uint8_t increment_lollipop(uint8_t sequence)
  *
  * Called internally after snapshot mutations to reconstruct the routing table.
  */
-void rebuild_routes(struct lichen_rpl_dao_manager *dm);
+bool rebuild_routes(struct lichen_rpl_dao_manager *dm);
 
 #ifdef __cplusplus
 }

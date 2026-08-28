@@ -28,8 +28,6 @@
 #include <lichen/rpl_routing.h>
 #include "rpl_internal.h"
 
-/* Need: DAO(20) + Target(20) + TransitInfo(22) = 62 bytes, pad to 64 */
-#define LICHEN_RPL_DAO_MIN_BUF 64
 #endif
 
 /**
@@ -185,19 +183,21 @@ static int build_dao(struct lichen_rpl_dao_manager *dm,
 	if (dm == NULL || parent_addr == NULL || buf == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-	if (len < LICHEN_RPL_DAO_MIN_BUF) {
+	if (len < LICHEN_RPL_LEAF_DAO_LEN) {
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
+	uint8_t encoded[LICHEN_RPL_LEAF_DAO_LEN];
 
 	struct lichen_rpl_dao dao = {
 		.rpl_instance_id = dm->rpl_instance_id,
-		.ack_requested = true,
+		.ack_requested = false,
+		.has_dodag_id = true,
 		.flags = 0,
 		.dao_sequence = dao_sequence,
 	};
 	rpl_addr_copy(dao.dodag_id, dm->dodag_id);
 
-	int pos = lichen_rpl_dao_write(&dao, buf, len);
+	int pos = lichen_rpl_dao_write(&dao, encoded, sizeof(encoded));
 	if (pos < 0) {
 		return pos;
 	}
@@ -208,7 +208,7 @@ static int build_dao(struct lichen_rpl_dao_manager *dm,
 	};
 	rpl_addr_copy(target.prefix, dm->node_address);
 
-	int n = lichen_rpl_target_write(&target, &buf[pos], len - pos);
+	int n = lichen_rpl_target_write(&target, &encoded[pos], sizeof(encoded) - (size_t)pos);
 	if (n < 0) {
 		return n;
 	}
@@ -222,12 +222,17 @@ static int build_dao(struct lichen_rpl_dao_manager *dm,
 	};
 	rpl_addr_copy(transit.parent_address, parent_addr);
 
-	n = lichen_rpl_transit_info_write(&transit, &buf[pos], len - pos);
+	n = lichen_rpl_transit_info_write(&transit, &encoded[pos],
+					  sizeof(encoded) - (size_t)pos);
 	if (n < 0) {
 		return n;
 	}
 	pos += n;
 
+	if ((size_t)pos != sizeof(encoded)) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
+	memcpy(buf, encoded, sizeof(encoded));
 	return pos;
 }
 
@@ -246,16 +251,17 @@ static int build_dao_mut(struct lichen_rpl_dao_manager *dm,
 
 	k_mutex_lock(&dm->lock, K_FOREVER);
 
-	ret = build_dao(dm, parent_addr, path_lifetime, dm->dao_sequence,
-			dm->path_sequence, buf, len);
+	uint8_t dao_sequence = increment_lollipop(dm->dao_sequence);
+	uint8_t path_sequence = increment_lollipop(dm->path_sequence);
+	ret = build_dao(dm, parent_addr, path_lifetime, dao_sequence,
+			path_sequence, buf, len);
 	if (ret > 0) {
-		dm->dao_sequence = increment_lollipop(dm->dao_sequence);
-		dm->path_sequence = increment_lollipop(dm->path_sequence);
+		dm->dao_sequence = dao_sequence;
+		dm->path_sequence = path_sequence;
 		rpl_addr_copy(dm->last_dao_parent, parent_addr);
 		dm->last_dao_lifetime = path_lifetime;
+		dm->last_dao_path_sequence = path_sequence;
 		dm->has_last_dao_update = true;
-	} else {
-		dm->has_last_dao_update = false;
 	}
 
 	k_mutex_unlock(&dm->lock);
@@ -280,9 +286,6 @@ int lichen_rpl_dao_manager_build_dao_with_lifetime(struct lichen_rpl_dao_manager
 	if (dm == NULL || parent_addr == NULL || buf == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-	if (path_lifetime > 255) {
-		return LICHEN_RPL_ERR_INVALID;
-	}
 	return build_dao_mut(dm, parent_addr, path_lifetime, buf, len);
 }
 
@@ -297,24 +300,22 @@ int lichen_rpl_dao_manager_build_dao_copy_with_lifetime(
 	if (dm == NULL || parent_addr == NULL || buf == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
-	if (path_lifetime > 255) {
-		return LICHEN_RPL_ERR_INVALID;
-	}
-
 	k_mutex_lock(&dm->lock, K_FOREVER);
 	if (!dm->has_last_dao_update ||
 	    !rpl_addr_eq(dm->last_dao_parent, parent_addr) ||
-	    dm->last_dao_lifetime != path_lifetime) {
+	    dm->last_dao_lifetime != path_lifetime ||
+	    dm->last_dao_path_sequence != dm->path_sequence) {
 		k_mutex_unlock(&dm->lock);
 		return LICHEN_RPL_ERR_INVALID;
 	}
 
 	/* Build without advancing path_sequence, only dao_sequence. Same
 	 * lock-held snapshot+advance discipline as build_dao_mut(). */
-	ret = build_dao(dm, parent_addr, path_lifetime, dm->dao_sequence,
+	uint8_t dao_sequence = increment_lollipop(dm->dao_sequence);
+	ret = build_dao(dm, parent_addr, path_lifetime, dao_sequence,
 			dm->path_sequence, buf, len);
 	if (ret > 0) {
-		dm->dao_sequence = increment_lollipop(dm->dao_sequence);
+		dm->dao_sequence = dao_sequence;
 	}
 	k_mutex_unlock(&dm->lock);
 	return ret;
@@ -336,6 +337,7 @@ int lichen_rpl_dao_manager_build_dao_ack(struct lichen_rpl_dao_manager *dm,
 		.flags = 0,
 		.dao_sequence = dao_sequence,
 		.status = status,
+		.has_dodag_id = true,
 	};
 	rpl_addr_copy(ack.dodag_id, dm->dodag_id);
 

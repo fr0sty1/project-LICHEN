@@ -14,8 +14,8 @@ from lichen.coap.transport import InMemoryNetwork, create_lichen_context
 
 def _mesh_node_info() -> StaticNodeInfo:
     return StaticNodeInfo(
-        status={"rank": 512, "parent": "fd00::1"},
-        neighbors=[{"addr": "fd00::3", "etx": 1.2}],
+        status={"rank": 512, "parent": "0200::1"},
+        neighbors=[{"addr": "0200::3", "etx": 1.2}],
         config={"tx_power_dbm": 14},
     )
 
@@ -33,13 +33,13 @@ async def _setup(*, config_allow_writes: bool = False):
     # Mesh node: serves /status, /status/neighbors, /config
     node_info = _mesh_node_info()
     mesh_node = await create_lichen_context(
-        mesh_net.channel("fd00::2"),
-        "fd00::2",
+        mesh_net.channel("0200::2"),
+        "0200::2",
         site=build_site(node_info, config_allow_writes=config_allow_writes),
     )
 
     # Gateway mesh-side client (used by the proxy to forward requests)
-    gw_mesh_client = await create_lichen_context(mesh_net.channel("fd00::1"), "fd00::1")
+    gw_mesh_client = await create_lichen_context(mesh_net.channel("0200::1"), "0200::1")
 
     # Gateway local server: proxy resource + its own status resource
     gw_info = StaticNodeInfo(status={"rank": 256, "role": "root"})
@@ -63,13 +63,13 @@ class TestProxyForwardGet:
         local_client, gateway, mesh_node, gw_mesh = await _setup()
         try:
             msg = Message(code=GET, uri="coap://gw/proxy")
-            msg.opt.proxy_uri = "coap://[fd00::2]/status"
+            msg.opt.proxy_uri = "coap://[0200::2]/status"
             resp = await local_client.request(msg).response
 
             assert resp.code == aiocoap.CONTENT
             data = cbor2.loads(resp.payload)
             assert data["rank"] == 512
-            assert data["parent"] == "fd00::1"
+            assert data["parent"] == "0200::1"
         finally:
             await _teardown(local_client, gateway, mesh_node, gw_mesh)
 
@@ -78,13 +78,13 @@ class TestProxyForwardGet:
         local_client, gateway, mesh_node, gw_mesh = await _setup()
         try:
             msg = Message(code=GET, uri="coap://gw/proxy")
-            msg.opt.proxy_uri = "coap://[fd00::2]/status/neighbors"
+            msg.opt.proxy_uri = "coap://[0200::2]/status/neighbors"
             resp = await local_client.request(msg).response
 
             assert resp.code == aiocoap.CONTENT
             neighbors = cbor2.loads(resp.payload)
             assert len(neighbors) == 1
-            assert neighbors[0]["addr"] == "fd00::3"
+            assert neighbors[0]["addr"] == "0200::3"
         finally:
             await _teardown(local_client, gateway, mesh_node, gw_mesh)
 
@@ -92,7 +92,7 @@ class TestProxyForwardGet:
         local_client, gateway, mesh_node, gw_mesh = await _setup()
         try:
             msg = Message(code=GET, uri="coap://gw/proxy")
-            msg.opt.proxy_uri = "coap://[fd00::2]/config"
+            msg.opt.proxy_uri = "coap://[0200::2]/config"
             resp = await local_client.request(msg).response
 
             assert resp.code == aiocoap.CONTENT
@@ -124,13 +124,13 @@ class TestProxyForwardPut:
                 payload=cbor2.dumps(update),
                 content_format=aiocoap.numbers.ContentFormat.CBOR,
             )
-            msg.opt.proxy_uri = "coap://[fd00::2]/config"
+            msg.opt.proxy_uri = "coap://[0200::2]/config"
             resp = await local_client.request(msg).response
 
             assert resp.code == aiocoap.CHANGED
             # Confirm by reading back
             get = Message(code=GET, uri="coap://gw/proxy")
-            get.opt.proxy_uri = "coap://[fd00::2]/config"
+            get.opt.proxy_uri = "coap://[0200::2]/config"
             resp2 = await local_client.request(get).response
             data = cbor2.loads(resp2.payload)
             assert data["tx_power_dbm"] == 20
@@ -153,7 +153,7 @@ class TestProxyErrors:
         local_client, gateway, mesh_node, gw_mesh = await _setup()
         try:
             msg = Message(code=GET, uri="coap://gw/proxy")
-            msg.opt.proxy_uri = "coap://[fd00::99]/status"  # no such node
+            msg.opt.proxy_uri = "coap://[0200::99]/status"  # no such node
             resp = await local_client.request(msg).response
             assert resp.code == aiocoap.BAD_GATEWAY
         finally:
@@ -164,7 +164,7 @@ class TestProxyErrors:
         local_client, gateway, mesh_node, gw_mesh = await _setup()
         try:
             msg = Message(code=GET, uri="coap://gw/proxy")
-            msg.opt.proxy_uri = "coap://[fd00::2]/nonexistent"
+            msg.opt.proxy_uri = "coap://[0200::2]/nonexistent"
             resp = await local_client.request(msg).response
             assert resp.code == aiocoap.NOT_FOUND
         finally:
@@ -207,12 +207,24 @@ class TestProxySsrfProtection:
         finally:
             await _teardown(local_client, gateway, mesh_node, gw_mesh)
 
+    async def test_ula_ipv6_rejected(self) -> None:
+        """Proxy-Uri with ULA fd00::/8 returns BAD_REQUEST (not a mesh prefix)."""
+        local_client, gateway, mesh_node, gw_mesh = await _setup()
+        try:
+            msg = Message(code=GET, uri="coap://gw/proxy")
+            # fd00::/8 ULA is no longer a valid mesh prefix; native 0200::/8 is
+            msg.opt.proxy_uri = "coap://[fd00::1234:5678]/status"
+            resp = await local_client.request(msg).response
+            assert resp.code == aiocoap.BAD_REQUEST
+        finally:
+            await _teardown(local_client, gateway, mesh_node, gw_mesh)
+
     async def test_http_scheme_rejected(self) -> None:
         """Proxy-Uri with http:// scheme returns BAD_REQUEST."""
         local_client, gateway, mesh_node, gw_mesh = await _setup()
         try:
             msg = Message(code=GET, uri="coap://gw/proxy")
-            msg.opt.proxy_uri = "http://[fd00::2]/status"
+            msg.opt.proxy_uri = "http://[0200::2]/status"
             resp = await local_client.request(msg).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
@@ -262,11 +274,11 @@ class TestBuildSite:
 
         mesh_node_info = StaticNodeInfo(status={"rank": 1})
         mesh_node = await create_lichen_context(
-            mesh_net.channel("fd00::2"),
-            "fd00::2",
+            mesh_net.channel("0200::2"),
+            "0200::2",
             site=build_site(mesh_node_info),
         )
-        gw_mesh_client = await create_lichen_context(mesh_net.channel("fd00::1"), "fd00::1")
+        gw_mesh_client = await create_lichen_context(mesh_net.channel("0200::1"), "0200::1")
         gw = await create_lichen_context(
             local_net.channel("gw"),
             "gw",
@@ -275,7 +287,7 @@ class TestBuildSite:
         cli = await create_lichen_context(local_net.channel("cli"), "cli")
         try:
             msg = Message(code=GET, uri="coap://gw/proxy")
-            msg.opt.proxy_uri = "coap://[fd00::2]/status"
+            msg.opt.proxy_uri = "coap://[0200::2]/status"
             resp = await cli.request(msg).response
             assert resp.code == aiocoap.CONTENT
         finally:
@@ -288,7 +300,7 @@ class TestBuildSite:
         """Discovery advertises optional /proxy and not a /mesh proxy alias."""
         mesh_net = InMemoryNetwork()
         local_net = InMemoryNetwork()
-        gw_mesh_client = await create_lichen_context(mesh_net.channel("fd00::1"), "fd00::1")
+        gw_mesh_client = await create_lichen_context(mesh_net.channel("0200::1"), "0200::1")
         gw = await create_lichen_context(
             local_net.channel("gw"),
             "gw",

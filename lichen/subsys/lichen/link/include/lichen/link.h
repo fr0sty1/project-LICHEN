@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 
 #ifdef __ZEPHYR__
 #include <zephyr/sys/util.h>
@@ -361,7 +362,7 @@ int lichen_link_relay_raw(struct lichen_link_ctx *_Nonnull ctx,
  */
 struct lichen_link_rx_ctx {
 	const uint8_t *_Nullable peer_pubkey;  /**< 32-byte peer public key (NULL if unknown) */
-	const uint8_t *_Nonnull peer_eui64;    /**< 8-byte peer EUI-64 for MIC nonce */
+	const uint8_t *_Nullable peer_eui64;   /**< Optional canonical 8-byte peer EUI-64 */
 	const uint8_t *_Nullable link_key;     /**< Retained legacy key (NULL to skip) */
 	uint32_t current_time;                 /**< Current timestamp for replay aging */
 };
@@ -415,6 +416,26 @@ int lichen_link_rx_payload(struct lichen_link_rx_ctx *_Nonnull ctx,
 			   const uint8_t *_Nonnull frame, size_t frame_len,
 			   uint8_t *_Nonnull out_payload, size_t *_Nonnull out_len,
 			   struct lichen_link_rx_payload_info *_Nonnull info);
+
+/**
+ * @brief Authenticate an incoming frame, then re-sign its payload for relay.
+ *
+ * The incoming signature and optional replay state are verified/committed
+ * before any relay frame is produced. The relayed frame uses the local
+ * context's destination, nonce tuple, canonical SIID, and signature while
+ * preserving the authenticated inner payload byte-for-byte. Caller output and
+ * length are unchanged on failure. Input and output buffers may overlap.
+ *
+ * @return 0 on success, or the negative parse/auth/replay/TX error.
+ */
+int lichen_link_relay_frame(struct lichen_link_rx_ctx *_Nonnull rx_ctx,
+			    struct lichen_replay_table *_Nullable replay,
+			    struct lichen_link_ctx *_Nonnull tx_ctx,
+			    const uint8_t *_Nonnull incoming_frame,
+			    size_t incoming_len,
+			    const uint8_t *_Nullable dst_eui64,
+			    uint8_t *_Nonnull out_frame,
+			    size_t *_Nonnull out_len);
 
 /**
  * @brief Parse a LICHEN frame and extract the IPv6 packet.
@@ -496,8 +517,9 @@ uint32_t lichen_hash_32(const uint8_t *_Nonnull data, size_t len);
  * @param[in]  eui64       8-byte EUI-64 address (big-endian)
  * @param[in]  epoch       Current epoch (key-rotation counter from link context)
  * @param[in]  density     Neighbor density count (0-8 normal; >8 forces channel 0)
- * @param[in]  num_channels Number of available channels (clamped to min 3)
- * @param[out] channel     Selected channel (0 = control channel, or 1..num_channels)
+ * @param[in]  num_channels Total channel count, including reserved channel 0
+ * @param[out] channel     Selected channel (0 = control/no data channel, or
+ *                         1..num_channels-1)
  *
  * @return 0 on success, -EINVAL if eui64 or channel is NULL
  */
@@ -562,6 +584,63 @@ struct lichen_time_source_candidate {
 struct lichen_monotonic_uptime {
 	uint64_t last_ticks;
 	bool initialized;
+};
+
+#define LICHEN_DRIFT_TYPICAL_TCXO_PPM 20U
+#define LICHEN_DRIFT_MAX_HOLDOVER_PPM 5000U
+
+/** Bounded oscillator-drift estimator for one power cycle. */
+struct lichen_drift_tracker {
+	uint64_t last_observed_ms;
+	int64_t last_offset_ms;
+	uint64_t base_bound_us;
+	int64_t measured_drift_ppm;
+	uint32_t oscillator_bound_ppm;
+	uint32_t max_holdover_ppm;
+	enum lichen_time_source_class source;
+	atomic_flag lock;
+	bool initialized;
+	bool has_observation;
+	bool has_rate_estimate;
+	bool expired;
+};
+
+/** Atomic drift/holdover state returned to scheduling code. */
+struct lichen_drift_snapshot {
+	uint64_t age_ms;
+	uint64_t error_bound_us;
+	int64_t measured_drift_ppm;
+	uint32_t rate_bound_ppm;
+	enum lichen_time_source_class source;
+	bool has_rate_estimate;
+	bool expired;
+};
+
+enum lichen_holdover_state {
+	LICHEN_HOLDOVER_INVALID = 0,
+	LICHEN_HOLDOVER_FRESH = 1,
+	LICHEN_HOLDOVER_VALID = 2,
+	LICHEN_HOLDOVER_EXPIRED = 3,
+};
+
+/** Fixed scheduling uncertainty terms applied to the local drift envelope. */
+struct lichen_holdover_policy {
+	uint64_t guard_us;
+	uint64_t peer_bound_us;
+	uint64_t local_jitter_us;
+	uint64_t peer_jitter_us;
+	uint64_t propagation_us;
+	uint64_t margin_us;
+	uint64_t max_holdover_ms;
+};
+
+/** Fail-closed scheduling decision for the current holdover age. */
+struct lichen_holdover_decision {
+	struct lichen_drift_snapshot drift;
+	uint64_t required_guard_us;
+	uint64_t remaining_guard_us;
+	enum lichen_holdover_state state;
+	bool tx_allowed;
 };
 
 #define LICHEN_WALL_CLOCK_DEFAULT_FRESH_S 300U
@@ -647,7 +726,8 @@ struct lichen_dio_time_option {
 
 #ifdef CONFIG_LICHEN_CCP_TIME_SYNC
 /* Time source class helpers */
-const char *lichen_time_source_class_str(enum lichen_time_source_class source);
+const char *_Nonnull lichen_time_source_class_str(
+	enum lichen_time_source_class source);
 bool lichen_time_source_can_establish_wall_clock(enum lichen_time_source_class source);
 
 /* Monotonic uptime tracking (single power cycle) */
@@ -661,6 +741,38 @@ int lichen_monotonic_uptime_now(
 int lichen_monotonic_uptime_sample(
 	struct lichen_monotonic_uptime *_Nonnull uptime,
 	uint64_t *_Nonnull ticks);
+
+/* Drift estimation and holdover error envelope */
+int lichen_drift_bound_compute(uint64_t initial_bound, uint64_t rate,
+			       uint64_t elapsed, uint64_t *_Nonnull bound);
+int lichen_drift_ppm_compute(int64_t delta_ms, uint64_t interval_ms,
+			     int64_t *_Nonnull drift_ppm);
+int lichen_drift_correction_ms(int64_t drift_ppm, int64_t future_delta_ms,
+			       int64_t *_Nonnull correction_ms);
+bool lichen_drift_holdover_expired(int64_t measured_drift_ppm,
+				    uint32_t guard_ppm);
+int lichen_drift_tracker_init(struct lichen_drift_tracker *_Nonnull tracker,
+			      uint32_t oscillator_bound_ppm,
+			      uint32_t max_holdover_ppm);
+int lichen_drift_tracker_observe(
+	struct lichen_drift_tracker *_Nonnull tracker,
+	enum lichen_time_source_class source,
+	uint64_t observed_monotonic_ms,
+	int64_t offset_ms,
+	uint64_t measurement_bound_us);
+int lichen_drift_tracker_snapshot(
+	struct lichen_drift_tracker *_Nonnull tracker,
+	uint64_t now_monotonic_ms,
+	struct lichen_drift_snapshot *_Nonnull snapshot);
+int lichen_holdover_evaluate(
+	struct lichen_drift_tracker *_Nonnull tracker,
+	uint64_t now_monotonic_ms,
+	const struct lichen_holdover_policy *_Nonnull policy,
+	struct lichen_holdover_decision *_Nonnull decision);
+bool lichen_holdover_tx_allowed(
+	struct lichen_drift_tracker *_Nonnull tracker,
+	uint64_t now_monotonic_ms,
+	const struct lichen_holdover_policy *_Nonnull policy);
 
 /* Time source precedence and fallback */
 int lichen_time_source_precedence_default(
@@ -699,7 +811,8 @@ int lichen_epoch_floor_set_provision(uint32_t provision_epoch,
 				     enum lichen_provision_status *_Nonnull status);
 uint32_t lichen_epoch_floor_get(void);
 bool lichen_epoch_floor_accepts(uint32_t unix_time);
-const char *lichen_provision_status_str(enum lichen_provision_status status);
+const char *_Nonnull lichen_provision_status_str(
+	enum lichen_provision_status status);
 
 /* DIO Time Option encode/decode */
 int lichen_dio_time_option_encode(const struct lichen_dio_time_option *_Nonnull opt,

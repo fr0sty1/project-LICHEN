@@ -522,7 +522,9 @@ async def test_context_replacement_rejects_stale_generation(tmp_path: Path) -> N
     """Verify context replacement rejects stale generation."""
     store = SqliteOscoreContextStore(tmp_path / "contexts.sqlite3")
     await store.put("peer", make_context(b"a" * 16), b"peer-key")
-    replacement = await store.put("peer", make_context(b"b" * 16), b"peer-key", expected_generation=1)
+    replacement = await store.put(
+        "peer", make_context(b"b" * 16), b"peer-key", expected_generation=1
+    )
     assert replacement.generation == 2
 
     with pytest.raises(ContextGenerationError):
@@ -654,7 +656,8 @@ async def test_independent_channels_send_unique_sequences(tmp_path: Path) -> Non
         *(second._send_protected(make_request(mid), "peer") for mid in range(10, 20)),
     )
 
-    partial_ivs = [extract_partial_iv(datagram) for datagram, _ in first_inner.sent + second_inner.sent]
+    all_sent = first_inner.sent + second_inner.sent
+    partial_ivs = [extract_partial_iv(datagram) for datagram, _ in all_sent]
     assert len(partial_ivs) == 20
     assert len(set(partial_ivs)) == 20
 

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-frmd",
+  "title": "[review] reconcile RX8130CE battery-switchover mode 2 semantics vs datasheet (driver comment contradicts binding)",
+  "description": "P3, potential HW config footgun. lichen/dts/bindings/rtc/lichen,rx8130ce-rtc.yaml:36 says mode 2 = NON-rechargeable (matches upstream binding), while lichen/drivers/rtc/rtc_rx8130ce.c:236 comment (copied from upstream driver, upstream:712) says mode 2 = rechargeable. Register writes identical to upstream; the two upstream docs disagree. Resolve against the RX8130CE datasheet (section on VLOW/backup switchover, INIEN/CHGEN bits) and fix the losing description. Non-rechargeable cell + charging enabled can damage hardware, so getting the doc right matters. Cross-check the other 3 modes while in there.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:33:18.596113Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:33:18.596113Z",
+  "labels": [
+    "local-ok"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-frmd",
+      "depends_on_id": "project-LICHEN-worker6-yqy6.2.11",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T05:33:19.448882Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

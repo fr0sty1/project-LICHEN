@@ -107,7 +107,32 @@ static void fill_string(char *str, size_t len, char ch)
 	str[len] = '\0';
 }
 
+static size_t hex_decode(const char *hex, uint8_t *out, size_t out_len)
+{
+	size_t len = strlen(hex) / 2U;
+
+	if (len > out_len || (strlen(hex) & 1U) != 0U) {
+		return 0U;
+	}
+	for (size_t i = 0; i < len; i++) {
+		unsigned int value;
+
+		if (sscanf(&hex[i * 2U], "%2x", &value) != 1) {
+			return 0U;
+		}
+		out[i] = (uint8_t)value;
+	}
+	return len;
+}
+
 /* ─── tests ───────────────────────────────────────────────────────────────── */
+
+static int test_content_format(void)
+{
+	ASSERT_EQ(SENML_CBOR_CONTENT_FORMAT, 112,
+		  "application/senml+cbor Content-Format");
+	return 1;
+}
 
 static int test_encode_temperature(void)
 {
@@ -596,6 +621,158 @@ static int test_add_float_t_rejects_inf(void)
 	return 1;
 }
 
+static int test_binary_data_round_trip(void)
+{
+	static const uint8_t data[] = { 0x00, 0xff, 0x10 };
+	static const uint8_t expected[] = {
+		0x81, 0xa2, 0x00, 0x63, 0x72, 0x61, 0x77,
+		0x08, 0x43, 0x00, 0xff, 0x10
+	};
+	struct senml_pack encoded;
+	struct senml_decoded_pack decoded;
+	uint8_t buf[32];
+	int ret;
+
+	ASSERT_EQ(senml_pack_init(&encoded, NULL, 0U), 0, "data pack init");
+	ASSERT_EQ(senml_add_data(&encoded, "raw", data, sizeof(data)), 0,
+		  "add binary data");
+	ret = senml_encode_cbor(&encoded, buf, sizeof(buf));
+	ASSERT_EQ(ret, (int)sizeof(expected), "binary data encoded length");
+	ASSERT_MEM_EQ(buf, expected, sizeof(expected), "binary data canonical bytes");
+	ASSERT_EQ(senml_decode_cbor(buf, (size_t)ret, &decoded), 0,
+		  "decode encoded binary data");
+	ASSERT_EQ(decoded.record_count, 1, "one decoded data record");
+	ASSERT_EQ(decoded.records[0].value_type, SENML_VALUE_DATA,
+		  "decoded data value type");
+	ASSERT_EQ(decoded.records[0].data_value.len, sizeof(data),
+		  "decoded data length");
+	ASSERT_MEM_EQ(decoded.records[0].data_value.data, data, sizeof(data),
+		      "decoded data bytes");
+	ASSERT_EQ(senml_add_data(&encoded, "bad", NULL, 1U), -EINVAL,
+		  "non-empty NULL data rejected");
+	ASSERT_EQ(senml_add_data(&encoded, "large", data,
+				 SENML_MAX_DATA_LEN + 1U), -EMSGSIZE,
+		  "oversized data rejected before access");
+
+	return 1;
+}
+
+static int test_decode_full_rfc8428_vector(void)
+{
+	static const char full_fields_hex[] =
+		"85a621781d75726e3a6465763a6d61633a303031313232333334343535363637373a"
+		"221a6553f100236343656c24fb3ff800000000000025fb4004000000000000200a"
+		"a6006474656d70016343656c02fb403580000000000005fb4059100000000000"
+		"062107181ea2006673746174757303626f6ba2006661637469766504f5"
+		"a20063726177084300ff10";
+	uint8_t buf[256];
+	struct senml_decoded_pack pack;
+	size_t len = hex_decode(full_fields_hex, buf, sizeof(buf));
+
+	ASSERT_EQ(len > 0U, true, "decode full-fields hex fixture");
+	ASSERT_EQ(senml_decode_cbor(buf, len, &pack), 0,
+		  "decode senml_full_fields.json");
+	ASSERT_EQ(pack.record_count, 5, "full vector record count");
+	ASSERT_EQ(pack.records[0].has_base_name, true, "base name present");
+	ASSERT_EQ(pack.records[0].base_name.len, 29, "base name length");
+	ASSERT_EQ(pack.records[0].has_base_time, true, "base time present");
+	ASSERT_EQ(pack.records[0].base_time == 1700000000.0, true,
+		  "base time value");
+	ASSERT_EQ(pack.records[0].has_base_unit, true, "base unit present");
+	ASSERT_EQ(pack.records[0].has_base_value, true, "base value present");
+	ASSERT_EQ(pack.records[0].base_value == 1.5, true, "base value");
+	ASSERT_EQ(pack.records[0].has_base_sum, true, "base sum present");
+	ASSERT_EQ(pack.records[0].base_sum == 2.5, true, "base sum");
+	ASSERT_EQ(pack.records[0].base_version, 10, "base version");
+	ASSERT_EQ(pack.records[1].value_type, SENML_VALUE_FLOAT,
+		  "numeric value type");
+	ASSERT_EQ(pack.records[1].value == 21.5, true, "numeric value");
+	ASSERT_EQ(pack.records[1].sum == 100.25, true, "sum value");
+	ASSERT_EQ(pack.records[1].time == -2.0, true, "negative time");
+	ASSERT_EQ(pack.records[1].update_time == 30.0, true, "update time");
+	ASSERT_EQ(pack.records[2].value_type, SENML_VALUE_STRING,
+		  "string value type");
+	ASSERT_EQ(pack.records[3].value_type, SENML_VALUE_BOOL,
+		  "boolean value type");
+	ASSERT_EQ(pack.records[3].bool_value, true, "boolean value");
+	ASSERT_EQ(pack.records[4].value_type, SENML_VALUE_DATA,
+		  "data value type");
+	ASSERT_EQ(pack.records[4].data_value.len, 3, "data value length");
+
+	return 1;
+}
+
+static int test_decode_rejects_malformed_inputs(void)
+{
+	static const uint8_t not_array[] = { 0xa0 };
+	static const uint8_t empty_array[] = { 0x80 };
+	static const uint8_t record_not_map[] = { 0x81, 0x00 };
+	static const uint8_t duplicate_name[] = {
+		0x81, 0xa2, 0x00, 0x61, 0x61, 0x00, 0x61, 0x62
+	};
+	static const uint8_t multiple_values[] = {
+		0x81, 0xa2, 0x02, 0xfa, 0x3f, 0x80, 0x00, 0x00,
+		0x03, 0x61, 0x31
+	};
+	static const uint8_t nan_value[] = {
+		0x81, 0xa1, 0x02, 0xfa, 0x7f, 0xc0, 0x00, 0x00
+	};
+	static const uint8_t invalid_utf8[] = {
+		0x81, 0xa1, 0x00, 0x61, 0xff
+	};
+	static const uint8_t mandatory_extension[] = {
+		0x81, 0xa1, 0x62, 0x78, 0x5f, 0x00
+	};
+	static const uint8_t trailing[] = { 0x81, 0xa0, 0x00 };
+	static const uint8_t too_many_records[] = { 0x91 };
+	static const uint8_t huge_text_length[] = {
+		0x81, 0xa1, 0x00, 0x7b,
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+	};
+	static const uint8_t wrong_unit_type[] = {
+		0x81, 0xa3, 0x00, 0x63, 0x6c, 0x61, 0x74, 0x01, 0x18, 0x7b,
+		0x02, 0xfb, 0x40, 0x42, 0xe3, 0x30, 0xdf, 0x9b, 0xdc, 0x6a
+	};
+	static const uint8_t wrong_value_type[] = {
+		0x81, 0xa3, 0x00, 0x63, 0x6c, 0x61, 0x74,
+		0x01, 0x63, 0x6c, 0x61, 0x74,
+		0x02, 0x65, 0x33, 0x37, 0x2e, 0x37, 0x37
+	};
+	struct {
+		const uint8_t *data;
+		size_t len;
+		int error;
+	} cases[] = {
+		{ not_array, sizeof(not_array), -EINVAL },
+		{ empty_array, sizeof(empty_array), -EINVAL },
+		{ record_not_map, sizeof(record_not_map), -EINVAL },
+		{ duplicate_name, sizeof(duplicate_name), -EINVAL },
+		{ multiple_values, sizeof(multiple_values), -EINVAL },
+		{ nan_value, sizeof(nan_value), -EINVAL },
+		{ invalid_utf8, sizeof(invalid_utf8), -EINVAL },
+		{ mandatory_extension, sizeof(mandatory_extension), -EINVAL },
+		{ trailing, sizeof(trailing), -EINVAL },
+		{ too_many_records, sizeof(too_many_records), -ENOMEM },
+		{ huge_text_length, sizeof(huge_text_length), -EINVAL },
+		{ wrong_unit_type, sizeof(wrong_unit_type), -EINVAL },
+		{ wrong_value_type, sizeof(wrong_value_type), -EINVAL },
+	};
+	struct senml_decoded_pack pack;
+
+	for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		memset(&pack, 0xa5, sizeof(pack));
+		ASSERT_EQ(senml_decode_cbor(cases[i].data, cases[i].len, &pack),
+			  cases[i].error, "malformed CBOR rejected");
+		ASSERT_EQ(pack.record_count, 0, "failed decode clears record count");
+	}
+	ASSERT_EQ(senml_decode_cbor(NULL, 1U, &pack), -EINVAL,
+		  "NULL input rejected");
+	ASSERT_EQ(senml_decode_cbor(not_array, sizeof(not_array), NULL), -EINVAL,
+		  "NULL output rejected");
+
+	return 1;
+}
+
 /* ─── test runner ─────────────────────────────────────────────────────────── */
 
 #define RUN_TEST(fn) do { \
@@ -612,6 +789,7 @@ int main(void)
 	printf("SenML Encoder Tests\n");
 	printf("===================\n\n");
 
+	RUN_TEST(test_content_format);
 	RUN_TEST(test_encode_temperature);
 	RUN_TEST(test_encode_boolean);
 	RUN_TEST(test_base_time_uint64_high);
@@ -635,6 +813,9 @@ int main(void)
 	RUN_TEST(test_add_float_rejects_inf);
 	RUN_TEST(test_add_float_t_rejects_nan);
 	RUN_TEST(test_add_float_t_rejects_inf);
+	RUN_TEST(test_binary_data_round_trip);
+	RUN_TEST(test_decode_full_rfc8428_vector);
+	RUN_TEST(test_decode_rejects_malformed_inputs);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

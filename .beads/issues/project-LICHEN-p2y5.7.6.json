@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.7.6",
+  "title": "Define configuration schema for LICHEN group/realm to IRC channel mapping",
+  "description": "Define a configuration schema that maps LICHEN groups/realms to IRC channels. The schema should support: IRC server connection details (host, port, TLS, nick, password), channel-to-group mappings (IRC channel -\u003e LICHEN group/realm), authorization rules (which IRC nicks/hostmasks can send to LICHEN), rate limit parameters, queue bounds, and store-and-forward settings. Use Pydantic or similar for validation. Configuration should be loadable from YAML/JSON files with secrets kept in protected runtime config.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:59.711981Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:59.711981Z",
+  "labels": [
+    "core",
+    "gateway",
+    "python",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.7.6",
+      "depends_on_id": "project-LICHEN-p2y5.7",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:03.79753Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

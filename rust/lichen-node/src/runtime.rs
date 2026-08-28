@@ -85,7 +85,7 @@ pub struct RplRuntime {
     last_now_ms: u64,
     next_maintenance_ms: Option<u64>,
     pending_action: Option<RplRuntimeAction>,
-    bound_generation: u64,
+    bound_generation: Option<u64>,
 }
 
 impl RplRuntime {
@@ -95,7 +95,7 @@ impl RplRuntime {
             last_now_ms: now_ms,
             next_maintenance_ms: now_ms.checked_add(config.maintenance_interval_ms),
             pending_action: None,
-            bound_generation: 0,
+            bound_generation: None,
         }
     }
 
@@ -113,10 +113,13 @@ impl RplRuntime {
         if self.pending_action.is_some() {
             return Err(RplRuntimeActionError::PollWithPending);
         }
-        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+        if self
+            .bound_generation
+            .is_some_and(|bound| bound != stack_generation)
+        {
             return Err(RplRuntimeActionError::StaleGeneration);
         }
-        self.bound_generation = stack_generation;
+        self.bound_generation = Some(stack_generation);
         let (now_ms, maintenance) = self.observe(node, observed_now_ms);
         let action = self.next_action(node, now_ms);
         self.pending_action = Some(action);
@@ -136,7 +139,10 @@ impl RplRuntime {
         observed_now_ms: u64,
         stack_generation: u64,
     ) -> Result<(u64, Option<RplMaintenanceOutcome>), RplRuntimeActionError> {
-        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+        if self
+            .bound_generation
+            .is_some_and(|bound| bound != stack_generation)
+        {
             return Err(RplRuntimeActionError::StaleGeneration);
         }
         if !matches!(action, RplRuntimeAction::Receive { .. }) {
@@ -151,7 +157,10 @@ impl RplRuntime {
         action: RplRuntimeAction,
         stack_generation: u64,
     ) -> Result<u32, RplRuntimeActionError> {
-        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+        if self
+            .bound_generation
+            .is_some_and(|bound| bound != stack_generation)
+        {
             return Err(RplRuntimeActionError::StaleGeneration);
         }
         let RplRuntimeAction::Receive { timeout_ms } = action else {
@@ -170,7 +179,10 @@ impl RplRuntime {
         observed_now_ms: u64,
         stack_generation: u64,
     ) -> Result<(Option<RplMaintenanceOutcome>, bool), RplRuntimeActionError> {
-        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+        if self
+            .bound_generation
+            .is_some_and(|bound| bound != stack_generation)
+        {
             return Err(RplRuntimeActionError::StaleGeneration);
         }
         if action != RplRuntimeAction::TrickleTransmit {
@@ -192,7 +204,10 @@ impl RplRuntime {
         rand_offset: u32,
         stack_generation: u64,
     ) -> Result<Option<RplMaintenanceOutcome>, RplRuntimeActionError> {
-        if self.bound_generation != 0 && self.bound_generation != stack_generation {
+        if self
+            .bound_generation
+            .is_some_and(|bound| bound != stack_generation)
+        {
             return Err(RplRuntimeActionError::StaleGeneration);
         }
         if action != RplRuntimeAction::TrickleExpire {
@@ -352,6 +367,54 @@ mod tests {
     }
 
     #[test]
+    fn pending_action_and_generation_failures_preserve_runtime_state() {
+        let mut node = node();
+        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
+        let first = runtime.poll(&mut node, 0, 7).unwrap();
+
+        assert_eq!(
+            runtime.poll(&mut node, 1, 7),
+            Err(RplRuntimeActionError::PollWithPending)
+        );
+        assert_eq!(
+            runtime.poll(&mut node, 1, 8),
+            Err(RplRuntimeActionError::PollWithPending)
+        );
+        assert_eq!(
+            runtime.complete_receive(&mut node, first.action, 1, 8),
+            Err(RplRuntimeActionError::StaleGeneration)
+        );
+        assert_eq!(
+            runtime.poll(&mut node, 1, 7),
+            Err(RplRuntimeActionError::PollWithPending)
+        );
+
+        runtime
+            .complete_receive(&mut node, first.action, 1, 7)
+            .unwrap();
+        assert_eq!(
+            runtime.poll(&mut node, 2, 8),
+            Err(RplRuntimeActionError::StaleGeneration)
+        );
+        assert_eq!(runtime.poll(&mut node, 2, 7).unwrap().generation, 7);
+    }
+
+    #[test]
+    fn generation_zero_is_bound_instead_of_treated_as_uninitialized() {
+        let mut node = node();
+        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
+        let first = runtime.poll(&mut node, 0, 0).unwrap();
+
+        runtime
+            .complete_receive(&mut node, first.action, 1, 0)
+            .unwrap();
+        assert_eq!(
+            runtime.poll(&mut node, 1, 1),
+            Err(RplRuntimeActionError::StaleGeneration)
+        );
+    }
+
+    #[test]
     fn maintenance_runs_at_exact_boundary_and_keeps_original_cadence() {
         let mut node = node();
         let config = RplRuntimeConfig::new(1_000, 10_000).unwrap();
@@ -412,14 +475,11 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "depends on DAO admission state changes not yet integrated with Router::new_root"]
     fn runtime_expires_idle_dao_at_exact_literal_boundary() {
         let mut node = root();
         let root_addr = node.node().node_id.link_local_addr().0;
         let identity = Identity::from_seed(Seed::new([2; 32]));
-        let mut target = [0u8; 16];
-        target[..2].copy_from_slice(&[0xfe, 0x80]);
-        target[8..].copy_from_slice(&identity.iid);
+        let target = lichen_core::addr::ygg_addr_from_pubkey(identity.pubkey.as_bytes());
         let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
         let dao = sender.build_dao_with_lifetime(root_addr, 1);
         assert!(node.router.set_dao_lifetime_unit(1));

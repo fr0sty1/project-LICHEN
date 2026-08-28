@@ -1,0 +1,145 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "CCP-5 Coordination Mechanism Negotiation vectors (spec/02a-tdma.md). Tests priority order: SCHEDULED > HASH_BASED > ANNOUNCE_DRIVEN > FALLBACK. Uses lichen_coordination_mechanism enum values from link.h:165-170. Independent of ccp9*.json content-layer tests; this file tests the mechanism SELECTION logic.",
+  "vectors": [
+    {
+      "name": "priority_scheduled_wins_all",
+      "description": "SCHEDULED mechanism wins when TDMA slot is assigned, even with known peer, announce channel, and SFN available. Priority 1 (highest).",
+      "inputs": {
+        "peer_eui64": "aabbccddeeff0011",
+        "peer_known": true,
+        "announce_rx_channel": 3,
+        "sfn": 100,
+        "num_channels": 8,
+        "tdma_slot_assigned": true,
+        "assigned_slot": 5,
+        "assigned_channel": 4
+      },
+      "expected": {
+        "mechanism": "scheduled",
+        "mechanism_enum": 1,
+        "channel": 4,
+        "slot": 5
+      }
+    },
+    {
+      "name": "priority_hash_wins_over_announce",
+      "description": "HASH_BASED mechanism wins when peer is known and SFN is available, even with announce channel present. Priority 2.",
+      "inputs": {
+        "peer_eui64": "0011223344556677",
+        "peer_known": true,
+        "announce_rx_channel": 6,
+        "sfn": 42,
+        "num_channels": 8,
+        "tdma_slot_assigned": false
+      },
+      "expected": {
+        "mechanism": "hash_based",
+        "mechanism_enum": 0,
+        "channel_nonzero": true
+      }
+    },
+    {
+      "name": "priority_announce_wins_over_fallback",
+      "description": "ANNOUNCE_DRIVEN mechanism wins when announce channel present and peer known but no SFN (so hash tier skipped). Receiving an Announce implies the peer is known. Priority 3.",
+      "inputs": {
+        "peer_eui64": "1122334455667788",
+        "peer_known": true,
+        "announce_rx_channel": 5,
+        "sfn": null,
+        "num_channels": 8,
+        "tdma_slot_assigned": false,
+        "has_announce_channel": true
+      },
+      "expected": {
+        "mechanism": "announce_driven",
+        "mechanism_enum": 2,
+        "channel": 5
+      }
+    },
+    {
+      "name": "priority_fallback_when_nothing_available",
+      "description": "FALLBACK to CH0 when no TDMA slot, unknown peer, no announce channel. Priority 4 (lowest).",
+      "inputs": {
+        "peer_eui64": "deadbeefcafe0001",
+        "peer_known": false,
+        "announce_rx_channel": null,
+        "sfn": null,
+        "num_channels": 8,
+        "tdma_slot_assigned": false
+      },
+      "expected": {
+        "mechanism": "fallback",
+        "mechanism_enum": 3,
+        "channel": 0,
+        "slot": 0
+      }
+    },
+    {
+      "name": "hash_requires_peer_known",
+      "description": "HASH_BASED requires peer_known=true; unknown peer with SFN still falls through to FALLBACK.",
+      "inputs": {
+        "peer_eui64": "fedcba9876543210",
+        "peer_known": false,
+        "sfn": 999,
+        "num_channels": 8,
+        "tdma_slot_assigned": false
+      },
+      "expected": {
+        "mechanism": "fallback",
+        "mechanism_enum": 3,
+        "channel": 0
+      }
+    },
+    {
+      "name": "hash_requires_sfn",
+      "description": "HASH_BASED requires SFN; known peer without SFN falls through to announce or fallback.",
+      "inputs": {
+        "peer_eui64": "0011223344556677",
+        "peer_known": true,
+        "sfn": null,
+        "announce_rx_channel": 2,
+        "num_channels": 8,
+        "tdma_slot_assigned": false,
+        "has_announce_channel": true
+      },
+      "expected": {
+        "mechanism": "announce_driven",
+        "mechanism_enum": 2,
+        "channel": 2
+      }
+    },
+    {
+      "name": "enum_wire_mapping",
+      "description": "Coordination mechanism enum values match link.h:157-162 and wire strings. MUST be bit-identical across implementations.",
+      "inputs": {},
+      "expected": {
+        "enum_mapping": {
+          "hash_based": 0,
+          "scheduled": 1,
+          "announce_driven": 2,
+          "fallback": 3
+        }
+      }
+    },
+    {
+      "name": "priority_chain_exhaustive",
+      "description": "Full priority chain: each tier blocks lower tiers. Implementations MUST check in order: SCHEDULED -> HASH -> ANNOUNCE -> FALLBACK. Note: has_announce=true implies peer_known=true (you cannot have an announce from an unknown peer).",
+      "inputs": {
+        "test_cases": [
+          {"has_tdma": true, "peer_known": true, "has_announce": true, "expected_mechanism": "scheduled"},
+          {"has_tdma": true, "peer_known": true, "has_announce": false, "expected_mechanism": "scheduled"},
+          {"has_tdma": true, "peer_known": false, "has_announce": false, "expected_mechanism": "scheduled"},
+          {"has_tdma": false, "peer_known": true, "has_sfn": true, "has_announce": true, "expected_mechanism": "hash_based"},
+          {"has_tdma": false, "peer_known": true, "has_sfn": true, "has_announce": false, "expected_mechanism": "hash_based"},
+          {"has_tdma": false, "peer_known": true, "has_sfn": false, "has_announce": true, "expected_mechanism": "announce_driven"},
+          {"has_tdma": false, "peer_known": false, "has_announce": false, "expected_mechanism": "fallback"}
+        ]
+      },
+      "expected": {
+        "description": "Each test_case.expected_mechanism is the sole valid outcome for that input combination."
+      }
+    }
+  ]
+}

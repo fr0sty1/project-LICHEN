@@ -52,22 +52,21 @@ fn lollipop_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
     if a == b {
         return Some(core::cmp::Ordering::Equal);
     }
-    let a_linear = a < 128;
-    let b_linear = b < 128;
-    if a_linear == b_linear {
-        // Serial arithmetic with mod-128 window per RFC 6550 Section 7.2.
-        // Matches rust/lichen-rpl routing.rs seq_is_newer formulation.
-        let diff_a_minus_b = a.wrapping_sub(b) & 0x7F;
-        let diff_b_minus_a = b.wrapping_sub(a) & 0x7F;
-        if (1..=16).contains(&diff_a_minus_b) {
-            Some(core::cmp::Ordering::Greater)
-        } else if (1..=16).contains(&diff_b_minus_a) {
-            Some(core::cmp::Ordering::Less)
-        } else {
+    let a_circular = a < 128;
+    let b_circular = b < 128;
+    if a_circular == b_circular {
+        // RFC 6550 §7.2 rule 3.2 tests the absolute magnitude before
+        // applying RFC 1982 ordering. Reducing modulo 128 first would
+        // incorrectly make distant pairs such as 0 and 127 comparable.
+        if a.abs_diff(b) > 16 {
             None
+        } else if a > b {
+            Some(core::cmp::Ordering::Greater)
+        } else {
+            Some(core::cmp::Ordering::Less)
         }
-    } else if a_linear {
-        // a in linear (0-127), b in circular (128-255)
+    } else if a_circular {
+        // a in circular (0-127), b in linear (128-255)
         // Wrap distance from b to a: 256 - b + a
         let wrap_distance = 256 - b as u16 + a as u16;
         if wrap_distance <= 16 {
@@ -76,7 +75,7 @@ fn lollipop_cmp(a: u8, b: u8) -> Option<core::cmp::Ordering> {
             Some(core::cmp::Ordering::Less)
         }
     } else {
-        // a in circular (128-255), b in linear (0-127)
+        // a in linear (128-255), b in circular (0-127)
         // Wrap distance from a to b: 256 - a + b
         let wrap_distance = 256 - a as u16 + b as u16;
         if wrap_distance <= 16 {
@@ -1086,8 +1085,8 @@ mod tests {
     fn version_lollipop_semantics() {
         use core::cmp::Ordering::{Equal, Greater, Less};
 
-        // Serial-arithmetic lollipop (mod-128 same-region, RFC 6550 Section 7.2).
-        // Same-region pairs now use directional wrap: (a-b)&0x7F in 1..=16 means a newer.
+        // RFC 6550 Section 7.2 applies the absolute-magnitude window before
+        // RFC 1982 ordering. Distant same-region pairs are incomparable.
         let cases = [
             (0, 0, Some(Equal)),
             (128, 128, Some(Equal)),
@@ -1095,9 +1094,11 @@ mod tests {
             (17, 0, None),
             (0, 16, Some(Less)),
             (0, 17, None),
-            (0, 127, Some(Greater)), // (0-127)&0x7F = 1, in 1..=16
-            (127, 0, Some(Less)),    // (127-0)&0x7F = 127, reverse diff 1 in 1..=16
-            (120, 5, Some(Less)),    // (120-5)&0x7F = 115; (5-120)&0x7F = 13, in 1..=16
+            (0, 127, None),
+            (127, 0, None),
+            (120, 5, None),
+            (5, 100, None),
+            (100, 5, None),
             (255, 239, Some(Greater)),
             (255, 238, None),
             (5, 250, Some(Greater)),
@@ -1111,13 +1112,50 @@ mod tests {
     }
 
     #[test]
-    fn dodag_version_serial_arithmetic_lollipop() {
-        // Serial arithmetic: 0 is 1 step newer than 127 (mod-128 wrap).
+    fn dodag_version_preserves_explicit_adjacent_restart_policy() {
+        assert_eq!(super::lollipop_cmp(0, 127), None);
         assert!(version_is_newer(0, 127));
         assert!(!version_is_newer(127, 0));
-        // 5 is 13 steps newer than 120 ((5-120)&0x7F = 13, in 1..=16).
-        assert!(version_is_newer(5, 120));
+        assert_eq!(super::lollipop_cmp(5, 120), None);
+        assert!(!version_is_newer(5, 120));
         assert!(!version_is_newer(120, 5));
+    }
+
+    #[test]
+    fn lollipop_comparison_exhaustively_matches_rfc_6550_7_2() {
+        use core::cmp::Ordering::{Equal, Greater, Less};
+
+        fn oracle(a: u8, b: u8) -> Option<core::cmp::Ordering> {
+            if a == b {
+                return Some(Equal);
+            }
+            if (a < 128) == (b < 128) {
+                if a.abs_diff(b) > 16 {
+                    return None;
+                }
+                return Some(if a > b { Greater } else { Less });
+            }
+            if a < 128 {
+                return Some(if 256 - u16::from(b) + u16::from(a) <= 16 {
+                    Greater
+                } else {
+                    Less
+                });
+            }
+            Some(if 256 - u16::from(a) + u16::from(b) <= 16 {
+                Less
+            } else {
+                Greater
+            })
+        }
+
+        for a in u8::MIN..=u8::MAX {
+            for b in u8::MIN..=u8::MAX {
+                let actual = super::lollipop_cmp(a, b);
+                assert_eq!(actual, oracle(a, b), "{a} vs {b}");
+                assert_eq!(actual, super::lollipop_cmp(b, a).map(Ordering::reverse));
+            }
+        }
     }
 
     #[test]

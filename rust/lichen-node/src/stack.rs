@@ -787,14 +787,6 @@ pub fn add_rpl_source_route(
         return Err(TxError::NoRoute);
     }
 
-    if remaining == 0 {
-        if out.len() < ipv6.len() {
-            return Err(TxError::BufferTooSmall);
-        }
-        out[..ipv6.len()].copy_from_slice(ipv6);
-        return Ok(ipv6.len());
-    }
-
     // RFC 8200 requires Hop-by-Hop Options to remain immediately after the
     // IPv6 header. Insert the SRH after that header when present, otherwise at
     // the start of the extension chain. Reject an existing Routing header.
@@ -821,6 +813,14 @@ pub fn add_rpl_source_route(
         next_header = ipv6[offset];
         offset = extension_end;
         first_extension = false;
+    }
+
+    if remaining == 0 {
+        if out.len() < ipv6.len() {
+            return Err(TxError::BufferTooSmall);
+        }
+        out[..ipv6.len()].copy_from_slice(ipv6);
+        return Ok(ipv6.len());
     }
 
     let routing_len = 8usize

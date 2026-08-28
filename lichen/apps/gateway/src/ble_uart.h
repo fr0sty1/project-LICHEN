@@ -24,8 +24,9 @@ int ble_uart_init(void);
  * notification.  Frames larger than the ATT MTU are split across multiple
  * bt_gatt_notify calls.
  *
- * Returns 0, -ENOTCONN if no phone is connected, -ENOMEM if the SLIP-encoded
- * frame exceeds buffer capacity, or negative errno on other failures.
+ * Returns 0, -ENOTCONN if no phone is connected, -EACCES if the phone has not
+ * enabled TX notifications, -ENOMEM if the SLIP-encoded frame exceeds buffer
+ * capacity, or negative errno on other failures.
  */
 int ble_uart_send_slip(const uint8_t *ipv6, size_t len);
 
@@ -35,6 +36,7 @@ struct ble_uart_test_state {
 	bool rx_esc;
 	bool rx_overflow;
 	bool has_connection;
+	bool notify_enabled;
 };
 
 struct ble_uart_test_tx_state {
@@ -96,6 +98,7 @@ void ble_uart_test_seed_rx_state(uint16_t rx_len, bool rx_esc,
 				 bool rx_overflow);
 int ble_uart_test_copy_state(struct ble_uart_test_state *state);
 void ble_uart_test_set_tx_backend(uint16_t mtu, int notify_ret);
+void ble_uart_test_set_notify_enabled(bool enabled);
 int ble_uart_test_copy_tx_state(struct ble_uart_test_tx_state *state);
 #endif
 

@@ -45,7 +45,7 @@ impl BlockOption {
 
     /// Parse from option value bytes (1-3 bytes).
     pub fn from_bytes(data: &[u8]) -> Result<Self, CoapError> {
-        if data.is_empty() || data.len() > 3 {
+        if data.is_empty() || data.len() > 3 || (data.len() > 1 && data[0] == 0) {
             return Err(CoapError::InvalidBlockOption);
         }
         // Decode as big-endian integer
@@ -231,10 +231,11 @@ impl BlockSender {
         }
         let mut data = [0u8; Self::MAX_PAYLOAD];
         data[..payload.len()].copy_from_slice(payload);
+        let block_size = szx_to_size(size_to_szx(block_size));
         Ok(Self {
             data,
             data_len: payload.len(),
-            block_size: block_size.clamp(BlockOption::MIN_SIZE, BlockOption::MAX_SIZE),
+            block_size,
             current_block: 0,
             complete: false,
         })
@@ -281,6 +282,44 @@ impl BlockSender {
         self.complete
     }
 
+    /// Acknowledge the exact in-flight block, including a server-requested
+    /// SZX reduction (RFC 7959 section 2.5).
+    ///
+    /// On success the next block begins immediately after the byte range
+    /// acknowledged by `ack`. Invalid or stale acknowledgements leave the
+    /// sender unchanged.
+    pub fn acknowledge(&mut self, sent: BlockOption, ack: BlockOption) -> Result<bool, CoapError> {
+        let Some((current, _)) = self.next_block() else {
+            return Err(CoapError::BlockOutOfOrder);
+        };
+        if current != sent || ack.szx > sent.szx || ack.more != sent.more {
+            return Err(CoapError::BlockOutOfOrder);
+        }
+
+        let sent_start = sent.offset();
+        let sent_end = sent_start
+            .checked_add(sent.size())
+            .map(|end| end.min(self.data_len))
+            .ok_or(CoapError::InvalidBlockOption)?;
+        let ack_start = ack.offset();
+        let ack_end = ack_start
+            .checked_add(ack.size())
+            .ok_or(CoapError::InvalidBlockOption)?;
+        if ack_start > sent_start || ack_end <= sent_start || ack_end > sent_end {
+            return Err(CoapError::BlockOutOfOrder);
+        }
+
+        let new_size = ack.size();
+        let new_block = ack
+            .num
+            .checked_add(1)
+            .ok_or(CoapError::InvalidBlockOption)?;
+        self.block_size = new_size;
+        self.current_block = new_block;
+        self.complete = ack_end >= self.data_len;
+        Ok(self.complete)
+    }
+
     /// Handle server requesting smaller block size.
     pub fn resize(&mut self, new_szx: u8) {
         let new_size = szx_to_size(new_szx);
@@ -319,19 +358,27 @@ impl BlockReceiver {
 
     /// Create a new receiver.
     pub fn new(block_size: usize) -> Self {
+        let block_size = szx_to_size(size_to_szx(block_size));
         Self {
             data: [0u8; Self::MAX_PAYLOAD],
             data_len: 0,
             expected_block: 0,
-            block_size: block_size.clamp(BlockOption::MIN_SIZE, BlockOption::MAX_SIZE),
+            block_size,
             expected_size: None,
             complete: false,
         }
     }
 
     /// Set expected total size (from Size2 option).
-    pub fn set_expected_size(&mut self, size: usize) {
+    pub fn set_expected_size(&mut self, size: usize) -> Result<(), CoapError> {
+        if size > Self::MAX_PAYLOAD || size < self.data_len {
+            return Err(CoapError::PayloadTooLarge);
+        }
+        if self.expected_size.is_some_and(|expected| expected != size) {
+            return Err(CoapError::InvalidBlockOption);
+        }
         self.expected_size = Some(size);
+        Ok(())
     }
 
     /// Receive a block. Returns true if this completes the transfer.
@@ -355,6 +402,9 @@ impl BlockReceiver {
         let needed = self.data_len + data.len();
         if needed > Self::MAX_PAYLOAD {
             return Err(BufferTooSmall::new(needed, Self::MAX_PAYLOAD).into());
+        }
+        if !block.more && self.expected_size.is_some_and(|size| size != needed) {
+            return Err(CoapError::InvalidBlockOption);
         }
 
         self.data[self.data_len..self.data_len + data.len()].copy_from_slice(data);
@@ -488,6 +538,39 @@ mod tests {
     }
 
     #[test]
+    fn sender_accepts_smaller_szx_without_skipping_bytes() {
+        let payload = [0x5au8; 160];
+        let mut sender = BlockSender::new(&payload, 128).unwrap();
+        let sent = sender.next_block().unwrap().0;
+        let ack = BlockOption::new(0, true, 2).unwrap();
+        assert!(!sender.acknowledge(sent, ack).unwrap());
+        let (next, data) = sender.next_block().unwrap();
+        assert_eq!(next, BlockOption::new(1, true, 2).unwrap());
+        assert_eq!(data, &payload[64..128]);
+    }
+
+    #[test]
+    fn invalid_acknowledgement_is_atomic() {
+        let payload = [0x5au8; 160];
+        let mut sender = BlockSender::new(&payload, 64).unwrap();
+        let sent = sender.next_block().unwrap().0;
+        let invalid = BlockOption::new(2, true, 2).unwrap();
+        assert_eq!(
+            sender.acknowledge(sent, invalid),
+            Err(CoapError::BlockOutOfOrder)
+        );
+        assert_eq!(sender.next_block().unwrap().0, sent);
+    }
+
+    #[test]
+    fn non_power_of_two_sizes_use_canonical_szx() {
+        let sender = BlockSender::new(&[0u8; 100], 100).unwrap();
+        assert_eq!(sender.next_block().unwrap().0.size(), 64);
+        let receiver = BlockReceiver::new(100);
+        assert_eq!(receiver.next_request_block().size(), 64);
+    }
+
+    #[test]
     fn receiver_single_block() {
         let mut receiver = BlockReceiver::new(64);
         let block = BlockOption::new(0, false, 2).unwrap();
@@ -594,6 +677,27 @@ mod tests {
         let block1 = BlockOption::new(1, false, 2).unwrap();
         assert!(receiver.receive_block(block1, &[3u8; 64]).unwrap());
         assert_eq!(&receiver.payload()[64..], &[3u8; 64]);
+    }
+
+    #[test]
+    fn receiver_size2_mismatch_is_atomic() {
+        let mut receiver = BlockReceiver::new(64);
+        receiver.set_expected_size(65).unwrap();
+        let final_block = BlockOption::new(0, false, 2).unwrap();
+        assert_eq!(
+            receiver.receive_block(final_block, &[0x11; 64]),
+            Err(CoapError::InvalidBlockOption)
+        );
+        assert!(receiver.payload().is_empty());
+        assert!(!receiver.is_complete());
+    }
+
+    #[test]
+    fn block_option_rejects_noncanonical_leading_zero() {
+        assert_eq!(
+            BlockOption::from_bytes(&[0, 0x10]),
+            Err(CoapError::InvalidBlockOption)
+        );
     }
 
     #[test]

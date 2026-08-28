@@ -150,6 +150,110 @@ events:
         assert ev.params["duration_us"] == 10_000_000
 
 
+class TestMobilityEventParsing:
+    def test_attach_event(self) -> None:
+        yaml_str = """
+topology: grid(4)
+events:
+  - at: 60s
+    mobility:
+      node: node-1
+      pattern: random_waypoint
+      params:
+        area_bounds: [0, 500, 0, 500]
+        speed_m_s: 2.0
+        pause_time_us: 1000000
+        seed: 42
+"""
+        scenario = Scenario.from_yaml(yaml_str)
+        ev = scenario.events[0]
+        assert ev.action == "mobility"
+        assert ev.params["node"] == "node-1"
+        assert ev.params["pattern"] == "random_waypoint"
+        assert ev.params["params"]["area_bounds"] == [0, 500, 0, 500]
+        assert ev.params["params"]["speed_m_s"] == 2.0
+        assert ev.params["params"]["pause_time_us"] == 1000000
+        assert ev.params["params"]["seed"] == 42
+
+    def test_attach_without_params_defaults_empty(self) -> None:
+        yaml_str = """
+topology: grid(4)
+events:
+  - at: 60s
+    mobility:
+      node: node-1
+      pattern: random_waypoint
+"""
+        scenario = Scenario.from_yaml(yaml_str)
+        ev = scenario.events[0]
+        assert ev.action == "mobility"
+        assert ev.params["pattern"] == "random_waypoint"
+        assert ev.params["params"] == {}
+
+    def test_detach_event(self) -> None:
+        yaml_str = """
+topology: grid(4)
+events:
+  - at: 60s
+    mobility:
+      node: node-1
+      pattern: null
+"""
+        scenario = Scenario.from_yaml(yaml_str)
+        ev = scenario.events[0]
+        assert ev.action == "mobility"
+        assert ev.params["node"] == "node-1"
+        assert ev.params["pattern"] is None
+
+    def test_missing_node_raises(self) -> None:
+        yaml_str = """
+topology: grid(4)
+events:
+  - at: 60s
+    mobility:
+      pattern: random_waypoint
+"""
+        with pytest.raises(ValueError):
+            Scenario.from_yaml(yaml_str)
+
+    def test_non_mapping_payload_raises(self) -> None:
+        yaml_str = """
+topology: grid(4)
+events:
+  - at: 60s
+    mobility: 42
+"""
+        with pytest.raises(ValueError):
+            Scenario.from_yaml(yaml_str)
+
+    def test_params_not_mapping_raises(self) -> None:
+        yaml_str = """
+topology: grid(4)
+events:
+  - at: 60s
+    mobility:
+      node: node-1
+      pattern: random_waypoint
+      params: fast
+"""
+        with pytest.raises(ValueError):
+            Scenario.from_yaml(yaml_str)
+
+    def test_detach_with_params_raises(self) -> None:
+        yaml_str = """
+topology: grid(4)
+events:
+  - at: 60s
+    mobility:
+      node: node-1
+      pattern: null
+      params:
+        speed_m_s: 1.0
+"""
+        with pytest.raises(ValueError):
+            Scenario.from_yaml(yaml_str)
+
+
 def _make_mock_sim() -> MagicMock:
     """Create a mock simulation for testing ScenarioRunner."""
     sim = MagicMock()
@@ -364,6 +468,198 @@ events:
         runner.step(10_000_000)
         assert not runner.has_active_moves()
         assert runner.is_complete()
+
+
+MOBILITY_YAML = """
+topology: grid(1)
+events:
+  - at: 0s
+    spawn: [node-0]
+  - at: 0s
+    mobility:
+      node: node-0
+      pattern: random_waypoint
+      params:
+        area_bounds: [0, 500, 0, 500]
+        speed_m_s: 2.0
+        pause_time_us: 0
+        seed: 42
+"""
+
+DETACH_YAML = """
+topology: grid(1)
+events:
+  - at: 0s
+    spawn: [node-0]
+  - at: 0s
+    mobility:
+      node: node-0
+      pattern: random_waypoint
+      params:
+        area_bounds: [0, 500, 0, 500]
+        speed_m_s: 2.0
+        pause_time_us: 0
+        seed: 42
+  - at: 2s
+    mobility:
+      node: node-0
+      pattern: null
+"""
+
+
+class TestScenarioRunnerMobility:
+    def test_attach_moves_node_over_steps(self) -> None:
+        from lichen.sim.simulation import Simulation
+
+        scenario = Scenario.from_yaml(MOBILITY_YAML)
+        sim = Simulation("mobility-move", seed=42)
+        runner = ScenarioRunner(sim, scenario)
+
+        runner.step(0)  # spawn + attach; dt is 0 so no movement yet
+        node = sim.get_node("node-0")
+        assert node is not None
+        start = node.position
+
+        runner.step(1_000_000)
+        after_1s = node.position
+        assert after_1s != start
+
+        runner.step(2_000_000)
+        after_2s = node.position
+        assert after_2s != after_1s
+
+        # Positions evolved purely from the mobility pattern, not move events
+        assert not runner.has_active_moves()
+
+    def test_positions_deterministic_with_seed(self) -> None:
+        from lichen.sim.simulation import Simulation
+
+        positions = []
+        for name in ("mobility-a", "mobility-b"):
+            scenario = Scenario.from_yaml(MOBILITY_YAML)
+            sim = Simulation(name, seed=7)
+            runner = ScenarioRunner(sim, scenario)
+            runner.step(0)
+            runner.step(1_000_000)
+            runner.step(2_000_000)
+            node = sim.get_node("node-0")
+            assert node is not None
+            positions.append(node.position)
+        assert positions[0] == positions[1]
+
+    def test_params_passed_to_pattern(self) -> None:
+        from lichen.sim.mobility import RandomWaypoint
+        from lichen.sim.simulation import Simulation
+
+        scenario = Scenario.from_yaml(MOBILITY_YAML)
+        sim = Simulation("mobility-params", seed=42)
+        runner = ScenarioRunner(sim, scenario)
+
+        runner.step(0)
+        pattern = runner.mobility_manager.get_pattern("node-0")
+        assert isinstance(pattern, RandomWaypoint)
+        assert pattern.area_bounds == (0, 500, 0, 500)
+        assert pattern.speed_m_s == 2.0
+        assert pattern.pause_time_us == 0
+        assert pattern.seed == 42
+
+    def test_unknown_pattern_raises(self) -> None:
+        from lichen.sim.simulation import Simulation
+
+        yaml_str = """
+topology: grid(1)
+events:
+  - at: 0s
+    spawn: [node-0]
+  - at: 0s
+    mobility:
+      node: node-0
+      pattern: teleport
+"""
+        scenario = Scenario.from_yaml(yaml_str)
+        sim = Simulation("mobility-unknown", seed=42)
+        runner = ScenarioRunner(sim, scenario)
+        with pytest.raises(ValueError, match="Unknown mobility pattern"):
+            runner.step(0)
+
+    def test_invalid_params_raise(self) -> None:
+        from lichen.sim.simulation import Simulation
+
+        yaml_str = """
+topology: grid(1)
+events:
+  - at: 0s
+    spawn: [node-0]
+  - at: 0s
+    mobility:
+      node: node-0
+      pattern: random_waypoint
+      params:
+        not_a_param: 1
+"""
+        scenario = Scenario.from_yaml(yaml_str)
+        sim = Simulation("mobility-bad-params", seed=42)
+        runner = ScenarioRunner(sim, scenario)
+        with pytest.raises(ValueError, match="Invalid params"):
+            runner.step(0)
+
+    def test_detach_stops_movement(self) -> None:
+        from lichen.sim.simulation import Simulation
+
+        scenario = Scenario.from_yaml(DETACH_YAML)
+        sim = Simulation("mobility-detach", seed=42)
+        runner = ScenarioRunner(sim, scenario)
+
+        runner.step(0)
+        assert runner.mobility_manager.get_pattern("node-0") is not None
+
+        runner.step(1_000_000)
+        node = sim.get_node("node-0")
+        assert node is not None
+        pos_before = node.position
+
+        runner.step(2_000_000)  # moves during 1s-2s, then detach fires
+        pos_detach = node.position
+        assert pos_detach != pos_before
+        assert runner.mobility_manager.get_pattern("node-0") is None
+
+        runner.step(3_000_000)  # no pattern attached -> frozen
+        assert node.position == pos_detach
+
+    def test_no_double_step_at_same_time(self) -> None:
+        from lichen.sim.simulation import Simulation
+
+        scenario = Scenario.from_yaml(MOBILITY_YAML)
+        sim = Simulation("mobility-dt", seed=42)
+        runner = ScenarioRunner(sim, scenario)
+
+        runner.step(0)
+        runner.step(1_000_000)
+        node = sim.get_node("node-0")
+        assert node is not None
+        pos = node.position
+
+        runner.step(1_000_000)  # same timestamp -> dt 0 -> no movement
+        assert node.position == pos
+
+    def test_frozen_while_paused(self) -> None:
+        from lichen.sim.simulation import Simulation
+
+        scenario = Scenario.from_yaml(MOBILITY_YAML)
+        sim = Simulation("mobility-pause", seed=42)
+        runner = ScenarioRunner(sim, scenario)
+
+        runner.step(0)
+        runner.step(1_000_000)
+        node = sim.get_node("node-0")
+        assert node is not None
+        pos = node.position
+
+        runner.pause()
+        runner.step(5_000_000)
+        runner.resume()
+        runner.step(5_000_000)
+        assert node.position == pos
 
 
 class TestFormatDuration:

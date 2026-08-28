@@ -86,6 +86,8 @@ def run_route_state_vectors(path: str | Path) -> DaoManager:
             raise AssertionError(f"{transition['name']}: Path Sequence")
         if tx_transit.path_lifetime != expected_lifetime:
             raise AssertionError(f"{transition['name']}: Path Lifetime")
+        if tx_dao.to_bytes().hex() != transition["expected_wire"]:
+            raise AssertionError(f"{transition['name']}: canonical leaf DAO wire")
     if oracle["max_route_hops"] != MAX_ROUTE_HOPS_ALIAS:
         raise AssertionError("production route-hop limit differs from vector oracle")
     for boundary in document["route_hop_boundaries"]:

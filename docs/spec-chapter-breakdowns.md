@@ -1177,13 +1177,13 @@ Dependencies: Yggdrasil addressing feeds into routing (Chapter 05) and security 
 ├── [P1 epic] DAO Timing
 │   ├── [P1] Python: DAO initial delay (random 0-2s)
 │   ├── [P1] Python: DAO retry backoff (4, 8, 16s exponential)
-│   ├── [P1] Python: DAO refresh timer (30 min)
+│   ├── [P1] Python: DAO refresh timer (15 min; half 30-min lifetime)
 │   ├── [P1] Rust: DAO initial delay (random 0-2s)
 │   ├── [P1] Rust: DAO retry backoff (4, 8, 16s exponential)
-│   ├── [P1] Rust: DAO refresh timer (30 min)
+│   ├── [P1] Rust: DAO refresh timer (15 min; half 30-min lifetime)
 │   ├── [P1] Zephyr: DAO initial delay (random 0-2s)
 │   ├── [P1] Zephyr: DAO retry backoff (4, 8, 16s exponential)
-│   ├── [P1] Zephyr: DAO refresh timer (30 min)
+│   ├── [P1] Zephyr: DAO refresh timer (15 min; half 30-min lifetime)
 │   └── [P1] Vectors: DAO timing scenarios
 │
 ├── [P1 epic] Duty Cycle Tracking

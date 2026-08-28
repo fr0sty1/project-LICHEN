@@ -2119,10 +2119,13 @@ mod tests {
     async fn root_originated_downward_srh() {
         let mut gw = test_gateway();
         let root_addr = gw.rpl_stack.rpl_node().node().node_id.link_local_addr().0;
+        let relay_addr = [0xfeu8, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
         let node_addr = [0x02u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x42];
 
-        // Inject DAO route: root → node_addr (single hop)
-        let path = [root_addr, node_addr];
+        // Routing-table paths start after the root: relay → destination.
+        // Including root_addr would make the root its own first hop and violate
+        // RFC 6554's prohibition on placing the IPv6 Source in the SRH path.
+        let path = [relay_addr, node_addr];
         gw.rpl_stack
             .rpl_node_mut()
             .router_mut()

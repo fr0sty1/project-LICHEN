@@ -1,0 +1,26 @@
+{
+  "id": "lora-ipv6-mesh-7an.5",
+  "title": "Mobile application (lichen-mobile)",
+  "description": "Mobile application for LICHEN using Flutter.\n\nFeatures:\n- CoAP client for node communication over BLE or local WiFi\n- Contact management with TOFU key pinning\n- Message composition and history\n- Waypoint management with native maps\n- Node status and diagnostics\n- Background service for notifications\n- iOS and Android support\n\nCommunication modes:\n- BLE GATT to local LICHEN node\n- IPv6+CoAP over local network if node has WiFi backhaul\n\nDepends on Local Client Interface (Phase 6) being defined.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:48.703232Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:48.703232Z",
+  "labels": [
+    "defer-external",
+    "owner-reserved"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-7an.5",
+      "depends_on_id": "lora-ipv6-mesh-7an",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:47:51.304201Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

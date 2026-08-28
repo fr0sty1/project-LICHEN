@@ -1,0 +1,192 @@
+{
+  "format_version": 2,
+  "description": "Complete packet walkthrough vectors for spec 09 section 13.1: plaintext CoAP temperature reading compressed with SCHC Rule 0, wrapped in authenticated L2 dispatch 0x14, signed as a short-address link frame, and timed as a LoRa PHY payload. Independent of lichen.*.",
+  "vectors": [
+    {
+      "name": "coap_temperature_content",
+      "description": "Spec 13.1 plaintext CoAP 2.05 NON Content-Format 60 with CBOR {temperature: 23.5}. MID is unspecified in the spec and pinned to 0.",
+      "category": "coap",
+      "input_hex": "a16b74656d7065726174757265f94de0",
+      "output_hex": "5145000042c13cffa16b74656d7065726174757265f94de0",
+      "output_len": 24,
+      "fields": {
+        "ver": 1,
+        "type": 1,
+        "type_name": "NON",
+        "tkl": 1,
+        "code": 69,
+        "code_name": "2.05",
+        "mid": 0,
+        "token_hex": "42",
+        "content_format": 60,
+        "payload_hex": "a16b74656d7065726174757265f94de0",
+        "payload_len": 16
+      }
+    },
+    {
+      "name": "ipv6_udp_envelope",
+      "description": "IPv6 + UDP envelope around the CoAP message: fe80::1 to fe80::2, ports 5683/5683, hop limit 64, Rule 0 match constraints.",
+      "category": "ipv6_udp",
+      "input_hex": "5145000042c13cffa16b74656d7065726174757265f94de0",
+      "output_hex": "6000000000201140fe800000000000000000000000000001fe80000000000000000000000000000216331633002091c95145000042c13cffa16b74656d7065726174757265f94de0",
+      "output_len": 72,
+      "fields": {
+        "src": "fe80::1",
+        "dst": "fe80::2",
+        "hop_limit": 64,
+        "src_port": 5683,
+        "dst_port": 5683,
+        "next_header": 17
+      }
+    },
+    {
+      "name": "schc_rule0_compress",
+      "description": "SCHC Rule 0 compression: 1-byte Rule ID + 22-byte residue + 20-byte CoAP tail = 43 bytes (spec 13.1).",
+      "category": "schc",
+      "input_hex": "6000000000201140fe800000000000000000000000000001fe80000000000000000000000000000216331633002091c95145000042c13cffa16b74656d7065726174757265f94de0",
+      "output_hex": "004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0",
+      "output_len": 43,
+      "fields": {
+        "rule_id": 0,
+        "residue_len": 22,
+        "fixed_header_len": 23,
+        "tail_len": 20
+      }
+    },
+    {
+      "name": "l2_schc_dispatch",
+      "description": "Authenticated L2 inner payload: dispatch 0x14 plus the 43-byte SCHC packet = 44 bytes (spec 13.1).",
+      "category": "l2",
+      "input_hex": "004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0",
+      "output_hex": "14004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0",
+      "output_len": 44,
+      "fields": {
+        "dispatch": 20
+      }
+    },
+    {
+      "name": "link_frame_signed_short",
+      "description": "Signed short-address link frame: Length 106, LLSec 0xA1, Epoch 0x01, SeqNum 0x0042, DstAddr 0x0001, 8-byte signer EUI-64, 44-byte payload, 48-byte Schnorr-48 = 107 on-wire bytes (spec 13.1).",
+      "category": "link",
+      "input_hex": "14004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0",
+      "output_hex": "6aa101004200017fd5cfc679ab634214004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0bbf92ec8f6d75eec9dba85572c2567b2a86fd537560a456946a1ae0ca1abfe375a9f1220574cf1fd5edac33f630a0307",
+      "output_len": 107,
+      "fields": {
+        "Length": 106,
+        "LLSec": 161,
+        "Epoch": 1,
+        "SeqNum": 66,
+        "DstAddr": 1,
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64_hex": "7fd5cfc679ab6342",
+        "payload_dispatch": 20,
+        "payload_len": 44,
+        "signature_len": 48,
+        "total_on_wire": 107,
+        "seed_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+        "public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "transcript_hex": "4c494348454e2d4c494e4b2d7631006aa10100420200017fd5cfc679ab634214004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0",
+        "signature_hex": "bbf92ec8f6d75eec9dba85572c2567b2a86fd537560a456946a1ae0ca1abfe375a9f1220574cf1fd5edac33f630a0307"
+      }
+    },
+    {
+      "name": "phy_sf10_airtime",
+      "description": "LoRa PHY carries the 107-byte link frame as the PHY payload. Radio overhead is the 8-symbol preamble, explicit header, and PHY CRC; those octets are not inside the PHY payload (spec 13.1). Airtime is the default SF10/125kHz/CR4-5 profile.",
+      "category": "phy",
+      "input_hex": "6aa101004200017fd5cfc679ab634214004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0bbf92ec8f6d75eec9dba85572c2567b2a86fd537560a456946a1ae0ca1abfe375a9f1220574cf1fd5edac33f630a0307",
+      "output_hex": "6aa101004200017fd5cfc679ab634214004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0bbf92ec8f6d75eec9dba85572c2567b2a86fd537560a456946a1ae0ca1abfe375a9f1220574cf1fd5edac33f630a0307",
+      "output_len": 107,
+      "fields": {
+        "payload_len": 107,
+        "preamble_symbols": 8,
+        "explicit_header": true,
+        "phy_crc": true,
+        "sf": 10,
+        "bw_hz": 125000,
+        "coding_rate": "4/5",
+        "airtime_us": 1067008
+      }
+    },
+    {
+      "name": "spec_13_1_complete_walkthrough",
+      "description": "Chained CoAP -> IPv6/UDP -> SCHC Rule 0 -> L2 dispatch -> signed short-addr link frame -> LoRa PHY for the spec 13.1 temperature example. Each layer output_hex is the next layer input_hex.",
+      "category": "walkthrough",
+      "app_payload_len": 16,
+      "schc_packet_len": 43,
+      "l2_payload_len": 44,
+      "body_bytes": 106,
+      "total_on_wire": 107,
+      "layers": {
+        "coap_hex": "5145000042c13cffa16b74656d7065726174757265f94de0",
+        "ipv6_udp_hex": "6000000000201140fe800000000000000000000000000001fe80000000000000000000000000000216331633002091c95145000042c13cffa16b74656d7065726174757265f94de0",
+        "schc_hex": "004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0",
+        "l2_hex": "14004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0",
+        "link_hex": "6aa101004200017fd5cfc679ab634214004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0bbf92ec8f6d75eec9dba85572c2567b2a86fd537560a456946a1ae0ca1abfe375a9f1220574cf1fd5edac33f630a0307",
+        "phy_payload_hex": "6aa101004200017fd5cfc679ab634214004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0bbf92ec8f6d75eec9dba85572c2567b2a86fd537560a456946a1ae0ca1abfe375a9f1220574cf1fd5edac33f630a0307"
+      },
+      "coap": {
+        "ver": 1,
+        "type": 1,
+        "type_name": "NON",
+        "tkl": 1,
+        "code": 69,
+        "code_name": "2.05",
+        "mid": 0,
+        "token_hex": "42",
+        "content_format": 60,
+        "payload_hex": "a16b74656d7065726174757265f94de0",
+        "payload_len": 16
+      },
+      "ipv6_udp": {
+        "src": "fe80::1",
+        "dst": "fe80::2",
+        "hop_limit": 64,
+        "src_port": 5683,
+        "dst_port": 5683,
+        "next_header": 17
+      },
+      "schc": {
+        "rule_id": 0,
+        "residue_len": 22,
+        "fixed_header_len": 23,
+        "tail_len": 20
+      },
+      "l2": {
+        "dispatch": 20
+      },
+      "link": {
+        "Length": 106,
+        "LLSec": 161,
+        "Epoch": 1,
+        "SeqNum": 66,
+        "DstAddr": 1,
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false,
+        "signer_eui64_hex": "7fd5cfc679ab6342",
+        "payload_dispatch": 20,
+        "payload_len": 44,
+        "signature_len": 48,
+        "total_on_wire": 107,
+        "seed_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+        "public_key_hex": "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        "transcript_hex": "4c494348454e2d4c494e4b2d7631006aa10100420200017fd5cfc679ab634214004000000000000000010000000000000002334514000042c13cffa16b74656d7065726174757265f94de0",
+        "signature_hex": "bbf92ec8f6d75eec9dba85572c2567b2a86fd537560a456946a1ae0ca1abfe375a9f1220574cf1fd5edac33f630a0307"
+      },
+      "phy": {
+        "payload_len": 107,
+        "preamble_symbols": 8,
+        "explicit_header": true,
+        "phy_crc": true,
+        "sf": 10,
+        "bw_hz": 125000,
+        "coding_rate": "4/5",
+        "airtime_us": 1067008
+      }
+    }
+  ]
+}

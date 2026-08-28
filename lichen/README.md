@@ -77,13 +77,13 @@ The standalone C frame tests run locally with CMake on macOS. Zephyr
 `native_sim` tests require a Linux host in the current Zephyr setup; run those
 on the project EC2 builder when local native_sim is unavailable.
 
-## Memory Budget (validated 2026-06-24)
+## Memory Budget
 
 STM32WL55 (nucleo_wl55jc) — 256 KB flash, 64 KB RAM:
 
 | Component | Flash | RAM |
 |-----------|-------|-----|
-| Zephyr kernel + IPv6 + CoAP + STM32WL LoRa | 78 KB (30%) | 30 KB (47%) |
+| Zephyr kernel + IPv6 + CoAP + STM32WL LoRa (2026-06-24 baseline) | 78 KB (30%) | 30 KB (47%) |
 | **Budget for LICHEN protocol** | **~140 KB** | **~20 KB** |
 
 Build command:
@@ -92,7 +92,32 @@ ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb GNUARMEMB_TOOLCHAIN_PATH=/opt/homebrew \
   west build -b nucleo_wl55jc lichen/apps/gateway
 ```
 
-No RIOT OS fallback needed — plenty of headroom for the LICHEN protocol layer.
+The link + L2 component budget is machine checked conservatively by summing
+their STM32WL static archives before linker garbage collection.  The
+2026-08-27 measurement with Zephyr SDK 0.16.8/GCC 12.2 was 34,188 bytes flash
+and 13,287 bytes RAM against the protocol-layer limits above.  The RAM figure
+includes the 8,256-byte guarded LoRa RX stack and the 1,248-byte four-frame TX
+queue/pool.  The frame-pool code itself is 480 bytes of flash and owns no
+separate global storage.
+
+Use the target toolchain's `size` executable so host architecture does not
+affect the result:
+
+```sh
+export ZEPHYR_SIZE="$ZEPHYR_SDK_INSTALL_DIR/arm-zephyr-eabi/bin/arm-zephyr-eabi-size"
+python3 scripts/check_zephyr_memory.py \
+  --artifact build/modules/lichen/subsys/lichen/link/liblichen_link.a \
+  --artifact build/modules/lichen/subsys/lichen/l2/liblichen_l2.a \
+  --flash-limit $((140 * 1024)) --ram-limit $((20 * 1024))
+```
+
+Archive filenames are generator-dependent; pass the actual two paths from the
+build tree.  For a release image, pass `build/zephyr/zephyr.elf` alone with the
+board limits `--flash-limit $((220 * 1024)) --ram-limit $((50 * 1024))`.
+The checker emits one JSON record and exits nonzero on a missing artifact,
+unparseable tool output, or exceeded budget.  Full-image figures must come
+from the pinned Zephyr v3.7 release build; the 4.1 local workspace is only a
+component smoke check and does not replace that release gate.
 
 ## Directory layout
 

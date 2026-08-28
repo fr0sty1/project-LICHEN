@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-fgn7",
+  "title": "[review] piv_len \u003e 0 used as proxy for unprotect success in keys + oscore respond guards",
+  "description": "P2 latent. coap_keys.c:281,293,306,320,335,347,360,370,380,391,441 and coap_oscore.c:98 guard protected-response selection on piv_len\u003e0 instead of tracked unprotect status. Safe today because oscore_protect.c:400 and coap_oscore.c:194 reject 0-length PIV (canonical-PIV convention), but if the rule is ever relaxed every branch silently degrades to UNPROTECTED lichen_coap_respond fallback, leaking response codes/key-presence in cleartext for OSCORE requests. Fix: track unprotect success in a bool set on r==OSCORE_OK; use that for the guard, in handlers and in coap_oscore_respond_resource.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:32:00.434704Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:32:00.434704Z",
+  "labels": [
+    "local-ok"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-fgn7",
+      "depends_on_id": "project-LICHEN-6mij.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T05:32:01.149954Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

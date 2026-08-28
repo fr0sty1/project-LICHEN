@@ -142,59 +142,42 @@ impl TunDevice {
                 "packet exceeds MTU",
             ));
         }
-        let mut written = 0usize;
         loop {
             let mut guard = self.inner.writable().await?;
             match guard.try_io(|inner| {
-                // SAFETY: `inner.as_raw_fd()` is a valid fd; `buf.as_ptr().add(written)` is
-                // within the bounds of `buf` because `written < buf.len()` (we only loop when
-                // `written < buf.len()` and `written` is always in-bounds); the return value
-                // is checked for errors.
+                // SAFETY: `inner.as_raw_fd()` is a valid fd; `buf.as_ptr()` is valid for
+                // `buf.len()` bytes; the return value is checked for errors. TUN is
+                // packet-oriented, so a short write is an error rather than a byte-stream
+                // continuation.
                 let n = unsafe {
                     libc::write(
                         inner.as_raw_fd(),
-                        buf.as_ptr().add(written) as *const libc::c_void,
-                        buf.len() - written,
+                        buf.as_ptr() as *const libc::c_void,
+                        buf.len(),
                     )
                 };
                 if n < 0 {
                     Err(io::Error::last_os_error())
-                } else if n == 0 {
-                    Err(io::Error::new(
-                        io::ErrorKind::WriteZero,
-                        "TUN write returned 0",
-                    ))
                 } else {
-                    written += n as usize;
-                    if written == buf.len() {
-                        Ok(())
-                    } else {
-                        Err(io::ErrorKind::WouldBlock.into())
-                    }
+                    validate_packet_write(buf.len(), n as usize)
                 }
             }) {
                 Ok(r) => return r,
-                Err(e) if e.kind() == io::ErrorKind::WouldBlock => continue,
-                Err(e) => {
-                    return Err(io::Error::new(
-                        e.kind(),
-                        format!("TUN write failed after {written}/{} bytes: {e}", buf.len()),
-                    ))
-                }
+                Err(_would_block) => continue,
             }
         }
     }
 }
 
-fn advance_written(written: &mut usize, n: usize) -> io::Result<()> {
-    if n == 0 {
-        return Err(io::Error::new(
+fn validate_packet_write(expected: usize, actual: usize) -> io::Result<()> {
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(io::Error::new(
             io::ErrorKind::WriteZero,
-            "TUN write returned 0 bytes",
-        ));
+            format!("partial TUN write: wrote {actual}/{expected} bytes"),
+        ))
     }
-    *written += n;
-    Ok(())
 }
 
 /// Bring the TUN device up and assign a gateway address from `prefix`.
@@ -264,10 +247,20 @@ mod tests {
 
     #[test]
     fn zero_write_fails_without_progress() {
-        let mut written = 0;
-        let error = advance_written(&mut written, 0).unwrap_err();
+        let error = validate_packet_write(1280, 0).unwrap_err();
 
         assert_eq!(error.kind(), io::ErrorKind::WriteZero);
-        assert_eq!(written, 0);
+    }
+
+    #[test]
+    fn partial_packet_write_fails_instead_of_retrying() {
+        let error = validate_packet_write(1280, 1279).unwrap_err();
+
+        assert_eq!(error.kind(), io::ErrorKind::WriteZero);
+    }
+
+    #[test]
+    fn complete_packet_write_succeeds() {
+        assert!(validate_packet_write(1280, 1280).is_ok());
     }
 }

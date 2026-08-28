@@ -105,6 +105,7 @@ def render(document: dict) -> str:
         "\tuint8_t path_lifetime;",
         "\tuint8_t expected_dao_sequence;",
         "\tuint8_t expected_path_sequence;",
+        "\tuint8_t expected_wire[LICHEN_RPL_LEAF_DAO_LEN];",
         "\tbool advance_path_sequence;",
         "};",
         "",
@@ -207,6 +208,7 @@ def render(document: dict) -> str:
             f".path_lifetime = {transition['path_lifetime']}, "
             f".expected_dao_sequence = {transition['expected_dao_sequence']}, "
             f".expected_path_sequence = {transition['expected_path_sequence']}, "
+            f".expected_wire = {{ {c_bytes(transition['expected_wire'])} }}, "
             f".advance_path_sequence = {c_bool(transition['advance_path_sequence'])} "
             "},"
         )

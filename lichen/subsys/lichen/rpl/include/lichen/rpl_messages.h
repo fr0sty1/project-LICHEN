@@ -61,6 +61,7 @@ extern "C" {
 #define LICHEN_RPL_OPT_DODAG_CONFIG  4
 #define LICHEN_RPL_OPT_RPL_TARGET    5
 #define LICHEN_RPL_OPT_TRANSIT_INFO  6
+#define LICHEN_RPL_OPT_SOLICITED_INFO 7
 #define LICHEN_RPL_OPT_PREFIX_INFO   8
 #define LICHEN_RPL_OPT_RPL_TARGET_DESCRIPTOR 9
 #define LICHEN_RPL_OPT_DIO_TIME      0x12  /**< DIO Time Option (experimental) */
@@ -84,10 +85,105 @@ extern "C" {
 #define LICHEN_RPL_CODE_DAO      2
 #define LICHEN_RPL_CODE_DAO_ACK  3
 
+/* ── DIS ───────────────────────────────────────────────────────────────────── */
+
+/** DIS base object size (2 bytes) */
+#define LICHEN_RPL_DIS_BASE_LEN  2
+/** Solicited Information option payload and complete TLV sizes. */
+#define LICHEN_RPL_SOLICITED_INFO_DATA_LEN 19
+#define LICHEN_RPL_SOLICITED_INFO_LEN \
+	(2U + LICHEN_RPL_SOLICITED_INFO_DATA_LEN)
+/** RFC 6550 Section 6.7.9 predicate flags. */
+#define LICHEN_RPL_SOLICITED_VERSION_PREDICATE  0x80U
+#define LICHEN_RPL_SOLICITED_INSTANCE_PREDICATE 0x40U
+#define LICHEN_RPL_SOLICITED_DODAG_PREDICATE    0x20U
+#define LICHEN_RPL_SOLICITED_PREDICATE_MASK     0xe0U
+
+/**
+ * @brief DIS base object (RFC 6550 section 6.2)
+ *
+ * Flags are unused on the wire: senders MUST zero them and receivers MUST
+ * ignore them. The reserved byte MUST be zero on transmit and is rejected
+ * if nonzero on receive.
+ */
+struct lichen_rpl_dis {
+	uint8_t flags;
+	uint8_t reserved;
+};
+
+/** RFC 6550 Section 6.7.9 Solicited Information option payload. */
+struct lichen_rpl_solicited_info {
+	uint8_t rpl_instance_id;
+	uint8_t flags;
+	uint8_t dodag_id[16];
+	uint8_t version;
+};
+
+/**
+ * @brief Parse a DIS from wire bytes.
+ *
+ * @param dis  Output structure
+ * @param data Wire bytes (DIS base and complete option chain)
+ * @param len  Length of data
+ *
+ * The complete option chain is framing-validated. A Solicited Information
+ * option must have exactly 19 data bytes and may occur at most once. As RFC
+ * 6550 requires, unused base and Solicited Information flag bits are accepted
+ * on receive and preserved/ignored rather than interpreted. On every error,
+ * @p dis is unchanged.
+ * @return 0 on success, negative error code on failure
+ */
+LICHEN_WARN_UNUSED_RESULT
+int lichen_rpl_dis_parse(struct lichen_rpl_dis *_Nonnull dis,
+			 const uint8_t *_Nonnull data, size_t len);
+
+/**
+ * @brief Serialize a DIS to wire bytes.
+ *
+ * @param dis  DIS to serialize
+ * @param buf  Output buffer (at least 2 bytes)
+ * @param len  Buffer size
+ * @return Number of bytes written (2), or negative error code
+ */
+int lichen_rpl_dis_write(const struct lichen_rpl_dis *_Nonnull dis,
+			 uint8_t *_Nonnull buf, size_t len);
+
+/**
+ * Atomically serialize a DIS base plus a pre-encoded option chain.
+ *
+ * The option chain receives the same strict validation as decode. All input
+ * and capacity checks complete before @p buf is changed. @p options may alias
+ * @p buf; a nonzero @p options_len requires a non-NULL pointer.
+ */
+int lichen_rpl_dis_write_with_options(
+	const struct lichen_rpl_dis *_Nonnull dis,
+	const uint8_t *_Nullable options, size_t options_len,
+	uint8_t *_Nonnull buf, size_t len);
+
+/** Parse one 19-byte Solicited Information option payload atomically. */
+LICHEN_WARN_UNUSED_RESULT
+int lichen_rpl_solicited_info_parse(
+	struct lichen_rpl_solicited_info *_Nonnull info,
+	const uint8_t *_Nonnull data, size_t len);
+
+/** Serialize one complete Type/Length/Value Solicited Information option. */
+int lichen_rpl_solicited_info_write(
+	const struct lichen_rpl_solicited_info *_Nonnull info,
+	uint8_t *_Nonnull buf, size_t len);
+
+/**
+ * @brief Get pointer to options following DIS base.
+ *
+ * @return Pointer to options, or NULL if no options present.
+ */
+const uint8_t *_Nullable lichen_rpl_dis_options(const uint8_t *_Nonnull data, size_t len);
+
 /* ── DIO ───────────────────────────────────────────────────────────────────── */
 
 /** DIO base object size (24 bytes) */
 #define LICHEN_RPL_DIO_BASE_LEN  24
+/** Defined LICHEN extension bit in the DIO Flags octet. */
+#define LICHEN_RPL_DIO_FLAG_GATEWAY_CENTRIC 0x01U
 
 /**
  * @brief DIO base object (RFC 6550 section 6.3)
@@ -111,7 +207,11 @@ struct lichen_rpl_dio {
  * @brief Parse a DIO from wire bytes.
  *
  * @param dio  Output structure
- * @param data Wire bytes (DIO base, at least 24 bytes)
+ * The complete trailing option chain is framing-validated. Known typed
+ * options are validated strictly, and duplicate singleton options are
+ * rejected. On every error, @p dio is left unchanged.
+ *
+ * @param data Wire bytes (DIO base and any options, at least 24 bytes)
  * @param len  Length of data
  * @return 0 on success, negative error code on failure
  */
@@ -129,6 +229,20 @@ int lichen_rpl_dio_parse(struct lichen_rpl_dio *_Nonnull dio,
  */
 int lichen_rpl_dio_write(const struct lichen_rpl_dio *_Nonnull dio,
 			 uint8_t *_Nonnull buf, size_t len);
+
+/**
+ * @brief Atomically serialize a DIO base and a pre-encoded option chain.
+ *
+ * The option chain receives the same strict validation as decode. All input
+ * and capacity checks complete before @p buf is changed. @p options may alias
+ * @p buf; a nonzero @p options_len requires a non-NULL pointer.
+ *
+ * @return Total bytes written, or a negative error code.
+ */
+int lichen_rpl_dio_write_with_options(
+	const struct lichen_rpl_dio *_Nonnull dio,
+	const uint8_t *_Nullable options, size_t options_len,
+	uint8_t *_Nonnull buf, size_t len);
 
 /**
  * @brief Get pointer to options following DIO base.
@@ -154,6 +268,12 @@ static inline size_t lichen_rpl_dio_options_len(size_t total_len)
 
 /** DAO base object size with DODAGID present (20 bytes) */
 #define LICHEN_RPL_DAO_BASE_LEN  20
+/** DAO base object size without DODAGID (4 bytes). */
+#define LICHEN_RPL_DAO_BASE_NO_DODAGID_LEN 4
+/** Temporary DAO Origin Signature option type. */
+#define LICHEN_RPL_OPT_DAO_ORIGIN_SIGNATURE 0x12
+/** DAO Origin Sequence (8) plus Schnorr48 (48). */
+#define LICHEN_RPL_DAO_ORIGIN_SIGNATURE_DATA_LEN 56
 
 /**
  * @brief DAO base object (RFC 6550 section 6.4)
@@ -164,6 +284,7 @@ static inline size_t lichen_rpl_dio_options_len(size_t total_len)
 struct lichen_rpl_dao {
 	uint8_t rpl_instance_id;
 	bool ack_requested;
+	bool has_dodag_id;
 	uint8_t flags;
 	uint8_t dao_sequence;
 	uint8_t dodag_id[16];
@@ -185,7 +306,7 @@ int lichen_rpl_dao_parse(struct lichen_rpl_dao *_Nonnull dao,
  * @brief Serialize a DAO to wire bytes.
  *
  * @param dao  DAO to serialize
- * @param buf  Output buffer (at least 20 bytes)
+ * @param buf  Output buffer (at least 4 bytes for D=0 or 20 bytes for D=1)
  * @param len  Buffer size
  * @return Number of bytes written (20), or negative error code
  */
@@ -216,7 +337,8 @@ static inline size_t lichen_rpl_dao_options_len_ex(const uint8_t *_Nullable data
 	}
 	/* D-flag is bit 6 of byte 1 */
 	bool d_flag = (data[1] >> 6) & 1;
-	size_t base_len = d_flag ? LICHEN_RPL_DAO_BASE_LEN : 4;
+	size_t base_len = d_flag ? LICHEN_RPL_DAO_BASE_LEN :
+		LICHEN_RPL_DAO_BASE_NO_DODAGID_LEN;
 	return (total_len > base_len) ? (total_len - base_len) : 0;
 }
 
@@ -238,6 +360,7 @@ struct lichen_rpl_dao_ack {
 	uint8_t flags;
 	uint8_t dao_sequence;
 	uint8_t status;
+	bool has_dodag_id;
 	uint8_t dodag_id[16];
 };
 
@@ -253,12 +376,11 @@ const uint8_t *_Nullable lichen_rpl_dao_ack_options(const uint8_t *_Nonnull data
 static inline size_t lichen_rpl_dao_ack_options_len_ex(const uint8_t *_Nullable data,
 						   size_t total_len)
 {
-	if (data == NULL || total_len < 4) {
+	if (data == NULL || total_len < 4U) {
 		return 0;
 	}
-	bool d_flag = (data[1] >> 7) & 1;
-	size_t base_len = d_flag ? 20 : 4;
-	return (total_len > base_len) ? (total_len - base_len) : 0;
+	size_t base_len = (data[1] & 0x80U) != 0U ? 20U : 4U;
+	return total_len > base_len ? total_len - base_len : 0U;
 }
 
 /* ── DODAG Configuration option (type 4) ──────────────────────────────────── */
@@ -270,6 +392,8 @@ static inline size_t lichen_rpl_dao_ack_options_len_ex(const uint8_t *_Nullable 
  * @brief DODAG Configuration option (RFC 6550 section 6.7.6)
  */
 struct lichen_rpl_dodag_config {
+	uint8_t pcs;              /**< Path Control Size (0..7) */
+	bool authentication_enabled; /**< RFC 6550 A flag */
 	uint16_t min_hop_rank_increase;
 	uint16_t max_rank_increase;
 	uint16_t ocp;               /**< Objective Code Point */
@@ -303,10 +427,14 @@ int lichen_rpl_dodag_config_write(const struct lichen_rpl_dodag_config *_Nonnull
 
 /* ── RPL Target option (type 5) ────────────────────────────────────────────── */
 
+/** Canonical LICHEN RPL Target Data Length: flags + prefix length + /128. */
+#define LICHEN_RPL_TARGET_DATA_LEN 18U
+
 /**
  * @brief RPL Target option (RFC 6550 section 6.7.7)
  *
- * Advertises a /128 target address in a DAO.
+ * Advertises a /128 target address in a DAO. The LICHEN profile accepts only
+ * Data Length 18, zero flags, and Prefix Length 128.
  */
 struct lichen_rpl_target {
 	uint8_t prefix_len;
@@ -330,16 +458,18 @@ int lichen_rpl_target_write(const struct lichen_rpl_target *_Nonnull target,
 
 /* ── Transit Information option (type 6) ──────────────────────────────────── */
 
-/** Transit Info option data length (with parent address) */
+/** Canonical LICHEN Transit Information Data Length (with Parent Address). */
 #define LICHEN_RPL_TRANSIT_INFO_DATA_LEN  20
 
 /**
  * @brief Transit Information option (RFC 6550 6.7.8).
  *
- * E flag (bit 7 of first byte after length) = 1 when Parent Address present.
- * LICHEN always uses E=1; aligned with Python/Rust and corrected vectors.
+ * E (bit 7) marks external reachability; it is not a parent-presence bit.
+ * The exact Data Length always conveys the mandatory Parent Address. All
+ * remaining flag bits are reserved and must be zero.
  */
 struct lichen_rpl_transit_info {
+	bool external;
 	uint8_t path_control;
 	uint8_t path_sequence;
 	uint8_t path_lifetime;

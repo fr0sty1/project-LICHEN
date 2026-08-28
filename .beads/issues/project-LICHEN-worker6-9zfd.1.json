@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-9zfd.1",
+  "title": "Research Meshtastic portduino SimRadio C++ interface and build system requirements",
+  "description": "Research the Meshtastic portduino architecture to understand how to implement a custom SimRadio backend.\n\nKey areas to investigate:\n\n1. **RadioInterface abstraction**\n   - Locate the base RadioInterface class in portduino\n   - Identify required virtual methods: startReceive(), startTransmit(), getPacketLength(), etc.\n   - Document the packet buffer format and metadata fields\n\n2. **Existing SimRadio implementations**\n   - Check if portduino has any simulated radio for testing\n   - Study RadioLibInterface as the hardware radio reference\n   - Note callback patterns for TX complete, RX available\n\n3. **Build system**\n   - How portduino builds on Linux (CMake? PlatformIO?)\n   - Required dependencies and toolchain\n   - How to add a new radio backend without forking core\n\n4. **Position/GPS integration**\n   - How Meshtastic handles position packets\n   - Whether GPS can be injected programmatically for simulation\n   - Mapping x/y/z coordinates to lat/lon/alt\n\nDeliverable: Summary document in docs/ with interface signatures and build instructions.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:54.416568Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:54.416568Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-9zfd.1",
+      "depends_on_id": "project-LICHEN-worker6-9zfd",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:57.046365Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

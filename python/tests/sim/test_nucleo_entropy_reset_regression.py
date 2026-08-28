@@ -127,10 +127,8 @@ def _parse_hex_values(text: str) -> list[int]:
     for token in text.split():
         token = token.strip()
         if token.startswith("0x"):
-            try:
+            with contextlib.suppress(ValueError):
                 vals.append(int(token, 16))
-            except ValueError:
-                pass
     return vals
 
 

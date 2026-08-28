@@ -12,9 +12,12 @@ from lichen.sim.protocol import (
     MSG_ERR,
     MSG_OK,
     MSG_REGISTER,
+    MSG_RX,
     MSG_RX_ENTER,
     MSG_RX_EXIT,
+    MSG_RX_OK,
     MSG_RX_PACKET,
+    MSG_RX_TIMEOUT,
     MSG_RX_TIMEOUT_PUSH,
     MSG_TIME,
     MSG_TIME_OK,
@@ -22,19 +25,28 @@ from lichen.sim.protocol import (
     MSG_TX_DONE,
     MSG_TX_FAIL,
     ProtocolError,
+    decode_cad,
+    decode_cad_result,
     decode_err,
     decode_register,
+    decode_rx,
     decode_rx_enter,
+    decode_rx_ok,
     decode_rx_packet,
     decode_time_ok,
     decode_tx,
     decode_tx_done,
+    encode_cad,
+    encode_cad_result,
     encode_err,
     encode_ok,
     encode_register,
+    encode_rx,
     encode_rx_enter,
     encode_rx_exit,
+    encode_rx_ok,
     encode_rx_packet,
+    encode_rx_timeout,
     encode_rx_timeout_push,
     encode_time,
     encode_time_ok,
@@ -63,6 +75,15 @@ class TestMessageTypeConstants:
 
     def test_tx_fail_is_0x12(self) -> None:
         assert MSG_TX_FAIL == 0x12
+
+    def test_rx_is_0x20(self) -> None:
+        assert MSG_RX == 0x20
+
+    def test_rx_ok_is_0x21(self) -> None:
+        assert MSG_RX_OK == 0x21
+
+    def test_rx_timeout_is_0x22(self) -> None:
+        assert MSG_RX_TIMEOUT == 0x22
 
     def test_rx_enter_is_0x24(self) -> None:
         assert MSG_RX_ENTER == 0x24
@@ -154,6 +175,11 @@ class TestRegisterMessage:
 
         assert decoded[2:] == (x, y, z)
 
+    @pytest.mark.parametrize("coordinate", [float("nan"), float("inf"), float("-inf")])
+    def test_encode_rejects_non_finite_coordinates(self, coordinate: float) -> None:
+        with pytest.raises(ProtocolError, match="coordinate must be a finite float"):
+            encode_register("sim", "node", coordinate, 0.0, 0.0)
+
     def test_encode_sim_id_too_long(self) -> None:
         """Encoding should fail if sim_id exceeds 255 bytes."""
         with pytest.raises(ProtocolError, match="sim_id too long"):
@@ -186,6 +212,21 @@ class TestRegisterMessage:
         """Decoding should fail if truncated during coordinates."""
         data = bytes([3]) + b"sim" + bytes([4]) + b"node" + b"\x00" * 20
         with pytest.raises(ProtocolError, match="truncated at coordinates"):
+            decode_register(data)
+
+    def test_decode_rejects_trailing_bytes(self) -> None:
+        data = encode_register("sim", "node", 1.0, 2.0, 3.0)[1:] + b"\x00"
+        with pytest.raises(ProtocolError, match="trailing bytes"):
+            decode_register(data)
+
+    def test_decode_rejects_non_finite_coordinates(self) -> None:
+        data = bytes([0, 0]) + struct.pack("<ddd", float("nan"), 0.0, 0.0)
+        with pytest.raises(ProtocolError, match="coordinate must be a finite float"):
+            decode_register(data)
+
+    def test_decode_rejects_invalid_utf8(self) -> None:
+        data = bytes([1, 0xFF, 0]) + struct.pack("<ddd", 0.0, 0.0, 0.0)
+        with pytest.raises(ProtocolError, match="Invalid UTF-8 in sim_id"):
             decode_register(data)
 
     def test_wire_format(self) -> None:
@@ -266,6 +307,18 @@ class TestTxMessage:
         with pytest.raises(ProtocolError, match="truncated"):
             decode_tx(data)
 
+    def test_decode_rejects_trailing_bytes(self) -> None:
+        with pytest.raises(ProtocolError, match="invalid length"):
+            decode_tx(struct.pack("<H", 1) + b"\x05ab")
+
+    def test_legacy_wire_format_without_channel(self) -> None:
+        payload, channel = decode_tx(struct.pack("<H", 2) + b"AB")
+        assert (payload, channel) == (b"AB", 0)
+
+    def test_channel_wire_format(self) -> None:
+        payload, channel = decode_tx(encode_tx(b"AB", channel=7)[1:])
+        assert (payload, channel) == (b"AB", 7)
+
     def test_wire_format(self) -> None:
         """Verify exact wire format."""
         payload = b"test"
@@ -314,6 +367,10 @@ class TestTxDoneMessage:
         with pytest.raises(ProtocolError, match="too short"):
             decode_tx_done(b"\x00\x00\x00")
 
+    def test_decode_rejects_trailing_bytes(self) -> None:
+        with pytest.raises(ProtocolError, match="invalid length"):
+            decode_tx_done(b"\x00" * 5)
+
     def test_wire_format(self) -> None:
         """Verify exact wire format (little-endian)."""
         encoded = encode_tx_done(0x12345678)
@@ -331,6 +388,33 @@ class TestTxFailMessage:
 
         assert encoded == bytes([MSG_TX_FAIL])
         assert get_message_type(encoded) == MSG_TX_FAIL
+
+
+class TestLegacyRxMessages:
+    """The documented request/response RX protocol remains wire compatible."""
+
+    def test_rx_roundtrip_and_wire_bytes(self) -> None:
+        encoded = encode_rx(0x12345678)
+        assert encoded == b"\x20\x78\x56\x34\x12"
+        assert decode_rx(encoded[1:]) == 0x12345678
+
+    def test_rx_range_and_length_validation(self) -> None:
+        with pytest.raises(ProtocolError, match="timeout_ms out of range"):
+            encode_rx(-1)
+        with pytest.raises(ProtocolError, match="invalid length"):
+            decode_rx(b"\x00" * 5)
+
+    def test_rx_ok_roundtrip_and_wire_bytes(self) -> None:
+        encoded = encode_rx_ok(b"AB", -100, 75)
+        assert encoded == b"\x21\x02\x00AB\x9c\xffK\x00"
+        assert decode_rx_ok(encoded[1:]) == (b"AB", -100, 75)
+
+    def test_rx_ok_rejects_trailing_bytes(self) -> None:
+        with pytest.raises(ProtocolError, match="trailing bytes"):
+            decode_rx_ok(encode_rx_ok(b"A", -1, 1)[1:] + b"\x00")
+
+    def test_rx_timeout_wire_byte(self) -> None:
+        assert encode_rx_timeout() == bytes([MSG_RX_TIMEOUT])
 
 
 class TestRxEnterMessage:
@@ -373,6 +457,13 @@ class TestRxEnterMessage:
         """Decoding should fail if data is too short."""
         with pytest.raises(ProtocolError, match="too short"):
             decode_rx_enter(b"\x00\x00")
+
+    def test_legacy_frame_without_channel(self) -> None:
+        assert decode_rx_enter(struct.pack("<I", 123)) == (123, 0)
+
+    def test_decode_rejects_trailing_bytes(self) -> None:
+        with pytest.raises(ProtocolError, match="invalid length"):
+            decode_rx_enter(struct.pack("<IBB", 123, 4, 5))
 
     def test_wire_format(self) -> None:
         """Verify exact wire format (little-endian)."""
@@ -459,6 +550,11 @@ class TestRxPacketMessage:
         # Length says 4, payload present, but RSSI/SNR missing
         data = struct.pack("<H", 4) + b"test" + b"\x00"
         with pytest.raises(ProtocolError, match="truncated"):
+            decode_rx_packet(data)
+
+    def test_decode_rejects_trailing_bytes(self) -> None:
+        data = encode_rx_packet(b"test", -1, 1)[1:] + b"\x00"
+        with pytest.raises(ProtocolError, match="trailing bytes"):
             decode_rx_packet(data)
 
     def test_wire_format(self) -> None:
@@ -559,6 +655,16 @@ class TestTimeOkMessage:
         with pytest.raises(ProtocolError, match="too short"):
             decode_time_ok(b"\x00" * 7)
 
+    def test_encode_rejects_out_of_range(self) -> None:
+        with pytest.raises(ProtocolError, match="time_us out of range"):
+            encode_time_ok(-1)
+        with pytest.raises(ProtocolError, match="time_us out of range"):
+            encode_time_ok(1 << 64)
+
+    def test_decode_rejects_trailing_bytes(self) -> None:
+        with pytest.raises(ProtocolError, match="invalid length"):
+            decode_time_ok(b"\x00" * 9)
+
     def test_wire_format(self) -> None:
         """Verify exact wire format (little-endian uint64)."""
         encoded = encode_time_ok(0x0102030405060708)
@@ -576,6 +682,35 @@ class TestOkMessage:
 
         assert encoded == bytes([MSG_OK])
         assert get_message_type(encoded) == MSG_OK
+
+
+class TestCadMessages:
+    """CAD codecs validate legacy/current lengths and canonical booleans."""
+
+    def test_roundtrip_and_wire_bytes(self) -> None:
+        encoded = encode_cad(0x12345678, channel=9)
+        assert encoded == b"\x40\x78\x56\x34\x12\x09"
+        assert decode_cad(encoded[1:]) == (0x12345678, 9)
+
+    def test_decode_legacy_frame_without_channel(self) -> None:
+        assert decode_cad(struct.pack("<I", 42)) == (42, 0)
+
+    def test_decode_rejects_bad_length(self) -> None:
+        with pytest.raises(ProtocolError, match="too short"):
+            decode_cad(b"\x00" * 3)
+        with pytest.raises(ProtocolError, match="invalid length"):
+            decode_cad(b"\x00" * 6)
+
+    @pytest.mark.parametrize(("detected", "wire"), [(False, b"\x41\x00"), (True, b"\x41\x01")])
+    def test_result_roundtrip(self, detected: bool, wire: bytes) -> None:
+        assert encode_cad_result(detected) == wire
+        assert decode_cad_result(wire[1:]) is detected
+
+    def test_result_rejects_noncanonical_or_trailing(self) -> None:
+        with pytest.raises(ProtocolError, match="not canonical"):
+            decode_cad_result(b"\x02")
+        with pytest.raises(ProtocolError, match="invalid length"):
+            decode_cad_result(b"\x00\x00")
 
 
 class TestErrMessage:
@@ -647,6 +782,14 @@ class TestErrMessage:
         with pytest.raises(ProtocolError, match="truncated"):
             decode_err(data)
 
+    def test_decode_rejects_trailing_bytes(self) -> None:
+        with pytest.raises(ProtocolError, match="trailing bytes"):
+            decode_err(encode_err(1, "x")[1:] + b"\x00")
+
+    def test_decode_rejects_invalid_utf8(self) -> None:
+        with pytest.raises(ProtocolError, match="Invalid UTF-8"):
+            decode_err(bytes([1, 1, 0xFF]))
+
     def test_wire_format(self) -> None:
         """Verify exact wire format."""
         encoded = encode_err(0xAB, "hi")
@@ -667,6 +810,9 @@ class TestMessageHelpers:
         assert get_message_type(encode_tx(b"x")) == MSG_TX
         assert get_message_type(encode_tx_done(100)) == MSG_TX_DONE
         assert get_message_type(encode_tx_fail()) == MSG_TX_FAIL
+        assert get_message_type(encode_rx(5000)) == MSG_RX
+        assert get_message_type(encode_rx_ok(b"x", -50, 10)) == MSG_RX_OK
+        assert get_message_type(encode_rx_timeout()) == MSG_RX_TIMEOUT
         assert get_message_type(encode_rx_enter(5000)) == MSG_RX_ENTER
         assert get_message_type(encode_rx_exit()) == MSG_RX_EXIT
         assert get_message_type(encode_rx_packet(b"x", -50, 10)) == MSG_RX_PACKET

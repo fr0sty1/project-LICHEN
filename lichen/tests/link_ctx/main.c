@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-#include <errno.h>
+#include <lichen/errno.h>
 #include <lichen/link_ctx.h>
 #include <string.h>
 
@@ -48,14 +48,46 @@ static int test_entropy_success_maps_epoch(void)
 	int failed = ctx.epoch != 0xc2 || ctx.tx_seq != 0 || ctx.has_key ||
 		ctx.has_link_key || ctx.nonce_exhausted ||
 		memcmp(ctx.eui64, eui64, sizeof(eui64)) != 0;
+	struct lichen_csma_snapshot csma;
+	failed |= lichen_csma_snapshot(&ctx.csma, &csma) != 0 ||
+		  csma.phase != LICHEN_CSMA_IDLE || csma.backoff_exponent != 0U ||
+		  csma.retries != 0U || csma.cancel_requested;
+	lichen_link_cleanup(&ctx);
+	return failed;
+}
+
+static int test_terminal_epoch_never_wraps(void)
+{
+	const uint8_t eui64[LICHEN_EUI64_LEN] = { 0 };
+	struct lichen_link_ctx ctx;
+	uint8_t epoch = 0;
+	uint16_t sequence = 0;
+
+	entropy_fails = false;
+	if (lichen_link_init(&ctx, eui64) != 0) {
+		return 1;
+	}
+	ctx.epoch = UINT8_MAX;
+	ctx.tx_seq = UINT16_MAX;
+	int failed = lichen_link_next_tx(&ctx, &epoch, &sequence) != 0 ||
+		epoch != UINT8_MAX || sequence != UINT16_MAX ||
+		ctx.epoch != UINT8_MAX || ctx.tx_seq != UINT16_MAX ||
+		!ctx.nonce_exhausted;
+	failed |= lichen_link_next_tx(&ctx, &epoch, &sequence) != -EOVERFLOW;
 	lichen_link_cleanup(&ctx);
 	return failed;
 }
 
 int main(void)
 {
-	int failed = test_entropy_failure_preserves_context();
-
-	failed |= test_entropy_success_maps_epoch();
-	return failed;
+	if (test_entropy_failure_preserves_context() != 0) {
+		return 1;
+	}
+	if (test_entropy_success_maps_epoch() != 0) {
+		return 2;
+	}
+	if (test_terminal_epoch_never_wraps() != 0) {
+		return 3;
+	}
+	return 0;
 }

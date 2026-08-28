@@ -11,6 +11,7 @@ if(NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
 endif()
 
 # Common include paths
+set(LICHEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 set(LINK_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link/include)
 set(LINK_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/link)
 
@@ -66,10 +67,13 @@ add_executable(fuzz_schnorr48
   ${CRYPTO_SRC_DIR}/monocypher-ed25519.c
 )
 
-target_include_directories(fuzz_schnorr48 PRIVATE ${LINK_INCLUDE_DIR} ${CRYPTO_SRC_DIR})
+target_include_directories(fuzz_schnorr48 PRIVATE ${LICHEN_INCLUDE_DIR} ${LINK_INCLUDE_DIR} ${CRYPTO_SRC_DIR})
 target_compile_definitions(fuzz_schnorr48 PRIVATE CONFIG_LICHEN_CRYPTO_MONOCYPHER=1)
 target_compile_options(fuzz_schnorr48 PRIVATE ${FUZZ_FLAGS} ${FUZZ_WARN_FLAGS})
 target_link_options(fuzz_schnorr48 PRIVATE ${FUZZ_FLAGS})
+if(FUZZ_STANDALONE_DEF)
+  target_compile_definitions(fuzz_schnorr48 PRIVATE ${FUZZ_STANDALONE_DEF})
+endif()
 
 # --- fuzz_schc: SCHC compression/fragmentation fuzzer ---
 set(SCHC_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/schc/include)

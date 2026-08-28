@@ -1,0 +1,163 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "ccp11_dynamic_channel_selection",
+  "description": "CCP-11 Dynamic Channel Selection test vectors. Validates the SelectChannel procedure from spec/02a-coordinated-capacity.md section 2a.3.1: (1) density > 8 returns CH0, (2) density <= 8 uses hash-based selection, and (3) CH0 is excluded from the modulo. Independent oracle: FNV-1a32(EUI64_BE || epoch_LE) with basis 0x811c9dc5, then 0 for plans without a data channel or 1 + (hash % (n_channels - 1)).",
+  "spec": "spec/02a-coordinated-capacity.md",
+  "oracle": {
+    "python": "lichen.ccp.select_channel",
+    "formula": "IF density > 8 OR n_channels <= 1 THEN RETURN 0; data = eui64_be || epoch_le_u32; h = fnv1a32(data); RETURN 1 + (h % (n_channels - 1))"
+  },
+  "vectors": [
+    {
+      "name": "density_8_boundary_no_fallback",
+      "description": "Density exactly 8 does NOT trigger CH0 fallback. This is the boundary case: density <= 8 uses hash-based selection.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 8,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "87645a8d",
+        "channel": 4
+      }
+    },
+    {
+      "name": "density_9_triggers_ch0_fallback",
+      "description": "Density 9 (just above threshold) triggers CH0 fallback. Per spec: IF Density > 8 THEN RETURN 0.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 9,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "87645a8d",
+        "channel": 0
+      }
+    },
+    {
+      "name": "density_0_uses_hash",
+      "description": "Density 0 (lowest) uses hash-based selection normally.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 0,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "87645a8d",
+        "channel": 4
+      }
+    },
+    {
+      "name": "channel_changes_with_epoch",
+      "description": "Channel selection is deterministic but varies with epoch. Same EUI64, different epoch -> different channel.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 1,
+        "density": 5,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "37381b7c",
+        "channel": 1
+      }
+    },
+    {
+      "name": "channel_consistency_same_inputs",
+      "description": "Same inputs always produce same channel (deterministic). Verifies no random component.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "aabbccddeeff1122",
+        "epoch": 42,
+        "density": 4,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "449a3a23",
+        "channel": 7
+      }
+    },
+    {
+      "name": "density_max_u8_ch0_fallback",
+      "description": "Maximum density (255) triggers CH0 fallback.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 255,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "87645a8d",
+        "channel": 0
+      }
+    },
+    {
+      "name": "epoch_wrap_u32_max",
+      "description": "Epoch at u32 max value handles wrap correctly. Channel selection remains valid.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 4294967295,
+        "density": 5,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "211a6929",
+        "channel": 1
+      }
+    },
+    {
+      "name": "different_eui64_different_channel",
+      "description": "Different EUI64 with same epoch/density produces different channel distribution.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "1122334455667788",
+        "epoch": 0,
+        "density": 5,
+        "n_channels": 8
+      },
+      "expected": {
+        "hash_32": "b05cbe3d",
+        "channel": 6
+      }
+    },
+    {
+      "name": "n_channels_16_wider_distribution",
+      "description": "With 16 total channels, output range is [1, 16). Same hash, different modulo.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 5,
+        "n_channels": 16
+      },
+      "expected": {
+        "hash_32": "87645a8d",
+        "channel": 2
+      }
+    },
+    {
+      "name": "control_only_plan_fails_closed",
+      "description": "n_channels=1 contains only reserved CH0, so no data channel exists and selection fails closed to CH0.",
+      "category": "frequency_agility",
+      "input": {
+        "eui64_hex": "0011223344556677",
+        "epoch": 0,
+        "density": 5,
+        "n_channels": 1
+      },
+      "expected": {
+        "hash_32": "87645a8d",
+        "channel": 0
+      }
+    }
+  ]
+}

@@ -25,6 +25,22 @@ config LICHEN_APP_INTERFACE_MAX_PAYLOAD
 	help
 	  Maximum byte payload accepted by the shared app-interface event API.
 
+config LICHEN_APP_INTERFACE_IPC_QUEUE_DEPTH
+	int "Same-device IPC packet queue depth per direction"
+	default 2
+	range 1 8
+	help
+	  Number of complete IPv6 packets retained independently in each direction
+	  between a same-MCU app and the network stack.
+
+config LICHEN_APP_INTERFACE_IPC_MAX_PACKET
+	int "Same-device IPC maximum IPv6 packet size"
+	default 1280
+	range 40 1280
+	help
+	  Maximum complete IPv6 packet accepted by the same-device IPC queues.
+	  Static storage is allocated for two queues; no heap allocation is used.
+
 config LICHEN_APP_INTERFACE_TEST_HOOKS
 	bool "LICHEN app-interface ztest hooks"
 	depends on ZTEST

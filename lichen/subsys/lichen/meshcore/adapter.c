@@ -402,6 +402,7 @@ static int enqueue_next_pending(struct lichen_meshcore_adapter *adapter)
 		ret = encode_pending_status(event, adapter->tx_buf,
 					    sizeof(adapter->tx_buf));
 		break;
+	case LICHEN_MESHCORE_PENDING_MAX:
 	default:
 		adapter->stats.pending_drop_count++;
 		pending_pop(adapter);

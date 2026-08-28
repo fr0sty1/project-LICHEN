@@ -1,0 +1,6 @@
+tests:
+  lichen.edhoc.handshake:
+    tags: edhoc crypto security
+    platform_allow: qemu_x86 native_sim
+    integration_platforms:
+      - qemu_x86

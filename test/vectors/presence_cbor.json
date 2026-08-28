@@ -76,13 +76,14 @@
     },
     {
       "name": "battery_zero",
-      "description": "Battery at 0% (edge case).",
+      "description": "Battery at 0% with low_battery flag (spec 18.5.3).",
       "input": {
         "status": "available",
         "battery": 0,
+        "low_battery": true,
         "ts": 1716742800
       },
-      "encoded_hex": "a36673746174757369617661696c61626c656762617474657279006274731a66536a90"
+      "encoded_hex": "a46673746174757369617661696c61626c656762617474657279006b6c6f775f62617474657279f56274731a66536a90"
     },
     {
       "name": "battery_full",

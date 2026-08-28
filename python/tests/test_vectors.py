@@ -117,9 +117,13 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 sys.path.insert(0, str(VECTORS_DIR))
 from atomic_json import json_bytes  # noqa: E402
 from generate import (  # noqa: E402
+    EDHOC_REGRESSION_DESCRIPTION,
     _oracle_hash_32,
     announce_coords_vectors,
+    ccp_hop_vectors,
     ccp9_vectors,
+    ccp12_synchronized_hop_vectors,
+    ccp13_vectors,
     ccp15_vectors,
     ccp16_vectors,
     edhoc_vectors,
@@ -189,6 +193,7 @@ def test_tofu_edge_vectors_and_c_fixture_are_fresh() -> None:
 @pytest.mark.parametrize(
     "filename",
     [
+        "ccp13.json",
         "ccp15.json",
         "ccp9.json",
         "ccp9-rendezvous.json",
@@ -1682,12 +1687,22 @@ def test_meshcore_app_compat_vectors_match_generator() -> None:
 
 def test_edhoc_vectors_match_generator() -> None:
     doc = _load("edhoc.json")
+    assert doc["description"] == EDHOC_REGRESSION_DESCRIPTION
+    assert (
+        "NOT an independent conformance or interoperability oracle"
+        in doc["description"]
+    )
     assert doc["vectors"] == edhoc_vectors()
 
 
 def test_ccp9_vectors_match_generator() -> None:
     doc = _load("ccp9.json")
     assert doc["vectors"] == ccp9_vectors()
+
+
+def test_ccp13_vectors_match_generator() -> None:
+    doc = _load("ccp13.json")
+    assert doc["vectors"] == ccp13_vectors()
 
 
 def test_ccp15_vectors_match_generator() -> None:
@@ -1698,6 +1713,57 @@ def test_ccp15_vectors_match_generator() -> None:
 def test_ccp16_vectors_match_generator() -> None:
     doc = _load("ccp16.json")
     assert doc["vectors"] == ccp16_vectors()
+
+
+def test_ccp16_hop_vectors_match_generator() -> None:
+    """Canonical CCP-12 synchronized hop vectors reproduce from generate.py."""
+    doc = _load("ccp16-hop.json")
+    assert doc["format_version"] == 2
+    # Use ccp_hop_vectors for import pattern consistency with other ccp tests
+    assert doc["vectors"] == ccp_hop_vectors()
+    # Verify alias equivalence
+    assert ccp_hop_vectors() == ccp12_synchronized_hop_vectors()
+
+
+def _ccp16_hop_cases():
+    doc = _load("ccp16-hop.json")
+    assert doc["format_version"] == 2
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp16_hop_cases())
+def test_ccp16_hop_vector(name: str, vector: dict) -> None:
+    """CCP-12 synchronized hopping vectors: hash_32 and channel selection.
+
+    The vectors are the independent oracle. For hash-based channel selection,
+    verify the hash_32 value matches _oracle_hash_32 applied to (seed || sfn).
+    Density-based fallback and rx_channel preference are structural assertions.
+    """
+    sfn = vector["sfn"]
+    seed = vector.get("seed", 0)
+    num_channels = vector.get("num_channels", 8)
+
+    if "hash_32" in vector:
+        # Verify the hash_32 value using the independent oracle.
+        # Input: seed (u32 LE) || sfn (u32 LE)
+        hash_input = seed.to_bytes(4, "little") + (sfn & 0xFFFFFFFF).to_bytes(4, "little")
+        computed_hash = _oracle_hash_32(hash_input)
+        assert computed_hash == vector["hash_32"], f"hash_32 mismatch: {name}"
+
+    if "density" in vector and vector["density"] > num_channels:
+        # Density > num_channels => channel 0 per SelectChannel pseudocode
+        assert vector["expected_channel"] == 0, f"density fallback: {name}"
+    elif "rx_channel" in vector:
+        # Rendezvous uses rx_channel preference
+        assert vector["expected_channel"] == vector["rx_channel"], f"rx_channel pref: {name}"
+    elif "hash_32" in vector:
+        # Standard hash selection excludes reserved CH0 from the modulus.
+        computed_channel = (
+            0
+            if num_channels <= 1
+            else 1 + (vector["hash_32"] % (num_channels - 1))
+        )
+        assert computed_channel == vector["expected_channel"], f"channel select: {name}"
 
 
 def test_rpl_multi_instance_vectors_match_generator() -> None:

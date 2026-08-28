@@ -10,21 +10,27 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 
-#include <tinycrypt/sha256.h>
-
 #include <zephyr/logging/log.h>
 
 #include <lichen/l2_payload.h>
 #include <lichen/schnorr48.h>
 #include <monocypher.h>
+#include <monocypher-ed25519.h>
 
 LOG_MODULE_REGISTER(lichen_announce, LOG_LEVEL_INF);
 
-#define ANNOUNCE_SIGNED_PREFIX_LEN \
-	(LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 2U + 1U)
-#define ANNOUNCE_SIGNED_MAX_LEN 256U
-#define ANNOUNCE_APP_DATA_MAX_LEN \
-	(ANNOUNCE_SIGNED_MAX_LEN - ANNOUNCE_SIGNED_PREFIX_LEN)
+#define ANNOUNCE_SIGNING_DOMAIN "LICHEN-ANNOUNCE-v1"
+#define ANNOUNCE_SIGNING_DOMAIN_LEN 19U /* ASCII domain plus terminating NUL */
+#define ANNOUNCE_SIGNED_IID_OFFSET ANNOUNCE_SIGNING_DOMAIN_LEN
+#define ANNOUNCE_SIGNED_PUBKEY_OFFSET \
+	(ANNOUNCE_SIGNED_IID_OFFSET + LICHEN_ANNOUNCE_IID_LEN)
+#define ANNOUNCE_SIGNED_SEQ_OFFSET \
+	(ANNOUNCE_SIGNED_PUBKEY_OFFSET + LICHEN_ANNOUNCE_PUBKEY_LEN)
+#define ANNOUNCE_SIGNED_CHANNEL_OFFSET (ANNOUNCE_SIGNED_SEQ_OFFSET + 2U)
+#define ANNOUNCE_SIGNED_APP_LEN_OFFSET (ANNOUNCE_SIGNED_CHANNEL_OFFSET + 1U)
+#define ANNOUNCE_SIGNED_PREFIX_LEN (ANNOUNCE_SIGNED_APP_LEN_OFFSET + 2U)
+#define ANNOUNCE_SIGNED_MAX_LEN \
+	(ANNOUNCE_SIGNED_PREFIX_LEN + LICHEN_ANNOUNCE_MAX_APP_DATA_LEN)
 
 /*
  * LOCK ORDERING:
@@ -89,19 +95,16 @@ static uint32_t extend_location_seq(uint16_t seq_num,
 static int pubkey_to_iid(const uint8_t pubkey[LICHEN_ANNOUNCE_PUBKEY_LEN],
 			 uint8_t iid[LICHEN_ANNOUNCE_IID_LEN])
 {
-	struct tc_sha256_state_struct sha_state;
-	uint8_t hash[TC_SHA256_DIGEST_SIZE];
+	uint8_t hash[64];
 
 	if (pubkey == NULL || iid == NULL) {
 		return -EINVAL;
 	}
 
-	(void)tc_sha256_init(&sha_state);
-	(void)tc_sha256_update(&sha_state, pubkey, LICHEN_ANNOUNCE_PUBKEY_LEN);
-	(void)tc_sha256_final(hash, &sha_state);
+	crypto_sha512(hash, pubkey, LICHEN_ANNOUNCE_PUBKEY_LEN);
 	memcpy(iid, hash, LICHEN_ANNOUNCE_IID_LEN);
 	iid[0] &= (uint8_t)~0x02U;
-	memset(hash, 0, sizeof(hash));
+	crypto_wipe(hash, sizeof(hash));
 	return 0;
 }
 
@@ -113,7 +116,14 @@ static int build_signed_data(const struct lichen_announce_view *announce,
 	if (announce == NULL || buf == NULL || out_len == NULL) {
 		return -EINVAL;
 	}
-	if (announce->app_data_len > ANNOUNCE_APP_DATA_MAX_LEN) {
+	if (announce->originator_iid == NULL || announce->pubkey == NULL ||
+	    (announce->app_data_len > 0U && announce->app_data == NULL)) {
+		return -EINVAL;
+	}
+	if (announce->rx_channel >= 8U) {
+		return -EINVAL;
+	}
+	if (announce->app_data_len > LICHEN_ANNOUNCE_MAX_APP_DATA_LEN) {
 		return -EMSGSIZE;
 	}
 
@@ -122,17 +132,24 @@ static int build_signed_data(const struct lichen_announce_view *announce,
 		return -ENOMEM;
 	}
 
-	memcpy(&buf[0], announce->originator_iid, LICHEN_ANNOUNCE_IID_LEN);
-	memcpy(&buf[LICHEN_ANNOUNCE_IID_LEN], announce->pubkey,
+	memcpy(&buf[0], ANNOUNCE_SIGNING_DOMAIN, ANNOUNCE_SIGNING_DOMAIN_LEN);
+	memcpy(&buf[ANNOUNCE_SIGNED_IID_OFFSET], announce->originator_iid,
+	       LICHEN_ANNOUNCE_IID_LEN);
+	memcpy(&buf[ANNOUNCE_SIGNED_PUBKEY_OFFSET], announce->pubkey,
 	       LICHEN_ANNOUNCE_PUBKEY_LEN);
-	buf[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN] =
+	buf[ANNOUNCE_SIGNED_SEQ_OFFSET] =
 		(uint8_t)(announce->wire_seq_num >> 8);
-	buf[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 1U] =
+	buf[ANNOUNCE_SIGNED_SEQ_OFFSET + 1U] =
 		(uint8_t)announce->wire_seq_num;
-	buf[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 2U] =
-		announce->rx_channel;
-	memcpy(&buf[ANNOUNCE_SIGNED_PREFIX_LEN], announce->app_data,
-	       announce->app_data_len);
+	buf[ANNOUNCE_SIGNED_CHANNEL_OFFSET] = announce->rx_channel;
+	buf[ANNOUNCE_SIGNED_APP_LEN_OFFSET] =
+		(uint8_t)(announce->app_data_len >> 8);
+	buf[ANNOUNCE_SIGNED_APP_LEN_OFFSET + 1U] =
+		(uint8_t)announce->app_data_len;
+	if (announce->app_data_len > 0U) {
+		memcpy(&buf[ANNOUNCE_SIGNED_PREFIX_LEN], announce->app_data,
+		       announce->app_data_len);
+	}
 	*out_len = len;
 	return 0;
 }
@@ -241,7 +258,7 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 	if (data[2] > LICHEN_ANNOUNCE_MAX_HOPS) {
 		return -EINVAL;
 	}
-	if (len - LICHEN_ANNOUNCE_MIN_LEN > ANNOUNCE_APP_DATA_MAX_LEN) {
+	if (len > LICHEN_ANNOUNCE_MAX_LEN) {
 		return -EMSGSIZE;
 	}
 
@@ -257,6 +274,46 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 	announce->app_data = &data[LICHEN_ANNOUNCE_MIN_LEN];
 	announce->app_data_len = len - LICHEN_ANNOUNCE_MIN_LEN;
 	return 0;
+}
+
+int lichen_announce_encode(const struct lichen_announce_view *announce,
+			   uint8_t *buf, size_t buf_len)
+{
+	size_t frame_len;
+
+	if (announce == NULL || buf == NULL ||
+	    announce->originator_iid == NULL || announce->pubkey == NULL ||
+	    announce->signature == NULL ||
+	    (announce->app_data_len > 0U && announce->app_data == NULL)) {
+		return -EINVAL;
+	}
+	if (announce->rx_channel >= 8U ||
+	    announce->hop_count > LICHEN_ANNOUNCE_MAX_HOPS) {
+		return -EINVAL;
+	}
+	if (announce->app_data_len > LICHEN_ANNOUNCE_MAX_APP_DATA_LEN) {
+		return -EMSGSIZE;
+	}
+
+	frame_len = LICHEN_ANNOUNCE_MIN_LEN + announce->app_data_len;
+	if (buf_len < frame_len) {
+		return -ENOMEM;
+	}
+
+	buf[0] = LICHEN_ANNOUNCE_TYPE;
+	buf[1] = announce->rx_channel;
+	buf[2] = announce->hop_count;
+	buf[3] = (uint8_t)(announce->wire_seq_num >> 8);
+	buf[4] = (uint8_t)announce->wire_seq_num;
+	memcpy(&buf[5], announce->originator_iid, LICHEN_ANNOUNCE_IID_LEN);
+	memcpy(&buf[13], announce->pubkey, LICHEN_ANNOUNCE_PUBKEY_LEN);
+	memcpy(&buf[45], announce->signature, LICHEN_ANNOUNCE_SIGNATURE_LEN);
+	if (announce->app_data_len > 0U) {
+		memcpy(&buf[LICHEN_ANNOUNCE_MIN_LEN], announce->app_data,
+		       announce->app_data_len);
+	}
+
+	return (int)frame_len;
 }
 
 bool lichen_announce_should_relay(const struct lichen_announce_view *announce)
@@ -600,12 +657,12 @@ int lichen_lora_gw_announce_encode(const struct lichen_lora_gw_announce *announc
 /* L2 routing/control dispatch byte (spec 9.2) */
 #define L2_ROUTING_DISPATCH 0x15U
 
-/* Maximum app data that fits in an announce (see ANNOUNCE_APP_DATA_MAX_LEN) */
-#define SCHED_APP_DATA_MAX_LEN (ANNOUNCE_SIGNED_MAX_LEN - ANNOUNCE_SIGNED_PREFIX_LEN)
+/* Maximum application data allowed by the link-profile Announce limit. */
+#define SCHED_APP_DATA_MAX_LEN LICHEN_ANNOUNCE_MAX_APP_DATA_LEN
 
 /* Announce frame buffer: dispatch(0x15) + type(0x01) + flags(rx_channel) + hop(0) +
  * seq(2) + iid(8) + pubkey(32) + sig(48) + app_data (93 + app) */
-#define ANNOUNCE_FRAME_MAX_LEN (1U + LICHEN_ANNOUNCE_MIN_LEN + SCHED_APP_DATA_MAX_LEN)
+#define ANNOUNCE_FRAME_MAX_LEN (1U + LICHEN_ANNOUNCE_MAX_LEN)
 
 struct announce_scheduler {
 	bool running;
@@ -660,13 +717,20 @@ static uint16_t increment_seq_locked(void)
 static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 {
 	uint8_t signed_data[ANNOUNCE_SIGNED_MAX_LEN];
-	size_t signed_len;
+	uint8_t iid[LICHEN_ANNOUNCE_IID_LEN];
 	uint8_t signature[LICHEN_ANNOUNCE_SIGNATURE_LEN];
 	struct lichen_link_keypair_snapshot keypair = { 0 };
-	size_t pos = 0;
+	struct lichen_announce_view announce = { 0 };
+	size_t signed_len;
 	uint16_t seq;
-	size_t app_data_len_snapshot;
 	int ret;
+
+	if (buf == NULL || out_len == NULL) {
+		return -EINVAL;
+	}
+	if (buf_len < 1U) {
+		return -ENOMEM;
+	}
 
 	k_mutex_lock(&sched.mutex, K_FOREVER);
 
@@ -683,43 +747,31 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	/* Increment and get sequence number */
 	seq = increment_seq_locked();
 
-	/* Build signed data: iid || pubkey || seq_num || rx_channel || app_data (CCP-9) */
+	/* Build the canonical domain-separated signed transcript (CCP-9). */
 	/* SECURITY: IID is derived from pubkey hash to bind identity to the
 	 * cryptographic key material. Must match RX path (pubkey_to_iid).
 	 * Resolves bead 796f (EUI-64 vs pubkey IID mismatch). */
-	uint8_t iid[LICHEN_ANNOUNCE_IID_LEN];
-
-	ret = pubkey_to_iid(sched.link_ctx->ed25519_pk, iid);
+	ret = pubkey_to_iid(keypair.pk, iid);
 	if (ret < 0) {
+		lichen_link_clear_keypair_snapshot(&keypair);
 		k_mutex_unlock(&sched.mutex);
 		return ret;
 	}
 
-	/* SECURITY: Capture app_data_len while holding the lock to prevent race
-	 * condition with lichen_announce_sched_set_app_data(). Using this snapshot
-	 * consistently prevents buffer overflow if app_data_len increases after
-	 * we release the lock. */
-	app_data_len_snapshot = sched.app_data_len;
-	uint8_t channel_snapshot = sched.rx_channel;
-	signed_len = ANNOUNCE_SIGNED_PREFIX_LEN + app_data_len_snapshot;
-	if (signed_len > sizeof(signed_data)) {
+	announce.hop_count = 0U;
+	announce.rx_channel = sched.rx_channel;
+	announce.wire_seq_num = seq;
+	announce.seq_num = seq;
+	announce.originator_iid = iid;
+	announce.pubkey = keypair.pk;
+	announce.app_data = sched.app_data;
+	announce.app_data_len = sched.app_data_len;
+	ret = build_signed_data(&announce, signed_data, sizeof(signed_data),
+				&signed_len);
+	if (ret < 0) {
 		lichen_link_clear_keypair_snapshot(&keypair);
 		k_mutex_unlock(&sched.mutex);
-		return -EMSGSIZE;
-	}
-
-	memcpy(&signed_data[0], iid, LICHEN_ANNOUNCE_IID_LEN);
-	memcpy(&signed_data[LICHEN_ANNOUNCE_IID_LEN], keypair.pk,
-	       LICHEN_ANNOUNCE_PUBKEY_LEN);
-	signed_data[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN] =
-		(uint8_t)(seq >> 8);
-	signed_data[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 1U] =
-		(uint8_t)seq;
-	signed_data[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 2U] =
-		channel_snapshot;
-	if (app_data_len_snapshot > 0) {
-		memcpy(&signed_data[ANNOUNCE_SIGNED_PREFIX_LEN],
-		       sched.app_data, app_data_len_snapshot);
+		return ret;
 	}
 
 	/* Sign the announce */
@@ -735,45 +787,23 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 
 	k_mutex_unlock(&sched.mutex);
 
-	/* Build frame: dispatch(0x15) || type(0x01) || rx_channel(flags) || hop(0) ||
-	 * seq(2B) || iid(8) || pubkey(32) || sig(48) || [app_data]
-	 * (MIN_LEN=93 per CCP-9 + dispatch; matches ccp9.json oracle) */
-	size_t frame_len = 1U + LICHEN_ANNOUNCE_MIN_LEN + app_data_len_snapshot;
-
-	if (buf_len < frame_len) {
+	/* Use transcript snapshots so concurrent scheduler updates cannot make
+	 * the serialized frame differ from the bytes that were signed. */
+	announce.originator_iid = &signed_data[ANNOUNCE_SIGNED_IID_OFFSET];
+	announce.pubkey = &signed_data[ANNOUNCE_SIGNED_PUBKEY_OFFSET];
+	announce.signature = signature;
+	announce.app_data = &signed_data[ANNOUNCE_SIGNED_PREFIX_LEN];
+	buf[0] = L2_ROUTING_DISPATCH;
+	ret = lichen_announce_encode(&announce, &buf[1], buf_len - 1U);
+	if (ret < 0) {
 		memset(signature, 0, sizeof(signature));
-		return -ENOMEM;
+		memset(signed_data, 0, sizeof(signed_data));
+		return ret;
 	}
 
-	buf[pos++] = L2_ROUTING_DISPATCH;
-	buf[pos++] = LICHEN_ANNOUNCE_TYPE;
-	buf[pos++] = channel_snapshot; /* flags = rx_channel (0-7) per CCP-9 */
-	buf[pos++] = 0U; /* hop_count: 0 since originator */
-	buf[pos++] = (uint8_t)(seq >> 8);
-	buf[pos++] = (uint8_t)seq;
-	memcpy(&buf[pos], iid, LICHEN_ANNOUNCE_IID_LEN);
-	pos += LICHEN_ANNOUNCE_IID_LEN;
-	/* SECURITY: Use pubkey copy from signed_data (captured under lock) rather
-	 * than re-reading sched.link_ctx->ed25519_pk. This prevents a race if
-	 * the link context changes after we release the mutex. */
-	memcpy(&buf[pos], &signed_data[LICHEN_ANNOUNCE_IID_LEN],
-	       LICHEN_ANNOUNCE_PUBKEY_LEN);
-	pos += LICHEN_ANNOUNCE_PUBKEY_LEN;
-	memcpy(&buf[pos], signature, LICHEN_ANNOUNCE_SIGNATURE_LEN);
-	pos += LICHEN_ANNOUNCE_SIGNATURE_LEN;
+	*out_len = 1U + (size_t)ret;
 	memset(signature, 0, sizeof(signature));
-		if (app_data_len_snapshot > 0) {
-		/* SECURITY: Copy from signed_data (captured under lock) rather than
-		 * re-reading sched.app_data. This ensures consistency: the app_data
-		 * in the frame matches exactly what was signed, and we use the same
-		 * length that was used for buffer sizing. */
-		memcpy(&buf[pos], &signed_data[ANNOUNCE_SIGNED_PREFIX_LEN],
-		       app_data_len_snapshot);
-		pos += app_data_len_snapshot;
-	}
-
 	memset(signed_data, 0, sizeof(signed_data));
-	*out_len = pos;
 	return 0;
 }
 

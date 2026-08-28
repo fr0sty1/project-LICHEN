@@ -108,8 +108,10 @@ class TestEdhocHandshake:
         ctx_r = responder.export_oscore()
 
         assert ctx_i.master_secret == ctx_r.master_secret
-        assert ctx_i.sender_id == b"\xde\xad"
-        assert ctx_r.sender_id == b"\xbe\xef"
+        assert ctx_i.sender_id == b"\xbe\xef"
+        assert ctx_i.recipient_id == b"\xde\xad"
+        assert ctx_r.sender_id == b"\xde\xad"
+        assert ctx_r.recipient_id == b"\xbe\xef"
 
     def test_export_before_complete_fails(self) -> None:
         """Exporting OSCORE context before handshake complete raises."""
@@ -232,8 +234,8 @@ class TestEdhocLifecycle:
         initiator_context = initiator.export_oscore()
         responder_context = responder.export_oscore()
 
-        assert initiator_context.sender_id == b"\x00"
-        assert initiator_context.recipient_id == b"\x01"
+        assert initiator_context.sender_id == b"\x01"
+        assert initiator_context.recipient_id == b"\x00"
         assert initiator_context.sender_id == responder_context.recipient_id
         assert initiator_context.recipient_id == responder_context.sender_id
 
@@ -245,8 +247,8 @@ class TestEdhocLifecycle:
         initiator_context = initiator.export_oscore()
         responder_context = responder.export_oscore()
 
-        assert responder_context.sender_id == b"\x01"
-        assert responder_context.recipient_id == b"\x00"
+        assert responder_context.sender_id == b"\x00"
+        assert responder_context.recipient_id == b"\x01"
         assert responder_context.sender_id == initiator_context.recipient_id
         assert responder_context.recipient_id == initiator_context.sender_id
 
@@ -360,10 +362,10 @@ class TestEdhocValidation:
 
         assert responder.c_r == b"\x01"
         assert responder._c_r == b""
-        assert initiator_context.sender_id == b"\x00"
-        assert initiator_context.recipient_id == b"\x01"
-        assert responder_context.sender_id == b"\x01"
-        assert responder_context.recipient_id == b"\x00"
+        assert initiator_context.sender_id == b"\x01"
+        assert initiator_context.recipient_id == b"\x00"
+        assert responder_context.sender_id == b"\x00"
+        assert responder_context.recipient_id == b"\x01"
 
     def test_initiator_terminally_rejects_colliding_connection_id(self) -> None:
         initiator_id = Identity.generate()
@@ -372,8 +374,11 @@ class TestEdhocValidation:
         responder = EdhocResponder.create(responder_id, c_r=b"\x01")
         msg1 = initiator.create_message_1()
         msg2 = responder.process_message_1(msg1, initiator_id.pubkey)
-        combined = cbor2.loads(msg2)
-        colliding_msg2 = cbor2.dumps(combined) + cbor2.dumps(0)
+        combined = bytearray(cbor2.loads(msg2))
+        # PLAINTEXT_2 begins with compact C_R=1.  XOR the corresponding
+        # ciphertext byte so it decrypts to C_R=0, colliding with C_I.
+        combined[32] ^= 0x01
+        colliding_msg2 = cbor2.dumps(bytes(combined))
 
         with pytest.raises(ValueError, match="must differ"):
             initiator.process_message_2(colliding_msg2, responder_id.pubkey)
@@ -507,14 +512,12 @@ class TestEdhocValidation:
         elif failure == "ciphertext":
             bad_msg3 = bytes([msg3[0] ^ 1]) + msg3[1:]
         elif failure == "signature":
-            class RejectingVerifyKey:
-                def __init__(self, _key: bytes) -> None:
-                    pass
+            def rejecting_verify(
+                _pubkey: bytes, _message: bytes, _signature: bytes
+            ) -> bool:
+                return False
 
-                def verify(self, _message: bytes, _signature: bytes) -> bytes:
-                    raise ValueError("injected verifier failure")
-
-            monkeypatch.setattr(edhoc_module, "VerifyKey", RejectingVerifyKey)
+            monkeypatch.setattr(edhoc_module.schnorr48, "verify", rejecting_verify)
         else:
             bad_peer_key = Identity.generate().pubkey
 
@@ -539,7 +542,7 @@ class TestRfc9528KdfStructure:
     """
 
     def test_th2_computation(self) -> None:
-        """TH_2 = H(G_Y || H(message_1)) is computed correctly."""
+        """RFC 9529 Section 2.2 hashes two CBOR bstr sequence items for TH_2."""
         from lichen.crypto.edhoc import _compute_th
 
         message_1 = bytes.fromhex(
@@ -548,27 +551,53 @@ class TestRfc9528KdfStructure:
         g_y = bytes.fromhex(
             "dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c"
         )
-        th_2 = _compute_th(g_y + _compute_th(message_1))
+        h_message_1 = _compute_th(message_1)
+        th_2_input = cbor2.dumps(g_y) + cbor2.dumps(h_message_1)
+        assert len(th_2_input) == 68
+        assert th_2_input == bytes.fromhex(
+            "5820dc88d2d51da5ed67fc4616356bc8ca74ef9ebe8b387e623a360ba480b9b29d1c"
+            "5820c165d6a99d1bcafaac8dbf2b352a6f7d71a30b439c9d64d349a23848038ed16b"
+        )
+        th_2 = _compute_th(th_2_input)
         assert th_2 == bytes.fromhex(
-            "c1d8c6ee4eeb1672d7fcbb44f8d811419739b79b852fce03f527eacdaf6633c4"
+            "c6405c154c567466ab1df20369500e540e9f14bd3a796a0652cae66c9061688d"
         )
 
+    def test_both_roles_hash_cbor_sequence_for_th2(self) -> None:
+        """Initiator and responder both use the RFC 9528 TH_2 transcript."""
+        from lichen.crypto.edhoc import _compute_th
+
+        initiator_id = Identity.generate()
+        responder_id = Identity.generate()
+        initiator = EdhocInitiator.create(initiator_id, c_i=b"\x00")
+        responder = EdhocResponder.create(responder_id, c_r=b"\x01")
+
+        message_1 = initiator.create_message_1()
+        message_2 = responder.process_message_1(message_1, initiator_id.pubkey)
+        expected = _compute_th(
+            _sequence(responder._eph_pk, _compute_th(message_1))
+        )
+        assert responder._th_2 == expected
+
+        initiator.process_message_2(message_2, responder_id.pubkey)
+        assert initiator._th_2 == expected
+
     def test_keystream2_kdf(self) -> None:
-        """KEYSTREAM_2 uses correct info structure: (0, TH_2, length)."""
+        """RFC 9529 Section 2.2 KEYSTREAM_2 uses the corrected TH_2."""
         from lichen.crypto.edhoc import LABEL_KEYSTREAM_2, _edhoc_kdf
 
         prk_2e = bytes.fromhex(
-            "e998b69d67c5856ceb6812f20590d0cd55ab25e24bf53348f35915883e94b694"
+            "d584ac2e5dad5a77d14b53ebe72ef1d5daa8860d399373bf2c240afa7ba804da"
         )
         th_2 = bytes.fromhex(
-            "c1d8c6ee4eeb1672d7fcbb44f8d811419739b79b852fce03f527eacdaf6633c4"
+            "c6405c154c567466ab1df20369500e540e9f14bd3a796a0652cae66c9061688d"
         )
         # RFC 9528: KEYSTREAM_2 = EDHOC-KDF(PRK_2e, 0, TH_2, plaintext_length)
         keystream = _edhoc_kdf(prk_2e, LABEL_KEYSTREAM_2, th_2, 82)
         assert keystream == bytes.fromhex(
-            "0ebee7570d2ca677673156c07e6adabe3eeae3caa4861d237638bdd1eb93e8db"
-            "4da4b8c003018a87c00901fbae1f4c673a6a8ac51137b2693d78f2c6e88499cd"
-            "63a205b591749e7dd98ca4f20c45f91f3cc8"
+            "fd3e7c3f2d6bee643d3c9d2f2847035d73e2ecb0f8db5cd1c6854e24896af211"
+            "88b2c4344e689ec2984283d9fbc69ce1c5db10dcfff24df9a49a04a94058277b"
+            "c7fa9ad6c6b194ab328b445eb080490cd786"
         )
 
     def test_message_2_format(self) -> None:
@@ -707,12 +736,53 @@ class TestRfc9528KdfStructure:
         oscore_salt = _edhoc_kdf(prk_exporter, LABEL_OSCORE_SALT, b"", 8)
         assert oscore_salt == bytes.fromhex("c3b827222332d23b")
 
+    def test_rfc9529_export_fixture(self) -> None:
+        """Derive every RFC 9529 Section 2.5-2.6 exporter value exactly."""
+        import json
+        from pathlib import Path
 
-class TestOscoreContextParity:
-    """Cross-validate EDHOC-derived OSCORE context against test vectors.
+        from lichen.crypto.edhoc import (
+            LABEL_OSCORE_SALT,
+            LABEL_OSCORE_SECRET,
+            LABEL_PRK_exporter,
+            LABEL_PRK_out,
+            _edhoc_kdf,
+        )
 
-    Both initiator and responder must derive identical master_secret and
-    master_salt, with sender_id/recipient_id correctly swapped.
+        path = (
+            Path(__file__).parents[3]
+            / "test"
+            / "vectors"
+            / "edhoc_export_rfc9529.json"
+        )
+        vector = json.loads(path.read_text())["vectors"][0]
+        prk_4e3m = bytes.fromhex(vector["prk_4e3m"])
+        th_4 = bytes.fromhex(vector["th_4"])
+
+        prk_out = _edhoc_kdf(prk_4e3m, LABEL_PRK_out, th_4, 32)
+        assert prk_out == bytes.fromhex(vector["prk_out"])
+
+        prk_exporter = _edhoc_kdf(prk_out, LABEL_PRK_exporter, b"", 32)
+        assert prk_exporter == bytes.fromhex(vector["prk_exporter"])
+        assert _edhoc_kdf(prk_exporter, LABEL_OSCORE_SECRET, b"", 16) == bytes.fromhex(
+            vector["master_secret"]
+        )
+        assert _edhoc_kdf(prk_exporter, LABEL_OSCORE_SALT, b"", 8) == bytes.fromhex(
+            vector["master_salt"]
+        )
+
+        assert vector["initiator_sender_id"] == vector["c_r"]
+        assert vector["initiator_recipient_id"] == vector["c_i"]
+        assert vector["responder_sender_id"] == vector["c_i"]
+        assert vector["responder_recipient_id"] == vector["c_r"]
+
+
+class TestEdhocImplementationInvariants:
+    """Check same-implementation EDHOC invariants and regression fixtures.
+
+    These tests detect role disagreement and deterministic output drift. They
+    are not independent correctness or interoperability oracles; the official
+    RFC 9528/9529 fixed-literal checks above provide independent coverage.
     """
 
     @staticmethod
@@ -763,11 +833,11 @@ class TestOscoreContextParity:
             "initiator recipient_id should equal responder sender_id"
         )
 
-    def test_oscore_context_from_vector(self) -> None:
-        """Derived OSCORE context matches vector expected values.
+    def test_oscore_context_regression_fixture(self) -> None:
+        """Derived OSCORE context matches the Python-generated baseline.
 
-        Uses fixed_seed_sign_sign vector TH values to verify key derivation
-        produces the expected OSCORE master_secret, master_salt, and IDs.
+        This is intentionally a drift regression, not a correctness proof:
+        both the fixture and values under test originate in this implementation.
         """
         from lichen.crypto.edhoc import (
             LABEL_OSCORE_SALT,
@@ -808,28 +878,22 @@ class TestOscoreContextParity:
         expected_sender_id = bytes.fromhex(vec["oscore_sender_id"])
         expected_recipient_id = bytes.fromhex(vec["oscore_recipient_id"])
 
-        # Vector records initiator's sender_id (c_i) and responder's sender_id (c_r)
-        assert expected_sender_id == b"\x00", (
-            f"vector sender_id should be initiator c_i=0x00"
+        # RFC 9528 Table 14 maps the peer-selected C_R to the Initiator's
+        # Sender ID and C_I to its Recipient ID.
+        assert expected_sender_id == b"\x01", (
+            "vector sender_id should be initiator C_R=0x01"
         )
-        assert expected_recipient_id == b"\x01", (
-            f"vector recipient_id should be responder c_r=0x01"
+        assert expected_recipient_id == b"\x00", (
+            "vector recipient_id should be initiator C_I=0x00"
         )
 
 
-class TestEdhocHandshakeInterop:
-    """Cross-validate EDHOC handshake interop between Python and Rust implementations.
+class TestEdhocGeneratedRegressions:
+    """Detect deterministic Python EDHOC output drift.
 
-    Validates that the Python EDHOC implementation produces wire-compatible
-    messages and derives identical OSCORE contexts when interoperating with
-    the Rust oscore crate EDHOC implementation.
-
-    Cross-validation covers:
-    - Message 1/2/3 wire format byte-exact matching
-    - PRK derivation chain consistency
-    - Exported OSCORE master_secret and master_salt parity
-
-    See: project-LICHEN-worker6-nhqe for the Rust oscore crate dependency.
+    ``edhoc.json`` is generated by the same Python implementation. These tests
+    are regression guards only and make no conformance or cross-implementation
+    claim. Official RFC 9528/9529 fixtures are exercised above.
     """
 
     @staticmethod
@@ -842,18 +906,11 @@ class TestEdhocHandshakeInterop:
         with open(path) as f:
             return json.load(f)["vectors"]
 
-    @pytest.mark.xfail(
-        reason="Blocked by oscore crate bug: Rust produces different master_secret "
-               "(project-LICHEN-worker6-nhqe)",
-        strict=False,
-    )
-    def test_message_wire_format_interop(self) -> None:
-        """Messages from Python match Rust oscore crate byte-for-byte.
+    def test_message_wire_format_regression(self) -> None:
+        """Deterministic Python messages match the committed drift baseline.
 
-        Uses fixed_seed_sign_sign vector which records messages from both
-        implementations using deterministic ephemeral keys (RNG mocked to 0x42).
-        When the Rust implementation is fixed, this test validates that both
-        produce identical wire-format messages.
+        The fixed-seed fixture is Python-generated; matching it detects an
+        unreviewed output change but does not establish wire-format correctness.
         """
         vectors = self._load_edhoc_vectors()
         vec = next(v for v in vectors if v["name"] == "fixed_seed_sign_sign")
@@ -875,30 +932,13 @@ class TestEdhocHandshakeInterop:
         finally:
             os.urandom = old_urandom
 
-        # Verify wire format matches vector (generated by Python reference)
+        # Same-implementation regression comparison, not an independent oracle.
         assert msg1.hex() == vec["msg1"], "msg1 wire format drift"
         assert msg2.hex() == vec["msg2"], "msg2 wire format drift"
         assert msg3.hex() == vec["msg3"], "msg3 wire format drift"
 
-    @pytest.mark.xfail(
-        reason="Blocked by oscore crate bug: Rust produces different master_secret "
-               "(project-LICHEN-worker6-nhqe)",
-        strict=False,
-    )
-    def test_oscore_context_cross_derivation(self) -> None:
-        """OSCORE context derived by Python matches Rust oscore crate.
-
-        When the Rust implementation is fixed, this validates that both
-        implementations derive identical OSCORE master_secret and master_salt
-        from the same handshake transcript.
-
-        Expected values from vector (Python reference):
-        - master_secret: 287085e3960287a06de008620bedba4e
-        - master_salt: ed4c72d1be9b3af5
-
-        Rust oscore crate currently produces (bug):
-        - master_secret: 961b7e7f17a6dc0df69ddcdbc750c4fb
-        """
+    def test_oscore_context_regression(self) -> None:
+        """Python key derivation matches its committed regression baseline."""
         from lichen.crypto.edhoc import (
             LABEL_OSCORE_SALT,
             LABEL_OSCORE_SECRET,
@@ -913,13 +953,13 @@ class TestEdhocHandshakeInterop:
         prk_4e3m = bytes.fromhex(vec["prk_4e3m"])
         th_4 = bytes.fromhex(vec["th_4"])
 
-        # Derive OSCORE context using Python implementation
+        # Derive OSCORE context using the same implementation as the fixture.
         prk_out = _edhoc_kdf(prk_4e3m, LABEL_PRK_out, th_4, 32)
         prk_exporter = _edhoc_kdf(prk_out, LABEL_PRK_exporter, b"", 32)
         python_secret = _edhoc_kdf(prk_exporter, LABEL_OSCORE_SECRET, b"", 16)
         python_salt = _edhoc_kdf(prk_exporter, LABEL_OSCORE_SALT, b"", 8)
 
-        # Expected values from vector (Python reference oracle)
+        # Regression expectations generated by Python, not an external oracle.
         expected_secret = bytes.fromhex(vec["oscore_master_secret"])
         expected_salt = bytes.fromhex(vec["oscore_master_salt"])
 
@@ -930,6 +970,248 @@ class TestEdhocHandshakeInterop:
             f"Python master_salt mismatch: {python_salt.hex()} != {expected_salt.hex()}"
         )
 
-        # When Rust oscore crate is fixed, both will produce expected values.
-        # Currently Rust produces 961b7e7f17a6dc0df69ddcdbc750c4fb (incorrect).
-        # This xfail marker will be removed once project-LICHEN-worker6-nhqe is closed.
+
+class TestSuiteNegotiationVectors:
+    """Test EDHOC cipher suite negotiation against suite_negotiation.json vectors.
+
+    LICHEN requires Suite 0 (RFC 9528). These tests validate:
+    - SUITES_I CBOR encoding (single int vs array per RFC 9528 Section 3.5)
+    - Suite 0 requirement enforcement
+    - Failure case handling for unsupported suites
+    """
+
+    @staticmethod
+    def _load_vectors() -> dict:
+        """Load suite_negotiation.json vectors."""
+        import json
+        from pathlib import Path
+
+        path = Path(__file__).parents[3] / "test" / "vectors" / "suite_negotiation.json"
+        with open(path) as f:
+            return json.load(f)
+
+    @pytest.mark.parametrize(
+        "vector",
+        [
+            {"name": "single_suite_compact", "suites": [0], "cbor": "00"},
+            {"name": "multiple_suites_array", "suites": [0, 2], "cbor": "820002"},
+            {"name": "three_suites_array", "suites": [0, 2, 6], "cbor": "83000206"},
+        ],
+        ids=["single_suite_compact", "multiple_suites_array", "three_suites_array"],
+    )
+    def test_suites_i_encoding(self, vector: dict) -> None:
+        """SUITES_I encoding matches RFC 9528: single suite as int, multiple as array."""
+        suites = vector["suites"]
+        expected_cbor = bytes.fromhex(vector["cbor"])
+
+        # RFC 9528 Section 3.5: SUITES_I is int (single suite) or array (multiple)
+        encoded = cbor2.dumps(suites[0]) if len(suites) == 1 else cbor2.dumps(suites)
+
+        assert encoded == expected_cbor, (
+            f"SUITES_I encoding mismatch for {vector['name']}: "
+            f"got {encoded.hex()}, expected {expected_cbor.hex()}"
+        )
+
+    @pytest.mark.parametrize(
+        "vector",
+        [
+            {"name": "suite_value_24", "suites": [24], "cbor": "1818"},
+            {"name": "suite_value_256", "suites": [256], "cbor": "190100"},
+        ],
+        ids=["suite_value_24", "suite_value_256"],
+    )
+    def test_suites_i_edge_case_encoding(self, vector: dict) -> None:
+        """SUITES_I edge cases: values >= 24 use multi-byte CBOR encoding."""
+        suites = vector["suites"]
+        expected_cbor = bytes.fromhex(vector["cbor"])
+
+        # Single suite uses int encoding
+        encoded = cbor2.dumps(suites[0])
+        assert encoded == expected_cbor, (
+            f"SUITES_I edge case encoding mismatch for {vector['name']}: "
+            f"got {encoded.hex()}, expected {expected_cbor.hex()}"
+        )
+
+    def test_lichen_requires_suite_0(self) -> None:
+        """LICHEN nodes MUST support Suite 0 (spec 8.9).
+
+        Validates that responder rejects non-Suite-0 messages.
+        Vector: lichen_required.lichen_suite0_required
+        """
+        doc = self._load_vectors()
+        vec = next(
+            v for v in doc["vectors"]["lichen_required"]
+            if v["name"] == "lichen_suite0_required"
+        )
+        assert vec["success"] is True
+        assert vec["selected_suite"] == 0
+
+        # Live test: handshake succeeds with Suite 0
+        initiator_id = Identity.generate()
+        responder_id = Identity.generate()
+        initiator = EdhocInitiator.create(initiator_id, c_i=b"\x00")
+        responder = EdhocResponder.create(responder_id, c_r=b"\x01")
+
+        msg1 = initiator.create_message_1()
+        msg2 = responder.process_message_1(msg1, initiator_id.pubkey)
+        msg3 = initiator.process_message_2(msg2, responder_id.pubkey)
+        responder.process_message_3(msg3, initiator_id.pubkey)
+
+        ctx_i = initiator.export_oscore()
+        ctx_r = responder.export_oscore()
+        assert ctx_i.master_secret == ctx_r.master_secret
+
+    def test_non_suite_0_rejected(self) -> None:
+        """Responder rejects messages offering only non-Suite-0 suites.
+
+        Vector: failure_cases.non_lichen_peer_no_suite0
+        """
+        doc = self._load_vectors()
+        vec = next(
+            v for v in doc["vectors"]["failure_cases"]
+            if v["name"] == "non_lichen_peer_no_suite0"
+        )
+        assert vec["success"] is False
+        assert vec["error"] == "ERR_SUITES_NONE"
+
+        # Live test: responder rejects Suite 2 (non-LICHEN)
+        initiator_id = Identity.generate()
+        initiator = EdhocInitiator.create(initiator_id, c_i=b"\x00")
+        initiator.create_message_1()  # advance state to get ephemeral key
+
+        # Craft message_1 with Suite 2 instead of Suite 0
+        # message_1 = (METHOD, SUITES_I, G_X, C_I)
+        fake_msg1 = _sequence(0, 2, initiator._eph_pk, b"\x00")
+
+        responder = EdhocResponder.create(Identity.generate(), c_r=b"\x01")
+        with pytest.raises(ValueError, match="Unsupported cipher suite"):
+            responder.process_message_1(fake_msg1, initiator_id.pubkey)
+
+    def test_empty_suites_i_rejected(self) -> None:
+        """Empty SUITES_I array is invalid per RFC 9528.
+
+        Vector: failure_cases.empty_suites_i
+        """
+        doc = self._load_vectors()
+        vec = next(
+            v for v in doc["vectors"]["failure_cases"]
+            if v["name"] == "empty_suites_i"
+        )
+        assert vec["success"] is False
+        assert vec["error"] == "ERR_MSG_MALFORMED"
+
+        # RFC 9528: SUITES_I must be int or non-empty array
+        # An array encoding would be: 0x80 (empty array)
+        # But LICHEN expects an int (Suite 0), so any array fails validation
+        initiator_id = Identity.generate()
+        initiator = EdhocInitiator.create(initiator_id, c_i=b"\x00")
+
+        # Craft message_1 with empty array as SUITES_I
+        # CBOR: 0x80 = empty array
+        fake_msg1 = cbor2.dumps(0) + b"\x80" + cbor2.dumps(initiator._eph_pk) + cbor2.dumps(b"\x00")
+
+        responder = EdhocResponder.create(Identity.generate(), c_r=b"\x01")
+        with pytest.raises((ValueError, TypeError)):
+            responder.process_message_1(fake_msg1, initiator_id.pubkey)
+
+    def test_no_common_suite_fails(self) -> None:
+        """Negotiation fails when no common suite exists.
+
+        Vector: failure_cases.no_common_suite
+        """
+        doc = self._load_vectors()
+        vec = next(
+            v for v in doc["vectors"]["failure_cases"]
+            if v["name"] == "no_common_suite"
+        )
+        assert vec["success"] is False
+        assert vec["selected_suite"] is None
+
+        # LICHEN only supports Suite 0, so any non-Suite-0 offer fails
+        initiator_id = Identity.generate()
+        initiator = EdhocInitiator.create(initiator_id, c_i=b"\x00")
+
+        # Craft message_1 with Suite 6 (not supported by LICHEN)
+        fake_msg1 = _sequence(0, 6, initiator._eph_pk, b"\x00")
+
+        responder = EdhocResponder.create(Identity.generate(), c_r=b"\x01")
+        with pytest.raises(ValueError, match="Unsupported cipher suite: 6"):
+            responder.process_message_1(fake_msg1, initiator_id.pubkey)
+
+    def test_basic_negotiation_both_support_suite0(self) -> None:
+        """Basic negotiation succeeds when both peers support Suite 0.
+
+        Vector: basic_negotiation.both_support_suite0
+        """
+        doc = self._load_vectors()
+        vec = next(
+            v for v in doc["vectors"]["basic_negotiation"]
+            if v["name"] == "both_support_suite0"
+        )
+        assert vec["success"] is True
+        assert vec["selected_suite"] == 0
+
+        # Live validation: standard handshake uses Suite 0
+        initiator_id = Identity.generate()
+        responder_id = Identity.generate()
+        initiator = EdhocInitiator.create(initiator_id, c_i=b"\x00")
+        responder = EdhocResponder.create(responder_id, c_r=b"\x01")
+
+        msg1 = initiator.create_message_1()
+        # Verify message_1 contains Suite 0
+        items = _decode_cbor_sequence(msg1)
+        assert items[1] == 0, "Message 1 should contain Suite 0"
+
+        msg2 = responder.process_message_1(msg1, initiator_id.pubkey)
+        msg3 = initiator.process_message_2(msg2, responder_id.pubkey)
+        responder.process_message_3(msg3, initiator_id.pubkey)
+
+        # Both derive matching context
+        ctx_i = initiator.export_oscore()
+        ctx_r = responder.export_oscore()
+        assert ctx_i.master_secret == ctx_r.master_secret
+
+    def test_message_1_encodes_suite_0_as_int(self) -> None:
+        """Message 1 encodes SUITES_I as int (not array) per RFC 9528.
+
+        LICHEN uses only Suite 0, so SUITES_I should be encoded as int 0,
+        not as array [0]. This is the compact encoding per RFC 9528 Section 3.5.
+        """
+        doc = self._load_vectors()
+        vec = next(
+            v for v in doc["vectors"]["suites_i_encoding"]
+            if v["name"] == "single_suite_compact"
+        )
+        assert vec["cbor_type"] == "int"
+        expected_cbor = bytes.fromhex(vec["suites_i_cbor"])
+
+        initiator_id = Identity.generate()
+        initiator = EdhocInitiator.create(initiator_id, c_i=b"\x00")
+        msg1 = initiator.create_message_1()
+
+        # Parse message_1 and verify SUITES_I encoding
+        items = _decode_cbor_sequence(msg1)
+        # METHOD=0, SUITES_I=0, G_X, C_I
+        assert items[1] == 0, "SUITES_I should be 0"
+
+        # Verify the raw CBOR encoding is int, not array
+        # Find SUITES_I position in raw bytes (after METHOD)
+        method_len = len(cbor2.dumps(items[0]))
+        suites_i_cbor = msg1[method_len : method_len + len(expected_cbor)]
+        assert suites_i_cbor == expected_cbor, (
+            f"SUITES_I should be encoded as int: got {suites_i_cbor.hex()}, "
+            f"expected {expected_cbor.hex()}"
+        )
+
+
+def _decode_cbor_sequence(data: bytes) -> list:
+    """Decode CBOR sequence helper for tests."""
+    import io
+    items = []
+    fp = io.BytesIO(data)
+    while True:
+        try:
+            items.append(cbor2.load(fp))
+        except cbor2.CBORDecodeEOF:
+            break
+    return items

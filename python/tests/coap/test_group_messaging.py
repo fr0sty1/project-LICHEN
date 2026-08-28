@@ -31,7 +31,7 @@ async def test_group_inbox_post_from_vector() -> None:
     site.add_resource(["msg", "inbox"], msgs)
     net = InMemoryNetwork()
     server = await create_lichen_context(net.channel("server"), "server", site=site)
-    client = await create_lichen_context(net.channel("client"), "client")
+    client = await create_lichen_context(net.channel("::1"), "::1")
     try:
         resp = await client.request(
             Message(
@@ -56,7 +56,7 @@ async def test_group_pos_put_from_vector() -> None:
     site.add_resource(["pos"], pos)
     net = InMemoryNetwork()
     server = await create_lichen_context(net.channel("server"), "server", site=site)
-    client = await create_lichen_context(net.channel("client"), "client")
+    client = await create_lichen_context(net.channel("::1"), "::1")
     try:
         payload = pack(location(lat=case["lat"], lon=case["lon"]))
         msg = Message(code=aiocoap.PUT, uri="coap://server/pos", payload=payload)

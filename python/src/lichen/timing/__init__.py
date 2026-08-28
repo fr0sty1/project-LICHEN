@@ -80,6 +80,23 @@ from lichen.timing.time_sync import (  # noqa: F401
     effective_epoch_floor,
     evaluate_epoch_floor,
 )
+from lichen.timing.startup_delay import (  # noqa: F401
+    DELAY_PER_NODE_MS,
+    DELAY_PER_NODE_S,
+    LISTEN_PERIOD_MAX_MS,
+    LISTEN_PERIOD_MAX_S,
+    LISTEN_PERIOD_MIN_MS,
+    LISTEN_PERIOD_MIN_S,
+    MAX_STARTUP_DELAY_MS,
+    MAX_STARTUP_DELAY_S,
+    BootStormMitigation,
+    compute_startup_delay_ms,
+    compute_startup_delay_s,
+    random_listen_period_ms,
+    random_listen_period_s,
+    random_startup_delay_ms,
+    random_startup_delay_s,
+)
 from lichen.timing.trickle import (  # noqa: F401
     TRICKLE_IMAX_DOUBLINGS,
     TRICKLE_IMAX_EXACT_MS,
@@ -90,6 +107,7 @@ from lichen.timing.trickle import (  # noqa: F401
 )
 
 __all__ = [
+    "BootStormMitigation",
     "CSMA_BACKOFF_MAX",
     "CSMA_BACKOFF_UNIT_MS",
     "CSMA_CAD_TIMEOUT_SYMBOLS",
@@ -100,6 +118,8 @@ __all__ = [
     "DAO_REFRESH_S",
     "DAO_RETRY_DELAYS_MS",
     "DEFAULT_MAX_BACKWARD_STEP_S",
+    "DELAY_PER_NODE_MS",
+    "DELAY_PER_NODE_S",
     "DEFAULT_MAX_CORRECTION_RATE_PPM",
     "DEFAULT_MAX_CUMULATIVE_FORWARD_CORRECTION_S",
     "DEFAULT_MAX_FORWARD_STEP_S",
@@ -117,6 +137,12 @@ __all__ = [
     "EpochFloorAuthority",
     "EpochFloorResult",
     "HEARTBEAT_INTERVAL_S",
+    "LISTEN_PERIOD_MAX_MS",
+    "LISTEN_PERIOD_MAX_S",
+    "LISTEN_PERIOD_MIN_MS",
+    "LISTEN_PERIOD_MIN_S",
+    "MAX_STARTUP_DELAY_MS",
+    "MAX_STARTUP_DELAY_S",
     "MonotonicClock",
     "MAX_CORRECTION_RATE_PPM",
     "ProvisionClearedState",
@@ -153,6 +179,8 @@ __all__ = [
     "airtime_us",
     "airtime_us_with_params",
     "can_establish_sample",
+    "compute_startup_delay_ms",
+    "compute_startup_delay_s",
     "cw_for_exponent",
     "dao_initial_delay",
     "dao_retry_delay",
@@ -162,6 +190,10 @@ __all__ = [
     "hash_32",
     "get_regional_limit",
     "max_packets_per_hour",
+    "random_listen_period_ms",
+    "random_listen_period_s",
+    "random_startup_delay_ms",
+    "random_startup_delay_s",
     "sfn_delta",
     "slot_for",
 ]

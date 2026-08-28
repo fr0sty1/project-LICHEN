@@ -7,12 +7,12 @@
  *
  * Standalone IPv6 address construction utilities:
  * - Link-local: fe80::<IID>
- * - Yggdrasil primary: 02xx::/64 from Ed25519 pubkey (spec 6.1)
+ * - Native primary: key-derived 0200::/8 address (/128 per node)
  * - ULA/GUA for compatibility and prefix delegation
  *
  * IID derivation (spec 6.2):
  * - From EUI-64: flip the U/L bit per RFC 4291
- * - From Ed25519 pubkey: SHA-512/SHA-256 derived per Yggdrasil
+ * - From Ed25519 pubkey: SHA-512 derived per the LICHEN native profile
  *
  * This module does not depend on Zephyr's networking stack.
  */
@@ -30,61 +30,60 @@ extern "C" {
 #endif
 
 /*
- * struct in6_addr detection and fallback definition.
+ * struct in6_addr provisioning.
  *
- * Problem: struct in6_addr is defined by system headers (POSIX netinet/in.h,
- * Zephyr net_ip.h), but there is no universal guard macro. Duplicate
- * definitions cause compile errors; missing definitions also break the build.
+ * Problem: struct in6_addr is defined by system headers (POSIX
+ * netinet/in.h, Zephyr net_ip.h), but there is no universal guard macro
+ * to detect it (glibc, musl, bionic, newlib, and the BSDs all use
+ * different guards). Guessing guards breaks silently on unlisted libc's.
  *
- * Detection cascade (checked in order, first match wins):
+ * Strategy (checked in order, first match wins): INCLUDE the platform
+ * header instead of trying to detect it.
  *
- *   Priority  Check                         Action           When to use
- *   --------  ----------------------------  ---------------  -----------------------
- *   1         LICHEN_HAVE_IN6_ADDR=1        skip fallback    user override (unlisted
- *                                                            platforms, custom setup)
- *   2         IN6ADDR_ANY_INIT or           skip fallback    POSIX-compliant headers
- *             IN6ADDR_LOOPBACK_INIT                          (most reliable signal)
- *   3         CONFIG_NET_IPV6 + __ZEPHYR__  include net_ip.h Zephyr with IPv6 enabled
- *   4         Platform header guards:       skip fallback    system header included
- *             _NETINET_IN_H (Linux glibc)                    before this header
- *             _NETINET_IN_H_ (BSD/macOS)
- *             _NETINET6_IN6_H (FreeBSD)
- *             __NETINET_IN_H__ (some BSDs)
- *             ZEPHYR_INCLUDE_POSIX_...
- *             _STRUCT_IN6_ADDR (macOS)
- *   5         (none of the above)           define fallback  bare-metal, minimal env
- *
- * Note: _SYS_SOCKET_H (from <sys/socket.h>) was intentionally removed from
- * the detection list. Including <sys/socket.h> does NOT define struct in6_addr;
- * that struct is defined in <netinet/in.h>. Checking _SYS_SOCKET_H would cause
- * a false positive: skipping the fallback when in6_addr isn't actually defined.
+ *   1  LICHEN_HAVE_IN6_ADDR=1     user override: the platform already
+ *                                 provides struct in6_addr through some
+ *                                 header this cascade cannot know about
+ *                                 (custom bare-metal setups).
+ *   2  __ZEPHYR__                 include <zephyr/net/net_ip.h>, which
+ *                                 defines struct in6_addr unconditionally
+ *                                 (independent of CONFIG_NET_IPV6).
+ *   3  __has_include(<netinet/in.h>)  include <netinet/in.h>. The system
+ *                                 header's own include guard makes this a
+ *                                 no-op when it was already included, and
+ *                                 makes later user includes no-ops too, so
+ *                                 redefinition is impossible in either
+ *                                 inclusion order.
+ *   4  (none of the above)        define the fallback below. Reached only
+ *                                 when neither Zephyr nor a POSIX libc is
+ *                                 present, i.e. no other struct in6_addr
+ *                                 definition exists in the build.
  *
  * Fallback definition: struct in6_addr { uint8_t s6_addr[16]; }
- * This is wire-compatible with all known implementations.
- *
- * If you see "redefinition of struct in6_addr":
- *   - Include your system's netinet/in.h BEFORE this header, or
- *   - Define LICHEN_HAVE_IN6_ADDR=1 before including this header
+ * Wire- and layout-compatible with POSIX and Zephyr; this module only
+ * touches the s6_addr member.
  */
 #if defined(LICHEN_HAVE_IN6_ADDR) && LICHEN_HAVE_IN6_ADDR
-/* User explicitly says in6_addr is already defined */
-#elif defined(IN6ADDR_ANY_INIT) || defined(IN6ADDR_LOOPBACK_INIT)
-/* POSIX-compliant header already provides struct in6_addr */
-#elif defined(CONFIG_NET_IPV6) && defined(__ZEPHYR__)
+/* User override: trust that the platform defines struct in6_addr. */
+#elif defined(__ZEPHYR__)
 #include <zephyr/net/net_ip.h>
-#elif defined(_NETINET_IN_H) || defined(_NETINET_IN_H_) || defined(_NETINET6_IN6_H) || \
-      defined(__NETINET_IN_H__) || defined(ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_) || \
-      (defined(__APPLE__) && defined(_STRUCT_IN6_ADDR))
-/* System header already provides struct in6_addr */
+#elif defined(__has_include)
+#if __has_include(<netinet/in.h>)
+#include <netinet/in.h>
 #else
+#define LICHEN_IPV6_ADDR_NEEDS_IN6_FALLBACK 1
+#endif
+#else
+/* Compiler without __has_include and without Zephyr: bare-metal. */
+#define LICHEN_IPV6_ADDR_NEEDS_IN6_FALLBACK 1
+#endif
+
+#if defined(LICHEN_IPV6_ADDR_NEEDS_IN6_FALLBACK) && \
+    LICHEN_IPV6_ADDR_NEEDS_IN6_FALLBACK
 /**
- * @brief IPv6 address structure (fallback definition)
+ * @brief IPv6 address structure (bare-metal fallback definition)
  *
- * 128-bit IPv6 address. Compatible with Zephyr's struct in6_addr
- * and POSIX struct in6_addr.
- *
- * If this conflicts with your platform's struct in6_addr, define
- * LICHEN_HAVE_IN6_ADDR=1 before including this header.
+ * 128-bit IPv6 address. Layout-compatible with Zephyr's struct in6_addr
+ * and POSIX struct in6_addr; only s6_addr is used by this module.
  */
 struct in6_addr {
     uint8_t s6_addr[16];
@@ -159,12 +158,12 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid);
 /**
  * @brief Derive IID from Ed25519 public key
  *
- * Computes SHA-256(pubkey) and uses the first 8 bytes as the IID,
- * with U/L bit cleared to mark as locally-administered. This matches
- * RFC 7343 (ORCHID) approach and ensures interoperability with the
- * Python implementation in lichen/crypto/identity.py.
+ * Computes SHA-512(pubkey) and uses the first 8 bytes as the IID,
+ * with the U/L bit cleared to mark it as locally administered. This is
+ * the IID embedded in the canonical 0200::/8 native address and matches
+ * the Python and Rust implementations plus yggdrasil-derivation vectors.
  *
- * SECURITY: Uses SHA-256 hash rather than raw pubkey bytes because
+ * SECURITY: Uses SHA-512 rather than raw pubkey bytes because
  * Ed25519 public keys have structure that could leak information.
  *
  * SECURITY: Buffer sizes are not bounds-checked at runtime (C array decay).
@@ -205,7 +204,7 @@ int lichen_pubkey_to_human_address(const uint8_t *pubkey,
  * only mesh-reachable addresses are accepted.
  *
  * Mesh address space:
- * - ULA fd00::/8: LICHEN mesh internal addresses (locally-assigned ULAs)
+ * - Native 0200::/8: key-derived primary node addresses
  * - Link-local fe80::/10: Direct neighbor addresses
  *
  * Non-mesh addresses rejected (SSRF prevention):
@@ -218,6 +217,39 @@ int lichen_pubkey_to_human_address(const uint8_t *pubkey,
  * @return true if address is in mesh space, false otherwise (or if NULL)
  */
 bool lichen_is_mesh_addr(const struct in6_addr *addr);
+
+/** IPv6 multicast scope values used by the LICHEN profile (RFC 4291). */
+enum lichen_ipv6_multicast_scope {
+    LICHEN_IPV6_SCOPE_RESERVED_0 = 0,
+    LICHEN_IPV6_SCOPE_INTERFACE_LOCAL = 1,
+    LICHEN_IPV6_SCOPE_LINK_LOCAL = 2,
+    LICHEN_IPV6_SCOPE_MESH_LOCAL = 3,
+    LICHEN_IPV6_SCOPE_SITE_LOCAL = 5,
+    LICHEN_IPV6_SCOPE_GLOBAL = 14,
+    LICHEN_IPV6_SCOPE_RESERVED_15 = 15,
+};
+
+/**
+ * @brief Extract the raw four-bit scope from an IPv6 multicast address.
+ *
+ * Flags in the high nibble of the second octet do not affect scope
+ * extraction. Reserved scopes 0 and 15 are returned to let callers diagnose
+ * malformed traffic; use lichen_ipv6_multicast_scope_is_transmittable() to
+ * apply the LICHEN over-air validity rule.
+ *
+ * @param addr IPv6 address to inspect
+ * @param scope Output scope value in the range 0..15
+ * @return 0 on success, -EINVAL for NULL, -ENODATA for a unicast address
+ */
+int lichen_ipv6_multicast_scope(const struct in6_addr *addr, uint8_t *scope);
+
+/**
+ * @brief Check whether a multicast scope may be transmitted on LICHEN.
+ *
+ * Per spec/03-adaptation.md, scopes 2 through 14 are valid. Interface-local
+ * scope 1 and reserved scopes 0 and 15 are not valid over the link.
+ */
+bool lichen_ipv6_multicast_scope_is_transmittable(uint8_t scope);
 
 /**
  * @brief Construct link-local address from IID
@@ -273,8 +305,8 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
  *   2. `addr = [0x02] || h[0:7] || h[0:8]`
  *   3. Clear U/L bit in IID byte: `addr[8] &= 0xfd`
  *
- * The 0200::/7 prefix byte (`0x02`) is the Yggdrasil global routing prefix.
- * Bytes 1-7 (from `h[0:7]`) provide /7 dispersion across the Yggdrasil DHT.
+ * The exact 0200::/8 prefix byte (`0x02`) identifies the native profile.
+ * Bytes 1-7 (from `h[0:7]`) provide routing dispersion within that prefix.
  * Bytes 8-15 (from `h[0:8]`) form the IID, binding the address to the pubkey.
  *
  * @param pubkey 32-byte Ed25519 public key

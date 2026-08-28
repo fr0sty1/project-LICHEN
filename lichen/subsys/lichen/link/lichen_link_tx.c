@@ -14,10 +14,26 @@
 #include <lichen/l2_payload.h>
 #include <lichen/schc.h>
 #include <lichen/schnorr48.h>
+#include <monocypher.h>
+#include <monocypher-ed25519.h>
 #include <string.h>
 
 /* Error codes */
 #include <lichen/errno.h>
+
+/* Keep this dependency-free link-layer derivation in sync with
+ * lichen_pubkey_to_iid(): a wire EUI-64 is SHA-512(pubkey)[0:8] with the
+ * universal/local bit set exactly once. */
+static void derive_signer_eui64(const uint8_t pubkey[SCHNORR48_PUBKEY_LEN],
+				uint8_t signer_eui64[LICHEN_EUI64_LEN])
+{
+	uint8_t hash[64];
+
+	crypto_sha512(hash, pubkey, SCHNORR48_PUBKEY_LEN);
+	memcpy(signer_eui64, hash, LICHEN_EUI64_LEN);
+	signer_eui64[0] |= 0x02U;
+	crypto_wipe(hash, sizeof(hash));
+}
 
 int lichen_link_tx(struct lichen_link_ctx *ctx,
 		   const uint8_t *ipv6_pkt, size_t ipv6_len,
@@ -28,6 +44,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	uint8_t l2_payload[256];
 	uint8_t payload_buf[256];
 	uint8_t signature[SCHNORR48_SIG_LEN];
+	uint8_t signer_eui64[LICHEN_EUI64_LEN];
 	int compressed_len;
 	size_t l2_payload_len;
 	uint8_t addr_mode;
@@ -136,11 +153,9 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		dst_addr_len = 0;
 	}
 
-	/* LLSec byte: S=1 (bit 5); MIC-length selector and bit 7 stay clear.
-	 * The current interoperable profile carries no Signer IID field
-	 * (spec/02-physical-link.md section 4.2); senders identify themselves
-	 * through signature verification against provisioned keys. */
-	uint8_t llsec = (addr_mode & 0x03U) | 0x20U;
+	/* Current signed frames carry both S (bit 5) and SI (bit 7). */
+	uint8_t llsec = (addr_mode & 0x03U) | 0x20U | 0x80U;
+	derive_signer_eui64(ctx->ed25519_pk, signer_eui64);
 
 	/* Preflight size checks BEFORE consuming nonce (deterministic TX
 	 * requirement; matches Python/Rust frame_length calc). */
@@ -149,7 +164,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	}
 	mic_len = SCHNORR48_SIG_LEN;
 	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
-			  LICHEN_FRAME_LEN_FIELD_LEN) + l2_payload_len + mic_len;
+			  LICHEN_FRAME_LEN_FIELD_LEN) + LICHEN_EUI64_LEN +
+			 l2_payload_len + mic_len;
 	if (frame_body_len > LICHEN_MAX_FRAME_BODY_LEN) {
 		return -EMSGSIZE;
 	}
@@ -166,20 +182,19 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	/* Sign using parameters that guarantee DST_LEN(1) prefix at signable
 	 * offset 5 (fixes cross-impl inconsistency with Python _build_signable_data
 	 * at link_layer.py:285-289 and Rust build_signable at schnorr.rs:202-208).
-	 * The signer identity is not carried on the wire; receivers establish it
-	 * by verifying against candidate provisioned keys. Uses payload_buf copy
-	 * for safety during crypto. */
+	 * The SIID is authenticated as part of the transcript. Uses payload_buf
+	 * copy for safety during crypto. */
 	memcpy(payload_buf, l2_payload, l2_payload_len);
 	if (schnorr48_sign_frame((uint8_t)frame_body_len, llsec, epoch, seqnum,
 				 dst_addr, dst_addr_len,
-				 NULL, 0,
+				 signer_eui64, sizeof(signer_eui64),
 				 payload_buf, l2_payload_len,
 				 ctx->ed25519_sk, ctx->ed25519_pk, signature) != 0) {
 		ret = -EINVAL;
 		goto cleanup;
 	}
 
-	/* Build wire frame (LENGTH || LLSec || EPO || SEQ || DST || PLD || SIG) */
+	/* Build wire frame (LENGTH || LLSec || EPO || SEQ || DST || SIID || PLD || SIG) */
 	off = 0;
 	out_frame[off++] = (uint8_t)frame_body_len; /* body length after LENGTH byte */
 	out_frame[off++] = llsec;
@@ -190,6 +205,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		memcpy(&out_frame[off], dst_addr, dst_addr_len);
 		off += dst_addr_len;
 	}
+	memcpy(&out_frame[off], signer_eui64, sizeof(signer_eui64));
+	off += sizeof(signer_eui64);
 	memcpy(&out_frame[off], l2_payload, l2_payload_len);
 	off += l2_payload_len;
 	memcpy(&out_frame[off], signature, SCHNORR48_SIG_LEN);
@@ -209,6 +226,7 @@ cleanup:
 	 */
 	memset(payload_buf, 0, sizeof(payload_buf));
 	memset(signature, 0, sizeof(signature));
+	crypto_wipe(signer_eui64, sizeof(signer_eui64));
 	memset(l2_payload, 0, sizeof(l2_payload));
 	memset(compressed, 0, sizeof(compressed));
 	return ret;
@@ -221,6 +239,7 @@ int lichen_link_relay_raw(struct lichen_link_ctx *ctx,
 {
 	uint8_t payload_buf[256];
 	uint8_t signature[SCHNORR48_SIG_LEN];
+	uint8_t signer_eui64[LICHEN_EUI64_LEN];
 	uint8_t addr_mode;
 	uint8_t dst_addr[8];
 	uint8_t dst_addr_len;
@@ -259,8 +278,9 @@ int lichen_link_relay_raw(struct lichen_link_ctx *ctx,
 		dst_addr_len = 0;
 	}
 
-	/* LLSec byte: S=1 (bit 5) for signature */
-	uint8_t llsec = (addr_mode & 0x03U) | 0x20U;
+	/* LLSec byte: every signed frame sets both S and SI. */
+	uint8_t llsec = (addr_mode & 0x03U) | 0x20U | 0x80U;
+	derive_signer_eui64(ctx->ed25519_pk, signer_eui64);
 
 	/* Preflight size checks BEFORE consuming nonce */
 	if (payload_len > sizeof(payload_buf)) {
@@ -268,7 +288,8 @@ int lichen_link_relay_raw(struct lichen_link_ctx *ctx,
 	}
 	mic_len = SCHNORR48_SIG_LEN;
 	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
-			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
+			  LICHEN_FRAME_LEN_FIELD_LEN) + LICHEN_EUI64_LEN +
+			 payload_len + mic_len;
 	if (frame_body_len > LICHEN_MAX_FRAME_BODY_LEN) {
 		return -EMSGSIZE;
 	}
@@ -286,14 +307,14 @@ int lichen_link_relay_raw(struct lichen_link_ctx *ctx,
 	memcpy(payload_buf, payload, payload_len);
 	if (schnorr48_sign_frame((uint8_t)frame_body_len, llsec, epoch, seqnum,
 				 dst_addr, dst_addr_len,
-				 NULL, 0,
+				 signer_eui64, sizeof(signer_eui64),
 				 payload_buf, payload_len,
 				 ctx->ed25519_sk, ctx->ed25519_pk, signature) != 0) {
 		ret = -EINVAL;
 		goto relay_cleanup;
 	}
 
-	/* Build wire frame (LENGTH || LLSec || EPO || SEQ || DST || PLD || SIG) */
+	/* Build wire frame (LENGTH || LLSec || EPO || SEQ || DST || SIID || PLD || SIG) */
 	off = 0;
 	out_frame[off++] = (uint8_t)frame_body_len;
 	out_frame[off++] = llsec;
@@ -304,6 +325,8 @@ int lichen_link_relay_raw(struct lichen_link_ctx *ctx,
 		memcpy(&out_frame[off], dst_addr, dst_addr_len);
 		off += dst_addr_len;
 	}
+	memcpy(&out_frame[off], signer_eui64, sizeof(signer_eui64));
+	off += sizeof(signer_eui64);
 	memcpy(&out_frame[off], payload, payload_len);
 	off += payload_len;
 	memcpy(&out_frame[off], signature, SCHNORR48_SIG_LEN);
@@ -318,5 +341,80 @@ relay_cleanup:
 	/* SECURITY: Wipe stack buffers */
 	memset(payload_buf, 0, sizeof(payload_buf));
 	memset(signature, 0, sizeof(signature));
+	crypto_wipe(signer_eui64, sizeof(signer_eui64));
+	return ret;
+}
+
+int lichen_link_relay_frame(struct lichen_link_rx_ctx *rx_ctx,
+			    struct lichen_replay_table *replay,
+			    struct lichen_link_ctx *tx_ctx,
+			    const uint8_t *incoming_frame, size_t incoming_len,
+			    const uint8_t *dst_eui64,
+			    uint8_t *out_frame, size_t *out_len)
+{
+	struct lichen_link_rx_payload_info info;
+	struct lichen_frame parsed;
+	uint8_t payload[LICHEN_MAX_PAYLOAD];
+	uint8_t relayed[LICHEN_MAX_FRAME_LEN];
+	size_t payload_len = sizeof(payload);
+	size_t relayed_len = sizeof(relayed);
+	size_t dst_len;
+	size_t required;
+	int ret;
+
+	if (rx_ctx == NULL || tx_ctx == NULL || incoming_frame == NULL ||
+	    out_frame == NULL || out_len == NULL) {
+		return -EINVAL;
+	}
+
+	/* Structural parsing is deliberately side-effect free and is used only
+	 * to reject impossible output sizes before consuming replay or TX state.
+	 * No payload bytes are acted upon until lichen_link_rx_payload authenticates
+	 * the complete immutable incoming transcript. */
+	ret = lichen_frame_parse(&parsed, incoming_frame, incoming_len);
+	if (ret < 0) {
+		return ret;
+	}
+	if (!tx_ctx->has_key) {
+		return -ENOKEY;
+	}
+	if (parsed.payload_len == 0U || parsed.payload_len > sizeof(payload)) {
+		return -EINVAL;
+	}
+	dst_len = dst_eui64 == NULL ? 0U : LICHEN_EUI64_LEN;
+	required = LICHEN_FRAME_FIXED_HEADER_LEN + dst_len + LICHEN_EUI64_LEN +
+		   parsed.payload_len + SCHNORR48_SIG_LEN;
+	if (required > LICHEN_MAX_FRAME_LEN) {
+		return -EMSGSIZE;
+	}
+	if (*out_len < required) {
+		return -ENOMEM;
+	}
+
+	/* Authentication and replay commit precede every relay mutation. */
+	ret = lichen_link_rx_payload(rx_ctx, replay, incoming_frame, incoming_len,
+				     payload, &payload_len, &info);
+	if (ret < 0) {
+		goto cleanup;
+	}
+
+	/* relay_raw assigns the relayer's own epoch/sequence, destination, SIID,
+	 * and signature. The authenticated inner payload remains byte-identical;
+	 * upper-layer mutable fields must be updated before entering this API. */
+	ret = lichen_link_relay_raw(tx_ctx, payload, payload_len, dst_eui64,
+				    relayed, &relayed_len);
+	if (ret < 0) {
+		goto cleanup;
+	}
+
+	memcpy(out_frame, relayed, relayed_len);
+	*out_len = relayed_len;
+	ret = 0;
+
+cleanup:
+	crypto_wipe(payload, sizeof(payload));
+	crypto_wipe(relayed, sizeof(relayed));
+	crypto_wipe(&info, sizeof(info));
+	crypto_wipe(&parsed, sizeof(parsed));
 	return ret;
 }

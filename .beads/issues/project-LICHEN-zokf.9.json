@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zokf.9",
+  "title": "Extract STM32WL-specific peripherals (LichenSubGHz, STM32WL_PWR, STM32WL_RCC) into subdir",
+  "description": "Organize STM32WL peripherals (from tg2h work):\n- LichenSubGHz radio peripheral\n- STM32WL_PWR power management stub\n- STM32WL_RCC clock control stub\n\nDecide: keep in main peripherals/ or create stm32wl/ subdirectory. Document peripheral interdependencies.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:23.552253Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:23.552253Z",
+  "labels": [
+    "blocked:hardware",
+    "defer-boardconfig",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zokf.9",
+      "depends_on_id": "project-LICHEN-zokf",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:26.543163Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

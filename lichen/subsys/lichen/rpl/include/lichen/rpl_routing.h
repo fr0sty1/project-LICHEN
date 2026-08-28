@@ -80,8 +80,8 @@ struct lichen_rpl_srh {
  * @param len Buffer size
  * @return Bytes written (6 + 16*num_addresses), or negative error
  */
-int lichen_rpl_srh_write(const struct lichen_rpl_srh *_Nonnull srh,
-			 uint8_t *_Nonnull buf, size_t len);
+int lichen_rpl_srh_write(const struct lichen_rpl_srh *_Nullable srh,
+			 uint8_t *_Nullable buf, size_t len);
 
 /**
  * @brief Parse SRH from wire bytes.
@@ -92,13 +92,13 @@ int lichen_rpl_srh_write(const struct lichen_rpl_srh *_Nonnull srh,
  * @return 0 on success, negative error code on failure
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_rpl_srh_parse(struct lichen_rpl_srh *_Nonnull srh,
-			 const uint8_t *_Nonnull data, size_t len);
+int lichen_rpl_srh_parse(struct lichen_rpl_srh *_Nullable srh,
+			 const uint8_t *_Nullable data, size_t len);
 
 /**
  * @brief Validate SRH for Non-Storing Mode (RFC 6554 + LICHEN profile).
  *
- * In Non-Storing mode, the SRH MUST be uncompressed (checked by parse),
+ * In Non-Storing mode, the SRH MUST be uncompressed and unpadded (checked by parse),
  * segments_left <= num_addresses (checked by parse), and the first address
  * MUST NOT be the local node (self-target would cause a loop).
  *
@@ -108,8 +108,42 @@ int lichen_rpl_srh_parse(struct lichen_rpl_srh *_Nonnull srh,
  *         LICHEN_RPL_ERR_INVALID on NULL input.
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_rpl_srh_check_nonstoring(const struct lichen_rpl_srh *_Nonnull srh,
-				    const uint8_t *_Nonnull node_addr);
+int lichen_rpl_srh_check_nonstoring(const struct lichen_rpl_srh *_Nullable srh,
+				    const uint8_t *_Nullable node_addr);
+
+/** SRH has no remaining segment; deliver locally without mutation. */
+#define LICHEN_RPL_SRH_COMPLETE 0
+/** SRH advanced one segment; forward to the returned next hop. */
+#define LICHEN_RPL_SRH_FORWARD 1
+
+/**
+ * @brief Advance an RFC 6554 SRH at an intermediate node.
+ *
+ * Validates the complete route before changing state, swaps the current IPv6
+ * Destination with the next SRH address, decrements Segments Left and Hop
+ * Limit, and returns the new destination in @p next_hop.  Routes containing
+ * multicast addresses, the IPv6 Source, the current Destination, duplicate
+ * hops, or an impossible segment/hop-limit count are rejected atomically.
+ *
+ * Transport checksums are not changed.  Per RFC 8200 Section 8.1, the sender
+ * computes the pseudo-header checksum using the final destination; relays must
+ * preserve that checksum while the routing header changes the on-wire IPv6
+ * Destination.
+ *
+ * @param srh             Parsed, uncompressed SRH; mutated only on success
+ * @param source_addr     IPv6 Source address (16 bytes)
+ * @param destination     Current IPv6 Destination; replaced on forwarding
+ * @param hop_limit       Current IPv6 Hop Limit; decremented on forwarding
+ * @param next_hop        Receives the new IPv6 Destination (16 bytes)
+ * @return LICHEN_RPL_SRH_FORWARD, LICHEN_RPL_SRH_COMPLETE, or a negative
+ *         LICHEN_RPL_ERR_* code.  All inputs are unchanged on error.
+ */
+LICHEN_WARN_UNUSED_RESULT
+int lichen_rpl_srh_advance(struct lichen_rpl_srh *_Nullable srh,
+			   const uint8_t *_Nullable source_addr,
+			   uint8_t *_Nullable destination,
+			   uint8_t *_Nullable hop_limit,
+			   uint8_t *_Nullable next_hop);
 
 /**
  * @brief Hdr Ext Len for uncompressed RFC 6554 SRH (n*2).
@@ -384,6 +418,7 @@ struct lichen_rpl_dao_snapshot {
  */
 struct lichen_rpl_dao_stage {
 	struct lichen_rpl_dao_snapshot snapshot;
+	struct lichen_rpl_dao_snapshot previous;
 	int16_t slot;
 	bool changed;
 };
@@ -400,6 +435,8 @@ struct lichen_rpl_dao_workspace {
 	struct lichen_rpl_dao_stage stage[CONFIG_LICHEN_RPL_MAX_ROUTES];
 	struct lichen_rpl_dao_parsed_target targets[CONFIG_LICHEN_RPL_MAX_ROUTES];
 	struct lichen_rpl_dao_candidate candidates[CONFIG_LICHEN_RPL_MAX_PARENTS];
+	struct lichen_rpl_routing_table rebuilt_table;
+	struct lichen_rpl_parent_edge rebuilt_parent_map[CONFIG_LICHEN_RPL_MAX_ROUTES];
 };
 
 /**
@@ -456,6 +493,9 @@ struct lichen_rpl_dao_manager {
 	struct lichen_rpl_dao_root_state *_Nullable root_state;
 	struct k_mutex lock;
 };
+
+/** Canonical unsigned leaf DAO: base (20) + Target (20) + Transit (22). */
+#define LICHEN_RPL_LEAF_DAO_LEN 62U
 
 /**
  * @brief Initialize DAO manager for a non-root node.
@@ -516,7 +556,7 @@ enum lichen_rpl_sequence_relation lichen_rpl_sequence_compare(
  * @param dm          DAO manager
  * @param parent_addr Parent's IPv6 address (16 bytes)
  * @param buf         Output buffer
- * @param len         Buffer size (needs ~64 bytes)
+ * @param len         Buffer size (at least LICHEN_RPL_LEAF_DAO_LEN bytes)
  * @return Number of bytes written, or negative error
  */
 int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *_Nonnull dm,
@@ -534,7 +574,7 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *_Nonnull dm,
  * @param parent_addr    Parent's IPv6 address (16 bytes)
  * @param path_lifetime  Path lifetime (Transit Info field; must be 0-255; 255 = infinite)
  * @param buf            Output buffer
- * @param len            Buffer size (needs ~64 bytes)
+ * @param len            Buffer size (at least LICHEN_RPL_LEAF_DAO_LEN bytes)
  * @return Number of bytes written, or negative error
  */
 int lichen_rpl_dao_manager_build_dao_with_lifetime(struct lichen_rpl_dao_manager *_Nonnull dm,
@@ -548,14 +588,14 @@ int lichen_rpl_dao_manager_build_dao_with_lifetime(struct lichen_rpl_dao_manager
  * Requires that the last successful build_dao_with_lifetime had exactly (parent_addr,
  * path_lifetime). Advances only dao_sequence for root replay checks. Returns
  * LICHEN_RPL_ERR_INVALID when the (parent, lifetime) pair does not match the last
- * logical update, the last update was not a logical (path-advancing) build, or the
- * last built update failed.
+ * logical update, or the last successful update was not a logical
+ * (path-advancing) build. A later failed build does not discard that cache.
  *
  * @param dm             DAO manager
  * @param parent_addr    Parent's IPv6 address (must match last logical update)
  * @param path_lifetime  Path lifetime (must match last logical update)
  * @param buf            Output buffer
- * @param len            Buffer size (needs ~64 bytes)
+ * @param len            Buffer size (at least LICHEN_RPL_LEAF_DAO_LEN bytes)
  * @return Number of bytes written, or negative error
  */
 int lichen_rpl_dao_manager_build_dao_copy_with_lifetime(
@@ -574,7 +614,7 @@ int lichen_rpl_dao_manager_build_dao_ack(struct lichen_rpl_dao_manager *_Nonnull
  * @param dm           DAO manager
  * @param parent_addr  Parent's IPv6 address (16 bytes)
  * @param path_lifetime Path Lifetime for Transit Info
- * @param buf          Output buffer (needs ~64 bytes)
+ * @param buf          Output buffer (at least LICHEN_RPL_LEAF_DAO_LEN bytes)
  * @param len          Buffer size
  * @return Number of bytes written, or negative error
  */

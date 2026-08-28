@@ -67,7 +67,7 @@ def _battery_text(pct: int | None, mv: int | None) -> str:
     return " ".join(parts) or "--"
 
 
-class NativeClientApp(App[None]):  # type: ignore[misc]  # textual lacks py.typed
+class NativeClientApp(App[None]):
     """Native LCI TUI shell with stable dashboard widgets."""
 
     TITLE = "LICHEN Native Client"
@@ -838,7 +838,8 @@ class NativeClientApp(App[None]):  # type: ignore[misc]  # textual lacks py.type
             radio_info = status.radio or {}
 
             # Extract local RF stats from radio info if available
-            rf_info = radio_info.get("rf_health", radio_info.get("local_rf", {}))
+            rf_raw = radio_info.get("rf_health", radio_info.get("local_rf", {}))
+            rf_info = rf_raw if isinstance(rf_raw, dict) else {}
             local_rf = LocalRFStats(
                 noise_floor_dbm=safe_float(rf_info.get("noise_floor_dbm")),
                 channel_busy_pct=safe_float(rf_info.get("channel_busy_pct")),

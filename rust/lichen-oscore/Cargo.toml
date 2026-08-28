@@ -18,6 +18,9 @@ heapless = "0.8"
 # Constant-time comparison for cryptographic operations
 subtle = { version = "2", default-features = false }
 
+# SHA-256 for EDHOC transcript hashes (RFC 9528 Suite 0)
+sha2 = { version = "0.11", default-features = false }
+
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
 log = { version = "0.4", default-features = false, optional = true }

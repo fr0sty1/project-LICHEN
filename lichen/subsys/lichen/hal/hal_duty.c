@@ -1,94 +1,322 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-#include <stdint.h>
+#include <lichen/duty_cycle.h>
 
-#include <zephyr/kernel.h>
-#include <zephyr/sys/util.h>
-
-#include <lichen/hal.h>
+#include <errno.h>
+#include <limits.h>
+#include <stddef.h>
+#include <string.h>
 
 #ifdef CONFIG_LICHEN_DUTY_CYCLE
-#define LICHEN_DUTY_CYCLE_WINDOW_MS 3600000ULL
 
-static void prune(struct lichen_duty_cycle_ctx *t, uint64_t now) {
-	uint64_t ws = now > LICHEN_DUTY_CYCLE_WINDOW_MS ? now - LICHEN_DUTY_CYCLE_WINDOW_MS : 0ULL;
-	while (t->len > 0) {
-		uint8_t idx = t->head;
-		uint64_t e = t->records[idx] + (uint64_t)t->durations[idx];
-		if (e <= ws) {
-			t->head = (t->head + 1U) % 32U;
-			t->len--;
-		} else break;
+static uint64_t saturating_end(uint64_t start, uint32_t duration)
+{
+	return start > UINT64_MAX - duration ? UINT64_MAX : start + duration;
+}
+
+static uint64_t saturating_add(uint64_t left, uint64_t right)
+{
+	return left > UINT64_MAX - right ? UINT64_MAX : left + right;
+}
+
+static void reset_context(struct lichen_duty_cycle_ctx *ctx)
+{
+	memset(ctx, 0, sizeof(*ctx));
+	atomic_flag_clear_explicit(&ctx->lock, memory_order_release);
+}
+
+static bool try_lock(struct lichen_duty_cycle_ctx *ctx)
+{
+	return !atomic_flag_test_and_set_explicit(&ctx->lock,
+						 memory_order_acquire);
+}
+
+static void unlock(struct lichen_duty_cycle_ctx *ctx)
+{
+	atomic_flag_clear_explicit(&ctx->lock, memory_order_release);
+}
+
+static bool observe_time_locked(struct lichen_duty_cycle_ctx *ctx,
+				 uint64_t now_ms)
+{
+	if (ctx->has_observed_time && now_ms < ctx->last_observed_ms) {
+		return false;
 	}
-}
-
-static uint32_t total_tx(const struct lichen_duty_cycle_ctx *t, uint64_t now) {
-	uint64_t ws = now > LICHEN_DUTY_CYCLE_WINDOW_MS ? now - LICHEN_DUTY_CYCLE_WINDOW_MS : 0ULL;
-	uint32_t tot = 0;
-	for (uint8_t i = 0; i < t->len; i++) {
-		uint8_t k = (t->head + i) % 32U;
-		uint64_t ts = t->records[k];
-		uint32_t d = t->durations[k];
-		if (ts >= ws) {
-			if (tot > UINT32_MAX - d) tot = UINT32_MAX; else tot += d;
-		} else {
-			uint64_t e = ts + (uint64_t)d;
-			if (e > ws) {
-				uint32_t o = (uint32_t)(e - ws);
-				if (tot > UINT32_MAX - o) tot = UINT32_MAX; else tot += o;
-			}
-		}
-	}
-	return tot;
-}
-
-void lichen_duty_cycle_init(struct lichen_duty_cycle_ctx *t, uint16_t permille) {
-	t->head = 0;
-	t->len = 0;
-	t->duty_permille = (permille == 0 || permille > 1000) ? LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE : permille;
-}
-
-bool lichen_duty_cycle_record_tx(struct lichen_duty_cycle_ctx *t, uint64_t ts, uint32_t dur) {
-	prune(t, ts);
-	if (t->len == 32) return false;
-	uint8_t idx = (t->head + t->len) % 32U;
-	t->records[idx] = ts;
-	t->durations[idx] = dur;
-	t->len++;
+	ctx->last_observed_ms = now_ms;
+	ctx->has_observed_time = true;
 	return true;
 }
 
-uint32_t lichen_duty_cycle_remaining_ms(struct lichen_duty_cycle_ctx *t, uint64_t now) {
-	prune(t, now);
-	uint32_t m = (LICHEN_DUTY_CYCLE_WINDOW_MS / 1000ULL) * t->duty_permille;
-	uint32_t u = total_tx(t, now);
-	return m > u ? m - u : 0;
-}
-
-uint16_t lichen_duty_cycle_usage_permille(struct lichen_duty_cycle_ctx *t, uint64_t now) {
-	prune(t, now);
-	uint32_t u = total_tx(t, now);
-	return (uint16_t)((uint64_t)u * 1000ULL / LICHEN_DUTY_CYCLE_WINDOW_MS);
-}
-
-uint64_t lichen_duty_cycle_next_tx_available_ms(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur) {
-	prune(t, now);
-	uint32_t m = (LICHEN_DUTY_CYCLE_WINDOW_MS / 1000ULL) * t->duty_permille;
-	uint32_t u = total_tx(t, now);
-	if ((uint64_t)u + (uint64_t)dur <= (uint64_t)m) return now;
-	uint32_t need = (uint32_t)((uint64_t)u + (uint64_t)dur - (uint64_t)m);
-	uint32_t f = 0;
-	for (uint8_t i = 0; i < t->len; i++) {
-		uint8_t k = (t->head + i) % 32U;
-		uint32_t d = t->durations[k];
-		if (f > UINT32_MAX - d) f = UINT32_MAX; else f += d;
-		if (f >= need) return t->records[k] + LICHEN_DUTY_CYCLE_WINDOW_MS;
+int lichen_duty_cycle_limit_for_region(enum lichen_duty_cycle_region region,
+				       struct lichen_duty_cycle_limit *limit)
+{
+	if (limit == NULL) {
+		return -EINVAL;
 	}
-	return (uint64_t)-1;
+
+	struct lichen_duty_cycle_limit candidate;
+	switch (region) {
+	case LICHEN_DUTY_CYCLE_REGION_EU868:
+		candidate = (struct lichen_duty_cycle_limit) {
+			.duty_permille = LICHEN_EU868_DUTY_PERMILLE,
+		};
+		break;
+	case LICHEN_DUTY_CYCLE_REGION_US915:
+		candidate = (struct lichen_duty_cycle_limit) {
+			.duty_permille = LICHEN_US915_DUTY_PERMILLE,
+			.max_dwell_time_ms = LICHEN_US915_FCC_MAX_DWELL_MS,
+			.has_dwell_time = true,
+		};
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	*limit = candidate;
+	return 0;
 }
 
-bool lichen_duty_cycle_can_transmit(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur) {
-	return lichen_duty_cycle_remaining_ms(t, now) >= dur;
+int lichen_duty_cycle_init_region(struct lichen_duty_cycle_ctx *ctx,
+				  enum lichen_duty_cycle_region region)
+{
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+
+	reset_context(ctx);
+	struct lichen_duty_cycle_limit limit;
+	int ret = lichen_duty_cycle_limit_for_region(region, &limit);
+	if (ret < 0) {
+		return ret;
+	}
+	ctx->duty_permille = limit.duty_permille;
+	ctx->max_dwell_time_ms = limit.max_dwell_time_ms;
+	ctx->has_dwell_time = limit.has_dwell_time;
+	ctx->configured = true;
+	return 0;
 }
-#endif
+
+void lichen_duty_cycle_init(struct lichen_duty_cycle_ctx *ctx, uint16_t permille)
+{
+	if (ctx == NULL) {
+		return;
+	}
+	reset_context(ctx);
+	if (permille == 0u || permille > 1000u) {
+		return;
+	}
+	ctx->duty_permille = permille;
+	ctx->configured = true;
+}
+
+static void prune_locked(struct lichen_duty_cycle_ctx *ctx, uint64_t now_ms)
+{
+	uint64_t window_start = now_ms > LICHEN_DUTY_CYCLE_WINDOW_MS ?
+		now_ms - LICHEN_DUTY_CYCLE_WINDOW_MS : 0u;
+	while (ctx->len > 0u) {
+		uint8_t index = ctx->head;
+		if (saturating_end(ctx->records[index], ctx->durations[index]) >
+		    window_start) {
+			break;
+		}
+		ctx->head = (uint8_t)((ctx->head + 1u) %
+					LICHEN_DUTY_CYCLE_RECORD_CAPACITY);
+		ctx->len--;
+	}
+}
+
+static uint32_t total_tx(const struct lichen_duty_cycle_ctx *ctx,
+			 uint64_t now_ms)
+{
+	uint64_t window_start = now_ms > LICHEN_DUTY_CYCLE_WINDOW_MS ?
+		now_ms - LICHEN_DUTY_CYCLE_WINDOW_MS : 0u;
+	uint32_t total = 0u;
+	for (uint8_t i = 0u; i < ctx->len; i++) {
+		uint8_t index = (uint8_t)((ctx->head + i) %
+					  LICHEN_DUTY_CYCLE_RECORD_CAPACITY);
+		uint64_t start = ctx->records[index];
+		uint32_t duration = ctx->durations[index];
+		uint64_t end = saturating_end(start, duration);
+		uint32_t overlap = 0u;
+		if (start >= window_start) {
+			overlap = duration;
+		} else if (end > window_start) {
+			uint64_t partial = end - window_start;
+			overlap = partial > UINT32_MAX ? UINT32_MAX :
+				  (uint32_t)partial;
+		}
+		total = total > UINT32_MAX - overlap ? UINT32_MAX :
+			total + overlap;
+	}
+	return total;
+}
+
+static uint32_t max_tx_ms(const struct lichen_duty_cycle_ctx *ctx)
+{
+	return (uint32_t)((LICHEN_DUTY_CYCLE_WINDOW_MS / 1000u) *
+			  ctx->duty_permille);
+}
+
+bool lichen_duty_cycle_record_tx(struct lichen_duty_cycle_ctx *ctx,
+				 uint64_t timestamp_ms, uint32_t duration_ms)
+{
+	if (ctx == NULL || !ctx->configured || duration_ms == 0u ||
+	    !try_lock(ctx)) {
+		return false;
+	}
+	if (!observe_time_locked(ctx, timestamp_ms)) {
+		unlock(ctx);
+		return false;
+	}
+	prune_locked(ctx, timestamp_ms);
+	if (ctx->len == LICHEN_DUTY_CYCLE_RECORD_CAPACITY) {
+		unlock(ctx);
+		return false;
+	}
+	uint8_t index = (uint8_t)((ctx->head + ctx->len) %
+				  LICHEN_DUTY_CYCLE_RECORD_CAPACITY);
+	ctx->records[index] = timestamp_ms;
+	ctx->durations[index] = duration_ms;
+	ctx->len++;
+	unlock(ctx);
+	return true;
+}
+
+bool lichen_duty_cycle_try_record_tx(struct lichen_duty_cycle_ctx *ctx,
+				     uint64_t timestamp_ms,
+				     uint32_t duration_ms)
+{
+	if (ctx == NULL || !ctx->configured || duration_ms == 0u ||
+	    !try_lock(ctx)) {
+		return false;
+	}
+	if (!observe_time_locked(ctx, timestamp_ms)) {
+		unlock(ctx);
+		return false;
+	}
+	prune_locked(ctx, timestamp_ms);
+	uint32_t maximum = max_tx_ms(ctx);
+	uint32_t used = total_tx(ctx, timestamp_ms);
+	if ((ctx->has_dwell_time && duration_ms > ctx->max_dwell_time_ms) ||
+	    duration_ms > maximum ||
+	    (uint64_t)used + duration_ms > maximum ||
+	    ctx->len == LICHEN_DUTY_CYCLE_RECORD_CAPACITY) {
+		unlock(ctx);
+		return false;
+	}
+
+	uint8_t index = (uint8_t)((ctx->head + ctx->len) %
+				  LICHEN_DUTY_CYCLE_RECORD_CAPACITY);
+	ctx->records[index] = timestamp_ms;
+	ctx->durations[index] = duration_ms;
+	ctx->len++;
+	unlock(ctx);
+	return true;
+}
+
+uint32_t lichen_duty_cycle_remaining_ms(struct lichen_duty_cycle_ctx *ctx,
+					uint64_t now_ms)
+{
+	if (ctx == NULL || !ctx->configured || !try_lock(ctx)) {
+		return 0u;
+	}
+	if (!observe_time_locked(ctx, now_ms)) {
+		unlock(ctx);
+		return 0u;
+	}
+	prune_locked(ctx, now_ms);
+	uint32_t maximum = max_tx_ms(ctx);
+	uint32_t used = total_tx(ctx, now_ms);
+	uint32_t remaining = maximum > used ? maximum - used : 0u;
+	unlock(ctx);
+	return remaining;
+}
+
+uint16_t lichen_duty_cycle_usage_permille(struct lichen_duty_cycle_ctx *ctx,
+					  uint64_t now_ms)
+{
+	if (ctx == NULL || !ctx->configured) {
+		return 0u;
+	}
+	if (!try_lock(ctx)) {
+		return UINT16_MAX;
+	}
+	if (!observe_time_locked(ctx, now_ms)) {
+		unlock(ctx);
+		return UINT16_MAX;
+	}
+	prune_locked(ctx, now_ms);
+	uint64_t usage = (uint64_t)total_tx(ctx, now_ms) * 1000u /
+			 LICHEN_DUTY_CYCLE_WINDOW_MS;
+	uint16_t result = usage > UINT16_MAX ? UINT16_MAX : (uint16_t)usage;
+	unlock(ctx);
+	return result;
+}
+
+uint64_t lichen_duty_cycle_next_tx_available_ms(
+	struct lichen_duty_cycle_ctx *ctx, uint64_t now_ms, uint32_t duration_ms)
+{
+	if (ctx == NULL || !ctx->configured || duration_ms == 0u ||
+	    !try_lock(ctx)) {
+		return UINT64_MAX;
+	}
+	if (!observe_time_locked(ctx, now_ms) ||
+	    (ctx->has_dwell_time && duration_ms > ctx->max_dwell_time_ms)) {
+		unlock(ctx);
+		return UINT64_MAX;
+	}
+	prune_locked(ctx, now_ms);
+	uint32_t maximum = max_tx_ms(ctx);
+	uint32_t used = total_tx(ctx, now_ms);
+	if ((uint64_t)used + duration_ms <= maximum) {
+		unlock(ctx);
+		return now_ms;
+	}
+	if (duration_ms > maximum) {
+		unlock(ctx);
+		return UINT64_MAX;
+	}
+
+	uint32_t needed = (uint32_t)((uint64_t)used + duration_ms - maximum);
+	uint32_t freed = 0u;
+	for (uint8_t i = 0u; i < ctx->len; i++) {
+		uint8_t index = (uint8_t)((ctx->head + i) %
+					  LICHEN_DUTY_CYCLE_RECORD_CAPACITY);
+		freed = freed > UINT32_MAX - ctx->durations[index] ? UINT32_MAX :
+			freed + ctx->durations[index];
+		if (freed >= needed) {
+			uint64_t available = saturating_add(
+				saturating_end(ctx->records[index],
+					       ctx->durations[index]),
+				LICHEN_DUTY_CYCLE_WINDOW_MS);
+			unlock(ctx);
+			return available;
+		}
+	}
+	unlock(ctx);
+	return UINT64_MAX;
+}
+
+bool lichen_duty_cycle_can_transmit(struct lichen_duty_cycle_ctx *ctx,
+				    uint64_t now_ms, uint32_t duration_ms)
+{
+	if (ctx == NULL || !ctx->configured || duration_ms == 0u ||
+	    !try_lock(ctx)) {
+		return false;
+	}
+	if (!observe_time_locked(ctx, now_ms) ||
+	    (ctx->has_dwell_time && duration_ms > ctx->max_dwell_time_ms)) {
+		unlock(ctx);
+		return false;
+	}
+	prune_locked(ctx, now_ms);
+	uint32_t maximum = max_tx_ms(ctx);
+	uint32_t used = total_tx(ctx, now_ms);
+	bool allowed = duration_ms <= maximum &&
+		       (uint64_t)used + duration_ms <= maximum;
+	unlock(ctx);
+	return allowed;
+}
+
+#endif /* CONFIG_LICHEN_DUTY_CYCLE */

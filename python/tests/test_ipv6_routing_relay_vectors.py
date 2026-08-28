@@ -40,6 +40,8 @@ by explicit ``*_documented_divergence`` tests so a future fix flips them.
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from ipaddress import IPv6Address, IPv6Network
 from pathlib import Path
 
@@ -264,6 +266,20 @@ def test_icmpv6_error_vector(name: str, vector: dict) -> None:
     flipped = bytes([packet.payload[0]]) + bytes([packet.payload[1] ^ 0xFF]) + packet.payload[2:]
     assert not Icmpv6Message.verify_checksum(src, dst, flipped)
     assert handle_icmpv6(packet) is None
+
+
+def test_committed_icmpv6_vectors_match_stdlib_generator() -> None:
+    path = VECTORS_DIR / "ipv6-icmpv6.json"
+    before = path.read_bytes()
+    result = subprocess.run(
+        [sys.executable, str(VECTORS_DIR / "generate_ipv6_icmpv6.py"), "--check"],
+        cwd=VECTORS_DIR.parent,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert path.read_bytes() == before
 
 
 # =============================================================================

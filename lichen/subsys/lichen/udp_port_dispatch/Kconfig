@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+config LICHEN_UDP_PORT_DISPATCH
+	bool "LICHEN UDP application port dispatch"
+	depends on LICHEN
+	default y
+	help
+	  Enable bounded destination-port dispatch for the LICHEN application
+	  assignments in spec/07-transport-app.md.

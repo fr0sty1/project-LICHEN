@@ -38,6 +38,9 @@
 #include <zephyr/sys/ring_buffer.h>
 #include <zephyr/init.h>
 #include <zephyr/sys/atomic.h>
+#if IS_ENABLED(CONFIG_SLIP_TRANSPORT_USB_CDC_ACM)
+#include <zephyr/usb/usb_device.h>
+#endif
 
 LOG_MODULE_REGISTER(slip_transport, CONFIG_SLIP_TRANSPORT_LOG_LEVEL);
 
@@ -46,17 +49,36 @@ LOG_MODULE_REGISTER(slip_transport, CONFIG_SLIP_TRANSPORT_LOG_LEVEL);
 #define RX_THREAD_STACK_SIZE CONFIG_SLIP_TRANSPORT_RX_THREAD_STACK_SIZE
 #define RX_THREAD_PRIORITY CONFIG_SLIP_TRANSPORT_RX_THREAD_PRIORITY
 
+#if DT_HAS_CHOSEN(lichen_slip_uart)
+#define SLIP_UART_NODE DT_CHOSEN(lichen_slip_uart)
+#define SLIP_UART_IS_USB_CDC \
+	DT_NODE_HAS_COMPAT(SLIP_UART_NODE, zephyr_cdc_acm_uart)
+#else
+#define SLIP_UART_IS_USB_CDC 0
+#endif
+
+#if IS_ENABLED(CONFIG_SLIP_TRANSPORT_USB_CDC_ACM)
+BUILD_ASSERT(SLIP_UART_IS_USB_CDC,
+	     "USB CDC-ACM SLIP requires chosen lichen,slip-uart to reference "
+	     "a zephyr,cdc-acm-uart node");
+#endif
+
 /* SLIP framing state machine */
 enum slip_rx_state {
 	SLIP_STATE_IDLE,    /* Waiting for first byte or END */
 	SLIP_STATE_DATA,    /* Receiving packet data */
 	SLIP_STATE_ESC,     /* Previous byte was ESC */
+	SLIP_STATE_DROP,    /* Discard damaged frame until END */
 };
 
 /* Transport context */
 struct slip_transport_ctx {
 	const struct device *uart_dev;
 	bool initialized;
+	int iface_status;
+	bool usb_cdc;
+	bool usb_dtr_known;
+	bool usb_dtr;
 
 	/* TX state */
 	struct k_mutex tx_mutex;
@@ -64,6 +86,8 @@ struct slip_transport_ctx {
 #ifdef CONFIG_ZTEST
 	uint8_t last_tx[SLIP_LCI_MTU * 2u + 2u];
 	size_t last_tx_len;
+	uint8_t last_rx[SLIP_LCI_MTU];
+	size_t last_rx_len;
 #endif
 
 	/* RX state - protected by rx_mutex */
@@ -84,6 +108,7 @@ struct slip_transport_ctx {
 
 	/* ISR-safe overflow counter (UART ring buffer overflows from ISR) */
 	atomic_t isr_rx_overflow;
+	atomic_t isr_rx_resync;
 
 	/* Link address (8 bytes for consistency with other LCI interfaces) */
 	uint8_t link_addr[8];
@@ -92,6 +117,7 @@ struct slip_transport_ctx {
 static struct slip_transport_ctx s_ctx = {
 	/* Node IID: produces fe80::1 */
 	.link_addr = SLIP_LCI_NODE_IID,
+	.iface_status = -EAGAIN,
 };
 
 /* Forward declarations */
@@ -101,6 +127,71 @@ static void slip_rx_thread_fn(void *p1, void *p2, void *p3);
 static K_THREAD_STACK_DEFINE(s_rx_stack, RX_THREAD_STACK_SIZE);
 static struct k_thread s_rx_thread;
 static K_MUTEX_DEFINE(s_init_mutex);
+
+#ifdef CONFIG_ZTEST
+static bool s_test_usb_override;
+static int s_test_dtr_ret;
+static bool s_test_dtr;
+#endif
+
+static void slip_reset_rx_session_locked(struct slip_transport_ctx *ctx)
+{
+	ctx->rx_state = SLIP_STATE_IDLE;
+	ctx->rx_len = 0U;
+	ctx->rx_overflow = false;
+	ring_buf_reset(&ctx->rx_ring);
+	atomic_clear(&ctx->isr_rx_resync);
+}
+
+static int slip_usb_dtr_get(struct slip_transport_ctx *ctx, bool *connected)
+{
+	uint32_t dtr = 0U;
+	int ret;
+
+	if (connected == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_ZTEST
+	if (s_test_usb_override) {
+		*connected = s_test_dtr;
+		return s_test_dtr_ret;
+	}
+#endif
+
+	if (!ctx->usb_cdc) {
+		*connected = true;
+		return 0;
+	}
+
+	ret = uart_line_ctrl_get(ctx->uart_dev, UART_LINE_CTRL_DTR, &dtr);
+	*connected = ret == 0 && dtr != 0U;
+	return ret;
+}
+
+/* Caller holds rx_mutex. */
+static int slip_usb_session_update_locked(struct slip_transport_ctx *ctx)
+{
+	bool connected;
+	int ret;
+
+	if (!ctx->usb_cdc) {
+		return 0;
+	}
+
+	ret = slip_usb_dtr_get(ctx, &connected);
+	if (ret < 0) {
+		connected = false;
+	}
+
+	if (!ctx->usb_dtr_known || connected != ctx->usb_dtr) {
+		slip_reset_rx_session_locked(ctx);
+		ctx->usb_dtr = connected;
+		ctx->usb_dtr_known = true;
+	}
+
+	return ret;
+}
 
 /* --------------------------------------------------------------------------
  * IPv6 helpers
@@ -292,6 +383,7 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 				ctx->rx_pkt[ctx->rx_len++] = b;
 			} else {
 				ctx->rx_overflow = true;
+				ctx->rx_state = SLIP_STATE_DROP;
 			}
 		}
 		break;
@@ -307,7 +399,8 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 			ctx->stats.slip_frame_errors++;
 			k_mutex_unlock(&ctx->stats_mutex);
-			ctx->rx_state = SLIP_STATE_IDLE;
+			/* END itself is already a delimiter; otherwise wait for one. */
+			ctx->rx_state = b == SLIP_END ? SLIP_STATE_IDLE : SLIP_STATE_DROP;
 			ctx->rx_len = 0;
 			ctx->rx_overflow = false;
 			break;
@@ -318,6 +411,20 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 			ctx->rx_pkt[ctx->rx_len++] = b;
 		} else {
 			ctx->rx_overflow = true;
+			ctx->rx_state = SLIP_STATE_DROP;
+		}
+		break;
+
+	case SLIP_STATE_DROP:
+		if (b == SLIP_END) {
+			if (ctx->rx_overflow) {
+				k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+				ctx->stats.rx_overflow++;
+				k_mutex_unlock(&ctx->stats_mutex);
+			}
+			ctx->rx_state = SLIP_STATE_IDLE;
+			ctx->rx_len = 0;
+			ctx->rx_overflow = false;
 		}
 		break;
 	}
@@ -334,6 +441,11 @@ static void slip_dispatch_packet(struct slip_transport_ctx *ctx)
 	struct net_if *iface;
 	struct net_pkt *pkt;
 	int ret;
+
+#ifdef CONFIG_ZTEST
+	memcpy(ctx->last_rx, ctx->rx_pkt, ctx->rx_len);
+	ctx->last_rx_len = ctx->rx_len;
+#endif
 
 	if (ctx->rx_overflow) {
 		LOG_WRN("SLIP RX: frame dropped (overflow)");
@@ -419,6 +531,7 @@ static void uart_rx_callback(const struct device *dev, void *user_data)
 				/* Ring buffer full - drop byte */
 				LOG_WRN("SLIP RX: ring buffer overflow");
 				atomic_inc(&ctx->isr_rx_overflow);
+				atomic_set(&ctx->isr_rx_resync, 1);
 			}
 			k_sem_give(&ctx->rx_sem);
 		}
@@ -437,9 +550,23 @@ static void slip_rx_thread_fn(void *p1, void *p2, void *p3)
 	LOG_INF("SLIP RX thread started");
 
 	while (true) {
-		k_sem_take(&ctx->rx_sem, K_FOREVER);
+		(void)k_sem_take(&ctx->rx_sem,
+				 ctx->usb_cdc ? K_MSEC(100) : K_FOREVER);
 
 		k_mutex_lock(&ctx->rx_mutex, K_FOREVER);
+		if (slip_usb_session_update_locked(ctx) < 0 ||
+		    (ctx->usb_cdc && !ctx->usb_dtr)) {
+			ring_buf_reset(&ctx->rx_ring);
+			k_mutex_unlock(&ctx->rx_mutex);
+			continue;
+		}
+
+		/* A lost UART byte invalidates the current frame. */
+		if (atomic_cas(&ctx->isr_rx_resync, 1, 0)) {
+			ctx->rx_state = SLIP_STATE_DROP;
+			ctx->rx_len = 0;
+			ctx->rx_overflow = false;
+		}
 
 		/* Drain the ring buffer */
 		while ((n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
@@ -470,12 +597,25 @@ static void slip_make_link_local(const uint8_t iid[8], struct in6_addr *addr)
 
 static void slip_iface_init(struct net_if *iface)
 {
-	struct slip_transport_ctx *ctx = net_if_get_device(iface)->data;
+	struct slip_transport_ctx *ctx = &s_ctx;
+	const struct device *dev;
 	struct net_if_addr *ifaddr;
 	struct in6_addr ll_addr;
 	int ret;
 
 	LOG_DBG("SLIP interface init");
+	ctx->iface_status = -ENODEV;
+
+	if (iface == NULL) {
+		LOG_ERR("SLIP: interface is unavailable");
+		return;
+	}
+
+	dev = net_if_get_device(iface);
+	if (dev == NULL || dev->data != ctx) {
+		LOG_ERR("SLIP: interface device context is unavailable");
+		return;
+	}
 
 	/* Configure interface as point-to-point, no ND */
 	net_if_flag_set(iface, NET_IF_POINTOPOINT);
@@ -489,25 +629,45 @@ static void slip_iface_init(struct net_if *iface)
 	slip_make_link_local(ctx->link_addr, &ll_addr);
 	ifaddr = net_if_ipv6_addr_add(iface, &ll_addr, NET_ADDR_MANUAL, 0);
 	if (ifaddr == NULL) {
-		LOG_WRN("SLIP: failed to add link-local address");
-	} else {
-		LOG_INF("SLIP: link-local address added");
+		ctx->iface_status = -EADDRNOTAVAIL;
+		LOG_ERR("SLIP: failed to add link-local address");
+		return;
 	}
+	LOG_INF("SLIP: link-local address added");
 
 	/* Bring interface up */
 	ret = net_if_up(iface);
 	if (ret < 0 && ret != -EALREADY) {
-		LOG_WRN("SLIP: failed to bring interface up: %d", ret);
+		ctx->iface_status = ret;
+		LOG_ERR("SLIP: failed to bring interface up: %d", ret);
+		return;
 	}
+
+	ctx->iface_status = 0;
 }
 
 static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 {
-	struct slip_transport_ctx *ctx = dev->data;
-	size_t pkt_len = net_pkt_get_len(pkt);
+	struct slip_transport_ctx *ctx;
+	size_t pkt_len;
 	uint8_t pkt_buf[SLIP_LCI_MTU];
 	size_t frame_len;
 	int ret;
+
+	if (dev == NULL || pkt == NULL) {
+		return -EINVAL;
+	}
+
+	ctx = dev->data;
+	if (ctx == NULL) {
+		return -ENODEV;
+	}
+	/* The interface may request DAD traffic before APPLICATION init. */
+	if (!ctx->initialized) {
+		return -EAGAIN;
+	}
+
+	pkt_len = net_pkt_get_len(pkt);
 
 	if (pkt_len > sizeof(pkt_buf)) {
 		LOG_WRN("SLIP TX: packet too large (%zu > %zu)", pkt_len, sizeof(pkt_buf));
@@ -612,6 +772,7 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
 	size_t frame_len;
+	bool connected;
 	int ret = 0;
 
 	if (ipv6 == NULL && len > 0) {
@@ -633,15 +794,19 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 	}
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
+	ret = slip_usb_dtr_get(ctx, &connected);
+	if (ret < 0) {
+		goto out;
+	}
+	if (!connected) {
+		ret = -ENOTCONN;
+		goto out;
+	}
 
 	ret = slip_encode(ipv6, len, ctx->tx_frame, sizeof(ctx->tx_frame),
 			  &frame_len);
 	if (ret < 0) {
-		k_mutex_unlock(&ctx->tx_mutex);
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_errors++;
-		k_mutex_unlock(&ctx->stats_mutex);
-		return ret;
+		goto out;
 	}
 
 #ifdef CONFIG_ZTEST
@@ -657,6 +822,7 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 		ret = -ENODEV;
 	}
 
+out:
 	k_mutex_unlock(&ctx->tx_mutex);
 
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
@@ -707,19 +873,28 @@ void slip_transport_reset_stats(void)
 bool slip_transport_is_ready(void)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
+	struct net_if *iface = slip_transport_iface_get();
 
-	return ctx->initialized;
+	return ctx->initialized && ctx->iface_status == 0 && iface != NULL &&
+	       net_if_is_up(iface);
 }
 
 int slip_transport_init(void)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
 	const struct device *uart_dev;
+	int ret;
 
 	k_mutex_lock(&s_init_mutex, K_FOREVER);
 	if (ctx->initialized) {
 		k_mutex_unlock(&s_init_mutex);
 		return -EALREADY;
+	}
+	if (ctx->iface_status < 0) {
+		ret = ctx->iface_status;
+		k_mutex_unlock(&s_init_mutex);
+		LOG_ERR("SLIP transport: interface setup failed: %d", ret);
+		return ret;
 	}
 
 	k_mutex_init(&ctx->tx_mutex);
@@ -731,8 +906,20 @@ int slip_transport_init(void)
 	ctx->rx_state = SLIP_STATE_IDLE;
 	ctx->rx_len = 0;
 	ctx->rx_overflow = false;
+	ctx->usb_cdc = IS_ENABLED(CONFIG_SLIP_TRANSPORT_USB_CDC_ACM);
+	ctx->usb_dtr_known = false;
+	ctx->usb_dtr = false;
 
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
+
+#if IS_ENABLED(CONFIG_SLIP_TRANSPORT_USB_CDC_ACM)
+	ret = usb_enable(NULL);
+	if (ret < 0 && ret != -EALREADY) {
+		k_mutex_unlock(&s_init_mutex);
+		LOG_ERR("SLIP transport: USB enable failed: %d", ret);
+		return ret;
+	}
+#endif
 
 #if DT_HAS_CHOSEN(lichen_slip_uart)
 	uart_dev = DEVICE_DT_GET(DT_CHOSEN(lichen_slip_uart));
@@ -740,16 +927,30 @@ int slip_transport_init(void)
 	uart_dev = NULL;
 #endif
 
-	if (uart_dev != NULL && device_is_ready(uart_dev)) {
-		ctx->uart_dev = uart_dev;
-
-		uart_irq_callback_user_data_set(uart_dev, uart_rx_callback, ctx);
-		uart_irq_rx_enable(uart_dev);
-
-		LOG_INF("SLIP transport: UART %s ready", uart_dev->name);
-	} else {
+	if (uart_dev == NULL || !device_is_ready(uart_dev)) {
 		LOG_WRN("SLIP transport: no UART device available");
 		ctx->uart_dev = NULL;
+		if (ctx->usb_cdc) {
+			k_mutex_unlock(&s_init_mutex);
+			return -ENODEV;
+		}
+	} else {
+		ctx->uart_dev = uart_dev;
+		ret = uart_irq_callback_user_data_set(uart_dev, uart_rx_callback,
+						      ctx);
+		if (ret < 0) {
+			if (ctx->usb_cdc) {
+				ctx->uart_dev = NULL;
+				k_mutex_unlock(&s_init_mutex);
+				LOG_ERR("SLIP transport: CDC callback failed: %d", ret);
+				return ret;
+			}
+			LOG_WRN("SLIP transport: UART RX unavailable: %d", ret);
+		} else {
+			uart_irq_rx_enable(uart_dev);
+		}
+
+		LOG_INF("SLIP transport: UART %s ready", uart_dev->name);
 	}
 
 	k_tid_t tid = k_thread_create(&s_rx_thread, s_rx_stack, K_THREAD_STACK_SIZEOF(s_rx_stack),
@@ -778,6 +979,9 @@ int slip_transport_test_inject_rx(const uint8_t *data, size_t len)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
 	int packets = 0;
+	if (data == NULL && len > 0U) {
+		return -EINVAL;
+	}
 
 	k_mutex_lock(&ctx->rx_mutex, K_FOREVER);
 
@@ -817,6 +1021,26 @@ int slip_transport_test_get_last_tx(uint8_t *buf, size_t max, size_t *len)
 	return 0;
 }
 
+int slip_transport_test_get_last_rx(uint8_t *buf, size_t max, size_t *len)
+{
+	struct slip_transport_ctx *ctx = &s_ctx;
+	size_t copy_len;
+
+	if (buf == NULL || len == NULL) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&ctx->rx_mutex, K_FOREVER);
+	copy_len = MIN(ctx->last_rx_len, max);
+	if (copy_len > 0U) {
+		memcpy(buf, ctx->last_rx, copy_len);
+	}
+	*len = ctx->last_rx_len;
+	k_mutex_unlock(&ctx->rx_mutex);
+
+	return 0;
+}
+
 void slip_transport_test_reset(void)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
@@ -829,13 +1053,44 @@ void slip_transport_test_reset(void)
 	ctx->rx_len = 0;
 	ctx->rx_overflow = false;
 	ctx->last_tx_len = 0;
+	ctx->last_rx_len = 0;
 	ring_buf_reset(&ctx->rx_ring);
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
 	atomic_clear(&ctx->isr_rx_overflow);
+	atomic_clear(&ctx->isr_rx_resync);
+	ctx->usb_cdc = IS_ENABLED(CONFIG_SLIP_TRANSPORT_USB_CDC_ACM);
+	ctx->usb_dtr_known = false;
+	ctx->usb_dtr = false;
+	s_test_usb_override = false;
+	s_test_dtr_ret = 0;
+	s_test_dtr = false;
 
 	k_mutex_unlock(&ctx->stats_mutex);
 	k_mutex_unlock(&ctx->rx_mutex);
 	k_mutex_unlock(&ctx->tx_mutex);
+}
+
+void slip_transport_test_set_usb_dtr(int line_ctrl_ret, bool dtr)
+{
+	struct slip_transport_ctx *ctx = &s_ctx;
+
+	k_mutex_lock(&ctx->rx_mutex, K_FOREVER);
+	s_test_usb_override = true;
+	s_test_dtr_ret = line_ctrl_ret;
+	s_test_dtr = dtr;
+	ctx->usb_cdc = true;
+	k_mutex_unlock(&ctx->rx_mutex);
+}
+
+int slip_transport_test_poll_usb_session(void)
+{
+	struct slip_transport_ctx *ctx = &s_ctx;
+	int ret;
+
+	k_mutex_lock(&ctx->rx_mutex, K_FOREVER);
+	ret = slip_usb_session_update_locked(ctx);
+	k_mutex_unlock(&ctx->rx_mutex);
+	return ret;
 }
 #endif /* CONFIG_ZTEST */
 

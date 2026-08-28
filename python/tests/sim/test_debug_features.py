@@ -241,6 +241,13 @@ def test_debug_functionality_integration() -> None:
 
 
 if __name__ == "__main__":
-    # Direct test execution
-    test_debug_functionality_integration()
-    print("✅ All debug functionality tests passed!")
+    # Direct test execution - restore debug state on failure or success
+    was_enabled = is_debug_enabled()
+    try:
+        test_debug_functionality_integration()
+        print("All debug functionality tests passed!")
+    finally:
+        if was_enabled:
+            enable_debug()
+        else:
+            disable_debug()

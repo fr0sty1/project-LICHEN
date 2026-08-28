@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.7.8",
+  "title": "Implement IRC to LICHEN relay: listen on IRC channels, POST to /msg/inbox with sender identity",
+  "description": "Implement the IRC-to-LICHEN direction of the bridge. Listen for messages on configured IRC channels. Check sender authorization against configured nick/hostmask allowlist. Convert authorized IRC messages into LICHEN /msg/inbox POST requests targeting the mapped group/realm. Include sender identity metadata without impersonating arbitrary IRC accounts. Apply message length limits and attachment handling policy. Reject unauthorized users, malformed content, oversized messages, and protocol-control attempts. Implement store-and-forward for LoRa outages.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:28.332997Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:28.332997Z",
+  "labels": [
+    "core",
+    "gateway",
+    "python",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.7.8",
+      "depends_on_id": "project-LICHEN-p2y5.7",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:30.553212Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

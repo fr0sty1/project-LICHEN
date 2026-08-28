@@ -42,7 +42,7 @@ from lichen.announce.scheduler import (
     SchedulerConfig,
 )
 from lichen.crypto.identity import Identity, PeerIdentity, yggdrasil_address
-from lichen.gradient import GRADIENT_TIMEOUT_MS, MAX_ENTRIES, GradientTable
+from lichen.gradient import GRADIENT_TIMEOUT_MS, GradientTable
 from lichen.ipv6.addr import iid_to_eui64
 from lichen.ipv6.packet import IPv6Packet, NextHeader
 from lichen.l2_payload import (
@@ -64,6 +64,14 @@ from lichen.link.link_layer import (
     RxFrame,
 )
 from lichen.link.tx_queue import Priority
+from lichen.peers import (
+    PEER_DB_MAX_SIZE,  # noqa: F401 - re-exported for API compatibility
+    PeerDatabase,
+    PeerDatabaseFullError,
+    PeerIdentityCollisionError,
+    PeerInUseError,  # noqa: F401 - re-exported for API compatibility
+    _canonical_peer,  # noqa: F401 - re-exported for test monkeypatching
+)
 from lichen.radio.base import Radio
 from lichen.routing.router import RouteDecision, Router
 from lichen.rpl.dodag import DodagState
@@ -117,18 +125,6 @@ def _relay_identity(packet: IPv6Packet) -> bytes:
     return bytes(canonical)
 
 
-def _canonical_peer(peer: object) -> PeerIdentity:
-    """Validate and detach one peer's key-derived identity."""
-    if type(peer) is not PeerIdentity:
-        raise TypeError("peer must be an exact PeerIdentity")
-    if type(peer.pubkey) is not bytes or len(peer.pubkey) != 32:
-        raise ValueError("peer must expose an exact 32-byte public key")
-    canonical = PeerIdentity.from_pubkey(bytes(peer.pubkey))
-    if type(peer.iid) is not bytes or peer.iid != canonical.iid:
-        raise ValueError("peer IID does not match its public key")
-    return canonical
-
-
 class MeshtasticAdapterProtocol(Protocol):
     """Lifecycle surface Node needs from an optional Meshtastic adapter."""
 
@@ -158,21 +154,8 @@ NODE_STATE_TRANSITIONS: dict[NodeState, frozenset[NodeState]] = {
 # Maximum relay-seen cache entries before LRU eviction
 RELAY_SEEN_MAX_SIZE = 128
 RELAY_SEEN_WINDOW_MS = 60_000
-PEER_DB_MAX_SIZE = MAX_ENTRIES
 RECEIVE_TIMEOUT_MAX_MS = 1_000
 SCHC_RETRANSMISSION_TIMEOUT_SECONDS = 10.0
-
-
-class PeerIdentityCollisionError(ValueError):
-    """A peer IID is already bound to a different public key."""
-
-
-class PeerDatabaseFullError(RuntimeError):
-    """No peer database entry can be safely evicted."""
-
-
-class PeerInUseError(RuntimeError):
-    """A peer cannot be forgotten while dependent protocol state is live."""
 
 
 def _validated_receive_timeout_ms(value: object) -> int:
@@ -295,7 +278,7 @@ class Node:
 
     # Peer database - nodes we know about
     peer_db: Mapping[bytes, PeerIdentity] = field(default_factory=dict, repr=False)
-    _peer_db: dict[bytes, PeerIdentity] = field(default_factory=dict, init=False, repr=False)
+    _peer_db: PeerDatabase = field(init=False, repr=False)
     # Per-peer RX channel from announces (CCP-9 rendezvous)
     _peer_rx_channel: dict[bytes, _PeerRxChannel] = field(default_factory=dict, repr=False)
 
@@ -372,19 +355,12 @@ class Node:
         )
         if self.config.rreq_jitter_min_ms > self.config.rreq_jitter_max_ms:
             raise ValueError("rreq_jitter_min_ms must not exceed rreq_jitter_max_ms")
-        if len(self.peer_db) > PEER_DB_MAX_SIZE:
-            raise ValueError(f"peer database cannot exceed {PEER_DB_MAX_SIZE} entries")
-        canonical_peers: dict[bytes, PeerIdentity] = {}
-        for iid, peer in self.peer_db.items():
-            canonical = _canonical_peer(peer)
-            if type(iid) is not bytes or iid != canonical.iid:
-                raise ValueError("peer database key does not match its peer identity")
-            incumbent = canonical_peers.get(canonical.iid)
-            if incumbent is not None and incumbent.pubkey != canonical.pubkey:
-                raise PeerIdentityCollisionError(f"peer IID collision for {canonical.iid.hex()}")
-            canonical_peers[canonical.iid] = canonical
-        self._peer_db = canonical_peers
-        self.peer_db = MappingProxyType(self._peer_db)
+        # Create peer database with eviction checker bound to this node
+        self._peer_db = PeerDatabase(
+            initial_peers=self.peer_db if self.peer_db else None,
+            eviction_checker=self._peer_has_live_state,
+        )
+        self.peer_db = self._peer_db.peers
         self._state_machine = StateMachine(
             initial=NodeState.STOPPED,
             transitions=NODE_STATE_TRANSITIONS,
@@ -396,7 +372,7 @@ class Node:
             radio=self.radio,
             identity=self.identity,
             peer_lookup=self._peer_lookup,
-            peer_lookup_all=lambda: list(self._peer_db.values()),
+            peer_lookup_all=self._peer_db.values,
             persist_path=self.config.persist_path,
             persistence_revision_anchor=self.persistence_revision_anchor,
             allow_persistence_bootstrap=self.allow_persistence_bootstrap,
@@ -521,9 +497,7 @@ class Node:
         return self._terminal_error
 
     def _peer_lookup(self, hint: bytes) -> PeerIdentity | None:
-        if hint and len(hint) == 8 and hint in self._peer_db:
-            return self._peer_db[hint]
-        return None
+        return self._peer_db.get(hint)
 
     def _address_for_announced_iid(self, iid: bytes) -> IPv6Address:
         """Resolve an announce IID to its exact authenticated native address."""
@@ -593,51 +567,13 @@ class Node:
             if binding.expires_ms <= now_ms:
                 self._peer_rx_channel.pop(iid, None)
 
-    def _evictable_peer_iid(self, now_ms: int) -> bytes | None:
-        """Select the oldest peer whose removal cannot orphan live state."""
-        return next(
-            (
-                iid
-                for iid, existing in self._peer_db.items()
-                if not self._peer_has_live_state(existing, now_ms)
-            ),
-            None,
-        )
-
     def add_peer(self, peer: PeerIdentity) -> None:
         """Add a peer to the database.
 
         Why exposed: Caller may have out-of-band knowledge of peers.
         Also called automatically when we receive a valid announce.
         """
-        canonical = _canonical_peer(peer)
-        incumbent = self._peer_db.get(canonical.iid)
-        if incumbent is not None:
-            if incumbent.pubkey != canonical.pubkey:
-                logger.error(
-                    "peer IID collision: iid=%s incumbent=%s candidate=%s",
-                    canonical.iid.hex(),
-                    incumbent.pubkey.hex(),
-                    canonical.pubkey.hex(),
-                )
-                raise PeerIdentityCollisionError(f"peer IID collision for {canonical.iid.hex()}")
-            return
-        if len(self._peer_db) >= PEER_DB_MAX_SIZE:
-            try:
-                now_ms = int(asyncio.get_running_loop().time() * 1000)
-            except RuntimeError:
-                import time
-
-                now_ms = int(time.monotonic() * 1000)
-            evicted_iid = self._evictable_peer_iid(now_ms)
-            if evicted_iid is None:
-                raise PeerDatabaseFullError(
-                    f"peer database is full ({PEER_DB_MAX_SIZE} protected entries)"
-                )
-            self._peer_db.pop(evicted_iid)
-            self._peer_rx_channel.pop(evicted_iid, None)
-        self._peer_db[canonical.iid] = canonical
-        logger.debug("added peer: %s", canonical.iid.hex())
+        self._peer_db.add(peer)
 
     def set_on_rule_version_failure(self, callback: Callable[[bytes], None] | None) -> None:
         """Install the operator notification for repeated authenticated SCHC failures."""
@@ -647,22 +583,7 @@ class Node:
 
     def remove_peer(self, iid: bytes) -> bool:
         """Forget an idle peer, refusing to orphan live protocol state."""
-        if type(iid) is not bytes or len(iid) != 8:
-            raise ValueError("peer IID must be exact 8-byte bytes")
-        peer = self._peer_db.get(iid)
-        if peer is None:
-            return False
-        try:
-            now_ms = int(asyncio.get_running_loop().time() * 1000)
-        except RuntimeError:
-            import time
-
-            now_ms = int(time.monotonic() * 1000)
-        if self._peer_has_live_state(peer, now_ms):
-            raise PeerInUseError(f"peer {iid.hex()} has live protocol state")
-        self._peer_db.pop(iid)
-        self._peer_rx_channel.pop(iid, None)
-        return True
+        return self._peer_db.remove(iid)
 
     def _peer_for_next_hop(self, next_hop: IPv6Address | None) -> PeerIdentity | None:
         """Resolve a router-selected next hop to its signer identity."""
@@ -1329,11 +1250,11 @@ class Node:
             )
             return
 
-        # Preflight the derived identity before AnnounceProcessor mutates its
+        # Preflight collision check before AnnounceProcessor mutates its
         # pin/sequence tables or the routable gradient table. Signature
-        # validation still belongs to the processor; this check only prevents
-        # a known collision or impossible-capacity admission from leaving
-        # partially committed trust state.
+        # validation still belongs to the processor; this check prevents
+        # a known collision from leaving partially committed trust state.
+        # Capacity checks are deferred to add_peer() which handles eviction.
         announced_peer = PeerIdentity.from_pubkey(announce.pubkey)
         if announced_peer.iid == announce.originator_iid:
             incumbent = self._peer_db.get(announced_peer.iid)
@@ -1345,11 +1266,6 @@ class Node:
                     announced_peer.pubkey.hex(),
                 )
                 return
-            if incumbent is None and len(self._peer_db) >= PEER_DB_MAX_SIZE:
-                now_ms = int(asyncio.get_running_loop().time() * 1000)
-                if self._evictable_peer_iid(now_ms) is None:
-                    logger.warning("announce peer admission rejected: peer database is full")
-                    return
 
         # Use sender's link-local address as from_neighbor
         # Why fe80:: prefix: Link-local is the "neighbor" address.

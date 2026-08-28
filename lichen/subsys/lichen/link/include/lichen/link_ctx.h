@@ -16,7 +16,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <lichen/tx_queue.h>
+#include <lichen/csma.h>
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
@@ -85,7 +85,7 @@ struct lichen_link_ctx {
 #else
 	pthread_mutex_t seq_lock; /**< Protects TX epoch/sequence allocation */
 #endif
-	struct tx_queue tx_queue; /**< TX queue with priority and deadline support */
+	struct lichen_csma csma; /**< Per-context CAD/backoff state */
 #ifdef CONFIG_LICHEN_TDMA
 	/* Per-context TDMA schedule state (spec/02a §2a.2 slot mapping).
 	 * lichen_link_tx() consults and lazily initializes this instance;
@@ -248,21 +248,29 @@ int lichen_link_set_epoch(struct lichen_link_ctx *_Nonnull ctx, uint8_t epoch);
 /**
  * @brief Compute and persist this boot's TX epoch.
  *
- * Loads the epoch saved by the previous boot from the settings subsystem,
- * advances it by one (with 8-bit wrap), persists the new value, and
- * returns it. Idempotent within a boot: repeated calls return the same
- * value without advancing or re-writing. Install the result with
+ * Loads the epoch saved by the previous boot, validates its integrity,
+ * advances it without wrap, persists the new value, and returns it through
+ * @p epoch. If no record exists, @p fallback_epoch is persisted instead.
+ * Idempotent within a boot: repeated calls return the same value without
+ * advancing or re-writing. Install the result with
  * lichen_link_set_epoch() after lichen_link_init().
  *
  * Advancing by one keeps the node's (epoch, seqnum) counter monotonically
  * ahead of what peers remember in their replay windows, so frames after a
  * reboot are not rejected as replays (lora_ipv6_mesh-3uhb).
  *
- * @return the TX epoch to use for this boot
+ * @param fallback_epoch Random cold-boot epoch in [128,255]
+ * @param[out] epoch Persisted epoch to use for this boot, unchanged on error
+ * @return 0 on success; negative errno on invalid/corrupt storage, I/O error,
+ *         or terminal epoch exhaustion
  */
-uint8_t lichen_link_epoch_advance_for_boot(void);
+int lichen_link_epoch_advance_for_boot(uint8_t fallback_epoch,
+				       uint8_t *_Nonnull epoch);
 
-/** Persist an epoch before it becomes live after a sequence wrap. */
+/**
+ * Persist an epoch before it becomes live after a sequence wrap.
+ * Epoch zero and rollback/non-advancing writes are rejected.
+ */
 int lichen_link_epoch_persist(uint8_t epoch);
 
 #ifdef CONFIG_LICHEN_LINK_EPOCH_TEST_HOOKS
@@ -366,6 +374,21 @@ int lichen_link_copy_identity(const struct lichen_link_ctx *_Nonnull ctx,
  */
 int lichen_identity_ygg_addr_from_ed25519(const uint8_t *_Nonnull pubkey,
 					  uint8_t ygg_addr[_Nonnull 16]);
+
+/**
+ * @brief Derive 8-byte identity IID from a 32-byte Ed25519 public key
+ *
+ * IID = SHA-512(pubkey)[0:8] with the U/L bit cleared (spec 8.5/8.7).
+ * Defined in link/identity_addr.c (always built) so callers outside the
+ * CoAP and IPv6 subsystems can link it; also declared by
+ * <lichen/coap_keys.h>.
+ *
+ * @param pubkey 32-byte Ed25519 public key
+ * @param iid Output buffer for 8-byte IID
+ * @return 0 on success, -EINVAL on NULL arguments
+ */
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull 32],
+			     uint8_t iid[_Nonnull 8]);
 
 #ifdef CONFIG_LICHEN_LINK_COORDINATION
 int lichen_coordination_negotiate(struct lichen_link_ctx *_Nonnull ctx);

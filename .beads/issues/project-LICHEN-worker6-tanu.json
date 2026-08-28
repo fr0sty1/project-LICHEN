@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-tanu",
+  "title": "[review] coap_dtn register: k_mutex_init on held mutex + non-idempotent registration wipes state",
+  "description": "P2. lichen_coap_deaddrop_register (coap_dtn.c:71-88) takes s_dtn_buf_mutex then lichen_coap_dtn_init() executes k_mutex_init(\u0026s_dtn_buf_mutex) on the HELD mutex — ownership reset voids exclusion until the final ignored unlock; also re-k_work_init_delayable on a possibly-scheduled work item and re-lichen_dtn_init() wipes the buffer on double registration. Benign at today's boot-time-only use, hazard if ever called with traffic in flight. Fix: K_MUTEX_DEFINE static init (drop k_mutex_init pair), make register reject/reject-noop double init, verify work item handling.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:31:52.061706Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:34:07.069822Z",
+  "started_at": "2026-08-28T05:34:07.069822Z",
+  "lease_expires_at": "2026-08-28T05:39:07.069822Z",
+  "heartbeat_at": "2026-08-28T05:34:07.069822Z",
+  "labels": [
+    "local-ok"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-tanu",
+      "depends_on_id": "project-LICHEN-6mij.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T05:31:52.74356Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

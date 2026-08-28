@@ -1,0 +1,24 @@
+{% from "macros.html" import error, empty %}
+{% if not has_data %}
+{{ empty("No metrics data") }}
+{% else %}
+<div class="metrics-grid">
+{% for name, data in metrics.items() %}
+  {% set alert_class = alerts.get(name, '') %}
+  <div class="metric-item {{ alert_class }}">
+    <div class="metric-label">{{ name }}</div>
+    <div class="metric-value">
+      {{ data.value }}{% if data.unit %} <span class="metric-unit">{{ data.unit }}</span>{% endif %}
+    </div>
+    {% if sparklines.get(name) %}
+    <div class="metric-sparkline">{{ sparklines[name] | safe }}</div>
+    {% endif %}
+    {% if alert_class == 'crit' %}
+    <div class="alert-badge crit">CRITICAL</div>
+    {% elif alert_class == 'warn' %}
+    <div class="alert-badge warn">WARNING</div>
+    {% endif %}
+  </div>
+{% endfor %}
+</div>
+{% endif %}

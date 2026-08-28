@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-u8wx.7",
+  "title": "Create board definition files (DTS, pinctrl.dtsi, board.yml, Kconfig, defconfig)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:59.458886Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:59.458886Z",
+  "labels": [
+    "zephyr",
+    "c",
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-u8wx.7",
+      "depends_on_id": "project-LICHEN-u8wx",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:04.008214Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

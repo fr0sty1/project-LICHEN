@@ -256,6 +256,8 @@ def test_dio_flag_field_decoding() -> None:
 
 
 def test_dio_round_trip_with_options() -> None:
+    from lichen.rpl.messages import DodagConfig
+
     dio = DIO(
         rpl_instance_id=0,
         version=1,
@@ -264,11 +266,43 @@ def test_dio_round_trip_with_options() -> None:
         dodag_id=DODAG,
         options=[
             RplOption(RplOptionType.PAD1),
-            RplOption(RplOptionType.DODAG_CONFIGURATION, b"\x01\x02\x03\x04"),
+            DodagConfig().to_option(),
             RplOption(0x13, b"\x03"),
         ],
     )
     assert DIO.from_bytes(dio.to_bytes()) == dio
+
+
+def test_dodag_configuration_codec_is_exact_and_preserves_flags() -> None:
+    from lichen.rpl.messages import DodagConfig
+
+    config = DodagConfig(
+        pcs=5,
+        authentication_enabled=True,
+        gateway_centric=True,
+        dio_int_doublings=7,
+        dio_int_min=11,
+        dio_redundancy_const=3,
+        max_rank_increase=0x1234,
+        min_hop_rank_increase=0x0200,
+        ocp=2,
+        default_lifetime=30,
+        lifetime_unit=3600,
+    )
+    option = config.to_option()
+    assert option.data[0] == 0x8D
+    assert DodagConfig.from_option(option) == config
+
+    with pytest.raises(RplError, match="Data Length 14"):
+        DodagConfig.from_option(RplOption(RplOptionType.DODAG_CONFIGURATION, option.data[:-1]))
+    with pytest.raises(RplError, match="reserved flag"):
+        DodagConfig.from_option(
+            RplOption(RplOptionType.DODAG_CONFIGURATION, bytes([0x40]) + option.data[1:])
+        )
+    with pytest.raises(RplError, match="Reserved octet"):
+        malformed = bytearray(option.data)
+        malformed[10] = 1
+        DodagConfig.from_option(RplOption(RplOptionType.DODAG_CONFIGURATION, bytes(malformed)))
 
 
 def test_dao_with_dodagid_known_vector() -> None:
@@ -307,6 +341,23 @@ def test_dao_ack_round_trip_with_dodagid() -> None:
     expected = bytes([0x00, 0x80, 0x05, 0x00]) + DODAG_PACKED  # D flag = 0x80
     assert ack.to_bytes() == expected
     assert DAOAck.from_bytes(expected) == ack
+
+
+def test_dao_ack_rejects_reserved_flags_and_malformed_options() -> None:
+    with pytest.raises(RplError, match="reserved flags"):
+        DAOAck.from_bytes(bytes([0, 1, 5, 0]))
+    with pytest.raises(RplError, match="RPL option"):
+        DAOAck.from_bytes(bytes([0, 0, 5, 0, 5, 4, 1]))
+    with pytest.raises(RplError, match="reserved flags"):
+        DAOAck(0, 5, flags=1).to_bytes()
+    with_pad1 = DAOAck(0, 5, options=[RplOption(RplOptionType.PAD1)])
+    assert DAOAck.from_bytes(with_pad1.to_bytes()) == with_pad1
+
+
+@pytest.mark.parametrize("status", [0, 1, 127, 128, 255])
+def test_dao_ack_preserves_status_octet(status: int) -> None:
+    ack = DAOAck(0, 5, status=status)
+    assert DAOAck.from_bytes(ack.to_bytes()).status == status
 
 
 def test_option_pad1_and_padn_parsing() -> None:

@@ -113,15 +113,16 @@ static inline int schc_rule_id(const uint8_t *data, size_t len)
 
 #define SCHC_FRAGMENT_RULE_A_TO_B 0x78u
 #define SCHC_FRAGMENT_RULE_B_TO_A 0x79u
-#define SCHC_FRAGMENT_TILE_SIZE 187u
+#define SCHC_FRAGMENT_TILE_SIZE 179u
 #define SCHC_FRAGMENT_WINDOW_SIZE 63u
 #define SCHC_BITMAP_MASK ((UINT64_C(1) << SCHC_FRAGMENT_WINDOW_SIZE) - 1U)
 #define SCHC_ALL_1 0x3fu
 #define SCHC_FRAGMENT_MAX_TILES 126u
-#define SCHC_FRAGMENT_MAX_PACKET_SIZE 23562u
+#define SCHC_FRAGMENT_MAX_PACKET_SIZE \
+	(SCHC_FRAGMENT_MAX_TILES * SCHC_FRAGMENT_TILE_SIZE)
 #define SCHC_FRAGMENT_DEFAULT_RECEIVER_LIMIT 1281u
 #define SCHC_FRAGMENT_MAX_ATTEMPTS 4u
-#define SCHC_FRAGMENT_MAX_MESSAGE_SIZE 193u
+#define SCHC_FRAGMENT_MAX_MESSAGE_SIZE (SCHC_FRAGMENT_TILE_SIZE + 6u)
 
 enum schc_fragment_control {
 	SCHC_CONTROL_ACK_REQUEST,
@@ -247,6 +248,7 @@ struct schc_reassembler {
 	bool active;
 	bool have_all1;
 	bool delivered;
+	bool terminal;
 };
 
 SCHC_WARN_UNUSED_RESULT
@@ -258,6 +260,8 @@ int schc_reassembler_init(struct schc_reassembler *reassembler,
  *
  * Callers dispatch contexts by authenticated link and fragmentation Rule ID.
  * Input for the opposite Rule ID is ignored without changing this context.
+ * After an abort is emitted, all late input is ignored until the caller
+ * explicitly releases or reinitializes the context.
  */
 SCHC_WARN_UNUSED_RESULT
 int schc_reassembler_input(struct schc_reassembler *reassembler,
@@ -288,6 +292,7 @@ int schc_reassembler_packet(const struct schc_reassembler *reassembler,
 SCHC_WARN_UNUSED_RESULT
 int schc_reassembler_expire(struct schc_reassembler *reassembler);
 
+/** Clear completed/aborted state and allow an explicitly new T=0 session. */
 void schc_reassembler_release(struct schc_reassembler *reassembler);
 
 #ifdef __cplusplus

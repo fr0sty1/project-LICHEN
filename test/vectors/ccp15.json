@@ -99,7 +99,7 @@
       },
       "expected": {
         "hash_32": "a0d2fe07",
-        "channel": 8
+        "channel": 1
       }
     },
     {
@@ -129,7 +129,7 @@
       },
       "expected": {
         "hash_32": "800492c2",
-        "channel": 2
+        "channel": 0
       }
     },
     {

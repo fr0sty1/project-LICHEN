@@ -10,6 +10,7 @@
 
 #include <lichen/app_interface/app_interface.h>
 #include <lichen/app_interface/hal_bridge.h>
+#include <lichen/app_interface/ipc.h>
 #include <lichen/hal.h>
 
 struct sink_ctx {
@@ -217,6 +218,7 @@ static void before(void *fixture)
 	ARG_UNUSED(fixture);
 
 	lichen_app_interface_test_reset();
+	lichen_app_interface_ipc_test_reset();
 	lichen_hal_location_clear();
 	lichen_hal_time_clear();
 	lichen_hal_time_provision_epoch_clear();
@@ -1327,6 +1329,78 @@ ZTEST(app_interface, test_missing_providers_are_unsupported)
 	zassert_equal(lichen_app_interface_get_config(NULL), -EINVAL);
 	zassert_equal(lichen_app_interface_set_config(NULL), -EINVAL);
 	zassert_equal(lichen_app_interface_copy_stats(NULL), -EINVAL);
+}
+
+ZTEST(app_interface, test_ipc_queues_copy_preserve_fifo_and_direction)
+{
+	uint8_t first[] = { 0x60, 1U, 2U };
+	uint8_t second[] = { 0x60, 3U };
+	uint8_t inbound[] = { 0x60, 9U, 8U, 7U };
+	uint8_t out[8] = { 0 };
+	size_t len = 0U;
+
+	zassert_equal(lichen_app_interface_ipc_queue_capacity(), 2U);
+	zassert_equal(lichen_app_interface_ipc_max_packet_size(), 64U);
+	zassert_ok(lichen_app_interface_ipc_send_to_network(first, sizeof(first), 0U));
+	zassert_ok(lichen_app_interface_ipc_send_to_network(second, sizeof(second), 0U));
+	first[1] = 0xffU;
+	zassert_equal(lichen_app_interface_ipc_send_to_network(second, sizeof(second), 0U),
+		      -EAGAIN);
+	zassert_ok(lichen_app_interface_ipc_send_to_app(inbound, sizeof(inbound), 0U));
+
+	zassert_ok(lichen_app_interface_ipc_recv_for_network(out, sizeof(out), &len, 0U));
+	zassert_equal(len, 3U);
+	zassert_mem_equal(out, ((uint8_t[]){ 0x60, 1U, 2U }), 3U);
+	zassert_ok(lichen_app_interface_ipc_recv_for_network(out, sizeof(out), &len, 0U));
+	zassert_mem_equal(out, second, sizeof(second));
+	zassert_equal(lichen_app_interface_ipc_recv_for_network(out, sizeof(out), &len, 0U),
+		      -EAGAIN);
+	zassert_ok(lichen_app_interface_ipc_recv_for_app(out, sizeof(out), &len, 0U));
+	zassert_mem_equal(out, inbound, sizeof(inbound));
+}
+
+ZTEST(app_interface, test_ipc_short_buffer_preserves_packet)
+{
+	const uint8_t packet[] = { 0x60, 1U, 2U, 3U };
+	uint8_t out[4] = { 0 };
+	size_t len = 0U;
+
+	zassert_ok(lichen_app_interface_ipc_send_to_app(packet, sizeof(packet), 0U));
+	zassert_equal(lichen_app_interface_ipc_recv_for_app(out, 2U, &len, 0U),
+		      -EMSGSIZE);
+	zassert_equal(len, sizeof(packet));
+	zassert_ok(lichen_app_interface_ipc_recv_for_app(out, sizeof(out), &len, 0U));
+	zassert_mem_equal(out, packet, sizeof(packet));
+}
+
+ZTEST(app_interface, test_ipc_validation_timeout_and_shutdown)
+{
+	uint8_t packet[CONFIG_LICHEN_APP_INTERFACE_IPC_MAX_PACKET + 1U] = { 0x60 };
+	uint8_t out[4];
+	size_t len;
+	int64_t start;
+
+	zassert_equal(lichen_app_interface_ipc_send_to_network(NULL, 1U, 0U), -EINVAL);
+	zassert_equal(lichen_app_interface_ipc_send_to_network(packet, 0U, 0U), -EINVAL);
+	zassert_equal(lichen_app_interface_ipc_send_to_network(packet, sizeof(packet), 0U),
+		      -EMSGSIZE);
+	zassert_equal(lichen_app_interface_ipc_recv_for_network(NULL, sizeof(out), &len, 0U),
+		      -EINVAL);
+	zassert_equal(lichen_app_interface_ipc_recv_for_network(out, sizeof(out), NULL, 0U),
+		      -EINVAL);
+
+	start = k_uptime_get();
+	zassert_equal(lichen_app_interface_ipc_recv_for_network(out, sizeof(out), &len, 10U),
+		      -EAGAIN);
+	zassert_true(k_uptime_get() - start >= 9);
+
+	zassert_ok(lichen_app_interface_ipc_send_to_network(packet, 1U, 0U));
+	lichen_app_interface_ipc_shutdown();
+	zassert_true(lichen_app_interface_ipc_is_shutdown());
+	zassert_equal(lichen_app_interface_ipc_send_to_network(packet, 1U, 0U),
+		      -ESHUTDOWN);
+	zassert_equal(lichen_app_interface_ipc_recv_for_network(out, sizeof(out), &len, 0U),
+		      -ESHUTDOWN);
 }
 
 ZTEST_SUITE(app_interface, NULL, NULL, before, NULL, NULL);

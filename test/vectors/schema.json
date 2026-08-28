@@ -1474,7 +1474,26 @@
         "description": {"type": "string"},
         "limit_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
         "window_ms": {"type": "integer", "minimum": 1000},
+        "now_ms": {"type": "integer", "minimum": 0},
         "tx_ms": {"type": "integer", "minimum": 0},
+        "txs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ts", "dur"],
+            "additionalProperties": false,
+            "properties": {
+              "ts": {"type": "integer", "minimum": 0},
+              "dur": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "remaining_ms": {"type": "integer", "minimum": 0},
+        "usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "can_transmit": {"type": "boolean"},
+        "can_transmit_100ms": {"type": "boolean"},
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "next_available_ms": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
         "expected_remaining_ms": {"type": "integer", "minimum": 0},
         "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
         "density": {"type": "integer", "minimum": 0, "maximum": 255},

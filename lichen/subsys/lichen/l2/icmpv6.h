@@ -45,12 +45,17 @@ extern "C" {
 /** IPv6 header length (fixed 40 bytes). */
 #define LICHEN_IPV6_HEADER_LEN 40
 
+/** IPv6 minimum MTU required by RFC 8200. */
+#define LICHEN_IPV6_MIN_MTU 1280
+
 /**
- * Maximum size of invoking packet quoted in error messages.
- * RFC 4443 allows up to IPv6 minimum MTU (1280), but LICHEN frames
- * are much smaller, so a modest bound suffices and prevents bloat.
+ * Maximum invoking-packet quote that keeps an ICMPv6 error at 1280 bytes.
+ *
+ * RFC 4443 section 2.4(c) requires including as much of the invoking packet
+ * as possible without exceeding the IPv6 minimum MTU.  The outer IPv6
+ * header consumes 40 bytes and the ICMPv6 error header consumes 8 bytes.
  */
-#define LICHEN_ICMPV6_MAX_INVOKING_PACKET 256
+#define LICHEN_ICMPV6_MAX_INVOKING_PACKET (LICHEN_IPV6_MIN_MTU - LICHEN_IPV6_HEADER_LEN - 8)
 
 /**
  * @brief ICMPv6 message types (RFC 4443).
@@ -90,14 +95,38 @@ enum lichen_icmpv6_dest_unreach_code {
     LICHEN_ICMPV6_REJECT_ROUTE = 6,
 };
 
+/** Link-layer/source metadata needed by RFC 4443 section 2.4(e). */
+enum lichen_icmpv6_invoking_flags {
+	/** No additional suppression condition is known. */
+	LICHEN_ICMPV6_INVOKING_UNICAST = 0,
+	/** The invoking packet arrived as a link-layer multicast. */
+	LICHEN_ICMPV6_INVOKING_LINK_MULTICAST = 0x01U,
+	/** The invoking packet arrived as a link-layer broadcast. */
+	LICHEN_ICMPV6_INVOKING_LINK_BROADCAST = 0x02U,
+	/** The invoking packet's source is known to be an anycast address. */
+	LICHEN_ICMPV6_INVOKING_SOURCE_ANYCAST = 0x04U,
+	/** The invoking packet was dropped because of congestion. */
+	LICHEN_ICMPV6_INVOKING_CONGESTION = 0x08U,
+};
+
+/** Address metadata for safe Echo Request handling. */
+enum lichen_icmpv6_echo_request_flags {
+	/** The request was addressed to a normal unicast address. */
+	LICHEN_ICMPV6_ECHO_DESTINATION_UNICAST = 0,
+	/** The request destination is known to be an anycast address. */
+	LICHEN_ICMPV6_ECHO_DESTINATION_ANYCAST = 0x01U,
+	/** The request source is known to be an anycast address. */
+	LICHEN_ICMPV6_ECHO_SOURCE_ANYCAST = 0x02U,
+};
+
 /**
  * @brief Time Exceeded codes (RFC 4443 section 3.3).
  */
 enum lichen_icmpv6_time_exceeded_code {
-    /** Code 0: Hop limit exceeded in transit */
-    LICHEN_ICMPV6_HOP_LIMIT_EXCEEDED = 0,
-    /** Code 1: Fragment reassembly time exceeded */
-    LICHEN_ICMPV6_FRAGMENT_REASSEMBLY = 1,
+	/** Code 0: Hop limit exceeded in transit */
+	LICHEN_ICMPV6_HOP_LIMIT_EXCEEDED = 0,
+	/** Code 1: Fragment reassembly time exceeded */
+	LICHEN_ICMPV6_FRAGMENT_REASSEMBLY = 1,
 };
 
 /**
@@ -265,18 +294,18 @@ int lichen_icmpv6_build_echo_reply(const struct in6_addr *src,
  * @param code Destination Unreachable code.
  * @param invoking_packet First bytes of the invoking packet.
  * @param invoking_len Length of invoking packet data.
+ * @param invoking_flags Link-layer/source metadata used for RFC 4443
+ *        suppression. Pass LICHEN_ICMPV6_INVOKING_UNICAST only when none of
+ *        the other conditions apply.
  * @param out Output buffer.
  * @param out_len Length of output buffer.
- * @return Bytes written on success, 0 if buffer too small,
- *         negative errno on error.
+ * @return Bytes written on success, 0 if suppressed or the buffer is too
+ *         small, negative errno for malformed/invalid input.
  */
-int lichen_icmpv6_build_dest_unreachable(const struct in6_addr *src,
-                                         const struct in6_addr *dst,
-                                         enum lichen_icmpv6_dest_unreach_code code,
-                                         const uint8_t *invoking_packet,
-                                         size_t invoking_len,
-                                         uint8_t *out,
-                                         size_t out_len);
+int lichen_icmpv6_build_dest_unreachable(const struct in6_addr *src, const struct in6_addr *dst,
+					 enum lichen_icmpv6_dest_unreach_code code,
+					 const uint8_t *invoking_packet, size_t invoking_len,
+					 uint8_t invoking_flags, uint8_t *out, size_t out_len);
 
 /**
  * @brief Build an ICMPv6 Packet Too Big error message.
@@ -289,18 +318,18 @@ int lichen_icmpv6_build_dest_unreachable(const struct in6_addr *src,
  * @param mtu MTU value to advertise.
  * @param invoking_packet First bytes of the invoking packet.
  * @param invoking_len Length of invoking packet data.
+ * @param invoking_flags Link-layer/source metadata used for RFC 4443
+ *        suppression. Unlike other errors, Packet Too Big is permitted for
+ *        link-layer multicast/broadcast and IPv6 multicast destinations.
  * @param out Output buffer.
  * @param out_len Length of output buffer.
- * @return Bytes written on success, 0 if buffer too small,
- *         negative errno on error.
+ * @return Bytes written on success, 0 if suppressed or the buffer is too
+ *         small, negative errno for malformed/invalid input.
  */
-int lichen_icmpv6_build_packet_too_big(const struct in6_addr *src,
-                                       const struct in6_addr *dst,
-                                       uint32_t mtu,
-                                       const uint8_t *invoking_packet,
-                                       size_t invoking_len,
-                                       uint8_t *out,
-                                       size_t out_len);
+int lichen_icmpv6_build_packet_too_big(const struct in6_addr *src, const struct in6_addr *dst,
+				       uint32_t mtu, const uint8_t *invoking_packet,
+				       size_t invoking_len, uint8_t invoking_flags, uint8_t *out,
+				       size_t out_len);
 
 /**
  * @brief Build an ICMPv6 Time Exceeded error message.
@@ -310,16 +339,20 @@ int lichen_icmpv6_build_packet_too_big(const struct in6_addr *src,
  * @param code Time Exceeded code.
  * @param invoking_packet First bytes of the invoking packet.
  * @param invoking_len Length of invoking packet data.
+ * @param invoking_flags Link-layer/source metadata used for RFC 4443
+ *        suppression. Pass LICHEN_ICMPV6_INVOKING_UNICAST only when none of
+ *        the other conditions apply.
  * @param out Output buffer.
  * @param out_len Length of output buffer.
- * @return Bytes written on success, 0 if buffer too small,
- *         negative errno on error.
+ * @return Bytes written on success, 0 if suppressed or the buffer is too
+ *         small, negative errno for malformed/invalid input.
  */
 int lichen_icmpv6_build_time_exceeded(const struct in6_addr *src,
                                       const struct in6_addr *dst,
                                       enum lichen_icmpv6_time_exceeded_code code,
                                       const uint8_t *invoking_packet,
                                       size_t invoking_len,
+			      uint8_t invoking_flags,
                                       uint8_t *out,
                                       size_t out_len);
 
@@ -351,7 +384,9 @@ int lichen_icmpv6_build_param_problem(const struct in6_addr *src,
  *
  * Verifies the checksum and processes the message. Only Echo Requests
  * produce a reply (Echo Reply with addresses swapped). Replies and error
- * messages are consumed without response.
+ * messages are consumed without response. Multicast or known-anycast Echo
+ * Requests are also suppressed because this API has no interface-address
+ * selector for choosing the required unicast reply source.
  *
  * SECURITY: Per RFC 4443 section 2.3, messages with invalid checksums
  * are silently discarded.
@@ -360,6 +395,8 @@ int lichen_icmpv6_build_param_problem(const struct in6_addr *src,
  * @param dst Destination IPv6 address of received packet.
  * @param icmpv6_data Raw ICMPv6 message.
  * @param icmpv6_len Length of ICMPv6 message.
+ * @param request_flags Address metadata used to suppress replies involving
+ *        a known anycast source or destination.
  * @param reply_out Buffer for reply packet (full IPv6 + ICMPv6).
  * @param reply_out_len Length of reply buffer.
  * @return Bytes written to reply_out if a reply is generated,
@@ -370,6 +407,7 @@ int lichen_icmpv6_handle(const struct in6_addr *src,
                          const struct in6_addr *dst,
                          const uint8_t *icmpv6_data,
                          size_t icmpv6_len,
+                         uint8_t request_flags,
                          uint8_t *reply_out,
                          size_t reply_out_len);
 

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field, replace
 from functools import total_ordering
 from ipaddress import IPv6Address
 
-from lichen.ipv6 import to_ipv6
+from lichen.ipv6 import routing_key
 from lichen.ipv6.packet import ExtensionHeader, IPv6Packet, NextHeader
 from lichen.rpl.dodag import DodagState
 
@@ -61,10 +61,10 @@ class RouteTarget:
 
     @classmethod
     def host(cls, address: IPv6Address | str) -> RouteTarget:
-        return cls(to_ipv6(address), 128)
+        return cls(routing_key(address), 128)
 
     def contains(self, address: IPv6Address | str) -> bool:
-        addr = to_ipv6(address)
+        addr = routing_key(address)
         if self.prefix_len == 128:
             return addr == self.prefix
         whole_bytes = self.prefix_len // 8
@@ -118,7 +118,7 @@ class RouteEntry:
 
     @classmethod
     def fresh(cls, path: Sequence[IPv6Address | str]) -> RouteEntry:
-        return cls(path=[to_ipv6(a) for a in path], state=RouteEntryState.FRESH)
+        return cls(path=[routing_key(a) for a in path], state=RouteEntryState.FRESH)
 
     def is_usable(self) -> bool:
         return self.state != RouteEntryState.EXPIRED
@@ -201,8 +201,8 @@ class RoutingTable:
     def add_route(
         self, target: IPv6Address | str, path: Sequence[IPv6Address | str]
     ) -> None:
-        converted_target = to_ipv6(target)
-        converted_path = [to_ipv6(a) for a in path]
+        converted_target = routing_key(target)
+        converted_path = [routing_key(a) for a in path]
         if not path:
             raise RoutingError("route path must not be empty")
         if converted_path[-1] != converted_target:
@@ -218,8 +218,8 @@ class RoutingTable:
     ) -> None:
         if target.prefix_len == 128:
             raise RoutingError("use add_route for /128 targets")
-        converted_path = [to_ipv6(a) for a in path]
-        converted_egress = to_ipv6(egress)
+        converted_path = [routing_key(a) for a in path]
+        converted_egress = routing_key(egress)
         if converted_path[-1] != converted_egress:
             raise RoutingError("prefix route path must end at egress")
         if any(hop == target.prefix for hop in converted_path):
@@ -263,10 +263,10 @@ class RoutingTable:
     ) -> None:
         self.clear()
         for target, path in routes.items():
-            self._add_target_route(target, [to_ipv6(a) for a in path])
+            self._add_target_route(target, [routing_key(a) for a in path])
 
     def lookup(self, target: IPv6Address | str) -> list[IPv6Address] | None:
-        addr = to_ipv6(target)
+        addr = routing_key(target)
         if self._prefix_route_count == 0:
             entry = self._routes.get(RouteTarget.host(addr))
             return list(entry.path) if entry is not None and entry.is_usable() else None
@@ -315,7 +315,7 @@ def insert_source_route(
     destination check is unconditional so callers cannot accidentally lose the
     original destination while replacing it with the first hop.
     """
-    hops = [to_ipv6(a) for a in path]
+    hops = [routing_key(a) for a in path]
     if not hops:
         raise RoutingError("path must not be empty")
     if len(hops) > MAX_ROUTE_HOPS:
@@ -327,7 +327,7 @@ def insert_source_route(
             f"path ends with {hops[-1]}, packet destination is {destination}"
         )
     if expected_destination is not None:
-        expected = to_ipv6(expected_destination)
+        expected = routing_key(expected_destination)
         if destination != expected:
             raise RoutingError(
                 "packet destination does not match expected destination: "

@@ -43,6 +43,9 @@
 #include <lichen/link.h>
 #include <lichen/link_ctx.h>
 #include <lichen/replay.h>
+#ifdef CONFIG_LICHEN_LINK_REPLAY_PERSIST
+#include <lichen/replay_persist.h>
+#endif
 #include <lichen/schc.h>
 #define HAVE_LICHEN_LINK 1
 #else

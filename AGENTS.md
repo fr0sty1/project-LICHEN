@@ -409,7 +409,85 @@ fix issue → 3x review → file findings → fix those → 3x review → ...
 
 Test vectors live in `test/vectors/` as JSON. Both implementations read and verify against these.
 
-If a Zephyr build or test is Linux-only and cannot run on the local host, use AWS EC2 via the AWS CLI instead of skipping it. See the **AWS EC2 Access** section below for authentication and safety rules.
+C and Zephyr tests run on this host when the local Attic toolchain can do the
+job. Use AWS EC2 only for Linux-only `native_sim`, the pinned Zephyr v3.7.0
+environment, or a cross toolchain that is not installed locally -- never skip
+the bead.
+
+## Local Zephyr/C Development (Enabled)
+
+The current project phase includes **C and Zephyr work**. Do not skip a bead
+merely because it is tagged `c` or `zephyr`. Hardware-only work still requires
+the relevant device and the port-safety checks in `docs/bench-operations.md`.
+
+The Zephyr toolchain is on the Attic volume. Use it before AWS.
+
+| Component | Path / version |
+|-----------|----------------|
+| Zephyr SDK | `/Volumes/Attic/zephyr-sdk-0.16.8` (0.16.8) |
+| SDK CMake package | `~/.cmake/packages/Zephyr-sdk` -> `/Volumes/Attic/zephyr-sdk-0.16.8/cmake` |
+| Installed SDK toolchains | `arm-zephyr-eabi`, `x86_64-zephyr-elf`, `xtensa-espressif_esp32_zephyr-elf`, `xtensa-espressif_esp32s3_zephyr-elf` |
+| Compatible CMake | `/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin/cmake` |
+| Python / west venv | `/Volumes/Attic/Developer/zephyr-venv` (Python 3.14.6, west 1.5.0) |
+| Shared west workspace | `/Volumes/Attic/Developer/zephyr-workspace` (upstream Zephyr **v4.1.0**) |
+| LICHEN west pin | `lichen/west.yml` revision **v3.7.0** |
+| LICHEN repository | `/Volumes/Attic/Desktop/Projects/project-LICHEN` |
+
+**Version split:** the shared Attic workspace is Zephyr 4.1.0 with an upstream
+west manifest. LICHEN is pinned to Zephyr v3.7.0. Do not `west init` or
+`west update` the shared 4.1.0 workspace to change versions. The in-repo
+`zephyr` path is a broken symlink (`../zephyr`, target missing); `west list`
+from this checkout fails because the v3.7.0 clone is absent. A dedicated Attic
+v3.7.0 west-tree repair is tracked by bead `project-LICHEN-worker6-xplt`; that
+text is a bead ID, not a filesystem path. Do not invent a second tree in the
+repo checkout, and do not mutate the 4.1.0 workspace.
+
+### Host C tests (first local path)
+
+Standalone CMake tests under `lichen/tests/` that include
+`lichen/tests/cmake/test_common.cmake` (for example `schnorr48`, `frame`,
+`replay`, `rpl_dodag`, `rpl_dao_sequence`) run on this Mac with Apple clang,
+ASan, and UBSan. They do not need west or `native_sim`:
+
+```bash
+cd lichen/tests/schnorr48
+rm -rf build && mkdir build && cd build
+cmake .. && cmake --build . && ctest --output-on-failure
+```
+
+C lint (cppcheck is on PATH; clang-tidy is Homebrew LLVM and often is not):
+
+```bash
+export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+./scripts/lint-c.sh
+```
+
+Keep those build directories inside the repo or under
+`/Volumes/Attic/Cache/project-LICHEN`. Do not write them to `/tmp`.
+
+### West / SDK environment
+
+```bash
+export LICHEN_REPO=/Volumes/Attic/Desktop/Projects/project-LICHEN
+export ZEPHYR_SDK_INSTALL_DIR=/Volumes/Attic/zephyr-sdk-0.16.8
+export ZEPHYR_BASE=/Volumes/Attic/Developer/zephyr-workspace/zephyr
+export PATH="/Volumes/Attic/Developer/cmake-3.31.3-macos-universal/CMake.app/Contents/bin:$PATH"
+. /Volumes/Attic/Developer/zephyr-venv/bin/activate
+cd /Volumes/Attic/Developer/zephyr-workspace
+```
+
+Cross-compile with the local SDK (nRF52840 / ESP32-S3) from the 4.1.0 workspace
+is allowed for smoke checks. It is **not** a substitute for the v3.7.0 pin used
+by CI and the EBS builder. Homebrew CMake 4.4 is incompatible with this Zephyr
+workspace; keep the listed CMake 3.31.3 first in `PATH`. Use a unique `-d`
+build directory per bead.
+
+`west build -b native_sim` on this Mac is unreliable: `native_sim` is
+Linux-oriented, and the 4.1.0 vs v3.7.0 split produces Kconfig/module loops
+(example: `zcbor`). Prefer host CMake tests. For a real `native_sim` run that
+matches CI, use the AWS EC2 Zephyr builder below instead of skipping the bead.
+
+Do not open hardware ports without `docs/bench-operations.md`.
 
 ## AWS EC2 Access
 
@@ -496,7 +574,8 @@ aws ec2 run-instances \
 
 ### AWS Zephyr Builder EBS Cache
 
-Always use the persistent single-AZ EBS builder cache for EC2 Zephyr builds/tests:
+When a Zephyr build needs Linux `native_sim` or the repository's pinned
+Zephyr v3.7.0 environment, use the persistent single-AZ EBS builder cache:
 
 - Volume: `vol-0a95eee8d1d8461eb`
 - Region/AZ: `us-west-2` / `us-west-2c`

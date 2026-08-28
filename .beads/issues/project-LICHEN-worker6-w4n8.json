@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-w4n8",
+  "title": "rangetest: cur_skip_item argument*2 wraps for map arguments \u003e= 2^63",
+  "description": "coap_rangetest.c:251: argument * 2U wraps for arguments \u003e= 2^63 making the container appear empty so subsequent bytes realign the parse relative to stricter decoders - interop divergence on untrusted unknown-key values (no memory unsafety; termination and bounds hold). Fix: reject argument \u003e UINT64_MAX/2 or bound by remaining input length.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:20.508837Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T10:27:29.172878Z",
+  "started_at": "2026-08-28T08:01:36.339217Z",
+  "closed_at": "2026-08-28T10:27:29.172878Z",
+  "close_reason": "cur_skip_item now rejects map arguments \u003e UINT64_MAX/2 before the *2 doubling (would wrap to 0, making the container look empty and realigning the parse on untrusted unknown-key values). Regression test test_skip_item_rejects_wrapping_map_argument: a body whose unknown-key value is map(2^63) followed by a valid interval_ms key must be rejected atomically (pre-fix it was accepted with the trailing key honored). Twister 8/8. Commit 4c33ee2345."
+}

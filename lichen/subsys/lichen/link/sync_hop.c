@@ -7,7 +7,13 @@
  */
 
 #include <lichen/sync_hop.h>
-#include <lichen_util.h>
+
+#include <errno.h>
+#include <stddef.h>
+
+/* Provided by the link module; keep this file independent of Zephyr-only L2
+ * headers. */
+uint32_t lichen_hash_32(const uint8_t *data, size_t len);
 
 /* 2024-01-01 00:00:00 UTC */
 #define EPOCH_BASE_MS 1704067200000ULL
@@ -29,11 +35,13 @@ uint8_t lichen_sync_hop_channel(uint32_t sfn, uint32_t seed, uint8_t n_channels)
 
     hash = lichen_hash_32(data, sizeof(data));
 
-    if (n_channels < 3) {
-        n_channels = 3;
+    /* n_channels includes reserved CH0.  A degenerate plan containing only
+     * CH0 has no data channel and therefore fails closed to CH0. */
+    if (n_channels <= 1U) {
+        return 0U;
     }
 
-    return 1 + (hash % n_channels);
+    return (uint8_t)(1U + (hash % (uint32_t)(n_channels - 1U)));
 }
 
 uint32_t lichen_sfn_from_unix_ms(uint64_t unix_time_ms)
@@ -48,29 +56,75 @@ uint32_t lichen_sfn_from_unix_ms(uint64_t unix_time_ms)
     return (uint32_t)((unix_time_ms - EPOCH_BASE_MS) / superframe_ms);
 }
 
-int lichen_asn_sfn_derive(uint64_t unix_time_us,
-                          uint64_t epoch_base_us,
+int lichen_asn_sfn_derive(uint64_t unix_time_us, uint64_t epoch_base_us,
                           uint64_t interval_duration_us,
-                          struct lichen_asn_sfn_result *result)
-{
-    if (result == NULL) {
-        return -EINVAL;
-    }
+                          struct lichen_asn_sfn_result *result) {
+  struct lichen_asn_sfn_result derived;
 
-    /* SECURITY: Clamp to zero for invalid inputs per spec 09-packets-timing.md 14.7 */
-    if (interval_duration_us == 0 || unix_time_us < epoch_base_us) {
-        result->asn = 0;
-        result->sfn = 0;
-        result->clamped = true;
-        return 0;
-    }
+  if (result == NULL) {
+    return -EINVAL;
+  }
 
-    /* Compute ASN as unbounded u64 quotient */
-    result->asn = (unix_time_us - epoch_base_us) / interval_duration_us;
+  /* SECURITY: Clamp to zero for invalid inputs per spec
+   * 09-packets-timing.md 14.7 */
+  if (interval_duration_us == 0 || unix_time_us < epoch_base_us) {
+    derived = (struct lichen_asn_sfn_result){
+        .asn = 0,
+        .sfn = 0,
+        .clamped = true,
+    };
+  } else {
+    /* Subtract only after the ordering check, avoiding unsigned wrap. */
+    derived.asn = (unix_time_us - epoch_base_us) / interval_duration_us;
+    derived.sfn = (uint32_t)derived.asn;
+    derived.clamped = false;
+  }
 
-    /* SFN is the low 32 bits of ASN */
-    result->sfn = (uint32_t)(result->asn & 0xFFFFFFFFULL);
-    result->clamped = false;
+  /* Commit all result fields only after the derivation is complete. */
+  *result = derived;
+  return 0;
+}
 
-    return 0;
+int lichen_asn_sfn_derive_sample(const struct lichen_asn_time_sample *sample,
+                                 uint64_t epoch_base_us,
+                                 uint64_t interval_duration_us,
+                                 struct lichen_asn_sfn_result *result) {
+  struct lichen_asn_sfn_result derived;
+  uint64_t seconds;
+  uint64_t unix_time_us;
+  int ret;
+
+  if (sample == NULL || result == NULL || interval_duration_us == 0) {
+    return -EINVAL;
+  }
+  if (!sample->wall_clock_valid || !sample->source_valid ||
+      sample->scale != LICHEN_ASN_TIME_SCALE_UNIX_UTC || sample->stratum == 0 ||
+      sample->stratum > 4) {
+    return -EACCES;
+  }
+  if (sample->unix_seconds < 0 || sample->subsecond_us >= 1000000U) {
+    return -ERANGE;
+  }
+
+  seconds = (uint64_t)sample->unix_seconds;
+  if (seconds > (UINT64_MAX - sample->subsecond_us) / 1000000U) {
+    return -EOVERFLOW;
+  }
+  unix_time_us = seconds * 1000000U + sample->subsecond_us;
+
+  if (unix_time_us < sample->effective_epoch_floor_us) {
+    return -ESTALE;
+  }
+  if (unix_time_us < epoch_base_us) {
+    return -ERANGE;
+  }
+
+  ret = lichen_asn_sfn_derive(unix_time_us, epoch_base_us, interval_duration_us,
+                              &derived);
+  if (ret != 0 || derived.clamped) {
+    return ret != 0 ? ret : -ERANGE;
+  }
+
+  *result = derived;
+  return 0;
 }

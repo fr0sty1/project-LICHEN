@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-wqaa.1.11",
+  "title": "Create budget breakdown and cost justification",
+  "description": "Itemize costs: 500 LoRa nodes (hardware BOM), PCB fabrication, enclosures, conference travel/logistics, development time. Target 50-100k EUR total. Justify each line item with market rates and necessity for deployment goals.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:37.516791Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:37.516791Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.1.11",
+      "depends_on_id": "project-LICHEN-wqaa.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:40.007907Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-3y7a.5",
+  "title": "task",
+  "description": "Create prj.conf overlays for nRF52840-DK and ESP32 boards enabling CONFIG_BT, CONFIG_BT_OBSERVER. Set appropriate scan parameters per platform. Test builds for both targets.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:52:43.157651Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:52:43.157651Z",
+  "labels": [
+    "zephyr",
+    "c",
+    "needs-linux"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-3y7a.5",
+      "depends_on_id": "project-LICHEN-worker6-3y7a",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:52:44.022696Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

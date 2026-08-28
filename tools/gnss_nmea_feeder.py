@@ -9,7 +9,7 @@ in native_sim builds. The PTY path is printed by the native_sim executable
 at startup (look for "uart_1 connected to pseudotty: /dev/pts/N").
 
 Usage:
-    # Fixed position (default: 37.7749, -122.4194 — San Francisco)
+    # Fixed position (default: 37.7749, -122.4194 -- San Francisco)
     python tools/gnss_nmea_feeder.py /dev/pts/N
 
     # Custom position
@@ -20,6 +20,11 @@ Usage:
 
     # One-shot mode (send once and exit)
     python tools/gnss_nmea_feeder.py /dev/pts/N --once
+
+This is a thin CLI wrapper around lichen.sim.gnss. For programmatic use,
+import the module directly::
+
+    from lichen.sim.gnss import GnssStub, NmeaSentences, make_gga, make_rmc
 """
 from __future__ import annotations
 
@@ -28,96 +33,8 @@ import datetime
 import sys
 import time
 
-
-def nmea_checksum(sentence: str) -> str:
-    """Compute NMEA checksum (XOR of all chars between $ and *)."""
-    chk = 0
-    for c in sentence:
-        chk ^= ord(c)
-    return f"{chk:02X}"
-
-
-def make_gga(
-    lat: float,
-    lon: float,
-    alt: float = 10.0,
-    fix_quality: int = 1,
-    num_sats: int = 8,
-    hdop: float = 1.0,
-    utc: datetime.datetime | None = None,
-) -> str:
-    """
-    Generate an NMEA GGA sentence.
-
-    fix_quality: 0=no fix, 1=GPS fix, 2=DGPS fix
-    """
-    if utc is None:
-        utc = datetime.datetime.now(datetime.UTC)
-
-    time_str = utc.strftime("%H%M%S.00")
-
-    # Convert lat/lon to NMEA format (DDMM.MMMM)
-    lat_dir = "N" if lat >= 0 else "S"
-    lat = abs(lat)
-    lat_deg = int(lat)
-    lat_min = (lat - lat_deg) * 60
-    lat_str = f"{lat_deg:02d}{lat_min:07.4f}"
-
-    lon_dir = "E" if lon >= 0 else "W"
-    lon = abs(lon)
-    lon_deg = int(lon)
-    lon_min = (lon - lon_deg) * 60
-    lon_str = f"{lon_deg:03d}{lon_min:07.4f}"
-
-    # GGA: Global Positioning System Fix Data
-    # $GPGGA,time,lat,N/S,lon,E/W,quality,numSV,HDOP,alt,M,sep,M,diffAge,diffStation*cs
-    body = (
-        f"GPGGA,{time_str},{lat_str},{lat_dir},{lon_str},{lon_dir},"
-        f"{fix_quality},{num_sats:02d},{hdop:.1f},{alt:.1f},M,0.0,M,,"
-    )
-    return f"${body}*{nmea_checksum(body)}\r\n"
-
-
-def make_rmc(
-    lat: float,
-    lon: float,
-    speed_knots: float = 0.0,
-    course: float = 0.0,
-    valid: bool = True,
-    utc: datetime.datetime | None = None,
-) -> str:
-    """
-    Generate an NMEA RMC sentence.
-
-    valid: True for A (valid), False for V (void/invalid)
-    """
-    if utc is None:
-        utc = datetime.datetime.now(datetime.UTC)
-
-    time_str = utc.strftime("%H%M%S.00")
-    date_str = utc.strftime("%d%m%y")
-    status = "A" if valid else "V"
-
-    # Convert lat/lon to NMEA format
-    lat_dir = "N" if lat >= 0 else "S"
-    lat = abs(lat)
-    lat_deg = int(lat)
-    lat_min = (lat - lat_deg) * 60
-    lat_str = f"{lat_deg:02d}{lat_min:07.4f}"
-
-    lon_dir = "E" if lon >= 0 else "W"
-    lon = abs(lon)
-    lon_deg = int(lon)
-    lon_min = (lon - lon_deg) * 60
-    lon_str = f"{lon_deg:03d}{lon_min:07.4f}"
-
-    # RMC: Recommended Minimum Navigation Information
-    # $GPRMC,time,status,lat,N/S,lon,E/W,speed,course,date,magVar,E/W,mode*cs
-    body = (
-        f"GPRMC,{time_str},{status},{lat_str},{lat_dir},{lon_str},{lon_dir},"
-        f"{speed_knots:.1f},{course:.1f},{date_str},,,A"
-    )
-    return f"${body}*{nmea_checksum(body)}\r\n"
+# Import from the proper module location
+from lichen.sim.gnss import make_gga, make_rmc
 
 
 def main() -> int:

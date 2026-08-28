@@ -19,6 +19,7 @@ Run with:
 
 from __future__ import annotations
 
+import contextlib
 import os
 import time
 from collections.abc import AsyncGenerator
@@ -45,7 +46,9 @@ async def simulator_server() -> AsyncGenerator[tuple[SimulatorServer, Simulation
     await server.stop()
 
 
-def _node_positions(count: int, gw_x: float, gw_y: float, spread: float) -> list[tuple[float, float, float]]:
+def _node_positions(
+    count: int, gw_x: float, gw_y: float, spread: float
+) -> list[tuple[float, float, float]]:
     return [
         (gw_x + spread * __import__("math").cos(2 * 3.14159 * i / count),
          gw_y + spread * __import__("math").sin(2 * 3.14159 * i / count),
@@ -88,7 +91,7 @@ class TestCapacityScaling:
                     received += 1
             elapsed = time.time() - start
             pct = 100.0 * received / (n_nodes - 1)
-            print(f"\n  Single GW: {received}/{n_nodes - 1} received ({pct:.1f}%) in {elapsed:.3f}s")
+            print(f"\n  Single GW: {received}/{n_nodes - 1} ({pct:.1f}%) in {elapsed:.3f}s")
             assert pct >= 80.0, f"Single GW delivery too low: {pct:.1f}%"
         finally:
             for r in radios:
@@ -365,16 +368,12 @@ class TestGatewayFailure:
             for radio in radios:
                 await radio.transmit(payload)
 
-            try:
+            with contextlib.suppress(Exception):
                 sim._gateways["gw-2"]["owned_nodes"].update(["client-0", "client-1", "client-2"])
-            except Exception:
-                pass
 
             failover_start = time.time()
-            try:
+            with contextlib.suppress(KeyError):
                 del sim._gateways["gw-1"]
-            except KeyError:
-                pass
 
             for radio in radios:
                 await radio.transmit(b"post-failure")
@@ -410,10 +409,8 @@ class TestGatewayFailure:
             for radio in radios:
                 await radio.transmit(b"initial")
 
-            try:
+            with contextlib.suppress(KeyError):
                 del sim._gateways["gw-1"]
-            except KeyError:
-                pass
 
             for radio in radios:
                 await radio.transmit(b"during-failure")

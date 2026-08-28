@@ -26,6 +26,30 @@
       "kind": "unknown",
       "body": "0040",
       "wrapped": "010040"
+    },
+    {
+      "name": "malformed_schc_dispatch_only",
+      "description": "A defined SCHC dispatch without its required rule ID body byte is malformed and must fail closed.",
+      "dispatch": 20,
+      "kind": "unknown",
+      "body": "",
+      "wrapped": "14"
+    },
+    {
+      "name": "malformed_routing_dispatch_only",
+      "description": "A defined routing dispatch without its required message type body byte is malformed and must fail closed.",
+      "dispatch": 21,
+      "kind": "unknown",
+      "body": "",
+      "wrapped": "15"
+    },
+    {
+      "name": "reserved_0x16",
+      "description": "Dispatch 0x16 is unassigned in the L2 namespace and must not be confused with the unrelated RPL DODAG Version option type.",
+      "dispatch": 22,
+      "kind": "unknown",
+      "body": "01",
+      "wrapped": "1601"
     }
   ]
 }

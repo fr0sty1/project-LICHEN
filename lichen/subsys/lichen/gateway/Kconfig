@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+config LICHEN_TUNNEL_AUTH
+	bool "Fail-closed egress tunnel authorization"
+	depends on LICHEN_LINK_SCHNORR
+	select LICHEN_CRYPTO_MONOCYPHER
+	select TINYCRYPT
+	select TINYCRYPT_SHA256
+	help
+	  Verify root-issued COSE_Sign1 tunnel grants and enforce them before
+	  forwarding inner IPv6 packets to an external interface.
+
+if LICHEN_TUNNEL_AUTH
+
+config LICHEN_TUNNEL_AUTH_MAX_ENTRIES
+	int "Maximum active tunnel grants"
+	default 8
+	range 1 32
+
+config LICHEN_TUNNEL_AUTH_MAX_HISTORY
+	int "Maximum retained replay/revocation floors"
+	default 32
+	range LICHEN_TUNNEL_AUTH_MAX_ENTRIES 128
+
+endif

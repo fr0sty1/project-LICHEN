@@ -53,7 +53,7 @@ from lichen.gradient import (
     GradientSource,
     GradientTable,
 )
-from lichen.ipv6 import to_ipv6
+from lichen.ipv6 import routing_key
 from lichen.loadng.cache import _SEQ_MAX, RouteCache, RouteEntry, _is_seq_fresher
 from lichen.loadng.messages import INITIAL_HOP_LIMIT, MAX_HOP_LIMIT, RREP, RREQ
 
@@ -102,7 +102,7 @@ class RrepResult:
 class LoadngRouter:
     """Reactive route discovery state machine for one node."""
 
-    # Prune _seen cache every N suppression checks to amortize O(n) cost.
+    # Prune each seen store every N checks to amortize O(n) cost.
     _PRUNE_INTERVAL = 16
     _MAX_SEEN_ENTRIES = 1024
 
@@ -114,7 +114,7 @@ class LoadngRouter:
         *,
         suppress_window_ms: int = SUPPRESS_WINDOW_MS,
     ) -> None:
-        self.node_address = to_ipv6(node_address)
+        self.node_address = routing_key(node_address)
         self.gradient = gradient
         self.cache = cache
         self.suppress_window_ms = suppress_window_ms
@@ -125,6 +125,7 @@ class LoadngRouter:
         # -> (seq_num, seen_at_ms).
         self._rrep_seen: dict[tuple[IPv6Address, IPv6Address], tuple[int, int]] = {}
         self._prune_countdown = self._PRUNE_INTERVAL
+        self._rrep_prune_countdown = self._PRUNE_INTERVAL
 
     def originate_rreq(
         self,
@@ -136,7 +137,7 @@ class LoadngRouter:
         self._own_seq = (self._own_seq + 1) & _SEQ_MAX
         rreq = RREQ(
             originator=self.node_address,
-            destination=to_ipv6(destination),
+            destination=routing_key(destination),
             seq_num=self._own_seq,
             hop_limit=hop_limit,
         )
@@ -144,7 +145,7 @@ class LoadngRouter:
         return rreq
 
     def process_rreq(self, rreq: RREQ, from_neighbor: IPv6Address | str, now: int) -> RreqResult:
-        from_neighbor = to_ipv6(from_neighbor)
+        from_neighbor = routing_key(from_neighbor)
         # Handler-reject hop limits outside the base flood size before any
         # state changes (project-LICHEN-worker6-0tk2): the reverse-route cost
         # below derives distance as INITIAL_HOP_LIMIT - hop_limit, which goes
@@ -206,7 +207,7 @@ class LoadngRouter:
         return RreqResult()  # hop limit exhausted -> dropped
 
     def process_rrep(self, rrep: RREP, from_neighbor: IPv6Address | str, now: int) -> RrepResult:
-        from_neighbor = to_ipv6(from_neighbor)
+        from_neighbor = routing_key(from_neighbor)
         # Entry validation for directly-constructed messages
         # (project-LICHEN-worker6-4tbd): RREP.from_bytes() guarantees these
         # ranges on the wire path, but host code can build RREPs that bypass
@@ -261,8 +262,8 @@ class LoadngRouter:
         # Forwarding path (intermediate). First suppress replays within the
         # window (project-LICHEN-worker6-tiw8): a repeated or stale-seq copy of
         # an already-relayed reply must not burn a transmission per node.
-        key = (to_ipv6(rrep.originator), to_ipv6(rrep.destination))
-        if self._seen_is_repeat(self._rrep_seen, key, rrep.seq_num, now):
+        key = (routing_key(rrep.originator), routing_key(rrep.destination))
+        if self._is_rrep_repeat(key, rrep.seq_num, now):
             return RrepResult(dropped=True)
         self._seen_record(self._rrep_seen, key, rrep.seq_num, now)
 
@@ -335,8 +336,8 @@ class LoadngRouter:
         now: int,
     ) -> None:
         """Write a discovered route into the cache and the gradient table."""
-        dest = to_ipv6(destination)
-        nh = to_ipv6(next_hop)
+        dest = routing_key(destination)
+        nh = routing_key(next_hop)
         self.cache.add(
             RouteEntry(
                 destination=dest,
@@ -360,7 +361,7 @@ class LoadngRouter:
         )
 
     def _rreq_key(self, rreq: RREQ) -> tuple[IPv6Address, IPv6Address]:
-        return (to_ipv6(rreq.originator), to_ipv6(rreq.destination))
+        return (routing_key(rreq.originator), routing_key(rreq.destination))
 
     def _mark_seen(self, rreq: RREQ, now: int) -> None:
         self._seen_record(self._seen, self._rreq_key(rreq), rreq.seq_num, now)
@@ -371,6 +372,19 @@ class LoadngRouter:
             self._prune_seen(now)
             self._prune_countdown = self._PRUNE_INTERVAL
         return self._seen_is_repeat(self._seen, self._rreq_key(rreq), rreq.seq_num, now)
+
+    def _is_rrep_repeat(
+        self,
+        key: tuple[IPv6Address, IPv6Address],
+        seq_num: int,
+        now: int,
+    ) -> bool:
+        """RREP replay check, with the replay store pruned every N checks."""
+        self._rrep_prune_countdown -= 1
+        if self._rrep_prune_countdown <= 0:
+            self._prune_rrep_seen(now)
+            self._rrep_prune_countdown = self._PRUNE_INTERVAL
+        return self._seen_is_repeat(self._rrep_seen, key, seq_num, now)
 
     def _seen_is_repeat(
         self,
@@ -401,7 +415,7 @@ class LoadngRouter:
     ) -> None:
         """Record (key, seq_num) as seen, pruning/evicting when oversized."""
         if len(store) >= self._MAX_SEEN_ENTRIES:
-            pruned = {k: v for k, v in store.items() if now - v[1] < self.suppress_window_ms}
+            pruned = {k: v for k, v in store.items() if 0 <= now - v[1] < self.suppress_window_ms}
             store.clear()
             store.update(pruned)
             if len(store) >= self._MAX_SEEN_ENTRIES:
@@ -411,5 +425,14 @@ class LoadngRouter:
             store[key] = (seq_num, now)
 
     def _prune_seen(self, now: int) -> None:
-        # Atomic rebind avoids iterate-then-delete race
-        self._seen = {k: v for k, v in self._seen.items() if now - v[1] < self.suppress_window_ms}
+        # Atomic rebind avoids iterate-then-delete race; elapsed >= 0 guards time wraparound
+        self._seen = {
+            k: v for k, v in self._seen.items() if 0 <= now - v[1] < self.suppress_window_ms
+        }
+
+    def _prune_rrep_seen(self, now: int) -> None:
+        # Same criterion as _prune_seen: only in-window entries can still
+        # suppress a replay, so pruning never weakens replay protection.
+        self._rrep_seen = {
+            k: v for k, v in self._rrep_seen.items() if 0 <= now - v[1] < self.suppress_window_ms
+        }

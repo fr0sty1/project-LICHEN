@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dldn.11",
+  "title": "Implement unit conversion helpers per K.5",
+  "description": "Add unit conversion inline functions or macros to gatt_ipso.h:\n\nPer K.5 conversions:\n1. gatt_mmhg_to_pa(float mmhg) -\u003e Pa: x 133.322\n2. gatt_fahrenheit_to_cel(float f) -\u003e Cel: (f - 32) * 5/9\n3. gatt_mgdl_to_kgl(float mgdl) -\u003e kg/L: x 1e-5\n4. gatt_lbs_to_kg(float lbs) -\u003e kg: x 0.453592\n5. gatt_feet_to_m(float ft) -\u003e m: x 0.3048\n6. gatt_mph_to_ms(float mph) -\u003e m/s: x 0.44704\n7. gatt_centideg_to_deg(int16_t cdeg) -\u003e deg: / 100.0\n8. gatt_1024deg_to_deg(int32_t deg1024) -\u003e deg: / 1024.0\n\nrpm and bpm are identity (same as /min).\n\n~40 LOC. Reference: spec/appendix-gatt-ipso.md K.5",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:54:02.830616Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:54:02.830616Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dldn.11",
+      "depends_on_id": "project-LICHEN-worker6-dldn",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:54:03.339824Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -191,7 +191,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         }
         if let Some(entry) = self
             .announces
-            .gradient_table()
+            .gradient_table_mut()
             .lookup(&destination, now_ms as u32)
         {
             return Some(RoutePlan {

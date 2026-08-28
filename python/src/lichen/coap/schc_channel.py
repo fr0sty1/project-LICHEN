@@ -73,9 +73,8 @@ def unwrap_coap(raw: bytes) -> bytes:
     if header.next_header != NextHeader.UDP:
         raise ValueError("not a UDP datagram")
     if HEADER_LENGTH + header.payload_length > len(raw):
-        raise ValueError(
-            f"payload_length {header.payload_length} exceeds available bytes {len(raw) - HEADER_LENGTH}"
-        )
+        avail = len(raw) - HEADER_LENGTH
+        raise ValueError(f"payload_length {header.payload_length} exceeds available bytes {avail}")
     udp = UdpDatagram.from_bytes(raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length])
     return udp.payload
 
@@ -180,7 +179,12 @@ class SchcChannel(DatagramChannel):
             raise ValueError(
                 f"CoAP message too large for SCHC channel: {len(raw)} > {MAX_PACKET_SIZE} bytes"
             )
-        inner.send_datagram(compress_packet(raw), endpoint.authority, priority=priority, check_congestion=check_congestion)
+        inner.send_datagram(
+            compress_packet(raw),
+            endpoint.authority,
+            priority=priority,
+            check_congestion=check_congestion,
+        )
 
     def _on_inner(self, data: bytes, source: str) -> None:
         if self._closed:

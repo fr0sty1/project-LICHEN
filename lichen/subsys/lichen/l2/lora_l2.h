@@ -17,7 +17,7 @@
  *   lichen_lora_l2_set_rx_callback(my_rx_handler, NULL);
  *   lichen_lora_l2_start();
  *   ...
- *   lichen_lora_l2_tx(data, len, 0); /* channel 0 = control */
+ *   lichen_lora_l2_tx(data, len, 0); // channel 0 = control
  *   ...
  *   lichen_lora_l2_stop();
  *
@@ -119,7 +119,11 @@ typedef void (*lichen_lora_rx_cb_t)(const uint8_t *data, size_t len,
  * a successful retry produces correct state. Partial state from a failed
  * attempt is always overwritten.
  *
- * @return 0 on success, negative errno on failure
+ * @return 0 on success
+ * @return -EBUSY while deinitialization is in progress
+ * @return -ECANCELED after abort or incomplete queue destruction; retry
+ *         deinit() before init()
+ * @return Other negative errno on initialization failure
  */
 int lichen_lora_l2_init(void);
 
@@ -174,6 +178,8 @@ int lichen_lora_l2_stop(void);
  *
  * @return 0 on success
  * @return -EBUSY if module is still running (call stop() first)
+ * @return Other negative errno when cleanup is incomplete; callers may retry
+ *         deinit(), but MUST NOT call init() until deinit succeeds
  */
 int lichen_lora_l2_deinit(void);
 
@@ -257,13 +263,34 @@ bool lichen_lora_l2_is_running(void);
 bool lichen_lora_l2_needs_reinit(void);
 
 /**
+ * @brief Check if a queue destruction retry is pending
+ *
+ * Returns true when a previous deinit left the TX queue destruction
+ * incomplete (LORA_DESTROY_FAILED). Callers retrying teardown (e.g. the
+ * common disable path) must call lichen_lora_l2_deinit() again instead of
+ * treating a successful stop() as complete teardown.
+ *
+ * @return true if lichen_lora_l2_deinit() must be retried, false otherwise
+ */
+bool lichen_lora_l2_needs_destroy_retry(void);
+
+/**
  * @brief Get TX queue statistics for diagnostics
  *
  * Returns statistics from the TX queue used for bufferbloat avoidance.
  * Exposed for the /status/queues CoAP endpoint.
  *
+ * The full lifecycle state is checked under the LoRa L2 mutex (mirroring
+ * lichen_lora_l2_copy_eui64()), so the readout is serialized against
+ * deinit()/tx_queue_destroy() and can never observe a torn-down queue.
+ *
  * @param stats Output buffer for queue statistics
- * @return 0 on success, -EINVAL if stats is NULL, -ENODEV if not initialized
+ * @return 0 on success
+ * @return -EINVAL if stats is NULL
+ * @return -ENODEV if not initialized
+ * @return -ECANCELED if teardown is incomplete (abort or pending destroy
+ *                      retry)
+ * @return -EBUSY if deinit is in progress
  */
 int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats);
 

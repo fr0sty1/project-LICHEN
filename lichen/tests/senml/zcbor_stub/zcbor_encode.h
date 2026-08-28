@@ -23,7 +23,7 @@ typedef struct {
 
 #define ZCBOR_STATE_E(name, n, buf, buflen, elem_count) \
 	zcbor_state_t name##_state = { .payload = (buf), .payload_end = (buf) + (buflen) }; \
-	zcbor_state_t *name = &name##_state
+	zcbor_state_t *(name) = &(name##_state)
 
 bool zcbor_list_start_encode(zcbor_state_t *state, size_t max_num);
 bool zcbor_list_end_encode(zcbor_state_t *state, size_t max_num);
@@ -32,6 +32,7 @@ bool zcbor_map_end_encode(zcbor_state_t *state, size_t max_num);
 bool zcbor_int32_put(zcbor_state_t *state, int32_t value);
 bool zcbor_uint64_put(zcbor_state_t *state, uint64_t value);
 bool zcbor_tstr_put_term(zcbor_state_t *state, const char *str, size_t maxlen);
+bool zcbor_bstr_encode_ptr(zcbor_state_t *state, const char *str, size_t len);
 bool zcbor_float32_put(zcbor_state_t *state, float value);
 bool zcbor_bool_put(zcbor_state_t *state, bool value);
 

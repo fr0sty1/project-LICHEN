@@ -5,9 +5,9 @@
 //!
 //! Centralizing the paths keeps client apps from drifting onto stale or
 //! never-implemented endpoints. For example, the messaging inbox is
-//! [`MSG_INBOX`] (`/msg/inbox`) — the firmware never exposed the legacy
-//! `/messages` path some early clients used. The CLI was updated to use
-//! only supported paths (`/status/neighbors` not `/presence` or `/neighbors`).
+//! [`MSG_INBOX`] (`/msg/inbox`) - the firmware never exposed the legacy
+//! `/messages` path some early clients used. Neighbor tables live at
+//! [`STATUS_NEIGHBORS`]; application presence is [`PRESENCE`].
 //!
 //! Sources: `lichen/subsys/lichen/coap/`, `spec/11-lci.md`, `spec/12-apps.md`.
 
@@ -33,14 +33,22 @@ pub const CONFIG_RADIO: &str = "/config/radio";
 /// Read-only node identity document (GET). §17.5.2.
 pub const CONFIG_IDENTITY: &str = "/config/identity";
 
-/// Read the inbox (GET, Observable).
+/// Send a message (POST) or read the inbox (GET, Observable). §18.1.2 / §17.5.7.
 pub const MSG_INBOX: &str = "/msg/inbox";
 
-/// Send a message (POST) or read sent messages (GET).
+/// Sent-message archive (GET). Local-admin POST is an LCI alias for send.
 pub const MSG_SENT: &str = "/msg/sent";
 
-/// Acknowledge a received message (POST `{id}`).
+/// Delivery receipt (POST `{id, status, ts}`). §18.1.2.
 pub const MSG_ACK: &str = "/msg/ack";
+
+/// Canned-message catalog (GET). §18.1.3.
+pub const MSG_CANNED: &str = "/msg/canned";
+
+/// Per-message sent archive path `/msg/sent/{id}`.
+pub fn msg_sent_id(id: u64) -> String {
+    format!("/msg/sent/{id}")
+}
 
 /// Peer link-key table (GET). Per-key detail is `/keys/{iid}`.
 pub const KEYS: &str = "/keys";
@@ -79,6 +87,14 @@ pub fn deaddrop_id(id: &str) -> String {
     format!("/deaddrop/{id}")
 }
 
+// --- Presence and status (spec §18.5) --------------------------------------
+
+/// Own presence document (GET/PUT, Observable). §18.5.2.
+pub const PRESENCE: &str = "/presence";
+
+/// Presence cache of known nodes (GET, Observable). §18.5.2.
+pub const PRESENCE_CACHE: &str = "/presence/cache";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -87,6 +103,9 @@ mod tests {
     fn messaging_paths_match_firmware_resources() {
         assert_eq!(MSG_INBOX, "/msg/inbox");
         assert_eq!(MSG_SENT, "/msg/sent");
+        assert_eq!(MSG_ACK, "/msg/ack");
+        assert_eq!(MSG_CANNED, "/msg/canned");
+        assert_eq!(msg_sent_id(42), "/msg/sent/42");
     }
 
     #[test]
@@ -99,6 +118,12 @@ mod tests {
     #[test]
     fn waypoint_path_matches_application_spec() {
         assert_eq!(WAYPOINTS, "/waypoints");
+    }
+
+    #[test]
+    fn presence_paths_match_application_spec() {
+        assert_eq!(PRESENCE, "/presence");
+        assert_eq!(PRESENCE_CACHE, "/presence/cache");
     }
 
     #[test]

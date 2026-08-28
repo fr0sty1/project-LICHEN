@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zokf.5",
+  "title": "Set up standalone repo structure (LICENSE, CONTRIBUTING.md, GitHub Actions CI)",
+  "description": "Complete repo infrastructure:\n- Verify LICENSE (AGPL-3.0) is properly attributed\n- Add CONTRIBUTING.md with contribution guidelines\n- Set up GitHub Actions CI for C# peripheral compilation\n- Add pre-commit hooks and linting\n- Configure issue templates",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:50:22.492565Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:50:22.492565Z",
+  "labels": [
+    "blocked:hardware",
+    "defer-boardconfig",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zokf.5",
+      "depends_on_id": "project-LICHEN-zokf",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:50:25.07731Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

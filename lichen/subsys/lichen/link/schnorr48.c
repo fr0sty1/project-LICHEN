@@ -279,11 +279,69 @@ bool schnorr48_verify(const uint8_t *pubkey,
  */
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
 
+/* draft-lichen-link-01 section 4.1.  The terminating NUL is part of the
+ * signed transcript even though it is not part of the link frame itself. */
+static const uint8_t link_signature_domain[] = "LICHEN-LINK-v1";
+_Static_assert(sizeof(link_signature_domain) == 15U,
+	       "link signature domain includes its terminating NUL");
+
+#define LLSEC_ADDR_MODE_MASK 0x03U
+#define LLSEC_MIC_SELECTOR_MASK 0x1cU
+#define LLSEC_MIC_SELECTOR_SHIFT 2U
+#define LLSEC_SIGNATURE_PRESENT 0x20U
+#define LLSEC_ENCRYPTED 0x40U
+#define LLSEC_SIID_PRESENT 0x80U
+
+static int validate_signed_frame_profile(uint8_t length, uint8_t llsec,
+					 const uint8_t *dst_addr,
+					 size_t dst_addr_len,
+					 const uint8_t *signer_iid,
+					 size_t signer_iid_len,
+					 const uint8_t *payload,
+					 size_t payload_len)
+{
+	static const uint8_t dst_lengths[] = { 0U, 2U, 8U, 0U };
+	uint8_t addr_mode = llsec & LLSEC_ADDR_MODE_MASK;
+	uint8_t mic_selector =
+		(llsec & LLSEC_MIC_SELECTOR_MASK) >> LLSEC_MIC_SELECTOR_SHIFT;
+	size_t expected_length;
+
+	/* The frame signature API is intentionally signed-profile-only.  S and
+	 * SI are a canonical pair, encryption is not defined by this profile,
+	 * and MIC selectors 2..7 are reserved. */
+	if ((llsec & (LLSEC_SIGNATURE_PRESENT | LLSEC_SIID_PRESENT)) !=
+		(LLSEC_SIGNATURE_PRESENT | LLSEC_SIID_PRESENT) ||
+	    (llsec & LLSEC_ENCRYPTED) != 0U || mic_selector > 1U) {
+		return -EINVAL;
+	}
+	if (dst_addr_len != dst_lengths[addr_mode] ||
+	    (dst_addr_len > 0U && dst_addr == NULL) ||
+	    signer_iid == NULL || signer_iid_len != 8U ||
+	    (payload_len > 0U && payload == NULL)) {
+		return -EINVAL;
+	}
+
+	/* LENGTH counts the body after itself: LLSec, epoch, sequence, DST,
+	 * SIID, payload, and the 48-byte MIC.  Reject 255 even though it fits in
+	 * the wire octet; the protocol's maximum body length is 254. */
+	expected_length = 4U + dst_addr_len + signer_iid_len +
+		SCHNORR48_SIG_LEN;
+	if (payload_len > 254U - expected_length) {
+		return -EINVAL;
+	}
+	expected_length += payload_len;
+	if (length != expected_length) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
-			 [[maybe_unused]] const uint8_t *signer_iid,
-			 [[maybe_unused]] size_t signer_iid_len,
+			 const uint8_t *signer_iid,
+			 size_t signer_iid_len,
 			 const uint8_t *payload, size_t payload_len,
 			 const uint8_t *privkey,
 			 const uint8_t *pubkey,
@@ -299,18 +357,10 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 	uint8_t e_extended[32];
 	crypto_sha512_ctx ctx;
 
-	/* Validate dst_addr_len before use */
-	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
-		return -EINVAL;
-	}
-
-	/* Validate: if dst_addr_len > 0, dst_addr must not be NULL */
-	if (dst_addr_len > 0 && dst_addr == NULL) {
-		return -EINVAL;
-	}
-
-	/* Validate: if payload_len > 0, payload must not be NULL */
-	if (payload_len > 0 && payload == NULL) {
+	if (validate_signed_frame_profile(length, llsec, dst_addr,
+					  dst_addr_len, signer_iid,
+					  signer_iid_len, payload,
+					  payload_len) != 0) {
 		return -EINVAL;
 	}
 	if (privkey == NULL || pubkey == NULL || sig == NULL) {
@@ -329,11 +379,18 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 	}
 
 	/*
-	 * 1. Deterministic nonce: r = SHA-512(privkey || header || payload) mod L
+	 * 1. Deterministic nonce: r = SHA-512(privkey || transcript) mod L,
+	 * where transcript is the versioned domain followed by the canonical
+	 * frame fields, non-wire DST_LEN, SIID, and payload.
 	 */
 	crypto_sha512_init(&ctx);
 	crypto_sha512_update(&ctx, privkey, 32);
+	crypto_sha512_update(&ctx, link_signature_domain,
+			     sizeof(link_signature_domain));
 	crypto_sha512_update(&ctx, header, header_len);
+	if (signer_iid_len > 0U) {
+		crypto_sha512_update(&ctx, signer_iid, signer_iid_len);
+	}
 	if (payload_len > 0) {
 		crypto_sha512_update(&ctx, payload, payload_len);
 	}
@@ -351,7 +408,12 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 	crypto_sha512_init(&ctx);
 	crypto_sha512_update(&ctx, R, 32);
 	crypto_sha512_update(&ctx, pubkey, 32);
+	crypto_sha512_update(&ctx, link_signature_domain,
+			     sizeof(link_signature_domain));
 	crypto_sha512_update(&ctx, header, header_len);
+	if (signer_iid_len > 0U) {
+		crypto_sha512_update(&ctx, signer_iid, signer_iid_len);
+	}
 	if (payload_len > 0) {
 		crypto_sha512_update(&ctx, payload, payload_len);
 	}
@@ -385,8 +447,8 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
-			   [[maybe_unused]] const uint8_t *signer_iid,
-			   [[maybe_unused]] size_t signer_iid_len,
+			   const uint8_t *signer_iid,
+			   size_t signer_iid_len,
 			   const uint8_t *payload, size_t payload_len,
 			   const uint8_t *sig, size_t sig_len,
 			   const uint8_t *pubkey)
@@ -396,18 +458,10 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 		return -EINVAL;
 	}
 
-	/* Validate dst_addr_len before use */
-	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
-		return -EINVAL;
-	}
-
-	/* Validate: if dst_addr_len > 0, dst_addr must not be NULL */
-	if (dst_addr_len > 0 && dst_addr == NULL) {
-		return -EINVAL;
-	}
-
-	/* Validate: if payload_len > 0, payload must not be NULL */
-	if (payload_len > 0 && payload == NULL) {
+	if (validate_signed_frame_profile(length, llsec, dst_addr,
+					  dst_addr_len, signer_iid,
+					  signer_iid_len, payload,
+					  payload_len) != 0) {
 		return -EINVAL;
 	}
 
@@ -467,7 +521,12 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 	crypto_sha512_init(&ctx);
 	crypto_sha512_update(&ctx, R_prime, 32);
 	crypto_sha512_update(&ctx, pubkey, 32);
+	crypto_sha512_update(&ctx, link_signature_domain,
+			     sizeof(link_signature_domain));
 	crypto_sha512_update(&ctx, header, header_len);
+	if (signer_iid_len > 0U) {
+		crypto_sha512_update(&ctx, signer_iid, signer_iid_len);
+	}
 	if (payload_len > 0) {
 		crypto_sha512_update(&ctx, payload, payload_len);
 	}

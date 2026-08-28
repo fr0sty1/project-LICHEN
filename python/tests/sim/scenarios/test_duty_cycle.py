@@ -12,7 +12,7 @@ and blocks transmissions when the budget is exhausted.
 
 from __future__ import annotations
 
-from lora_medium import Medium, airtime_us
+from lora_medium import Medium
 
 
 class TestDutyCycleExhaustion:
@@ -45,7 +45,6 @@ class TestDutyCycleExhaustion:
 
         payload = b"test"  # Small payload
         position = (0.0, 0.0, 0.0)
-        duration = airtime_us(len(payload))
 
         # First TX should succeed
         tx1 = medium.start_tx(
@@ -58,7 +57,7 @@ class TestDutyCycleExhaustion:
         assert tx1 is not None, "First TX should succeed"
 
         # Second TX should succeed (still within budget)
-        tx2 = medium.start_tx(
+        medium.start_tx(
             node_id="node1",
             payload=payload,
             tx_power_dbm=14,
@@ -458,4 +457,4 @@ class TestDutyCycleRealWorldScenario:
                 current_time += tx_interval
 
         # Should never be blocked with proper intervals
-        assert blocked_count == 0, f"Polite sensor should never be blocked, but was blocked {blocked_count} times"
+        assert blocked_count == 0, f"Polite sensor was blocked {blocked_count} times"

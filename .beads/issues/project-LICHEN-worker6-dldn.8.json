@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dldn.8",
+  "title": "Implement power/battery characteristic mappings (K.3.6)",
+  "description": "Add to gatt_ipso.c static table, power/battery characteristics:\n\n- Battery Level 0x2A19 -\u003e 26251/5700, %\n- Battery Power State 0x2A1A -\u003e 26251/5701, enum\n- Battery Energy Status 0x2BF0 -\u003e 3331/5700, Wh\n- Voltage 0x2B18 -\u003e 3316/5700, V\n- Current 0x2AEE -\u003e 3317/5700, A\n- Power 0x2B05 -\u003e 3328/5700, W\n- Energy 0x2B06 -\u003e 3331/5700, Wh\n\n~7 entries. Reference: spec/appendix-gatt-ipso.md K.3.6",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:53:52.6605Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:53:52.6605Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dldn.8",
+      "depends_on_id": "project-LICHEN-worker6-dldn",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:53:53.334574Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

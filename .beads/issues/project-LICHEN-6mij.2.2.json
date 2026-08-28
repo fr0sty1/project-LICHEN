@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-6mij.2.2",
   "title": "Update /keys PUT and DELETE handlers for OSCORE ctx lookup, unprotect, and CONFIG_LICHEN_COAP_SERVER_OSCORE",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:21:13.73043072Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-08-28T03:45:47.699334Z",
+  "updated_at": "2026-08-28T04:47:21.458415Z",
   "started_at": "2026-07-24T16:08:44.270522441Z",
-  "lease_expires_at": "2026-08-28T03:50:47.699334Z",
-  "heartbeat_at": "2026-08-28T03:45:47.699334Z",
+  "closed_at": "2026-08-28T04:47:21.458415Z",
+  "close_reason": "Verified + fixed. COAP_KEYS OSCORE handlers: (1) includes - oscore.h was present but the coap_oscore.h include claimed by 6mij.2.2.1 was MISSING (all 4 coap_oscore_* calls had no prototype) and lichen_eui64_to_iid had no declaration either; added \u003clichen/coap_oscore.h\u003e + \u003clichen/l2/ipv6_addr.h\u003e inside the CONFIG_LICHEN_COAP_SERVER_OSCORE block (coap_keys.c:31-35). (2) peer_eui64 extraction was duplicated inline in put+delete; factored into static keys_peer_eui64_from_addr() with NULL/AF guard (coap_keys.c:124-149), used by both handlers. (3) ctx lookup by peer EUI64-IID + conditional unprotect + method check + CONFIG-guarded protected responses via keys_oscore_respond verified in keys_single_put (coap_keys.c:250-296) and keys_single_delete (coap_keys.c:413-459); FIX: unprotect failure now returns 4.01 UNAUTHORIZED per RFC 8613 8.2 (was 4.04), matching deaddrop and the shared helper. (4) lichen_coap_is_local_admin coherence verified: ordering is unprotect -\u003e admin check; protected non-local peer gets PROTECTED 4.01, unprotected non-local gets plain 4.01, unprotected local admin allowed per LCI spec (same semantics as msg_sent_post in coap_msg.c). Tests: 6mij.2.2.4 work exists in tree (OSCORE Kconfig coverage so the ifdef blocks compile, delegated-CRUD + admin unit tests); test was UNBUILDABLE - fixed tests/coap_keys/prj.conf (CONFIG_LICHEN_LINK=y: coap_keys_store links lichen_key_pubkey_to_iid from link/identity_addr.c) and testcase.yaml (qemu_x86 for local runs). Local result: tests/coap_keys on qemu_x86, GCC12 C23 with module hardening (-Werror etc.), CONFIG_LICHEN_COAP_SERVER_OSCORE=y: 34/34 PASS, PROJECT EXECUTION SUCCESSFUL. Out-of-scope defects filed as beads (all local-ok): worker6-1mdi (lichen/l2/ipv6_addr.h unresolved module-wide: coap_oscore.c, coap_server.c, coap_dtn.c, gateway main.c; local run used throwaway include shim via uncommitted EXTRA_CFLAGS), worker6-pdwe (coap_keys_cbor.c 32-bit -Werror=format-truncation; local run used -Wno-error override), worker6-0p4c (coap_oscore_unprotect_resource_request returns 0 after sending 4.01 -\u003e caller double-responds; keys handlers avoid it by inlining). Uncommitted local-run-only flags (shim -I, -Wno-error=format-truncation, CONFIG_NET_QEMU_SLIP=n) are NOT in the tree; build dir under gitignored build-*/.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6mij.2.2",

@@ -15,7 +15,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from ipaddress import IPv6Address
 
-from lichen.ipv6 import to_ipv6
+from lichen.ipv6 import routing_key
 
 ROUTE_CACHE_SIZE = 32
 ROUTE_TIMEOUT_MS = 300_000  # 300 s route validity with no traffic
@@ -48,8 +48,8 @@ class RouteEntry:
     valid_until: int
 
     def __post_init__(self) -> None:
-        self.destination = to_ipv6(self.destination)
-        self.next_hop = to_ipv6(self.next_hop)
+        self.destination = routing_key(self.destination)
+        self.next_hop = routing_key(self.next_hop)
         if not 0 <= self.hop_count <= 255:
             raise ValueError(f"hop_count out of range: {self.hop_count}")
         if not 0 <= self.metric <= 0xFFFF:
@@ -95,7 +95,7 @@ class RouteCache:
 
     def lookup(self, destination: IPv6Address | str, now: int | None = None) -> RouteEntry | None:
         """Return the route (None if absent or expired); marks it recently used."""
-        dest = to_ipv6(destination)
+        dest = routing_key(destination)
         entry = self._entries.get(dest)
         if entry is None:
             return None
@@ -106,11 +106,11 @@ class RouteCache:
 
     def remove(self, destination: IPv6Address | str) -> None:
         """Remove the route to ``destination`` if present."""
-        self._entries.pop(to_ipv6(destination), None)
+        self._entries.pop(routing_key(destination), None)
 
     def remove_via(self, next_hop: IPv6Address | str) -> list[IPv6Address]:
         """Remove every route through ``next_hop``; return their destinations."""
-        nh = to_ipv6(next_hop)
+        nh = routing_key(next_hop)
         dests = [d for d, e in self._entries.items() if e.next_hop == nh]
         for dest in dests:
             del self._entries[dest]
@@ -118,7 +118,7 @@ class RouteCache:
 
     def refresh(self, destination: IPv6Address | str, now: int) -> bool:
         """Extend validity to now+timeout if not expired; True if refreshed."""
-        dest = to_ipv6(destination)
+        dest = routing_key(destination)
         entry = self._entries.get(dest)
         if entry is None:
             return False
@@ -146,4 +146,4 @@ class RouteCache:
         is still valid (project-LICHEN-6xyv). To check validity, use
         ``lookup(dest, now=...)`` which returns None for expired routes.
         """
-        return to_ipv6(destination) in self._entries
+        return routing_key(destination) in self._entries

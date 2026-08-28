@@ -6,12 +6,12 @@
  * @brief Exhaustive RFC 6550 Section 7.2 lollipop comparator cross-check
  *
  * Sweeps every (incoming, current) uint8_t pair - all 65536 - through the
- * C comparators and compares against golden_lollipop_sweep.txt, produced
- * by gen_golden_sweep.py: an independent Python transcription of
- * rust/lichen-rpl/src/routing.rs seq_is_newer() (lines 63-89). The golden
- * file is never derived from the C code under test.
+ * C comparators and compares against two independent Python-generated golden
+ * matrices: DAO replay sequencing uses modulo-128 serial arithmetic, while
+ * DODAG version comparison applies RFC 6550 rule 3.2's absolute-distance
+ * window before ordering.  Neither matrix is derived from the C under test.
  *
- * Three C entry points are checked against the same relation matrix:
+ * Three C entry points are checked against their applicable relation matrix:
  * - lichen_rpl_sequence_compare  (rpl_dao_build.c)
  * - lichen_rpl_lollipop_cmp      (dodag.c host-test hook)
  * - lichen_rpl_version_is_newer  (dodag.c host-test hook; bool, so only
@@ -19,7 +19,7 @@
  *
  * Usage:
  *   rpl_dao_sequence_sweep --dump OUTFILE   write the C relation matrix
- *   rpl_dao_sequence_sweep GOLDENFILE       verify; exit 1 on any mismatch
+ *   rpl_dao_sequence_sweep DAO_GOLDEN DODAG_GOLDEN
  */
 
 #include <stdint.h>
@@ -51,11 +51,6 @@ static char lollipop_char(uint8_t a, uint8_t b)
 	default:
 		return 'I';
 	}
-}
-
-static char version_char(uint8_t a, uint8_t b)
-{
-	return lichen_rpl_version_is_newer(a, b) ? 'N' : 'S';
 }
 
 typedef char (*pair_fn)(uint8_t a, uint8_t b);
@@ -90,17 +85,9 @@ static int run_dump(const char *path)
 	return 0;
 }
 
-static int verify_file(const char *path)
+static int read_golden(const char *path, char rows[PAIRS][PAIRS])
 {
 	char line[PAIRS + 2];
-	unsigned int mismatches_seq = 0;
-	unsigned int mismatches_lol = 0;
-	unsigned int mismatches_ver = 0;
-	unsigned int counts[4] = { 0, 0, 0, 0 };
-	unsigned int rows = 0;
-
-	static const char rel[] = { 'E', 'N', 'S', 'I' };
-
 	FILE *in = fopen(path, "r");
 
 	if (in == NULL) {
@@ -114,62 +101,61 @@ static int verify_file(const char *path)
 			fclose(in);
 			return 2;
 		}
-		rows++;
 		if (strlen(line) != PAIRS + 1 || line[PAIRS] != '\n') {
 			fprintf(stderr, "golden row %u malformed (%zu chars)\n",
 				incoming, strlen(line));
 			fclose(in);
 			return 2;
 		}
+		memcpy(rows[incoming], line, PAIRS);
+	}
+	fclose(in);
+	return 0;
+}
+
+static int verify_files(const char *dao_path, const char *dodag_path)
+{
+	static char dao[PAIRS][PAIRS];
+	static char dodag[PAIRS][PAIRS];
+	unsigned int mismatches_seq = 0;
+	unsigned int mismatches_lol = 0;
+	unsigned int mismatches_ver = 0;
+	int ret;
+
+	ret = read_golden(dao_path, dao);
+	if (ret != 0) {
+		return ret;
+	}
+	ret = read_golden(dodag_path, dodag);
+	if (ret != 0) {
+		return ret;
+	}
+
+	for (uint16_t incoming = 0; incoming < PAIRS; incoming++) {
 		for (uint16_t current = 0; current < PAIRS; current++) {
 			uint8_t a = (uint8_t)incoming;
 			uint8_t b = (uint8_t)current;
-			char expect = line[current];
-			char c;
+			bool expect_newer = dodag[incoming][current] == 'N' ||
+				(a == 0u && b == 127u);
 
-			c = compare_char(a, b);
-			if (c != expect) {
+			if (compare_char(a, b) != dao[incoming][current]) {
 				mismatches_seq++;
-				fprintf(stderr,
-					"sequence_compare(%u, %u): got %c expected %c\n",
-					a, b, c, expect);
 			}
-			c = lollipop_char(a, b);
-			if (c != expect) {
+			if (lollipop_char(a, b) != dodag[incoming][current]) {
 				mismatches_lol++;
-				fprintf(stderr,
-					"lollipop_cmp(%u, %u): got %c expected %c\n",
-					a, b, c, expect);
 			}
-			c = version_char(a, b);
-			if (c != expect) {
+			if (lichen_rpl_version_is_newer(a, b) != expect_newer) {
 				mismatches_ver++;
-				if (expect != 'E' && expect != 'I') {
-					fprintf(stderr,
-						"version_is_newer(%u, %u): got %c expected %c\n",
-						a, b, c, expect);
-				}
-			}
-			for (unsigned int i = 0; i < 4; i++) {
-				if (rel[i] == expect) {
-					counts[i]++;
-					break;
-				}
 			}
 		}
 	}
-	fclose(in);
 
-	(void)printf("exhaustive lollipop sweep over %u rows x %u pairs\n", rows, PAIRS);
+	(void)printf("exhaustive lollipop sweep over %u rows x %u pairs\n", PAIRS, PAIRS);
 	(void)printf("sequence_compare mismatches: %u\n", mismatches_seq);
 	(void)printf("lollipop_cmp mismatches:     %u\n", mismatches_lol);
-	(void)printf("version_is_newer mismatches: %u (N/S vs E/I rows)\n", mismatches_ver);
-	(void)printf("golden relation counts: E=%u N=%u S=%u I=%u\n",
-		     counts[0], counts[1], counts[2], counts[3]);
+	(void)printf("version_is_newer mismatches: %u\n", mismatches_ver);
 
-	/* version_is_newer is bool-valued: E/I rows legitimately differ. */
-	return (mismatches_seq == 0 && mismatches_lol == 0 &&
-		mismatches_ver == counts[0] + counts[3]) ? 0 : 1;
+	return (mismatches_seq == 0 && mismatches_lol == 0 && mismatches_ver == 0) ? 0 : 1;
 }
 
 int main(int argc, char **argv)
@@ -177,10 +163,10 @@ int main(int argc, char **argv)
 	if (argc == 3 && strcmp(argv[1], "--dump") == 0) {
 		return run_dump(argv[2]);
 	}
-	if (argc == 2) {
-		return verify_file(argv[1]);
+	if (argc == 3) {
+		return verify_files(argv[1], argv[2]);
 	}
-	fprintf(stderr, "usage: %s GOLDENFILE | %s --dump OUTFILE\n",
+	fprintf(stderr, "usage: %s DAO_GOLDEN DODAG_GOLDEN | %s --dump OUTFILE\n",
 		argv[0], argv[0]);
 	return 2;
 }

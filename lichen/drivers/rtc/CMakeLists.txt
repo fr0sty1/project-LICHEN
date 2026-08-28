@@ -1,0 +1,2 @@
+zephyr_library_named(lichen_rtc)
+zephyr_library_sources_ifdef(CONFIG_LICHEN_RTC_RX8130CE rtc_rx8130ce.c)

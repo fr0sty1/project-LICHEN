@@ -99,12 +99,14 @@ static const uint8_t rfc8613_c2_common_iv[OSCORE_NONCE_LEN] = {
  * C.3.1: Client key derivation with ID Context
  *   master_salt = 9e7ca92223786340, sender_id = ""
  *   recipient_id = 01, id_context = 37cbf3210017a2d3
- * Note: Requires id_context support which the current C API does not expose.
- * Keys listed for reference / future testing:
+ * Keys are exercised through the exact C.6 protected request below:
  *   sender_key = af2a1300a5e95788b356336eeecd2b92
  *   recipient_key = e39a0c7c77b43f03b4b39ab9a268699f
  *   common_iv = 2ca58fb85ff1b81c0b7181b85e
  */
+static const uint8_t rfc8613_c3_id_context[] = {
+	0x37, 0xcb, 0xf3, 0x21, 0x00, 0x17, 0xa2, 0xd3,
+};
 
 /*
  * C.4: Request protection (GET /tv1), sender_id = ""
@@ -149,11 +151,18 @@ static const uint8_t rfc8613_c5_expected_ciphertext[] = {
 /*
  * C.6: Request protection with ID Context
  *   sender_seq = 20, id_context = 37cbf3210017a2d3
- * Requires id_context API support (not yet exposed).
- * Expected for reference:
+ * Expected:
  *   oscore_option = 19140837cbf3210017a2d3
  *   ciphertext = 72cd7273fd331ac45cffbe55c3
  */
+static const uint8_t rfc8613_c6_expected_oscore_opt[] = {
+	0x19, 0x14, 0x08, 0x37, 0xcb, 0xf3, 0x21,
+	0x00, 0x17, 0xa2, 0xd3,
+};
+static const uint8_t rfc8613_c6_expected_ciphertext[] = {
+	0x72, 0xcd, 0x72, 0x73, 0xfd, 0x33, 0x1a,
+	0xc4, 0x5c, 0xff, 0xbe, 0x55, 0xc3,
+};
 
 /*
  * C.7: Response protection (2.05 Content, 'Hello World!')
@@ -462,6 +471,159 @@ ZTEST(rfc8613_vectors, test_c5_request_protection_no_salt)
 	zassert_equal(opt_len, sizeof(rfc8613_c5_expected_oscore_opt));
 
 	oscore_ctx_free(ctx);
+}
+
+/*
+ * C.6: Request protection with the C.3 ID Context. Exact ciphertext verifies
+ * the ID Context was included in all three HKDF info structures; receiver-role
+ * unprotection verifies exact KID Context parsing and binding.
+ */
+ZTEST(rfc8613_vectors, test_c6_request_protection_with_id_context)
+{
+	struct oscore_ctx *client_ctx = NULL;
+	struct oscore_ctx *server_ctx = NULL;
+	uint8_t ciphertext[64];
+	size_t ct_len = sizeof(ciphertext);
+	uint8_t oscore_opt[32];
+	size_t opt_len = sizeof(oscore_opt);
+	uint8_t code = 0;
+	uint8_t options[16];
+	size_t options_len = sizeof(options);
+	uint8_t payload[1];
+	size_t payload_len = sizeof(payload);
+	static const uint8_t peer_id[] = { 0x01 };
+
+	zassert_equal(oscore_ctx_create_with_id_context(
+				rfc8613_master_secret,
+				rfc8613_master_salt, sizeof(rfc8613_master_salt),
+				NULL, 0, peer_id, sizeof(peer_id),
+				rfc8613_c3_id_context, sizeof(rfc8613_c3_id_context),
+				&client_ctx), OSCORE_OK);
+	zassert_equal(oscore_ctx_create_with_id_context(
+				rfc8613_master_secret,
+				rfc8613_master_salt, sizeof(rfc8613_master_salt),
+				peer_id, sizeof(peer_id), NULL, 0,
+				rfc8613_c3_id_context, sizeof(rfc8613_c3_id_context),
+				&server_ctx), OSCORE_OK);
+	zassert_equal(oscore_ctx_set_sender_seq(client_ctx, 20), OSCORE_OK);
+
+	zassert_equal(oscore_protect_request(client_ctx, 0x01,
+					rfc8613_c4_options, sizeof(rfc8613_c4_options),
+					NULL, 0, ciphertext, &ct_len,
+					oscore_opt, &opt_len), OSCORE_OK);
+	zassert_equal(ct_len, sizeof(rfc8613_c6_expected_ciphertext));
+	zassert_mem_equal(ciphertext, rfc8613_c6_expected_ciphertext, ct_len,
+			  "C.6 ciphertext mismatch");
+	zassert_equal(opt_len, sizeof(rfc8613_c6_expected_oscore_opt));
+	zassert_mem_equal(oscore_opt, rfc8613_c6_expected_oscore_opt, opt_len,
+			  "C.6 OSCORE option mismatch");
+
+	zassert_equal(oscore_unprotect_request(server_ctx, oscore_opt, opt_len,
+					  ciphertext, ct_len, &code,
+					  options, &options_len,
+					  payload, &payload_len), OSCORE_OK);
+	zassert_equal(code, 0x01);
+	zassert_equal(options_len, sizeof(rfc8613_c4_options));
+	zassert_mem_equal(options, rfc8613_c4_options, options_len);
+	zassert_equal(payload_len, 0U);
+
+	oscore_ctx_free(client_ctx);
+	oscore_ctx_free(server_ctx);
+}
+
+ZTEST(rfc8613_vectors, test_id_context_presence_bounds_and_binding)
+{
+	static const uint8_t sender_id[] = { 0x00 };
+	static const uint8_t recipient_id[] = { 0x01 };
+	static const uint8_t dummy = 0;
+	static const uint8_t oversized[OSCORE_ID_CONTEXT_MAX_LEN + 1] = { 0 };
+	static const uint8_t expected_absent_option[] = { 0x09, 0x00, 0x00 };
+	static const uint8_t expected_empty_option[] = { 0x19, 0x00, 0x00, 0x00 };
+	struct oscore_ctx *invalid_ctx = (struct oscore_ctx *)1;
+	struct oscore_ctx *absent_ctx = NULL;
+	struct oscore_ctx *empty_ctx = NULL;
+	struct oscore_ctx *receiver_ctx = NULL;
+	uint8_t absent_ciphertext[32];
+	size_t absent_ct_len = sizeof(absent_ciphertext);
+	uint8_t absent_option[16];
+	size_t absent_option_len = sizeof(absent_option);
+	uint8_t empty_ciphertext[32];
+	size_t empty_ct_len = sizeof(empty_ciphertext);
+	uint8_t empty_option[16];
+	size_t empty_option_len = sizeof(empty_option);
+	uint8_t code = 0xa5;
+	uint8_t options[1] = { 0xa5 };
+	size_t options_len = sizeof(options);
+	uint8_t payload[1] = { 0xa5 };
+	size_t payload_len = sizeof(payload);
+
+	zassert_equal(oscore_ctx_create_with_id_context(
+				rfc8613_master_secret, NULL, 0,
+				sender_id, sizeof(sender_id),
+				recipient_id, sizeof(recipient_id),
+				NULL, 1, &invalid_ctx), OSCORE_ERR_INVALID_PARAM);
+	zassert_is_null(invalid_ctx);
+	invalid_ctx = (struct oscore_ctx *)1;
+	zassert_equal(oscore_ctx_create_with_id_context(
+				rfc8613_master_secret, NULL, 0,
+				sender_id, sizeof(sender_id),
+				recipient_id, sizeof(recipient_id),
+				oversized, sizeof(oversized), &invalid_ctx),
+		      OSCORE_ERR_INVALID_PARAM);
+	zassert_is_null(invalid_ctx);
+
+	zassert_equal(oscore_ctx_create(rfc8613_master_secret, NULL, 0,
+				sender_id, sizeof(sender_id),
+				recipient_id, sizeof(recipient_id),
+				&absent_ctx), OSCORE_OK);
+	zassert_equal(oscore_ctx_create_with_id_context(
+				rfc8613_master_secret, NULL, 0,
+				sender_id, sizeof(sender_id),
+				recipient_id, sizeof(recipient_id),
+				&dummy, 0, &empty_ctx), OSCORE_OK);
+	zassert_equal(oscore_ctx_create_with_id_context(
+				rfc8613_master_secret, NULL, 0,
+				recipient_id, sizeof(recipient_id),
+				sender_id, sizeof(sender_id),
+				&dummy, 0, &receiver_ctx), OSCORE_OK);
+	zassert_equal(oscore_ctx_set_sender_seq(absent_ctx, 0), OSCORE_OK);
+	zassert_equal(oscore_ctx_set_sender_seq(empty_ctx, 0), OSCORE_OK);
+
+	zassert_equal(oscore_protect_request(absent_ctx, 0x01, NULL, 0, NULL, 0,
+					absent_ciphertext, &absent_ct_len,
+					absent_option, &absent_option_len), OSCORE_OK);
+	zassert_equal(absent_option_len, sizeof(expected_absent_option));
+	zassert_mem_equal(absent_option, expected_absent_option, absent_option_len);
+	zassert_equal(oscore_protect_request(empty_ctx, 0x01, NULL, 0, NULL, 0,
+					empty_ciphertext, &empty_ct_len,
+					empty_option, &empty_option_len), OSCORE_OK);
+	zassert_equal(empty_option_len, sizeof(expected_empty_option));
+	zassert_mem_equal(empty_option, expected_empty_option, empty_option_len);
+	zassert_false(absent_ct_len == empty_ct_len &&
+		      memcmp(absent_ciphertext, empty_ciphertext, absent_ct_len) == 0,
+		      "absent and present-empty ID Context derived identical output");
+
+	/* Exact presence is part of context selection and fails before output. */
+	zassert_equal(oscore_unprotect_request(receiver_ctx,
+					  absent_option, absent_option_len,
+					  absent_ciphertext, absent_ct_len,
+					  &code, options, &options_len,
+					  payload, &payload_len), OSCORE_ERR_NO_CONTEXT);
+	zassert_equal(code, 0xa5);
+	zassert_equal(options[0], 0xa5);
+	zassert_equal(payload[0], 0xa5);
+	zassert_equal(oscore_unprotect_request(receiver_ctx,
+					  empty_option, empty_option_len,
+					  empty_ciphertext, empty_ct_len,
+					  &code, options, &options_len,
+					  payload, &payload_len), OSCORE_OK);
+	zassert_equal(code, 0x01);
+	zassert_equal(options_len, 0U);
+	zassert_equal(payload_len, 0U);
+
+	oscore_ctx_free(absent_ctx);
+	oscore_ctx_free(empty_ctx);
+	oscore_ctx_free(receiver_ctx);
 }
 
 /*
@@ -974,6 +1136,18 @@ ZTEST(oscore_ctx, test_rejects_both_empty_sender_and_recipient_ids)
 	zassert_equal(oscore_ctx_create(master_secret, NULL, 0,
 					NULL, 0,
 					NULL, 0,
+					&ctx),
+		      OSCORE_ERR_INVALID_PARAM);
+	zassert_is_null(ctx);
+}
+
+ZTEST(oscore_ctx, test_rejects_null_master_salt_with_nonzero_length)
+{
+	struct oscore_ctx *ctx = NULL;
+
+	zassert_equal(oscore_ctx_create(master_secret, NULL, 1,
+					sender_id, sizeof(sender_id),
+					recipient_id, sizeof(recipient_id),
 					&ctx),
 		      OSCORE_ERR_INVALID_PARAM);
 	zassert_is_null(ctx);

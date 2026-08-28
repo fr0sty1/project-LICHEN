@@ -225,20 +225,23 @@ class ForwardingBuffer:
                 oldest_iid.hex(),
                 evicted_count,
             )
-            # B.2.5 No Silent Drops: notify for each evicted packet
-            if self._on_drop is not None:
-                for evicted_entry in evicted_queue:
-                    self._on_drop(
-                        evicted_entry.source_iid,
-                        evicted_entry.data,
-                        DropReason.EVICTED,
-                    )
             result = BufferResult.EVICTED
+        else:
+            evicted_queue = []
 
         # Create new queue for this source
         self._buffer[source_iid] = [entry]
         self._touch_source(source_iid)
         self.stats.packets_accepted += 1
+
+        # B.2.5 No Silent Drops: notify AFTER state is consistent (reentrancy-safe)
+        if self._on_drop is not None:
+            for evicted_entry in evicted_queue:
+                self._on_drop(
+                    evicted_entry.source_iid,
+                    evicted_entry.data,
+                    DropReason.EVICTED,
+                )
 
         return result
 
@@ -256,6 +259,9 @@ class ForwardingBuffer:
 
         queue = self._buffer[source_iid]
         if not queue:
+            # Clean up zombie entry if invariant violated
+            del self._buffer[source_iid]
+            self._source_order.pop(source_iid, None)
             return None
 
         entry = queue.pop(0)

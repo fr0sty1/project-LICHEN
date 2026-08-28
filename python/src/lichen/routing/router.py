@@ -433,6 +433,8 @@ class Router:
         if addr in self._LINK_LOCAL_PREFIX:
             return AddressClass.LINK_LOCAL
 
+        # 02xx (Yggdrasil-derived) addresses are always mesh-local; routing
+        # decides gradient vs LOADng vs Yggdrasil fallback.
         if addr in self._NATIVE_PREFIX:
             return AddressClass.MESH_LOCAL
 

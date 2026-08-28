@@ -11,6 +11,8 @@
 
 #include <lichen/coap_keys.h>
 #include "coap_keys_internal.h"
+#include <monocypher.h>
+#include <monocypher-ed25519.h>
 
 #ifdef CONFIG_TINYCRYPT_SHA256
 #include <tinycrypt/sha256.h>
@@ -262,45 +264,11 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKE
 #endif
 }
 
-int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
-			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
-{
-	if (pubkey == NULL || iid == NULL) {
-		return -EINVAL;
-	}
-
-#ifdef CONFIG_TINYCRYPT_SHA256
-	struct tc_sha256_state_struct sha_state;
-	uint8_t hash[32];
-
-	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-	if (tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-	if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-		return -EIO;
-	}
-
-	/* IID = SHA-256(pubkey)[0:8] with U/L bit cleared (bit 1 = 0x02)
-	 * per RFC 4291 (locally-administered) and LICHEN spec.
-	 * Matches _pubkey_to_iid() in Python and lichen_pubkey_to_iid() in ipv6_addr.c.
-	 * This enables unified identity across LCI, mesh, and backbone.
-	 */
-	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
-	iid[0] &= ~0x02U;  /* Clear U/L bit */
-	memset(hash, 0, sizeof(hash));  /* scrub sensitive material */
-
-	return 0;
-#else
-	/* Fallback without crypto (insecure, test-only) */
-		memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
-		iid[0] &= ~0x02U;
-		return 0;
-#endif
-
-}
+/*
+ * lichen_key_pubkey_to_iid() is defined in link/identity_addr.c (always
+ * built); see the move note there for the CONFIG_LICHEN_IPV6 /
+ * CONFIG_LICHEN_COAP_KEYS decoupling rationale.
+ */
 
 /* --------------------------------------------------------------------------
  * Trust level conversion
@@ -309,6 +277,8 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN
 const char *trust_to_str(enum lichen_key_trust trust)
 {
 	switch (trust) {
+	case LICHEN_KEY_TRUST_UNKNOWN:
+		return "unknown";
 	case LICHEN_KEY_TRUST_TOFU:
 		return "tofu";
 	case LICHEN_KEY_TRUST_VERIFIED:

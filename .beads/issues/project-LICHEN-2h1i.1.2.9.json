@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2h1i.1.2.9",
+  "title": "T-Echo GPS (L76K) UART validation: enable uart1, implement NMEA parsing, add 1PPS timer capture on P1.04",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:14.221281Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:14.221281Z",
+  "labels": [
+    "blocked:hardware",
+    "renode",
+    "zephyr"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.1.2.9",
+      "depends_on_id": "project-LICHEN-2h1i.1.2",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:17.577577Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

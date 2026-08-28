@@ -24,7 +24,9 @@ from lichen.ipv6.addr import (
     make_link_local,
     multicast_scope,
     native_address_from_pubkey,
+    routing_key,
     short_addr_to_iid,
+    to_ipv6,
 )
 
 # Spec 12.2 example: link-local fe80::1234:5678:9abc:def0 has this IID.
@@ -68,15 +70,29 @@ def test_mac48_to_eui64_rejects_wrong_length() -> None:
 
 def test_short_addr_to_iid() -> None:
     # RFC 4944 section 6: IID = 0000:00FF:FE00:XXXX (short addr in low bytes)
-    # 0x0000_00FF_FE00_0000 | 0x0001 = 0x0000_00FF_FE00_0001
+    # Independent oracle: 0x0000_00FF_FE00_0000 | XXXX, hand-computed bytes.
+    assert short_addr_to_iid(0x0000) == bytes([0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0x00, 0x00])
     assert short_addr_to_iid(0x0001) == bytes([0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0x00, 0x01])
-    # Additional test vector: 0xABCD should give 0000:00FF:FE00:ABCD
     assert short_addr_to_iid(0xABCD) == bytes([0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0xAB, 0xCD])
+    assert short_addr_to_iid(0xFFFF) == bytes([0x00, 0x00, 0x00, 0xFF, 0xFE, 0x00, 0xFF, 0xFF])
 
 
 def test_short_addr_to_iid_rejects_out_of_range() -> None:
     with pytest.raises(AddrError):
+        short_addr_to_iid(-1)
+    with pytest.raises(AddrError):
         short_addr_to_iid(0x10000)
+
+
+@pytest.mark.parametrize("value", [True, False, 1.0])
+def test_short_addr_to_iid_rejects_non_int(value: object) -> None:
+    # Independent oracle: bool subclasses int (True == 1, False == 0) so a
+    # range check alone would accept them as RFC 4944 IIDs. float 1.0 is in
+    # range then TypeError on bitwise OR; the public boundary is AddrError.
+    assert isinstance(True, int) and True == 1 and False == 0
+    assert 0 <= 1.0 <= 0xFFFF
+    with pytest.raises(AddrError):
+        short_addr_to_iid(value)  # type: ignore[arg-type]
 
 
 def test_make_link_local_matches_spec_example() -> None:
@@ -117,6 +133,25 @@ def test_key_derived_ipv6_vectors_match_production_boundaries() -> None:
         assert link_local_from_pubkey(public_key).packed.hex() == vector["link_local_packed"]
 
 
+def test_eui64_and_short_addr_vectors_match_production_helpers() -> None:
+    document = json.loads(VECTORS.read_text())
+    eui_checked = 0
+    short_checked = 0
+    for vector in document["vectors"]:
+        if "eui64" in vector:
+            iid = eui64_to_iid(bytes.fromhex(vector["eui64"]))
+            assert iid.hex() == vector["iid"], vector["name"]
+            address = make_link_local(iid)
+            assert address.packed.hex() == vector["link_local_packed"], vector["name"]
+            assert str(address) == vector["link_local"], vector["name"]
+            eui_checked += 1
+        if "short_addr" in vector:
+            assert short_addr_to_iid(vector["short_addr"]).hex() == vector["iid"], vector["name"]
+            short_checked += 1
+    assert eui_checked == 3
+    assert short_checked == 3
+
+
 @pytest.mark.parametrize(
     ("text", "scope"),
     [
@@ -139,3 +174,79 @@ def test_unicast_has_no_multicast_scope() -> None:
     assert not is_unflagged_multicast(IPv6Address("ff00::1"))
     assert not is_unflagged_multicast(IPv6Address("ff11::1"))
     assert multicast_scope(IPv6Address("ff12::1")) == 2
+
+
+def test_to_ipv6_accepts_documented_forms() -> None:
+    # Independent oracle: stdlib IPv6Address from RFC 4291 link-local text.
+    packed = bytes.fromhex("fe800000000000000000000000000001")
+    text = "fe80::1"
+    addr = IPv6Address(text)
+    assert packed == addr.packed
+    assert to_ipv6(addr) is addr
+    assert to_ipv6(text) == addr
+    assert to_ipv6(packed) == addr
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_to_ipv6_rejects_bool(value: bool) -> None:
+    # Independent oracle: stdlib treats bool as int (True -> ::1, False -> ::).
+    stdlib = IPv6Address(value)
+    assert stdlib == IPv6Address("::1" if value else "::")
+    with pytest.raises(AddrError):
+        to_ipv6(value)
+
+
+@pytest.mark.parametrize("value", [0, 1])
+def test_to_ipv6_rejects_int(value: int) -> None:
+    # Integers are not in the documented contract; 0/1 would be :: / ::1.
+    with pytest.raises(AddrError):
+        to_ipv6(value)
+
+
+# RFC 4291: a zone identifier is local interface metadata, not part of the
+# 128-bit address. Independent packed oracle for fe80::1.
+_FE80_1_PACKED = bytes.fromhex("fe800000000000000000000000000001")
+
+
+def test_to_ipv6_preserves_scope_id() -> None:
+    # stdlib treats zoned and unzoned forms as unequal; to_ipv6 must not drop
+    # the zone used for local send (make_link_local / LCI).
+    zoned = IPv6Address("fe80::1%lci0")
+    unzoned = IPv6Address("fe80::1")
+    assert zoned.packed == unzoned.packed == _FE80_1_PACKED
+    assert zoned != unzoned
+    assert to_ipv6(zoned) is zoned
+    parsed = to_ipv6("fe80::1%lci0")
+    assert parsed.packed == _FE80_1_PACKED
+    assert parsed.scope_id == "lci0"
+
+
+def test_routing_key_unifies_zoned_and_unzoned_forms() -> None:
+    # Independent oracle: stdlib packed bytes, not routing_key itself.
+    zoned = IPv6Address("fe80::1%lci0")
+    other_zone = IPv6Address("fe80::1%eth0")
+    unzoned = IPv6Address("fe80::1")
+    assert zoned != unzoned
+    assert other_zone != zoned
+    assert zoned.packed == other_zone.packed == unzoned.packed == _FE80_1_PACKED
+
+    key_from_zoned = routing_key(zoned)
+    key_from_text = routing_key("fe80::1%lci0")
+    key_from_packed = routing_key(_FE80_1_PACKED)
+    assert key_from_zoned == unzoned
+    assert key_from_zoned == routing_key(other_zone) == routing_key(unzoned)
+    assert key_from_text == unzoned
+    assert key_from_packed == unzoned
+    assert key_from_zoned.scope_id is None
+    assert key_from_zoned.packed == _FE80_1_PACKED
+    table = {key_from_zoned: "hit"}
+    assert unzoned in table
+    assert routing_key("fe80::1%eth0") in table
+    split = {to_ipv6(zoned): "zoned"}
+    assert unzoned not in split
+
+
+def test_routing_key_round_trips_wire_packed_bytes() -> None:
+    zoned = IPv6Address("fe80::1%lci0")
+    assert routing_key(zoned).packed == zoned.packed == _FE80_1_PACKED
+    assert routing_key(zoned.packed) == IPv6Address("fe80::1")

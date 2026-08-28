@@ -21,7 +21,7 @@ All implementations MUST match test vectors in:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
@@ -96,11 +96,6 @@ class SlotClaim:
     ordinal: int | None = None
     signature: bytes | None = None
 
-    # Non-serialized: cached validation state
-    # SECURITY: init=False prevents constructor from setting this field,
-    # forcing callers to use verify_slot_claim() to validate signatures.
-    signature_valid: bool = field(default=False, compare=False, hash=False, init=False)
-
     def __post_init__(self) -> None:
         """Validate claim structure."""
         # Validate gateway_iid is 8 bytes (16 hex chars)
@@ -169,14 +164,21 @@ class SlotClaim:
 
         try:
             iid_bytes = data["gateway_iid"]
-            gateway_iid = iid_bytes.hex() if isinstance(iid_bytes, bytes) else str(iid_bytes)
+            if not isinstance(iid_bytes, bytes):
+                raise ClaimError("gateway_iid must be bytes in CBOR")
+            gateway_iid = iid_bytes.hex()
 
-            slots = tuple(data["slots"])
+            raw_slots = data["slots"]
+            if not all(isinstance(s, int) for s in raw_slots):
+                raise ClaimError("slots must all be integers")
+            slots = tuple(raw_slots)
             superframe_id = int(data["superframe_id"])
 
             signature = data.get("signature")
             if signature is not None and isinstance(signature, str):
                 signature = bytes.fromhex(signature)
+            if signature is not None and not isinstance(signature, bytes):
+                raise ClaimError("signature must be bytes or hex string")
 
             return cls(
                 gateway_iid=gateway_iid,
@@ -286,15 +288,9 @@ def resolve_slot_conflict(
     if not overlap:
         raise ClaimError("no overlapping slots to resolve")
 
-    # Determine signature validity
-    a_valid = claim_a.signature_valid
-    b_valid = claim_b.signature_valid
-
-    # If signatures present but not pre-validated, verify now
-    if not a_valid and claim_a.signature is not None and pubkey_a is not None:
-        a_valid, _ = verify_slot_claim(claim_a, pubkey_a)
-    if not b_valid and claim_b.signature is not None and pubkey_b is not None:
-        b_valid, _ = verify_slot_claim(claim_b, pubkey_b)
+    # Verify signatures
+    a_valid = pubkey_a is not None and verify_slot_claim(claim_a, pubkey_a)[0]
+    b_valid = pubkey_b is not None and verify_slot_claim(claim_b, pubkey_b)[0]
 
     # Case 1: Both invalid - cannot resolve
     if not a_valid and not b_valid:

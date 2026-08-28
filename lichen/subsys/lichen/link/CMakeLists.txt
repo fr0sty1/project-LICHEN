@@ -10,6 +10,7 @@ zephyr_library_sources(
   frame_pool.c
   frame.c
   hash32.c
+  identity_addr.c
   lichen_link_rx.c
   lichen_link_tx.c
   link_ctx.c
@@ -27,6 +28,11 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_SCHNORR
 
 zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_EPOCH_PERSIST
   epoch_persist.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_REPLAY_PERSIST
+  replay_persist.c
+  replay_settings.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_LICHEN_TDMA

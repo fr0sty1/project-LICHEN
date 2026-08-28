@@ -2,9 +2,13 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for pcapng packet capture writer."""
 
+import json
+import shutil
 import struct
+import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any, BinaryIO
 
 import pytest
 
@@ -16,6 +20,45 @@ _BLOCK_TYPE_IDB = 0x00000001
 _BLOCK_TYPE_EPB = 0x00000006
 _BYTE_ORDER_MAGIC = 0x1A2B3C4D
 _LINKTYPE_USER0 = 147
+
+
+def _read_blocks(path: Path) -> list[tuple[int, bytes]]:
+    """Parse block envelopes and assert pcapng length invariants."""
+    content = path.read_bytes()
+    blocks: list[tuple[int, bytes]] = []
+    offset = 0
+    while offset < len(content):
+        assert offset + 12 <= len(content)
+        block_type, block_len = struct.unpack_from("<II", content, offset)
+        assert block_len >= 12
+        assert block_len % 4 == 0
+        block_end = offset + block_len
+        assert block_end <= len(content)
+        assert struct.unpack_from("<I", content, block_end - 4)[0] == block_len
+        blocks.append((block_type, content[offset + 8 : block_end - 4]))
+        offset = block_end
+    assert offset == len(content)
+    return blocks
+
+
+def _parse_options(data: bytes) -> list[tuple[int, bytes]]:
+    """Parse pcapng options and verify zero padding and termination."""
+    options: list[tuple[int, bytes]] = []
+    offset = 0
+    while True:
+        assert offset + 4 <= len(data)
+        code, length = struct.unpack_from("<HH", data, offset)
+        offset += 4
+        if code == 0:
+            assert length == 0
+            assert offset == len(data)
+            return options
+        value_end = offset + length
+        padded_end = value_end + ((4 - length % 4) % 4)
+        assert padded_end <= len(data)
+        assert data[value_end:padded_end] == b"\x00" * (padded_end - value_end)
+        options.append((code, data[offset:value_end]))
+        offset = padded_end
 
 
 class TestPcapngWriter:
@@ -37,17 +80,17 @@ class TestPcapngWriter:
                 writer.write_packet(timestamp_us=1000, data=b"\x00\x01\x02")
             assert path.exists()
 
-    def test_closes_file_on_init_failure(self, monkeypatch) -> None:
+    def test_closes_file_on_init_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A failure while writing header blocks must not leak the file handle."""
-        opened: list = []
+        opened: list[BinaryIO] = []
         real_open = Path.open
 
-        def tracking_open(self_path, *args, **kwargs):
-            handle = real_open(self_path, *args, **kwargs)
+        def tracking_open(self_path: Path, *args: Any, **kwargs: Any) -> BinaryIO:
+            handle: BinaryIO = real_open(self_path, *args, **kwargs)
             opened.append(handle)
             return handle
 
-        def boom(self) -> None:
+        def boom(self: PcapngWriter) -> None:
             raise RuntimeError("disk full")
 
         monkeypatch.setattr(Path, "open", tracking_open)
@@ -111,6 +154,32 @@ class TestPcapngWriter:
                 assert link_type == _LINKTYPE_USER0
                 assert reserved == 0
                 assert snap_len == 65535
+
+    def test_all_block_envelopes_and_interface_options(self) -> None:
+        """SHB/IDB/EPB blocks are aligned and carry deterministic IDB metadata."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            with PcapngWriter(
+                path,
+                spreading_factor=12,
+                bandwidth_hz=500_000,
+                coding_rate=4,
+            ) as writer:
+                writer.write_packet(1, b"abc")
+
+            blocks = _read_blocks(path)
+            assert [block_type for block_type, _ in blocks] == [
+                _BLOCK_TYPE_SHB,
+                _BLOCK_TYPE_IDB,
+                _BLOCK_TYPE_EPB,
+            ]
+            assert len(blocks[0][1]) == 16
+            idb_fixed = struct.unpack_from("<HHI", blocks[1][1])
+            assert idb_fixed == (_LINKTYPE_USER0, 0, 65535)
+            options = dict(_parse_options(blocks[1][1][8:]))
+            assert options[2] == b"lichen-lora"
+            assert options[3] == b"LoRa SF=12 BW=500000Hz CR=4/8"
+            assert options[9] == b"\x06"  # timestamps are 10^-6 seconds
 
     def test_write_packet_basic(self) -> None:
         """Should write a basic packet without options."""
@@ -196,6 +265,34 @@ class TestPcapngWriter:
             # Verify file was written (detailed option parsing would be complex)
             assert path.stat().st_size > 0
 
+    def test_epb_layout_and_metadata_options(self) -> None:
+        """EPB timestamp, lengths, padding, and custom metadata are exact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            with PcapngWriter(path) as writer:
+                writer.write_packet(
+                    timestamp_us=0x0102030405060708,
+                    data=b"abc",
+                    rssi=-123,
+                    snr=45,
+                    src_node="source",
+                    dst_node="dest",
+                )
+
+            _, _, (_, body) = _read_blocks(path)
+            iface, ts_high, ts_low, cap_len, orig_len = struct.unpack_from("<IIIII", body)
+            assert iface == 0
+            assert (ts_high << 32) | ts_low == 0x0102030405060708
+            assert (cap_len, orig_len) == (3, 3)
+            assert body[20:24] == b"abc\x00"
+            options = dict(_parse_options(body[24:]))
+            assert json.loads(options[1]) == {
+                "rssi": -123,
+                "snr": 45,
+                "src_node": "source",
+                "dst_node": "dest",
+            }
+
     def test_write_packet_with_node_ids(self) -> None:
         """Should write packets with source and destination node IDs."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -249,6 +346,32 @@ class TestPcapngWriter:
             with pytest.raises(ValueError, match="closed"):
                 writer.write_packet(timestamp_us=1000, data=b"test")
 
+            with pytest.raises(ValueError, match="closed"):
+                writer.flush()
+
+            writer.close()  # Idempotent.
+
+    def test_flush_makes_packet_visible_before_close(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            writer = PcapngWriter(path)
+            initial_size = path.stat().st_size
+            writer.write_packet(timestamp_us=1, data=b"packet")
+            writer.flush()
+            assert path.stat().st_size > initial_size
+            writer.close()
+
+    def test_context_manager_closes_on_body_exception(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            retained: PcapngWriter | None = None
+            with pytest.raises(RuntimeError, match="body failed"), PcapngWriter(path) as writer:
+                retained = writer
+                raise RuntimeError("body failed")
+            assert retained is not None
+            with pytest.raises(ValueError, match="closed"):
+                retained.flush()
+
     def test_empty_packet(self) -> None:
         """Should handle empty packet data."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -274,6 +397,19 @@ class TestPcapngWriter:
                 assert cap_len == 0
                 assert orig_len == 0
 
+    def test_maximum_packet_and_oversized_rejection_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            with PcapngWriter(path) as writer:
+                writer.write_packet(timestamp_us=0, data=b"x" * 65535)
+                writer.flush()
+                valid_size = path.stat().st_size
+                with pytest.raises(ValueError, match="snap length"):
+                    writer.write_packet(timestamp_us=0, data=b"x" * 65536)
+                writer.flush()
+                assert path.stat().st_size == valid_size
+            assert _read_blocks(path)[-1][0] == _BLOCK_TYPE_EPB
+
     def test_large_timestamp(self) -> None:
         """Should handle timestamps requiring 64-bit representation."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -298,6 +434,68 @@ class TestPcapngWriter:
 
                 timestamp = (ts_high << 32) | ts_low
                 assert timestamp == large_ts
+
+    @pytest.mark.parametrize("timestamp", [-1, 1 << 64, True])
+    def test_invalid_timestamp_rejected_without_mutation(self, timestamp: int) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            with PcapngWriter(path) as writer:
+                writer.flush()
+                header_size = path.stat().st_size
+                with pytest.raises(ValueError, match="unsigned 64-bit"):
+                    writer.write_packet(timestamp_us=timestamp, data=b"x")
+                writer.flush()
+                assert path.stat().st_size == header_size
+
+    def test_uint64_max_timestamp_roundtrip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            with PcapngWriter(path) as writer:
+                writer.write_packet(timestamp_us=(1 << 64) - 1, data=b"")
+            _, _, (_, body) = _read_blocks(path)
+            assert struct.unpack_from("<II", body, 4) == (0xFFFFFFFF, 0xFFFFFFFF)
+
+    @pytest.mark.parametrize("field", ["rssi", "snr"])
+    @pytest.mark.parametrize("value", [-(1 << 31) - 1, 1 << 31, True])
+    def test_invalid_signal_metadata_rejected(self, field: str, value: int) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            with PcapngWriter(path) as writer, pytest.raises(ValueError, match="signed 32-bit"):
+                if field == "rssi":
+                    writer.write_packet(0, b"x", rssi=value)
+                else:
+                    writer.write_packet(0, b"x", snr=value)
+
+    def test_invalid_node_id_rejected_before_file_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            with PcapngWriter(path) as writer:
+                writer.flush()
+                header_size = path.stat().st_size
+                with pytest.raises(ValueError, match="exceeds 255 bytes"):
+                    writer.write_packet(0, b"x", src_node="n" * 256)
+                writer.flush()
+                assert path.stat().st_size == header_size
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"spreading_factor": 4},
+            {"spreading_factor": True},
+            {"bandwidth_hz": 0},
+            {"bandwidth_hz": 1 << 32},
+            {"coding_rate": 0},
+            {"coding_rate": 5},
+        ],
+    )
+    def test_invalid_interface_configuration_does_not_create_file(
+        self, kwargs: dict[str, int]
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            with pytest.raises(ValueError):
+                PcapngWriter(path, **kwargs)
+            assert not path.exists()
 
     def test_string_path(self) -> None:
         """Should accept string path as well as Path object."""
@@ -333,3 +531,20 @@ class TestPcapngWriter:
                 content = f.read()
                 # Interface name should be present in the file
                 assert b"lichen-lora" in content
+
+    def test_tshark_accepts_capture_when_available(self) -> None:
+        """Use tshark as an external pcapng parser when installed."""
+        tshark = shutil.which("tshark")
+        if tshark is None:
+            pytest.skip("tshark is not installed")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "test.pcapng"
+            with PcapngWriter(path) as writer:
+                writer.write_packet(123, b"\x01\x02\x03")
+            result = subprocess.run(
+                [tshark, "-r", str(path), "-c", "1"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 0, result.stderr

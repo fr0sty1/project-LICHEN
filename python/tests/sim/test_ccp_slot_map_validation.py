@@ -16,7 +16,9 @@ from pathlib import Path
 
 import pytest
 
-VECTORS_PATH = Path(__file__).resolve().parents[3] / "test" / "vectors" / "ccp_slot_map_validation.json"
+VECTORS_PATH = (
+    Path(__file__).resolve().parents[3] / "test" / "vectors" / "ccp_slot_map_validation.json"
+)
 
 
 def validate_slot_map(slot_map: list[int], num_slots: int) -> tuple[bool, str | None]:

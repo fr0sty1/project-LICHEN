@@ -32,6 +32,10 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/logging/log.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+#include <lichen/lora_cad.h>
+#endif
+
 LOG_MODULE_REGISTER(lora_renode, CONFIG_LORA_LOG_LEVEL);
 
 #define DT_DRV_COMPAT lichen_lora_renode
@@ -220,6 +224,11 @@ static int lora_renode_recv(const struct device *dev,
 
 /* --- device init -------------------------------------------------------- */
 
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+static int lora_renode_cad(const struct device *dev, k_timeout_t timeout,
+			    bool *busy);
+#endif
+
 static int lora_renode_init(const struct device *dev)
 {
 	const struct lora_renode_config *cfg = dev->config;
@@ -234,25 +243,31 @@ static int lora_renode_init(const struct device *dev)
 	/* Check if we can read TX_STATUS (any value means peripheral is alive) */
 	uint32_t status = reg_read(cfg, REG_TX_STATUS);
 
+	data->connected = true;
 	if (status <= TX_FAIL) {
-		data->connected = true;
 		LOG_INF("initialized, connected to lichen-sim");
-		return 0;
+	} else {
+		LOG_WRN("peripheral not responding, continuing anyway");
 	}
-
-	LOG_WRN("peripheral not responding, continuing anyway");
-	data->connected = true; /* Try anyway */
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+	return lichen_lora_cad_register(dev, lora_renode_cad);
+#endif
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
 static int lora_renode_cad(const struct device *dev, k_timeout_t timeout,
 			    bool *busy)
 {
 	ARG_UNUSED(dev);
 	ARG_UNUSED(timeout);
-	if (busy) *busy = false; /* renode sim assumes clear */
+	if (busy == NULL) {
+		return -EINVAL;
+	}
+	*busy = false; /* renode sim assumes clear */
 	return 0;
 }
+#endif
 
 static int lora_renode_send_async(const struct device *dev, uint8_t *data,
 				  uint32_t data_len, struct k_poll_signal *async)
@@ -261,10 +276,12 @@ static int lora_renode_send_async(const struct device *dev, uint8_t *data,
 	return lora_renode_send(dev, data, data_len);
 }
 
-static int lora_renode_recv_async(const struct device *dev, lora_recv_cb cb)
+static int lora_renode_recv_async(const struct device *dev, lora_recv_cb cb,
+				  void *user_data)
 {
 	ARG_UNUSED(dev);
 	ARG_UNUSED(cb);
+	ARG_UNUSED(user_data);
 	return -ENOTSUP;
 }
 
@@ -275,7 +292,6 @@ static const struct lora_driver_api lora_renode_api = {
 	.recv       = lora_renode_recv,
 	.recv_async = lora_renode_recv_async,
 	.test_cw    = NULL,
-	.cad        = lora_renode_cad,
 };
 
 #define LORA_RENODE_DEFINE(inst)					\

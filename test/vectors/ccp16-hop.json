@@ -8,7 +8,7 @@
       "sfn": 0,
       "seed": 0,
       "num_channels": 8,
-      "expected_channel": 6,
+      "expected_channel": 4,
       "hash_32": 2615243109,
       "description": "SFN=0 selects channel via hash_32 per spec 02a:120 SelectChannel pseudocode + hash_32. Independent oracle."
     },
@@ -17,9 +17,54 @@
       "sfn": 1,
       "seed": 42,
       "num_channels": 16,
-      "expected_channel": 15,
+      "expected_channel": 7,
       "hash_32": 2645478846,
       "description": "Example rendezvous channel selection per CCP-12 using real hash_32."
+    },
+    {
+      "name": "no_channels",
+      "sfn": 0,
+      "seed": 0,
+      "num_channels": 0,
+      "expected_channel": 0,
+      "hash_32": 2615243109,
+      "description": "An empty channel plan fails closed to CH0 without modulo by zero."
+    },
+    {
+      "name": "control_only",
+      "sfn": 0,
+      "seed": 0,
+      "num_channels": 1,
+      "expected_channel": 0,
+      "hash_32": 2615243109,
+      "description": "A CH0-only plan has no data channel and fails closed to CH0."
+    },
+    {
+      "name": "single_data_channel",
+      "sfn": 0,
+      "seed": 0,
+      "num_channels": 2,
+      "expected_channel": 1,
+      "hash_32": 2615243109,
+      "description": "A two-entry plan always selects its sole data channel CH1."
+    },
+    {
+      "name": "u8_max_channel_count",
+      "sfn": 0,
+      "seed": 0,
+      "num_channels": 255,
+      "expected_channel": 182,
+      "hash_32": 2615243109,
+      "description": "The maximum cross-language u8 plan count stays within CH0..CH254."
+    },
+    {
+      "name": "old_modulus_upper_boundary",
+      "sfn": 26,
+      "seed": 0,
+      "num_channels": 64,
+      "expected_channel": 15,
+      "hash_32": 3134715647,
+      "description": "Hash mod 64 equals 63: the obsolete modulus returned out-of-plan CH64; the corrected modulus returns an in-plan data channel."
     },
     {
       "name": "density_high_ch0",
@@ -36,7 +81,7 @@
       "sfn": 4294967295,
       "seed": 0,
       "num_channels": 8,
-      "expected_channel": 2,
+      "expected_channel": 4,
       "hash_32": 3025216001,
       "description": "SFN wraparound per spec Now() u32 mod and SelectChannel."
     },

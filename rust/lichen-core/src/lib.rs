@@ -62,6 +62,7 @@ pub mod loadng;
 pub mod multicast;
 pub mod neighbor_monitor;
 pub mod rf_health;
+pub mod seqnum;
 pub mod sf_assignment;
 pub mod short_addr;
 pub mod tdma_beacon;
@@ -70,6 +71,7 @@ pub mod tx_queue;
 pub mod udp;
 
 pub use access_level::AccessLevel;
+pub use seqnum::SeqNum;
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -99,14 +101,21 @@ pub fn sfn_from_unix_time(
 
 /// Compute channel for network-wide synchronized hopping.
 /// Uses fnv1a32 hash of (seed || sfn) to select channel.
+///
+/// Per spec/appendix-ccp12-hopping.md SynchronizedHopChannel:
+/// - N = NChannels - 1 (exclude reserved CH0)
+/// - Returns 1 + (Hash MOD N), yielding channels 1..NChannels-1
 pub fn synchronized_hop_channel(sfn: u32, seed: u32, n_channels: u8) -> u8 {
     let mut data = [0u8; 8];
     data[0..4].copy_from_slice(&seed.to_le_bytes());
     data[4..8].copy_from_slice(&sfn.to_le_bytes());
     let h = lichen_hash_32(&data);
-    // ponytail: spec says N = MAX(NChannels, 3), RETURN 1 + (Hash MOD N)
-    let n = n_channels.max(3);
-    1 + (h % n as u32) as u8
+    let data_channels = n_channels.saturating_sub(1);
+    if data_channels == 0 {
+        0
+    } else {
+        1 + (h % data_channels as u32) as u8
+    }
 }
 
 /// Select channel using a priority chain with GNSS-sync support.
@@ -167,9 +176,12 @@ pub fn select_channel_with_gnss(
         data[0..8].copy_from_slice(eui);
         data[8..12].copy_from_slice(&(epoch as u32).to_le_bytes());
         let h = lichen_hash_32(&data);
-        // ponytail: spec says N = MAX(NChannels, 3), RETURN 1 + (Hash MOD N)
-        let n = n_channels.max(3);
-        return 1 + (h % n as u32) as u8;
+        // N = NChannels - 1 (exclude reserved CH0), channels 1..NChannels-1
+        if n_channels <= 1 {
+            return 0;
+        }
+        let n = (n_channels - 1).max(1) as u32;
+        return 1 + (h % n) as u8;
     }
 
     // Priority 3: fallback to CH0
@@ -244,11 +256,12 @@ mod tests {
 
     #[test]
     fn test_synchronized_hop_channel_range() {
-        // Channel should be in range [1, n_channels] per spec: 1 + (hash % N)
+        // Channel should be in range [1, n_channels-1] per spec: 1 + (hash % (N-1))
+        // With n_channels=8, data_channels=7, so channels are 1..=7
         for sfn in 0..100 {
             let ch = synchronized_hop_channel(sfn, 0x12345678, 8);
             assert!(
-                ch >= 1 && ch <= 8,
+                ch >= 1 && ch < 8,
                 "channel {} out of range for sfn {}",
                 ch,
                 sfn
@@ -258,13 +271,11 @@ mod tests {
 
     #[test]
     fn test_synchronized_hop_channel_min_channels() {
-        // With n_channels < 3, should clamp to 3
-        let ch = synchronized_hop_channel(0, 0, 2);
-        assert!(
-            ch >= 1 && ch <= 3,
-            "channel {} out of range with n_channels=2",
-            ch
-        );
+        // With n_channels=0 or 1, data_channels=0, return 0
+        assert_eq!(synchronized_hop_channel(0, 0, 0), 0);
+        assert_eq!(synchronized_hop_channel(0, 0, 1), 0);
+        // With n_channels=2, data_channels=1, always channel 1
+        assert_eq!(synchronized_hop_channel(0, 0, 2), 1);
     }
 
     #[test]
@@ -396,6 +407,30 @@ mod tests {
 
         assert!(ch1 >= 1 && ch1 < 16);
         assert!(ch2 >= 1 && ch2 < 16);
+    }
+
+    #[test]
+    fn test_select_channel_hash_bounded() {
+        // Hash-based path must stay in [1, n_channels-1]: N = NChannels - 1
+        // excludes reserved CH0 (matches python select_channel semantics).
+        let config = GnssHopConfig::default();
+        for seed_byte in 0..=255u8 {
+            let peer = [seed_byte; 8];
+            for epoch in 0..8u8 {
+                let ch = select_channel_with_gnss(None, &config, Some(&peer), epoch, 8);
+                assert!(ch >= 1 && ch < 8, "channel {} out of range", ch);
+            }
+        }
+        // Degenerate channel plans fail closed to CH0
+        let peer = [0x01; 8];
+        assert_eq!(
+            select_channel_with_gnss(None, &config, Some(&peer), 0, 0),
+            0
+        );
+        assert_eq!(
+            select_channel_with_gnss(None, &config, Some(&peer), 0, 1),
+            0
+        );
     }
 
     #[test]

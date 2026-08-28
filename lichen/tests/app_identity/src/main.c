@@ -10,7 +10,10 @@
 
 #include <lichen/app_identity/app_identity.h>
 #include <lichen/link_ctx.h>
-#include <lichen/coap_keys.h>
+
+#ifndef ENOKEY
+#define ENOKEY ENOENT
+#endif
 
 static const uint8_t test_eui64[LICHEN_EUI64_LEN] = {
 	0x02, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x01,
@@ -20,6 +23,13 @@ static const uint8_t test_seed[LICHEN_SEED_LEN] = {
 	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
 	0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
 	0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+};
+static const uint8_t test_iid[LICHEN_APP_IDENTITY_EUI64_LEN] = {
+	0xed, 0x42, 0x42, 0xea, 0xd4, 0xac, 0x69, 0x48,
+};
+static const uint8_t test_ygg_addr[16] = {
+	0x02, 0xed, 0x42, 0x42, 0xea, 0xd4, 0xac, 0x69,
+	0xed, 0x42, 0x42, 0xea, 0xd4, 0xac, 0x69, 0x48,
 };
 
 static void reset_before(void *fixture)
@@ -55,7 +65,6 @@ ZTEST(app_identity, test_self_identity_from_link_ctx)
 {
 	struct lichen_link_ctx ctx;
 	struct lichen_app_identity_self out;
-	uint8_t expected_iid[LICHEN_EUI64_LEN];
 
 	zassert_ok(lichen_link_init(&ctx, test_eui64));
 	zassert_equal(lichen_app_identity_set_self_from_link_ctx(
@@ -66,9 +75,9 @@ ZTEST(app_identity, test_self_identity_from_link_ctx)
 			   &ctx, "node", "fw"));
 	zassert_ok(lichen_app_identity_copy_self(&out));
 
-	zassert_ok(lichen_key_pubkey_to_iid(out.public_key, expected_iid));
 	zassert_mem_equal(out.eui64, test_eui64, sizeof(test_eui64));
-	zassert_mem_equal(out.iid, expected_iid, sizeof(expected_iid));
+	zassert_mem_equal(out.iid, test_iid, sizeof(test_iid));
+	zassert_mem_equal(out.ygg_addr, test_ygg_addr, sizeof(test_ygg_addr));
 	zassert_mem_equal(out.public_key, ctx.ed25519_pk, sizeof(out.public_key));
 	zassert_true(out.has_public_key);
 	zassert_mem_equal(out.display_name, "node", 5U);
@@ -157,10 +166,16 @@ ZTEST(app_identity, test_peer_lookup_and_enumeration)
 	zassert_ok(lichen_app_identity_copy_peer(peer1_eui64, &out));
 	zassert_mem_equal(out.eui64, peer1_eui64, sizeof(peer1_eui64));
 	zassert_mem_equal(out.public_key, key1, sizeof(key1));
-	/* IID now derived from pubkey (project-LICHEN-oxul) */
-	uint8_t expected_iid[LICHEN_KEY_IID_LEN];
-	zassert_ok(lichen_key_pubkey_to_iid(key1, expected_iid));
+	/* Fixed SHA-512 vectors make the test independent of optional modules. */
+	static const uint8_t expected_iid[LICHEN_APP_IDENTITY_EUI64_LEN] = {
+		0x84, 0x5b, 0x92, 0x0b, 0xda, 0x4c, 0xd4, 0x9d,
+	};
+	static const uint8_t expected_ygg[16] = {
+		0x02, 0x84, 0x5b, 0x92, 0x0b, 0xda, 0x4c, 0xd4,
+		0x84, 0x5b, 0x92, 0x0b, 0xda, 0x4c, 0xd4, 0x9d,
+	};
 	zassert_mem_equal(out.iid, expected_iid, sizeof(expected_iid));
+	zassert_mem_equal(out.ygg_addr, expected_ygg, sizeof(expected_ygg));
 	zassert_true(out.has_public_key);
 
 	/* TOFU key pinning rejects key replacement for a known peer. */

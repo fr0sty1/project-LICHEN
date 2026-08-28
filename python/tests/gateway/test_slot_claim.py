@@ -15,7 +15,6 @@ import pytest
 
 from lichen.crypto import schnorr48
 from lichen.gateway.slot_claim import (
-    AllocationMode,
     ClaimError,
     ClaimRejectReason,
     SlotClaim,

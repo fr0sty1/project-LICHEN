@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-wqaa.1.9",
+  "title": "Draft project abstract and summary (thematic fit with NGI0)",
+  "description": "Write compelling 1-2 paragraph abstract. Emphasize alignment with NGI0 themes: open internet, privacy, decentralization, resilience. Position LICHEN as infrastructure for next-gen internet connectivity in underserved/disaster scenarios.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:22.66732Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:22.66732Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.1.9",
+      "depends_on_id": "project-LICHEN-wqaa.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:25.427676Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

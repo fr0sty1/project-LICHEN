@@ -7,10 +7,10 @@
   "vectors": [
     {
       "name": "budget_hl1_accept_within",
-      "description": "HL=1 budget is 200/hr. Accept 200th packet from same sender.",
+      "description": "HL=1 budget is 200/hr, green zone < 100. Accept 99th packet (green zone).",
       "hop_limit": 1,
       "sender_iid": "0011223344556677",
-      "count_in_window": 199,
+      "count_in_window": 98,
       "expected": {
         "action": "relay",
         "budget": 200,
@@ -31,10 +31,10 @@
     },
     {
       "name": "budget_hl2_accept_within",
-      "description": "HL=2 budget is 100/hr. Accept 100th packet.",
+      "description": "HL=2 budget is 100/hr, green zone < 50. Accept 49th packet (green zone).",
       "hop_limit": 2,
       "sender_iid": "0011223344556677",
-      "count_in_window": 99,
+      "count_in_window": 48,
       "expected": {
         "action": "relay",
         "budget": 100,
@@ -55,10 +55,10 @@
     },
     {
       "name": "budget_hl3_medium_radius",
-      "description": "HL=3-4 budget is 30/hr. Accept 30th, reject 31st.",
+      "description": "HL=3-4 budget is 30/hr, green zone < 15. Accept 14th packet (green zone).",
       "hop_limit": 3,
       "sender_iid": "0011223344556677",
-      "count_in_window": 29,
+      "count_in_window": 13,
       "expected": {
         "action": "relay",
         "budget": 30,
@@ -91,10 +91,10 @@
     },
     {
       "name": "budget_hl7_mesh_wide",
-      "description": "HL=7 shares 10/hr budget with HL=5-6.",
+      "description": "HL=7 shares 10/hr budget with HL=5-6, green zone < 5. Accept 4th packet.",
       "hop_limit": 7,
       "sender_iid": "0011223344556677",
-      "count_in_window": 9,
+      "count_in_window": 3,
       "expected": {
         "action": "relay",
         "budget": 10,

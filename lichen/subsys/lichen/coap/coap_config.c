@@ -102,6 +102,13 @@ static bool put_tstr_kv(zcbor_state_t *state, const char *key, const char *val)
 	       zcbor_tstr_put_term(state, val, 128);
 }
 
+static bool put_tstr_kv_len(zcbor_state_t *state, const char *key,
+			    const char *val, size_t len)
+{
+	return zcbor_tstr_put_term(state, key, 32) &&
+	       zcbor_tstr_encode_ptr(state, val, len);
+}
+
 static bool put_int_kv(zcbor_state_t *state, const char *key, int64_t val)
 {
 	return zcbor_tstr_put_term(state, key, 32) && zcbor_int64_put(state, val);
@@ -122,8 +129,14 @@ static const char *role_to_str(enum lichen_config_role role)
 	case LICHEN_CONFIG_ROLE_BORDER_ROUTER:
 		return ROLE_BORDER_ROUTER;
 	default:
-		return ROLE_LEAF;
+		return NULL;
 	}
+}
+
+static bool node_config_is_valid(const struct lichen_config_node *config)
+{
+	return strnlen(config->name, sizeof(config->name)) < sizeof(config->name) &&
+	       role_to_str(config->role) != NULL;
 }
 
 static bool str_to_role(const char *str, size_t len, enum lichen_config_role *role)
@@ -158,8 +171,17 @@ static const char *cr_to_str(enum lichen_config_coding_rate cr)
 	case LICHEN_CONFIG_CR_4_8:
 		return CR_4_8;
 	default:
-		return CR_4_5;
+		return NULL;
 	}
+}
+
+static bool radio_config_is_valid(const struct lichen_config_radio *config)
+{
+	return config->freq_khz > 0U && config->freq_khz <= 10000000UL &&
+	       config->bw_khz > 0U && config->bw_khz <= 5000U &&
+	       config->sf >= 7U && config->sf <= 12U &&
+	       cr_to_str(config->cr) != NULL && config->tx_power_dbm >= -20 &&
+	       config->tx_power_dbm <= 30;
 }
 
 static bool str_to_cr(const char *str, size_t len, enum lichen_config_coding_rate *cr)
@@ -204,7 +226,17 @@ static int eui64_to_hex(const uint8_t eui64[8], char *buf, size_t buf_size)
 size_t lichen_config_encode_node_cbor(uint8_t *buf, size_t buf_size,
 				      const struct lichen_config_node *config)
 {
+	const char *role;
+	size_t name_len;
+
 	if (buf == NULL || config == NULL) {
+		return 0;
+	}
+
+	/* Provider-owned snapshots are fixed-size fields, not trusted C strings. */
+	name_len = strnlen(config->name, sizeof(config->name));
+	role = role_to_str(config->role);
+	if (!node_config_is_valid(config)) {
 		return 0;
 	}
 
@@ -215,12 +247,12 @@ size_t lichen_config_encode_node_cbor(uint8_t *buf, size_t buf_size,
 	}
 
 	/* "name": "..." */
-	if (!put_tstr_kv(state, KEY_NAME, config->name)) {
+	if (!put_tstr_kv_len(state, KEY_NAME, config->name, name_len)) {
 		return 0;
 	}
 
 	/* "role": "..." */
-	if (!put_tstr_kv(state, KEY_ROLE, role_to_str(config->role))) {
+	if (!put_tstr_kv(state, KEY_ROLE, role)) {
 		return 0;
 	}
 
@@ -245,9 +277,20 @@ size_t lichen_config_encode_node_cbor(uint8_t *buf, size_t buf_size,
 int lichen_config_decode_node_cbor(const uint8_t *buf, size_t len,
 				   struct lichen_config_node *config)
 {
+	struct lichen_config_node candidate;
+	bool seen_name = false;
+	bool seen_role = false;
+
 	if (buf == NULL || len == 0 || config == NULL) {
 		return -EINVAL;
 	}
+	if (!node_config_is_valid(config)) {
+		return -EINVAL;
+	}
+
+	/* Decode into a candidate so malformed later fields cannot partially
+	 * mutate the caller's current configuration snapshot. */
+	candidate = *config;
 
 	ZCBOR_STATE_D(state, 2, buf, len, 1, 0);
 
@@ -259,60 +302,68 @@ int lichen_config_decode_node_cbor(const uint8_t *buf, size_t len,
 		struct zcbor_string key;
 
 		if (!zcbor_tstr_decode(state, &key)) {
-			(void)zcbor_list_map_end_force_decode(state);
-			return -EINVAL;
+			goto invalid;
 		}
 
 		if (key.len == sizeof(KEY_NAME) - 1 &&
 		    memcmp(key.value, KEY_NAME, key.len) == 0) {
 			struct zcbor_string val;
 
-			if (!zcbor_tstr_decode(state, &val) ||
+			if (seen_name || !zcbor_tstr_decode(state, &val) ||
 			    val.len >= LICHEN_CONFIG_NAME_MAX_LEN) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+				goto invalid;
 			}
-			memcpy(config->name, val.value, val.len);
-			config->name[val.len] = '\0';
+			seen_name = true;
+			memcpy(candidate.name, val.value, val.len);
+			candidate.name[val.len] = '\0';
 		} else if (key.len == sizeof(KEY_ROLE) - 1 &&
 			   memcmp(key.value, KEY_ROLE, key.len) == 0) {
 			struct zcbor_string val;
 
-			if (!zcbor_tstr_decode(state, &val) ||
+			if (seen_role || !zcbor_tstr_decode(state, &val) ||
 			    !str_to_role((const char *)val.value, val.len,
-					 &config->role)) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+					 &candidate.role)) {
+				goto invalid;
 			}
+			seen_role = true;
 		} else {
-			/* Skip unknown keys */
-			if (!zcbor_any_skip(state, NULL)) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
-			}
+			/* The embedded schema is closed: accepting a typo or a read-only
+			 * link would otherwise report success without applying it. */
+			goto invalid;
 		}
 	}
 
-	if (!zcbor_map_end_decode(state)) {
+	if (!zcbor_map_end_decode(state) || state->payload != state->payload_end) {
 		return -EINVAL;
 	}
 
+	*config = candidate;
 	return 0;
+
+invalid:
+	(void)zcbor_list_map_end_force_decode(state);
+	return -EINVAL;
 }
 
 /* Encode radio configuration */
 size_t lichen_config_encode_radio_cbor(uint8_t *buf, size_t buf_size,
 				       const struct lichen_config_radio *config)
 {
-	if (buf == NULL || config == NULL) {
+	const char *cr;
+
+	if (buf == NULL || config == NULL || !radio_config_is_valid(config)) {
 		return 0;
 	}
-
-	ZCBOR_STATE_E(state, 1, buf, buf_size, 0);
-
-	if (!zcbor_map_start_encode(state, 6)) {
+	if (buf_size < 1U) {
 		return 0;
 	}
+	cr = cr_to_str(config->cr);
+
+	/* The shared LCI vector fixes a six-entry definite-length map (0xa6).
+	 * zcbor otherwise emits an indefinite map unless its entire library is
+	 * built in canonical mode, so encode the fixed header explicitly. */
+	buf[0] = 0xa6U;
+	ZCBOR_STATE_E(state, 1, buf + 1, buf_size - 1U, 0);
 
 	/* "freq_mhz": as float (freq_khz / 1000.0) */
 	double freq_mhz = (double)config->freq_khz / 1000.0;
@@ -332,7 +383,7 @@ size_t lichen_config_encode_radio_cbor(uint8_t *buf, size_t buf_size,
 	}
 
 	/* "cr": string */
-	if (!put_tstr_kv(state, KEY_CR, cr_to_str(config->cr))) {
+	if (!put_tstr_kv(state, KEY_CR, cr)) {
 		return 0;
 	}
 
@@ -351,10 +402,6 @@ size_t lichen_config_encode_radio_cbor(uint8_t *buf, size_t buf_size,
 		return 0;
 	}
 
-	if (!zcbor_map_end_encode(state, 6)) {
-		return 0;
-	}
-
 	return (size_t)(state->payload - buf);
 }
 
@@ -362,11 +409,25 @@ size_t lichen_config_encode_radio_cbor(uint8_t *buf, size_t buf_size,
 int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 				    struct lichen_config_radio *config)
 {
+	struct lichen_config_radio candidate;
+	bool seen_freq = false;
+	bool seen_bw = false;
+	bool seen_sf = false;
+	bool seen_cr = false;
+	bool seen_tx_power = false;
+	bool seen_sync_word = false;
+	bool seen_any = false;
+
 	if (buf == NULL || len == 0 || config == NULL) {
 		return -EINVAL;
 	}
+	if (!radio_config_is_valid(config)) {
+		return -EINVAL;
+	}
+	candidate = *config;
 
 	ZCBOR_STATE_D(state, 2, buf, len, 1, 0);
+	state->constant_state->enforce_canonical = true;
 
 	if (!zcbor_map_start_decode(state)) {
 		return -EINVAL;
@@ -376,65 +437,63 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 		struct zcbor_string key;
 
 		if (!zcbor_tstr_decode(state, &key)) {
-			(void)zcbor_list_map_end_force_decode(state);
-			return -EINVAL;
+			goto invalid;
 		}
 
 		if (key.len == sizeof(KEY_FREQ_MHZ) - 1 &&
 		    memcmp(key.value, KEY_FREQ_MHZ, key.len) == 0) {
 			double val;
-			if (!zcbor_float64_decode(state, &val) || val <= 0.0 || val > 10000.0) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+			if (seen_freq || !zcbor_float64_decode(state, &val) ||
+			    val != val || val <= 0.0 || val > 10000.0) {
+				goto invalid;
 			}
 			uint32_t freq_khz = (uint32_t)(val * 1000.0 + 0.5);
 			if (freq_khz == 0 || freq_khz > 10000000UL) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+				goto invalid;
 			}
-			config->freq_khz = freq_khz;
+			seen_freq = true;
+			candidate.freq_khz = freq_khz;
 		} else if (key.len == sizeof(KEY_BW_KHZ) - 1 &&
 			   memcmp(key.value, KEY_BW_KHZ, key.len) == 0) {
 			uint32_t val;
-			if (!zcbor_uint32_decode(state, &val) ||
+			if (seen_bw || !zcbor_uint32_decode(state, &val) ||
 			    val == 0 || val > 5000) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+				goto invalid;
 			}
-			config->bw_khz = (uint16_t)val;
+			seen_bw = true;
+			candidate.bw_khz = (uint16_t)val;
 		} else if (key.len == sizeof(KEY_SF) - 1 &&
 			   memcmp(key.value, KEY_SF, key.len) == 0) {
 			uint32_t val;
-			if (!zcbor_uint32_decode(state, &val) ||
-			    val < 6 || val > 12) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+			if (seen_sf || !zcbor_uint32_decode(state, &val) ||
+			    val < 7 || val > 12) {
+				goto invalid;
 			}
-			config->sf = (uint8_t)val;
+			seen_sf = true;
+			candidate.sf = (uint8_t)val;
 		} else if (key.len == sizeof(KEY_CR) - 1 &&
 			   memcmp(key.value, KEY_CR, key.len) == 0) {
 			struct zcbor_string val;
-			if (!zcbor_tstr_decode(state, &val) ||
+			if (seen_cr || !zcbor_tstr_decode(state, &val) ||
 			    !str_to_cr((const char *)val.value, val.len,
-				       &config->cr)) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+				       &candidate.cr)) {
+				goto invalid;
 			}
+			seen_cr = true;
 		} else if (key.len == sizeof(KEY_TX_POWER_DBM) - 1 &&
 			   memcmp(key.value, KEY_TX_POWER_DBM, key.len) == 0) {
 			int32_t val;
-			if (!zcbor_int32_decode(state, &val) ||
+			if (seen_tx_power || !zcbor_int32_decode(state, &val) ||
 			    val < -20 || val > 30) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+				goto invalid;
 			}
-			config->tx_power_dbm = (int8_t)val;
+			seen_tx_power = true;
+			candidate.tx_power_dbm = (int8_t)val;
 		} else if (key.len == sizeof(KEY_SYNC_WORD) - 1 &&
 			   memcmp(key.value, KEY_SYNC_WORD, key.len) == 0) {
 			struct zcbor_string val;
-			if (!zcbor_tstr_decode(state, &val)) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+			if (seen_sync_word || !zcbor_tstr_decode(state, &val)) {
+				goto invalid;
 			}
 			/* Parse "0x34" format - max 4 hex digits for uint16_t.
 			 * Bound val.len <= 6 prevents UB on maliciously long strings.
@@ -453,151 +512,190 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
 					} else if (c >= 'A' && c <= 'F') {
 						v |= (unsigned long)(c - 'A' + 10);
 					} else {
-						(void)zcbor_list_map_end_force_decode(state);
-						return -EINVAL;
+						goto invalid;
 					}
 				}
-				config->sync_word = (uint16_t)(v & 0xFFFF);
+				seen_sync_word = true;
+				candidate.sync_word = (uint16_t)v;
 			} else {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
+				goto invalid;
 			}
 		} else {
-			/* Skip unknown keys */
-			if (!zcbor_any_skip(state, NULL)) {
-				(void)zcbor_list_map_end_force_decode(state);
-				return -EINVAL;
-			}
+			goto invalid;
 		}
+		seen_any = true;
 	}
 
-	if (!zcbor_map_end_decode(state)) {
+	if (!seen_any || !zcbor_map_end_decode(state) ||
+	    state->payload != state->payload_end ||
+	    !radio_config_is_valid(&candidate)) {
 		return -EINVAL;
 	}
 
+	*config = candidate;
 	return 0;
+
+invalid:
+	(void)zcbor_list_map_end_force_decode(state);
+	return -EINVAL;
 }
 
-static const char base64_table[] =
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-static size_t base64_encode(const uint8_t *src, size_t src_len,
-			    char *dst, size_t dst_size)
+static size_t hex_encode(const uint8_t *src, size_t src_len,
+			 char *dst, size_t dst_size)
 {
-	size_t needed = ((src_len + 2) / 3) * 4 + 1;
+	static const char hex[] = "0123456789abcdef";
+	size_t needed = src_len * 2U + 1U;
+
 	if (dst_size < needed) {
 		return 0;
 	}
 
-	size_t j = 0;
-	for (size_t i = 0; i < src_len; i += 3) {
-		uint32_t n = (uint32_t)src[i] << 16;
-		if (i + 1 < src_len) {
-			n |= (uint32_t)src[i + 1] << 8;
-		}
-		if (i + 2 < src_len) {
-			n |= (uint32_t)src[i + 2];
-		}
-
-		dst[j++] = base64_table[(n >> 18) & 0x3F];
-		dst[j++] = base64_table[(n >> 12) & 0x3F];
-		dst[j++] = (char)((i + 1 < src_len) ? base64_table[(n >> 6) & 0x3F] : '=');
-		dst[j++] = (char)((i + 2 < src_len) ? base64_table[n & 0x3F] : '=');
+	for (size_t i = 0U; i < src_len; i++) {
+		dst[i * 2U] = hex[src[i] >> 4];
+		dst[i * 2U + 1U] = hex[src[i] & 0x0fU];
 	}
-	dst[j] = '\0';
-	return j;
+	dst[src_len * 2U] = '\0';
+	return src_len * 2U;
+}
+
+static int base64_value(char c)
+{
+	if (c >= 'A' && c <= 'Z') {
+		return c - 'A';
+	}
+	if (c >= 'a' && c <= 'z') {
+		return c - 'a' + 26;
+	}
+	if (c >= '0' && c <= '9') {
+		return c - '0' + 52;
+	}
+	if (c == '+') {
+		return 62;
+	}
+	if (c == '/') {
+		return 63;
+	}
+	return -EINVAL;
+}
+
+static bool identity_short_fingerprint(const uint8_t pubkey[32], char out[24])
+{
+	char full[LICHEN_KEY_FINGERPRINT_STR_LEN];
+	uint8_t prefix[9];
+	int full_len;
+
+	full_len = lichen_key_pubkey_fingerprint(pubkey, full, sizeof(full));
+	if (full_len != (int)(sizeof("SHA256:") - 1U + 44U) ||
+	    memcmp(full, "SHA256:", sizeof("SHA256:") - 1U) != 0 ||
+	    full[full_len] != '\0' || full[full_len - 1] != '=') {
+		return false;
+	}
+
+	/* The key helper exposes the complete SHA-256 digest as base64. Decode
+	 * only the first three quanta: the LCI display fingerprint is the first
+	 * eight digest bytes rendered as sixteen lowercase hex digits. */
+	for (size_t i = 0U; i < 3U; i++) {
+		const char *src = &full[sizeof("SHA256:") - 1U + i * 4U];
+		int a = base64_value(src[0]);
+		int b = base64_value(src[1]);
+		int c = base64_value(src[2]);
+		int d = base64_value(src[3]);
+
+		if (a < 0 || b < 0 || c < 0 || d < 0) {
+			return false;
+		}
+		prefix[i * 3U] = (uint8_t)((a << 2) | (b >> 4));
+		prefix[i * 3U + 1U] = (uint8_t)((b << 4) | (c >> 2));
+		prefix[i * 3U + 2U] = (uint8_t)((c << 6) | d);
+	}
+
+	memcpy(out, "SHA256:", sizeof("SHA256:") - 1U);
+	return hex_encode(prefix, 8U, out + sizeof("SHA256:") - 1U,
+			 24U - (sizeof("SHA256:") - 1U)) == 16U;
+}
+
+static bool identity_strings_are_bounded(
+	const struct lichen_config_identity *identity)
+{
+	return strnlen(identity->link_local, sizeof(identity->link_local)) <
+		       sizeof(identity->link_local) &&
+	       strnlen(identity->primary, sizeof(identity->primary)) <
+		       sizeof(identity->primary) &&
+	       strnlen(identity->gua, sizeof(identity->gua)) < sizeof(identity->gua);
 }
 
 /* Encode identity information */
 size_t lichen_config_encode_identity_cbor(uint8_t *buf, size_t buf_size,
 					  const struct lichen_config_identity *identity)
 {
-	if (buf == NULL || identity == NULL) {
+	bool have_addrs;
+	uint8_t field_count;
+
+	if (buf == NULL || identity == NULL || buf_size < 1U ||
+	    !identity_strings_are_bounded(identity)) {
 		return 0;
 	}
+	have_addrs = identity->link_local[0] != '\0' ||
+		     identity->primary[0] != '\0' || identity->gua[0] != '\0';
+	field_count = (identity->eui64_valid ? 1U : 0U) +
+		      (identity->pubkey_valid ? 2U : 0U) +
+		      (have_addrs ? 1U : 0U);
 
-	ZCBOR_STATE_E(state, 2, buf, buf_size, 0);
+	/* All identity fields are public material. The fixed definite map keeps
+	 * wire output deterministic and cannot grow to include private fields. */
+	buf[0] = 0xa0U | field_count;
+	ZCBOR_STATE_E(state, 2, buf + 1, buf_size - 1U, 0);
 
-	if (!zcbor_map_start_encode(state, 4)) {
-		return 0;
+	if (identity->eui64_valid) {
+		char eui_buf[20];
+
+		if (eui64_to_hex(identity->eui64, eui_buf, sizeof(eui_buf)) < 0 ||
+		    !put_tstr_kv(state, KEY_EUI64, eui_buf)) {
+			return 0;
+		}
 	}
 
-	/* "eui64": "0x..." */
-	char eui_buf[20];
-	if (eui64_to_hex(identity->eui64, eui_buf, sizeof(eui_buf)) < 0) {
-		return 0;
-	}
-	if (!put_tstr_kv(state, KEY_EUI64, eui_buf)) {
-		return 0;
-	}
-
-	/* "pubkey": base64 string or null */
 	if (identity->pubkey_valid) {
-		char pk_buf[48];
-		if (base64_encode(identity->pubkey, 32, pk_buf, sizeof(pk_buf)) == 0) {
+		char pk_buf[65];
+		char fp_buf[24];
+
+		if (hex_encode(identity->pubkey, sizeof(identity->pubkey), pk_buf,
+			       sizeof(pk_buf)) == 0 ||
+		    !identity_short_fingerprint(identity->pubkey, fp_buf)) {
 			return 0;
 		}
 		if (!put_tstr_kv(state, KEY_PUBKEY, pk_buf)) {
 			return 0;
 		}
-
-		char fp_buf[LICHEN_KEY_FINGERPRINT_STR_LEN];
-		if (lichen_key_pubkey_fingerprint(identity->pubkey, fp_buf, sizeof(fp_buf)) < 0) {
-			return 0;
-		}
-		if (!put_tstr_kv(state, KEY_PUBKEY_FINGERPRINT, fp_buf)) {
-			return 0;
-		}
-	} else {
-		if (!zcbor_tstr_put_lit(state, KEY_PUBKEY) ||
-		    !zcbor_nil_put(state, NULL)) {
-			return 0;
-		}
-		if (!zcbor_tstr_put_lit(state, KEY_PUBKEY_FINGERPRINT) ||
-		    !zcbor_nil_put(state, NULL)) {
+		if (!put_tstr_kv_len(state, KEY_PUBKEY_FINGERPRINT, fp_buf,
+				     sizeof(fp_buf) - 1U)) {
 			return 0;
 		}
 	}
 
+	if (have_addrs) {
+		uint8_t addr_count = (identity->link_local[0] != '\0' ? 1U : 0U) +
+				     (identity->primary[0] != '\0' ? 1U : 0U) +
+				     (identity->gua[0] != '\0' ? 1U : 0U);
 
-	/* "addrs": { "link_local": "...", "primary": "...", "gua": null } */
-	if (!zcbor_tstr_put_lit(state, KEY_ADDRS) ||
-	    !zcbor_map_start_encode(state, 3)) {
-		return 0;
-	}
-
-	if (!put_tstr_kv(state, KEY_LINK_LOCAL, identity->link_local)) {
-		return 0;
-	}
-
-	if (identity->primary[0] != '\0') {
-		if (!put_tstr_kv(state, KEY_PRIMARY, identity->primary)) {
+		if (!zcbor_tstr_put_lit(state, KEY_ADDRS) ||
+		    state->payload >= state->payload_end) {
 			return 0;
 		}
-	} else {
-		if (!zcbor_tstr_put_lit(state, KEY_PRIMARY) ||
-		    !zcbor_nil_put(state, NULL)) {
+		*state->payload_mut++ = 0xa0U | addr_count;
+
+		if (identity->link_local[0] != '\0' &&
+		    !put_tstr_kv(state, KEY_LINK_LOCAL, identity->link_local)) {
 			return 0;
 		}
-	}
-
-	if (identity->gua[0] != '\0') {
-		if (!put_tstr_kv(state, KEY_GUA, identity->gua)) {
+		if (identity->primary[0] != '\0' &&
+		    !put_tstr_kv(state, KEY_PRIMARY, identity->primary)) {
 			return 0;
 		}
-	} else {
-		if (!zcbor_tstr_put_lit(state, KEY_GUA) ||
-		    !zcbor_nil_put(state, NULL)) {
+		if (identity->gua[0] != '\0' &&
+		    !put_tstr_kv(state, KEY_GUA, identity->gua)) {
 			return 0;
 		}
-	}
-
-	if (!zcbor_map_end_encode(state, 3)) {
-		return 0;
-	}
-
-	if (!zcbor_map_end_encode(state, 4)) {
-		return 0;
 	}
 
 	return (size_t)(state->payload - buf);
@@ -683,6 +781,13 @@ static int config_put(struct coap_resource *resource,
 						    COAP_RESPONSE_CODE_INTERNAL_ERROR,
 						    0, NULL, 0);
 	}
+	if (!node_config_is_valid(&node_cfg)) {
+		LOG_ERR("node_get returned invalid configuration");
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_INTERNAL_ERROR,
+						    0, NULL, 0);
+	}
 
 	/* Decode update (merges with current values) */
 	ret = lichen_config_decode_node_cbor(oscore.payload, oscore.payload_len,
@@ -698,10 +803,21 @@ static int config_put(struct coap_resource *resource,
 	/* Apply update */
 	ret = p->node_set(&node_cfg);
 	if (ret < 0) {
-		LOG_WRN("Config validation failed: %d", ret);
+		uint8_t response_code;
+
+		if (ret == -EINVAL || ret == -ERANGE) {
+			response_code = COAP_RESPONSE_CODE_BAD_REQUEST;
+		} else if (ret == -EACCES || ret == -EPERM) {
+			response_code = COAP_RESPONSE_CODE_FORBIDDEN;
+		} else {
+			/* Persistence, storage-capacity, and other provider failures are
+			 * server errors, not malformed client requests. */
+			response_code = COAP_RESPONSE_CODE_INTERNAL_ERROR;
+		}
+		LOG_WRN("Config update failed: %d", ret);
 		return coap_oscore_respond_resource(resource, request, addr,
 						    addr_len, &oscore,
-						    COAP_RESPONSE_CODE_BAD_REQUEST,
+						    response_code,
 						    0, NULL, 0);
 	}
 
@@ -789,6 +905,13 @@ static int config_radio_put(struct coap_resource *resource,
 						    COAP_RESPONSE_CODE_INTERNAL_ERROR,
 						    0, NULL, 0);
 	}
+	if (!radio_config_is_valid(&radio_cfg)) {
+		LOG_ERR("radio_get returned invalid configuration");
+		return coap_oscore_respond_resource(resource, request, addr,
+						    addr_len, &oscore,
+						    COAP_RESPONSE_CODE_INTERNAL_ERROR,
+						    0, NULL, 0);
+	}
 
 	/* Decode update */
 	ret = lichen_config_decode_radio_cbor(oscore.payload, oscore.payload_len,
@@ -804,10 +927,19 @@ static int config_radio_put(struct coap_resource *resource,
 	/* Apply update */
 	ret = p->radio_set(&radio_cfg);
 	if (ret < 0) {
-		LOG_WRN("Radio config validation failed: %d", ret);
+		uint8_t response_code;
+
+		if (ret == -EINVAL || ret == -ERANGE) {
+			response_code = COAP_RESPONSE_CODE_BAD_REQUEST;
+		} else if (ret == -EACCES || ret == -EPERM) {
+			response_code = COAP_RESPONSE_CODE_FORBIDDEN;
+		} else {
+			response_code = COAP_RESPONSE_CODE_INTERNAL_ERROR;
+		}
+		LOG_WRN("Radio config update failed: %d", ret);
 		return coap_oscore_respond_resource(resource, request, addr,
 						    addr_len, &oscore,
-						    COAP_RESPONSE_CODE_BAD_REQUEST,
+						    response_code,
 						    0, NULL, 0);
 	}
 

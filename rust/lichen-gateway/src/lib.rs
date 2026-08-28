@@ -17,6 +17,7 @@ pub mod time_status;
 pub mod trust;
 #[cfg(target_os = "linux")]
 pub mod tun;
+pub mod tunnel_auth;
 
 pub use aprs_is::{aprs_to_cot, cot_to_aprs, AprsIsClient, CompactCot};
 pub use gateway::{Gateway, GatewayIngress, GatewayOpenError, GatewayPersistence};

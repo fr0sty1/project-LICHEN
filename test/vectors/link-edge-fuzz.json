@@ -1,7 +1,8 @@
 {
   "$schema": "./schema.json",
   "format_version": 2,
-  "description": "LICHEN link-layer edge/fuzz vectors for hardening (spec 4.x). Covers malformed LLSec, truncated signatures, length mismatches, SI parity, and fuzz malformed frames. Independent oracle from spec byte layout, not from code under test.",
+  "description": "LICHEN link-layer edge/fuzz vectors for hardening (spec 4.1-4.2). Covers malformed LLSec, truncated signatures, length mismatches, SI parity, E-bit rejection, and fuzz malformed frames. Independent oracle from spec byte layout, not from code under test.",
+  "spec": "spec/02-physical-link.md sections 4.1 and 4.2",
   "vectors": [
     {
       "name": "edge_reserved_mic_5",
@@ -253,8 +254,8 @@
       "encoded": "fe00010001aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
-      "name": "edge_encrypted_unsigned_parse_ok",
-      "description": "Encrypted without signature parses but link_layer must reject",
+      "name": "edge_encrypted_unsigned_rejected",
+      "description": "Encrypted without signature MUST be rejected at parse (spec 4.2 E bit)",
       "fields": {
         "epoch": 1,
         "seqnum": 2,
@@ -268,7 +269,10 @@
         "signer_eui64": "",
         "signer_eui64_present": false
       },
-      "encoded": "0740010002616263"
+      "encoded": "0740010002616263",
+      "expect": {
+        "error": "encryption_unsupported"
+      }
     },
     {
       "name": "edge_signer_eui64_truncated",
@@ -348,7 +352,7 @@
       },
       "encoded": "ffff00",
       "expect": {
-        "error": "length_mismatch"
+        "error": "frame_too_large"
       }
     }
   ]

@@ -3,15 +3,15 @@
   "format_version": 1,
   "name": "channel_plan_selection",
   "description": "CCP-12 channel-plan boundary vectors: CH0-only, one data channel, the first modulo domain, ordinary plans, density fallback, and u32 epoch truncation.",
-  "formula": "density > 8 or n_channels == 1 ? 0 : n_channels == 2 ? 1 : 1 + fnv1a32(eui64 || epoch_u32_le) % n_channels",
+  "formula": "density > 8 or n_channels <= 1 ? 0 : 1 + fnv1a32(eui64 || epoch_u32_le) % (n_channels - 1)",
   "cases": [
     {"name": "one_channel_is_ch0_only", "eui64_hex": "0011223344556677", "epoch": 0, "density": 0, "n_channels": 1, "hash_32": 2271500941, "expected_channel": 0},
     {"name": "two_channels_always_select_only_data_channel", "eui64_hex": "0011223344556677", "epoch": 0, "density": 0, "n_channels": 2, "hash_32": 2271500941, "expected_channel": 1},
     {"name": "three_channels_first_real_modulo", "eui64_hex": "0011223344556677", "epoch": 0, "density": 0, "n_channels": 3, "hash_32": 2271500941, "expected_channel": 2},
     {"name": "four_channels_stays_in_bounds", "eui64_hex": "0011223344556677", "epoch": 0, "density": 0, "n_channels": 4, "hash_32": 2271500941, "expected_channel": 2},
-    {"name": "eight_channels_preserves_normative_domain", "eui64_hex": "0011223344556677", "epoch": 0, "density": 0, "n_channels": 8, "hash_32": 2271500941, "expected_channel": 6},
-    {"name": "epoch_truncates_to_u32", "eui64_hex": "0102030405060708", "epoch": 4294967296, "density": 0, "n_channels": 3, "hash_32": 2583860061, "expected_channel": 1},
-    {"name": "maximum_u32_epoch_large_plan", "eui64_hex": "ffffffffffffffff", "epoch": 4294967295, "density": 8, "n_channels": 64, "hash_32": 4020062665, "expected_channel": 10},
+    {"name": "eight_channels_preserves_normative_domain", "eui64_hex": "0011223344556677", "epoch": 0, "density": 0, "n_channels": 8, "hash_32": 2271500941, "expected_channel": 4},
+    {"name": "epoch_truncates_to_u32", "eui64_hex": "0102030405060708", "epoch": 4294967296, "density": 0, "n_channels": 3, "hash_32": 2583860061, "expected_channel": 2},
+    {"name": "maximum_u32_epoch_large_plan", "eui64_hex": "ffffffffffffffff", "epoch": 4294967295, "density": 8, "n_channels": 64, "hash_32": 4020062665, "expected_channel": 32},
     {"name": "high_density_forces_ch0", "eui64_hex": "0011223344556677", "epoch": 42, "density": 9, "n_channels": 8, "hash_32": 2698182151, "expected_channel": 0}
   ],
   "invalid_counts": [0, -1, -2147483648]

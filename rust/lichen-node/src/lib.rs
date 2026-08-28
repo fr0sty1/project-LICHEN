@@ -92,7 +92,10 @@ pub use rpl_stack::{RplReceiveOutcome, RplStack};
 // SECURITY: SecureStack is the primary export for CoAP traffic per spec section 8.7.
 // Use Stack (PlaintextStack) only for ICMPv6, diagnostics, or testing.
 #[cfg(feature = "std")]
-pub use secure::{SecureError, SecureStack};
+pub use secure::{
+    SecureError, SecureObserveCorrelation, SecureObserveRegistration, SecureObserveResponse,
+    SecureStack,
+};
 #[cfg(feature = "std")]
 pub use stack::{Priority, ReceivedIpv6, RxError, Stack, TxError};
 /// Type alias for `Stack` — use only for ICMPv6, diagnostics, or testing.

@@ -73,6 +73,17 @@ config SLIP_TRANSPORT_AUTO_INIT
 	  Automatically initialize the SLIP transport at boot.
 	  If disabled, call slip_transport_init() explicitly.
 
+config SLIP_TRANSPORT_USB_CDC_ACM
+	bool "Bind SLIP to USB CDC-ACM"
+	depends on USB_DEVICE_STACK
+	depends on UART_LINE_CTRL
+	help
+	  Enable USB device-stack bring-up and CDC-ACM connection handling for
+	  the UART selected by chosen lichen,slip-uart. Initialization does not
+	  wait for a host, but transmission is rejected until the host asserts
+	  DTR so a disconnected CDC endpoint cannot block the networking thread.
+	  DTR transitions reset partial RX framing state before a new session.
+
 endif # LICHEN_SLIP_TRANSPORT
 
 # ─── BLE Transport (17.3.2) ─────────────────────────────────────────────────
@@ -110,12 +121,13 @@ config LICHEN_BLE_SLIP
 
 config LICHEN_BLE_IPSP
 	bool "6LoWPAN over BLE IPSP (Option B)"
-	depends on NET_L2_BT
+	depends on NET_IPV6
+	select BT_L2CAP_DYNAMIC_CHANNEL
 	help
 	  Enable RFC 7668 6LoWPAN over BLE with Internet Protocol Support
 	  Profile (IPSP). This is the OPTIONAL standard-compliant transport.
 
-	  Requires Zephyr's BT L2 networking stack and provides:
+	  Uses Zephyr's LE credit-based L2CAP API and provides:
 	  - Standard IPSP profile
 	  - L2CAP connection-oriented channels
 	  - 6LoWPAN IPHC header compression

@@ -327,14 +327,35 @@ class SecureDatagramChannel(DatagramChannel):
             logger.warning("RST rate limit exceeded for %s, dropping", peer_key)
             return False
         # SECURITY: Limit tracking entries to prevent memory exhaustion from
-        # attackers forging RSTs from many source addresses
+        # attackers forging RSTs from many source addresses. Eviction uses
+        # staleness-based LRU to prevent attackers from evicting legitimate
+        # peers by flooding with spoofed source addresses.
         if (
             peer_key not in self._rst_rate_tracking
             and len(self._rst_rate_tracking) >= self._MAX_RST_PEERS
         ):
-            # Evict oldest entry (first key in insertion order)
-            oldest_key = next(iter(self._rst_rate_tracking))
-            self._rst_rate_tracking.pop(oldest_key, None)
+            # First pass: look for fully stale entries (all timestamps expired)
+            stale_key = None
+            lru_key = None
+            lru_max_ts = float("inf")
+            for candidate_key, candidate_ts in self._rst_rate_tracking.items():
+                if not candidate_ts:
+                    # Empty list is fully stale
+                    stale_key = candidate_key
+                    break
+                max_ts = max(candidate_ts)
+                if max_ts <= window_start:
+                    # All timestamps expired - fully stale
+                    stale_key = candidate_key
+                    break
+                # Track LRU by most recent timestamp
+                if max_ts < lru_max_ts:
+                    lru_max_ts = max_ts
+                    lru_key = candidate_key
+            # Prefer stale entries; fall back to LRU if none are stale
+            evict_key = stale_key if stale_key is not None else lru_key
+            if evict_key is not None:
+                self._rst_rate_tracking.pop(evict_key, None)
         timestamps.append(now)
         self._rst_rate_tracking[peer_key] = timestamps
         # Track global RST count
@@ -979,13 +1000,13 @@ class SecureDatagramChannel(DatagramChannel):
                 if unprotected_msg.remote is None:
                     unprotected_msg.remote = msg.remote
                 unprotected_msg.token = msg.token
-                # aiocoap encode() requires direction == OUTGOING. This is
-                # semantically INCOMING but the Message object with direction
-                # is never returned to callers — we return bytes (encoded).
-                # The direction leak is contained within this method.
+                # aiocoap encode() requires direction == OUTGOING for encoding.
+                # We temporarily set it, encode, then restore the semantically
+                # correct INCOMING direction since the message object is
+                # returned in _UnprotectedDatagram for lifecycle checks.
                 unprotected_msg.direction = Direction.OUTGOING
-
                 encoded = cast(bytes, unprotected_msg.encode())
+                unprotected_msg.direction = Direction.INCOMING
                 added_correlation = None
                 if not msg.code.is_response() and new_request_id is not None:
                     # SECURITY: Limit inbound requests per peer to prevent memory exhaustion
@@ -1059,6 +1080,11 @@ class SecureDatagramChannel(DatagramChannel):
                     admission_key,
                     self._active_peer_contexts.get(admission_key),
                     operation,
+                )
+                logger.warning(
+                    "message admitted for %s but sent to %s; dropping",
+                    admission_key,
+                    key,
                 )
                 return
         else:
@@ -1197,11 +1223,34 @@ class SecureDatagramChannel(DatagramChannel):
                 evicted = True
                 break
             if not evicted:
-                # All entries have active state; evict oldest anyway
-                oldest_key = next(iter(self._protected_cons))
-                oldest = self._protected_cons.pop(oldest_key)
-                if oldest.correlation is not None:
-                    oldest.correlation.con_mids.discard(oldest_key[1])
+                # All entries have active state; evict the one closest to
+                # exchange timeout to minimize sequence-number waste.
+                # Entries whose correlations will time out soonest are
+                # least likely to need their cached protected bytes.
+                best_key = None
+                best_deadline: float | None = None
+                for candidate_key in self._protected_cons:
+                    candidate = self._protected_cons[candidate_key]
+                    deadline = (
+                        candidate.correlation.cancellation_deadline
+                        if candidate.correlation is not None
+                        else None
+                    )
+                    if best_key is None:
+                        # First candidate
+                        best_key = candidate_key
+                        best_deadline = deadline
+                    elif deadline is not None and (
+                        best_deadline is None or deadline < best_deadline
+                    ):
+                        # Prefer entry with earlier deadline (will time out soonest)
+                        best_key = candidate_key
+                        best_deadline = deadline
+                    # If both have no deadline, keep the first (oldest by insertion)
+                if best_key is not None:
+                    evicted_entry = self._protected_cons.pop(best_key)
+                    if evicted_entry.correlation is not None:
+                        evicted_entry.correlation.con_mids.discard(best_key[1])
         self._protected_cons[con_key] = _ProtectedCon(
             b"", message.token, locally_originated, correlation, data
         )

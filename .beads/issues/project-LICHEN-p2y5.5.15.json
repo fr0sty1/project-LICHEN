@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.5.15",
+  "title": "Add unit tests for backhaul interface and mock backends",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:49:17.812071Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:49:17.812071Z",
+  "labels": [
+    "core",
+    "gateway",
+    "testing",
+    "abstraction",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.5.15",
+      "depends_on_id": "project-LICHEN-p2y5.5",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:49:21.32732Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 from ipaddress import IPv6Address
 from pathlib import Path
 
@@ -107,3 +109,16 @@ def test_address_derivation_rejects_malformed_key_lengths(public_key: bytes) -> 
         _pubkey_to_iid(public_key)
     with pytest.raises(ValueError, match="pubkey must be 32 bytes"):
         yggdrasil_address(public_key)
+
+
+def test_committed_ipv6_address_vectors_match_stdlib_generator() -> None:
+    before = VECTORS_DIR.joinpath("ipv6-addresses.json").read_bytes()
+    result = subprocess.run(
+        [sys.executable, str(VECTORS_DIR / "generate_ipv6_addresses.py"), "--check"],
+        cwd=VECTORS_DIR.parent.parent,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert VECTORS_DIR.joinpath("ipv6-addresses.json").read_bytes() == before

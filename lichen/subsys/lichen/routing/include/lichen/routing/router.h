@@ -7,7 +7,7 @@
  *
  * The Router decides how to forward each packet based on destination address:
  * 1. Link-local (fe80::/10): Direct neighbor delivery
- * 2. Yggdrasil (02xx::/7 - primary address): Gradient lookup -> LOADng -> RPL fallback
+ * 2. Native identity (0200::/8): Gradient lookup -> LOADng -> RPL fallback
  * 3. External/other: Forward to border router/gateway
  *
  * Why separate Router from LOADng/RPL: Each protocol has its own state machine.
@@ -84,7 +84,7 @@ extern "C" {
  *
  * - LICHEN_ADDR_LINK_LOCAL: fe80::/10 — direct neighbor delivery.
  * - LICHEN_ADDR_MESH_LOCAL: configured mesh prefix — gradient/LOADng only.
- * - LICHEN_ADDR_YGGDRASIL: 02xx::/7 — local-mesh-first (gradient/LOADng),
+ * - LICHEN_ADDR_YGGDRASIL: 0200::/8 — local-mesh-first (gradient/LOADng),
  *   then falls through to external (Yggdrasil TUN via BR).
  * - LICHEN_ADDR_EXTERNAL: anything else — RPL upward to border router.
  */
@@ -102,7 +102,56 @@ enum lichen_route_decision {
 	LICHEN_ROUTE_FORWARD,      /**< Forward to next_hop now */
 	LICHEN_ROUTE_QUEUE,        /**< Queue pending LOADng discovery */
 	LICHEN_ROUTE_DROP,         /**< No route, cannot discover */
-	LICHEN_ROUTE_DELIVER_LOCAL /**< Packet is for this node */
+	LICHEN_ROUTE_DELIVER_LOCAL, /**< Packet is for this node */
+	/** Deliver locally and relay an IPv6 multicast packet. */
+	LICHEN_ROUTE_DELIVER_AND_FORWARD,
+	/** Packet was copied into the bounded DTN store. */
+	LICHEN_ROUTE_STORE_DTN
+};
+
+/** Path selected by lichen_router_route_packet(). */
+enum lichen_route_path {
+	LICHEN_ROUTE_PATH_NONE,
+	LICHEN_ROUTE_PATH_LOCAL,
+	LICHEN_ROUTE_PATH_DIRECT,
+	LICHEN_ROUTE_PATH_GRADIENT,
+	LICHEN_ROUTE_PATH_ANNOUNCE,
+	LICHEN_ROUTE_PATH_LOADNG,
+	LICHEN_ROUTE_PATH_RPL_UPWARD,
+	LICHEN_ROUTE_PATH_RPL_SOURCE_ROUTE,
+	LICHEN_ROUTE_PATH_GPSR,
+	LICHEN_ROUTE_PATH_MULTICAST,
+	LICHEN_ROUTE_PATH_DTN
+};
+
+/** Where a packet entered the dispatcher. */
+enum lichen_route_ingress {
+	LICHEN_ROUTE_INGRESS_LOCAL,
+	LICHEN_ROUTE_INGRESS_MESH,
+	LICHEN_ROUTE_INGRESS_BACKBONE
+};
+
+/**
+ * @brief Immutable packet and policy input to the IPv6 dispatcher.
+ *
+ * The dispatcher never modifies or retains @p data.  A QUEUE or STORE_DTN
+ * decision copies the complete packet into the router's bounded static store.
+ * Callers must serialize access to a router instance.
+ */
+struct lichen_route_packet {
+	const uint8_t *data;
+	size_t len;
+	enum lichen_route_ingress ingress;
+	/** Permit multicast to cross a backbone boundary (disabled by default). */
+	bool multicast_peering;
+	/** Optional authenticated destination coordinates for GPSR. */
+	bool destination_coords_valid;
+	int32_t destination_lat_e7;
+	int32_t destination_lon_e7;
+	/** Optional absolute expiry for DTN fallback; zero disables fallback. */
+	uint32_t dtn_expiry_unix;
+	/** Current Unix time, required when dtn_expiry_unix is non-zero. */
+	uint32_t now_unix;
 };
 
 /**
@@ -186,6 +235,22 @@ struct lichen_fwd_stats {
 struct lichen_route_result {
 	enum lichen_route_decision decision; /**< What to do */
 	uint8_t next_hop[16];                /**< Next hop IPv6 (if FORWARD) */
+};
+
+/** Complete, non-mutating packet dispatch outcome. */
+struct lichen_packet_route_result {
+	struct lichen_route_result route;
+	enum lichen_route_path path;
+	/** Hop Limit that the caller must write immediately before forwarding. */
+	uint8_t forward_hop_limit;
+	/** Terminal upper-layer Next Header after validated extension headers. */
+	uint8_t upper_next_header;
+	/** RFC 6554 header offset, or zero when no source-route advance is needed. */
+	size_t source_route_header_offset;
+	/** Selected RFC 6554 address offset to swap with the IPv6 Destination. */
+	size_t source_route_address_offset;
+	/** Segments Left value to publish after the source-route swap. */
+	uint8_t source_route_segments_left;
 };
 
 /**
@@ -330,6 +395,33 @@ int lichen_router_route(struct lichen_router *router,
 			const uint8_t dst_iid[8],
 			uint32_t now_ms,
 			struct lichen_route_result *result);
+
+/**
+ * @brief Validate and dispatch one complete IPv6 packet.
+ *
+ * The fixed header and supported extension-header chain are validated before
+ * any router state is changed.  UDP and ICMPv6 are accepted upper layers;
+ * RFC 6554 type-3 source routes are validated and dispatched downward.  IPv6
+ * has no broadcast address, so broadcast delivery uses multicast and returns
+ * LICHEN_ROUTE_DELIVER_AND_FORWARD when both actions are required.
+ *
+ * The input packet and @p result are unchanged on error.  Forwarding is
+ * represented by the returned next hop and decremented Hop Limit.  For an RPL
+ * source route, the returned offsets identify the atomic destination/address
+ * swap and the returned Segments Left value.  The caller owns the actual
+ * packet mutation and queue hand-off.
+ *
+ * @param router Router instance (caller-synchronized).
+ * @param packet Immutable packet and ingress policy.
+ * @param now_ms Monotonic current time in milliseconds.
+ * @param result Output committed only after successful validation/dispatch.
+ * @return 0 for a routing decision, negative errno for malformed input or an
+ *         atomic queue/store failure.
+ */
+int lichen_router_route_packet(struct lichen_router *router,
+			       const struct lichen_route_packet *packet,
+			       uint32_t now_ms,
+			       struct lichen_packet_route_result *result);
 
 /**
  * @brief Queue a packet pending route discovery.

@@ -377,7 +377,7 @@ async def test_lci_client_defaults_interoperate_with_simulator_messages_resource
     messages = MessagesResource()
     site = build_site(StaticNodeInfo(status={"rank": 256}), messages_resource=messages)
     server = await create_lichen_context(network.channel("srv"), "srv", site=site)
-    context = await create_lichen_context(network.channel("cli"), "cli")
+    context = await create_lichen_context(network.channel("::1"), "::1")
     transport = RecordingResourceTransport(
         AiocoapResourceTransport(
             config=IpCoapConfig(base_uri="coap://srv"),
@@ -409,7 +409,7 @@ async def test_lci_client_can_use_legacy_messages_alias_explicitly() -> None:
     messages = MessagesResource()
     site = build_site(StaticNodeInfo(status={"rank": 256}), messages_resource=messages)
     server = await create_lichen_context(network.channel("srv"), "srv", site=site)
-    context = await create_lichen_context(network.channel("cli"), "cli")
+    context = await create_lichen_context(network.channel("::1"), "::1")
     transport = AiocoapResourceTransport(
         config=IpCoapConfig(base_uri="coap://srv"),
         context=context,

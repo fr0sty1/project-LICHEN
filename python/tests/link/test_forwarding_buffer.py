@@ -638,7 +638,7 @@ class TestOracleForwardingBuffer:
 
 
 # --- B.2.5 No Silent Drops: on_drop callback tests ---
-from lichen.link.forwarding_buffer import DropReason
+from lichen.link.forwarding_buffer import DropReason  # noqa: E402
 
 
 class TestNoSilentDrops:

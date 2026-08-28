@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+config LICHEN_COMPACT_COT_PLI
+	bool "Compact CoT PLI codec"
+	default n
+	help
+	  Enable the bounded, allocation-free Position Location Information
+	  encoder and decoder for Compact Cursor on Target datagrams on UDP port
+	  5681. The canonical wire format is exactly 17 bytes.
+
+config LICHEN_COMPACT_COT_CHAT
+	bool "Compact CoT chat codec"
+	default n
+	help
+	  Enable the bounded, allocation-free chat encoder and decoder for Compact
+	  Cursor on Target datagrams on UDP port 5681. Broadcast, team, and direct
+	  IPv6 destinations and messages of up to 255 UTF-8 bytes are supported.

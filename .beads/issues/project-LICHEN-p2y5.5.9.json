@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-p2y5.5.9",
+  "title": "Implement WiFi backend by refactoring existing gateway_backhaul_init",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:47:59.890503Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:47:59.890503Z",
+  "labels": [
+    "core",
+    "gateway",
+    "wifi",
+    "abstraction",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p2y5.5.9",
+      "depends_on_id": "project-LICHEN-p2y5.5",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:04.187068Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

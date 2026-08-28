@@ -1,0 +1,32 @@
+Run waves until bd ready is empty:
+
+1. Grab up to 5: ids=$(bd ready --json | jq -r '.[0:5] | .[].id')
+   - If empty, wait 30s and retry (other workers may release beads)
+
+2. Claim them: for id in $ids; do bd update "$id" --claim; done
+
+3. Fix all 5 in parallel (use subagents if available):
+   - Read bead: bd show $id
+   - Implement the fix
+   - Run relevant tests
+   - Success: bd close "$id"
+   - Too complex (>50 lines needed): decompose via bd create, then bd close "$id"
+   - Failed: bd update "$id" --unclaim
+
+4. After wave completes: batch codereview on files_modified
+   - Run 3-perspective review (correctness/security/edge)
+   - Findings -> bd create (new beads), NOT recursive agents
+
+5. COMMIT after each wave:
+   - git add -A .beads/
+   - git add <files you modified>
+   - git commit -m "chore(beads): wave N - closed X beads"
+   - Do NOT push (main repo will consolidate)
+
+6. Repeat until bd ready empty or 3 consecutive waves with no progress
+
+Rules:
+- Claim only what you're about to work on
+- If stuck on a bead for >5 minutes, unclaim and move on
+- Decompose rather than wrestle with complex beads
+- Other workers are running - don't hog all the beads

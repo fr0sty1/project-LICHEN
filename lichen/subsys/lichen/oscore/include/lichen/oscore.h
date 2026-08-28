@@ -210,7 +210,8 @@ typedef int (*oscore_nvm_read_cb)(const uint8_t *_Nullable eui64, uint64_t *_Non
  * P0 security requirement.
  *
  * Callers MUST treat as completely opaque and use ONLY the provided API:
- *   - oscore_ctx_create() / oscore_ctx_create_with_eui64()
+ *   - oscore_ctx_create() / oscore_ctx_create_with_id_context() /
+ *     oscore_ctx_create_with_eui64()
  *   - oscore_ctx_free()
  *   - oscore_ctx_get() / oscore_ctx_get_by_eui64()
  *   - oscore_ctx_set_peer_eui64()
@@ -298,6 +299,37 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 		      const uint8_t *_Nonnull sender_id, size_t sender_id_len,
 		      const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
 		      struct oscore_ctx *_Nullable *_Nonnull ctx);
+
+/**
+ * @brief Create an OSCORE context with an RFC 8613 ID Context.
+ *
+ * The ID Context participates in sender-key, recipient-key, and Common IV
+ * derivation and is emitted as the request OSCORE option's KID Context.
+ * A NULL pointer with length zero means the ID Context is absent. A non-NULL
+ * pointer with length zero means a present, empty ID Context; these cases have
+ * different CBOR encodings and derive different cryptographic material.
+ *
+ * @param[in] master_secret   16-byte master secret
+ * @param[in] master_salt     Master salt (may be NULL only when length is zero)
+ * @param[in] master_salt_len Master salt length (maximum 8 bytes)
+ * @param[in] sender_id       Sender ID (may be NULL only when length is zero)
+ * @param[in] sender_id_len   Sender ID length (maximum 7 bytes)
+ * @param[in] recipient_id    Recipient ID (may be NULL only when length is zero)
+ * @param[in] recipient_id_len Recipient ID length (maximum 7 bytes)
+ * @param[in] id_context      ID Context; NULL selects the absent form
+ * @param[in] id_context_len  ID Context length (maximum
+ *                            OSCORE_ID_CONTEXT_MAX_LEN)
+ * @param[out] ctx            Output context pointer; set to NULL on failure
+ * @return OSCORE_OK on success, OSCORE_ERR_INVALID_PARAM for inconsistent
+ *         pointers/lengths or missing initialization, or another OSCORE error
+ */
+int oscore_ctx_create_with_id_context(
+	const uint8_t *_Nonnull master_secret,
+	const uint8_t *_Nullable master_salt, size_t master_salt_len,
+	const uint8_t *_Nullable sender_id, size_t sender_id_len,
+	const uint8_t *_Nullable recipient_id, size_t recipient_id_len,
+	const uint8_t *_Nullable id_context, size_t id_context_len,
+	struct oscore_ctx *_Nullable *_Nonnull ctx);
 
 /**
  * @brief Create a new OSCORE security context with peer EUI-64.

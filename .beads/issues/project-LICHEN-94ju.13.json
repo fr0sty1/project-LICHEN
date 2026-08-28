@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-94ju.13",
+  "title": "Extract Heltec WiFi LoRa32 V3 board definition (.repl, .resc) to boards/heltec_wifi_lora32_v3/",
+  "description": "Extract the Heltec WiFi LoRa32 V3 board definition from Meshtastic Renode support.\n\nSCOPE:\n- Create boards/heltec_wifi_lora32_v3/ directory\n- Add Heltec .repl file (ESP32-S3 + SX1262)\n- Add Heltec .resc script for simulation setup\n- Wire SX126x peripheral from phase 1\n- Document pin mappings and peripherals\n\nREFERENCE: Meshtastic Heltec WiFi LoRa32 V3 board definition",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:50:56.186862Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:50:56.186862Z",
+  "labels": [
+    "blocked:hardware",
+    "extraction",
+    "renode"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-94ju.13",
+      "depends_on_id": "project-LICHEN-94ju",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:50:59.171339Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

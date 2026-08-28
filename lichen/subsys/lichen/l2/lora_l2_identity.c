@@ -214,10 +214,15 @@ int lichen_lora_l2_copy_eui64(uint8_t out[8])
         LOG_ERR("lora_l2: EUI-64 unavailable until reinit after abort");
         ret = -ECANCELED;
         break;
+    case LORA_DESTROY_FAILED:
+        LOG_ERR("lora_l2: EUI-64 unavailable until destroy retry completes");
+        ret = -ECANCELED;
+        break;
     case LORA_DEINITING:
         LOG_ERR("lora_l2: EUI-64 unavailable during deinit");
         ret = -EBUSY;
         break;
+    case LORA_STATE_COUNT:
     default:
         LOG_ERR("lora_l2: invalid state while copying EUI-64 (%d)", state);
         ret = -EINVAL;

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-worker6-u4fr",
+  "title": "[review] key store skips TOFU binding validation when persistence not initialized",
+  "description": "P2. coap_keys_store.c:369-378 lichen_key_store_put() validates trust/IID-pubkey binding ONLY when s_persistence_ready. Admin PUT on a node that never ran lichen_key_store_init() accepts arbitrary iid/pubkey pairs incl garbage trust; no later path re-validates RAM state. Integrity checks must not be conditional on persistence. Fix: validate binding unconditionally, degrade only persistence. Found during 6mij.2.2 verification review.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T05:31:53.440072Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T05:34:09.130701Z",
+  "started_at": "2026-08-28T05:34:09.130701Z",
+  "lease_expires_at": "2026-08-28T05:39:09.130701Z",
+  "heartbeat_at": "2026-08-28T05:34:09.130701Z",
+  "labels": [
+    "local-ok"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-u4fr",
+      "depends_on_id": "project-LICHEN-6mij.2.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T05:31:54.076738Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

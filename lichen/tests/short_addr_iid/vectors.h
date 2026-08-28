@@ -1,0 +1,29 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+
+#ifndef LICHEN_TEST_SHORT_ADDR_IID_VECTORS_H_
+#define LICHEN_TEST_SHORT_ADDR_IID_VECTORS_H_
+
+#include <stdbool.h>
+#include <stdint.h>
+
+struct short_addr_iid_vector {
+	uint16_t short_addr;
+	uint8_t iid[8];
+	bool reserved;
+};
+
+/* Byte-exact copies of the short-address cases in ipv6-addresses.json. */
+static const struct short_addr_iid_vector canonical_short_addr_iid_vectors[] = {
+	{0x0001, {0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x01}, false},
+	{0xabcd, {0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0xab, 0xcd}, false},
+	{0xffff, {0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0xff, 0xff}, true},
+};
+
+static const struct short_addr_iid_vector boundary_short_addr_iid_vectors[] = {
+	{0x0000, {0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x00}, true},
+	{0xfffd, {0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0xff, 0xfd}, false},
+	{0xfffe, {0x00, 0x00, 0x00, 0xff, 0xfe, 0x00, 0xff, 0xfe}, true},
+};
+
+#endif /* LICHEN_TEST_SHORT_ADDR_IID_VECTORS_H_ */

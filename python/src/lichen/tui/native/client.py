@@ -36,15 +36,15 @@ def build_messaging_client(
     """Build a messaging client for IP/CoAP or BLE packet-backed LCI."""
     if ble_address is not None:
         packet_transport = BlePacketTransport(ble_address)
-        transport = PacketCoapResourceTransport(
+        ble_transport = PacketCoapResourceTransport(
             packet_transport,
             config=PacketCoapConfig(local_host=ble_local_host, peer_host=ble_node_host),
         )
-        return LciClient(transport)
+        return LciClient(ble_transport)
     if base_uri is None:
         return None
-    transport = AiocoapResourceTransport(config=IpCoapConfig(base_uri=base_uri))
-    return LciClient(transport)
+    ip_transport = AiocoapResourceTransport(config=IpCoapConfig(base_uri=base_uri))
+    return LciClient(ip_transport)
 
 
 def build_connection_factory(

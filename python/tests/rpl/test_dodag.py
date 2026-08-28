@@ -15,7 +15,9 @@ import pytest
 
 from lichen.rpl.dodag import (
     INFINITE_RANK,
+    MAX_PARENTS,
     ROOT_RANK,
+    SEQUENCE_WINDOW,
     DodagRole,
     DodagState,
     ParentCandidate,
@@ -198,6 +200,33 @@ def test_remove_parent_accepts_string_neighbor_id() -> None:
     assert P1 not in node.parents
 
 
+def test_parent_table_unifies_zoned_and_unzoned_neighbors() -> None:
+    # Independent oracle: RFC 4291 zone is not in the 128-bit address.
+    packed = bytes.fromhex("fe800000000000000000000000000001")
+    zoned = IPv6Address("fe80::1%lci0")
+    unzoned = IPv6Address("fe80::1")
+    assert zoned != unzoned
+    assert zoned.packed == unzoned.packed == packed
+
+    node = _node()
+    node.process_dio(_dio(256), zoned, link_etx=1.0)
+    assert node.preferred_parent == unzoned
+    assert unzoned in node.parents
+    node.remove_parent(IPv6Address("fe80::1%eth0"))
+    assert unzoned not in node.parents
+    assert node.preferred_parent is None
+
+
+def test_process_dio_rejects_self_as_parent_across_zone() -> None:
+    own_zoned = IPv6Address("fe80::1234%lci0")
+    own_unzoned = IPv6Address("fe80::1234")
+    assert own_zoned.packed == own_unzoned.packed
+    node = DodagState(rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_zoned)
+    node.process_dio(_dio(256), own_unzoned, link_etx=1.0)
+    assert own_unzoned not in node.parents
+    assert node.role is DodagRole.UNJOINED
+
+
 def test_process_dio_rejects_invalid_neighbor_id_type() -> None:
     """Verify that process_dio raises TypeError for invalid neighbor_id types."""
     import pytest
@@ -292,17 +321,18 @@ def test_process_dio_without_node_address_backward_compatible() -> None:
     assert node.preferred_parent == P1
 
 
-# RFC 6550 Section 7.2 / rust/lichen-rpl lollipop_cmp table (independent oracle).
-# Serial-arithmetic lollipop: same-region uses mod-128 directional diff.
-# None means incomparable (same-region diff > SEQUENCE_WINDOW=16 in both directions).
+# RFC 6550 Section 7.2 lollipop comparison table (independent oracle).
+# None means incomparable (same-region absolute difference > SEQUENCE_WINDOW=16).
 _RFC_LOLLIPOP_CASES: list[tuple[int, int, int | None]] = [
     (16, 0, 1),
     (17, 0, None),
     (0, 16, -1),
     (0, 17, None),
-    (0, 127, 1),    # (0-127)&0x7F = 1, in 1..=16: 0 is newer
-    (127, 0, -1),   # (127-0)&0x7F = 127; (0-127)&0x7F = 1: 0 is newer
-    (120, 5, -1),   # (120-5)&0x7F = 115; (5-120)&0x7F = 13: 5 is newer
+    (0, 127, None),
+    (127, 0, None),
+    (120, 5, None),
+    (5, 100, None),
+    (100, 5, None),
     (255, 239, 1),
     (255, 238, None),
     (5, 250, 1),
@@ -319,12 +349,35 @@ def test_lollipop_cmp_matches_rfc_6550_7_2_table() -> None:
         assert lollipop_cmp(a, b) == expected, f"{a} vs {b}"
 
 
-def test_version_is_newer_matches_rfc_and_rust_serial_arithmetic() -> None:
-    # Serial arithmetic: 0 is 1 step newer than 127 (mod-128 wrap).
+def _rfc_lollipop_oracle(a: int, b: int) -> int | None:
+    if a == b:
+        return 0
+    if (a < 128) == (b < 128):
+        if abs(a - b) > SEQUENCE_WINDOW:
+            return None
+        return 1 if a > b else -1
+    if a < 128:
+        return 1 if 256 - b + a <= SEQUENCE_WINDOW else -1
+    return -1 if 256 - a + b <= SEQUENCE_WINDOW else 1
+
+
+def test_lollipop_cmp_exhaustive_rfc_oracle_and_antisymmetry() -> None:
+    for a in range(256):
+        for b in range(256):
+            actual = lollipop_cmp(a, b)
+            assert actual == _rfc_lollipop_oracle(a, b), f"{a} vs {b}"
+            reverse = lollipop_cmp(b, a)
+            assert (actual is None) == (reverse is None)
+            if actual is not None:
+                assert actual == -reverse
+
+
+def test_version_is_newer_preserves_explicit_adjacent_restart_policy() -> None:
+    assert lollipop_cmp(0, 127) is None
     assert version_is_newer(0, 127) is True
     assert version_is_newer(127, 0) is False
-    # 5 is 13 steps newer than 120 ((5-120)&0x7F = 13, in 1..=16).
-    assert version_is_newer(5, 120) is True
+    assert lollipop_cmp(5, 120) is None
+    assert version_is_newer(5, 120) is False
     assert version_is_newer(120, 5) is False
     assert version_is_newer(255, 239) is True
     assert version_is_newer(5, 240) is False
@@ -542,3 +595,231 @@ def test_dodag_state_rejects_non_positive_min_hop_rank_increase() -> None:
         min_hop_rank_increase=256,
     )
     assert node.min_hop_rank_increase == 256
+
+
+def test_temporary_parent_loss_preserves_lowest_rank() -> None:
+    """RFC 6550 8.2.2.5: _lowest_rank must not reset on temporary UNJOINED.
+
+    Attack scenario this test prevents:
+    1. Node joins at rank 512 (_lowest_rank = 512)
+    2. MaxRankIncrease = 2048, so max admissible rank is 2560
+    3. All parents are withdrawn (temporary link failure or attack)
+    4. Node becomes UNJOINED, but _lowest_rank must remain 512
+    5. Attacker advertises high-rank parent (e.g., 60000)
+    6. Node must reject due to MaxRankIncrease (path_cost > 512 + 2048)
+
+    If _lowest_rank were reset to INFINITE_RANK, the attacker's high-rank
+    parent would be accepted, defeating the rank cycling protection.
+    """
+    # SECURITY: RFC 6550 MaxRankIncrease prevents rank cycling attacks
+    mhri = 256
+    max_rank_increase = 2048
+
+    node = _node()
+    # Step 1: Join at rank 512
+    node.process_dio(_dio(256), P1, link_etx=1.0)
+    assert node.role is DodagRole.JOINED
+    assert node.get_rank() == 512
+    assert node._lowest_rank == 512
+
+    # Step 2: All parents withdrawn - node becomes UNJOINED
+    node.remove_parent(P1)
+    assert node.role is DodagRole.UNJOINED
+    assert node.get_rank() == INFINITE_RANK
+    # CRITICAL: _lowest_rank must remain 512, not reset to INFINITE_RANK
+    assert node._lowest_rank == 512
+
+    # Step 3: Attacker advertises high-rank parent
+    # path_cost = 60000 + 256 = 60256 > 512 + 2048 = 2560
+    attacker_rank = 60000
+    attacker_cost = attacker_rank + round(1.0 * mhri)
+    ceiling = 512 + max_rank_increase
+    assert attacker_cost == 60256
+    assert attacker_cost > ceiling  # 60256 > 2560
+
+    # Node must reject this parent due to MaxRankIncrease constraint
+    node.process_dio(_dio(attacker_rank), P2, link_etx=1.0)
+    assert P2 not in node.parents
+    assert node.role is DodagRole.UNJOINED
+    assert node.preferred_parent is None
+
+
+def test_stale_parents_are_pruned_by_max_age() -> None:
+    """Parents older than max_parent_age are removed during select_parent.
+
+    Long-running nodes would otherwise accumulate stale entries for neighbors
+    that went silent. This test injects a mock time source to verify eviction.
+    """
+    mock_time = 0.0
+
+    def time_func() -> float:
+        return mock_time
+
+    node = DodagState(
+        rpl_instance_id=0,
+        dodag_id=DODAG_ID,
+        version=1,
+        max_parent_age=300.0,
+        _time_func=time_func,
+    )
+
+    # Add two parents at time 0
+    node.process_dio(_dio(256), P1, link_etx=1.0)
+    node.process_dio(_dio(384), P2, link_etx=1.0)
+    assert P1 in node.parents
+    assert P2 in node.parents
+    assert node.preferred_parent == P1
+    assert node.role is DodagRole.JOINED
+
+    # Advance time by 200s - both still fresh
+    mock_time = 200.0
+    node.select_parent()
+    assert P1 in node.parents
+    assert P2 in node.parents
+
+    # Update P2 at time 200
+    node.process_dio(_dio(384), P2, link_etx=1.0)
+    assert node.parents[P2].last_heard == 200.0
+
+    # Advance time to 350s - P1 (heard at 0) is stale, P2 (heard at 200) is fresh
+    mock_time = 350.0
+    node.select_parent()
+    assert P1 not in node.parents  # pruned (350 - 0 > 300)
+    assert P2 in node.parents  # still fresh (350 - 200 < 300)
+    assert node.preferred_parent == P2
+    assert node.role is DodagRole.JOINED
+
+    # Advance time to 600s - P2 is now stale too
+    mock_time = 600.0
+    node.select_parent()
+    assert P2 not in node.parents  # pruned (600 - 200 > 300)
+    assert node.role is DodagRole.UNJOINED
+
+
+def test_max_parent_age_zero_disables_pruning() -> None:
+    """max_parent_age=0 disables age-based eviction."""
+    mock_time = 0.0
+
+    def time_func() -> float:
+        return mock_time
+
+    node = DodagState(
+        rpl_instance_id=0,
+        dodag_id=DODAG_ID,
+        version=1,
+        max_parent_age=0.0,
+        _time_func=time_func,
+    )
+
+    node.process_dio(_dio(256), P1, link_etx=1.0)
+    assert P1 in node.parents
+
+    # Advance time far beyond any reasonable max age
+    mock_time = 10000.0
+    node.select_parent()
+    assert P1 in node.parents  # not pruned because max_parent_age=0
+
+
+def _addr(n: int) -> IPv6Address:
+    return IPv6Address(f"fe80::{n:x}")
+
+
+def _fill_parent_set(node: DodagState, *, filler_rank: int = 384, filler_etx: float = 1.0) -> None:
+    """Join via P1 (cost 512) then fill the set to MAX_PARENTS with fillers.
+
+    Fillers advertise filler_rank (< the joined rank of 512) so each is
+    admissible; P1 stays preferred (its cost is the lowest).
+    """
+    node.process_dio(_dio(256), P1, link_etx=1.0)
+    assert node.preferred_parent == P1
+    for n in range(2, MAX_PARENTS + 1):
+        node.process_dio(_dio(filler_rank), _addr(n), link_etx=filler_etx)
+    assert len(node.parents) == MAX_PARENTS
+
+
+def test_parent_set_bounded_under_dio_flood() -> None:
+    """DIOs from more than MAX_PARENTS neighbors cannot grow the parent set."""
+    node = _node()
+    for n in range(1, MAX_PARENTS + 11):
+        node.process_dio(_dio(256), _addr(n), link_etx=1.0)
+    assert len(node.parents) == MAX_PARENTS
+    assert node.role is DodagRole.JOINED
+    assert node.preferred_parent == _addr(1)
+
+
+def test_full_parent_set_evicts_worst_for_better_candidate() -> None:
+    """At capacity, a strictly better candidate displaces the worst parent."""
+    node = _node()
+    node.process_dio(_dio(256), P1, link_etx=1.0)  # cost 512, joins, preferred
+    for n in range(2, MAX_PARENTS + 1):
+        # Escalating ranks 384..496 give distinct costs 640..752.
+        node.process_dio(_dio(384 + (n - 2) * 8), _addr(n), link_etx=1.0)
+    assert len(node.parents) == MAX_PARENTS
+    worst = _addr(MAX_PARENTS)  # rank 496 -> cost 752, the highest kept cost
+    assert worst in node.parents
+
+    intruder = _addr(MAX_PARENTS + 1)
+    node.process_dio(_dio(256), intruder, link_etx=1.0)  # cost 512
+
+    assert len(node.parents) == MAX_PARENTS
+    assert worst not in node.parents
+    assert intruder in node.parents
+    assert P1 in node.parents
+    assert node.preferred_parent == P1
+
+
+def test_full_parent_set_rejects_worse_candidates() -> None:
+    """At capacity, equal/worse candidates are rejected and nothing is evicted."""
+    node = _node()
+    _fill_parent_set(node)
+    before = dict(node.parents)
+    for n in range(MAX_PARENTS + 1, MAX_PARENTS + 51):
+        node.process_dio(_dio(384), _addr(n), link_etx=5.0)  # cost 1664 > any kept
+    assert len(node.parents) == MAX_PARENTS
+    assert node.parents == before
+    assert node.preferred_parent == P1
+
+
+def test_preferred_parent_is_never_evicted() -> None:
+    """The preferred parent survives capacity pressure even at the worst cost."""
+    node = DodagState(
+        rpl_instance_id=0,
+        dodag_id=DODAG_ID,
+        version=1,
+        parent_switch_threshold=0xFFFF,  # hysteresis pins preferred to P1
+    )
+    node.process_dio(_dio(384), P1, link_etx=3.0)  # cost 1152, joins, preferred
+    for n in range(2, MAX_PARENTS + 1):
+        node.process_dio(_dio(384), _addr(n), link_etx=2.0)  # cost 896
+    assert node.preferred_parent == P1
+    assert len(node.parents) == MAX_PARENTS
+
+    intruder = _addr(MAX_PARENTS + 1)
+    node.process_dio(_dio(256), intruder, link_etx=1.0)  # cost 512
+
+    assert len(node.parents) == MAX_PARENTS
+    assert P1 in node.parents
+    assert node.preferred_parent == P1
+    assert _addr(MAX_PARENTS) not in node.parents  # worst filler evicted instead
+    assert intruder in node.parents
+
+
+def test_existing_parent_update_at_capacity() -> None:
+    """Refreshing an existing parent at capacity updates in place, not evict."""
+    mock_time = 0.0
+
+    def time_func() -> float:
+        return mock_time
+
+    node = DodagState(
+        rpl_instance_id=0,
+        dodag_id=DODAG_ID,
+        version=1,
+        _time_func=time_func,
+    )
+    _fill_parent_set(node)
+    mock_time = 50.0
+    node.process_dio(_dio(384), P1, link_etx=1.0)
+    assert len(node.parents) == MAX_PARENTS
+    assert node.parents[P1].last_heard == 50.0
+    assert node.preferred_parent == P1

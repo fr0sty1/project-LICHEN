@@ -14,6 +14,11 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+#include <lichen/link.h>
+#include <lichen/lora_cad.h>
+#endif
+
 #include "lr1110_hal.h"
 #include "lr1110_radio.h"
 #include "lr1110_regmem.h"
@@ -619,13 +624,16 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	return (int)len;
 }
 
-static int lr1110_lora_recv_async(const struct device *dev, lora_recv_cb cb)
+static int lr1110_lora_recv_async(const struct device *dev, lora_recv_cb cb,
+				  void *user_data)
 {
 	ARG_UNUSED(dev);
 	ARG_UNUSED(cb);
+	ARG_UNUSED(user_data);
 	return -ENOTSUP;
 }
 
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
 static int lr1110_lora_cad(const struct device *dev, k_timeout_t timeout,
 			   bool *busy)
 {
@@ -633,11 +641,11 @@ static int lr1110_lora_cad(const struct device *dev, k_timeout_t timeout,
 		return -EINVAL;
 	}
 
-	/* Configure CAD params for the current LoRa config. Defaults match
-	 * typical SF10/BW125: 8 symbols, det_peak=0x32, det_min=0x0A.
+	/* Configure CAD params for the current LoRa config. The protocol fixes
+	 * CAD at three symbols; detection thresholds match SF10/BW125.
 	 * Exit to standby after CAD so the radio doesn't auto-RX. */
 	lr1110_radio_cad_params_t cad_params = {
-		.symbol_num = 8,
+		.symbol_num = LICHEN_CSMA_CAD_TIMEOUT_SYMBOLS,
 		.det_peak   = 0x32,
 		.det_min    = 0x0A,
 		.exit_mode  = LR1110_RADIO_CAD_EXIT_MODE_STANDBYRC,
@@ -681,11 +689,13 @@ static int lr1110_lora_cad(const struct device *dev, k_timeout_t timeout,
 
 	if (!(irq & (LR1110_SYSTEM_IRQ_CADDONE_MASK |
 		     LR1110_SYSTEM_IRQ_CADDETECTED_MASK))) {
-		/* Timed out — assume channel clear */
+		/* A missing CAD completion is not evidence of a clear channel. */
 		LR1110_RETURN_ON_HAL_ERROR(
 			lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC));
-		*busy = false;
-		return 0;
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_system_set_dio_irq_params(dev, LR1110_IRQ_RADIO, 0));
+		*busy = true;
+		return -ETIMEDOUT;
 	}
 
 	*busy = (irq & LR1110_SYSTEM_IRQ_CADDETECTED_MASK) != 0;
@@ -700,6 +710,7 @@ static int lr1110_lora_cad(const struct device *dev, k_timeout_t timeout,
 	LOG_DBG("lr1110: CAD %s", *busy ? "busy" : "clear");
 	return 0;
 }
+#endif
 
 static const struct lora_driver_api lr1110_lora_api = {
 	.config     = lr1110_lora_config,
@@ -708,7 +719,6 @@ static const struct lora_driver_api lr1110_lora_api = {
 	.recv       = lr1110_lora_recv,
 	.recv_async = lr1110_lora_recv_async,
 	.test_cw    = NULL,
-	.cad        = lr1110_lora_cad,
 };
 
 /* --------------------------------------------------------------------------
@@ -753,6 +763,14 @@ static int lr1110_init(const struct device *dev)
 
 #if IS_ENABLED(CONFIG_STATS)
 	(void)STATS_INIT_AND_REG(lr1110_rx_stats, STATS_SIZE_32, "lr1110");
+#endif
+
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+	int ret = lichen_lora_cad_register(dev, lr1110_lora_cad);
+	if (ret < 0) {
+		LOG_ERR("CAD extension registration failed (%d)", ret);
+		return ret;
+	}
 #endif
 
 	LOG_DBG("LR1110 initialized");

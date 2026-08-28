@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-wqaa.1.14",
+  "title": "Compile team/organizational information and prior work",
+  "description": "Gather team bios, relevant experience, prior publications/projects. Document existing LICHEN work: specs in spec/, Rust prototype, Zephyr port. List any prior grants, collaborations, or deployments that demonstrate capability.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:49.321987Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:49.321987Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.1.14",
+      "depends_on_id": "project-LICHEN-wqaa.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:50.511055Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

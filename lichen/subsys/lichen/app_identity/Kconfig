@@ -5,6 +5,7 @@ menuconfig LICHEN_APP_IDENTITY
 	bool "LICHEN local app identity provider"
 	depends on LICHEN
 	depends on LICHEN_LINK
+	select LICHEN_CRYPTO_MONOCYPHER
 	help
 	  Enable a copy-only public identity provider for local app
 	  compatibility surfaces. This exposes self EUI/IID/public key and a
@@ -19,6 +20,17 @@ config LICHEN_APP_IDENTITY_MAX_PEERS
 	help
 	  Maximum number of public peer identity records retained for local app
 	  compatibility surfaces.
+
+config LICHEN_APP_IDENTITY_PERSIST
+	bool "Persist the canonical node identity with Zephyr Settings"
+	depends on SETTINGS
+	default y
+	help
+	  Store one versioned, EUI-bound 32-byte identity seed in private
+	  Settings storage. The platform must register an independent protected
+	  rollback authority before using the Settings convenience API. Corrupt,
+	  incomplete, stale, divergent, or unavailable established state fails
+	  closed instead of silently generating another identity.
 
 config LICHEN_APP_IDENTITY_TEST_HOOKS
 	bool "LICHEN app identity ztest hooks"

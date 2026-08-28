@@ -11,16 +11,21 @@ from lichen.timing.duty_cycle import (
     EU868_DUTY_CYCLE_PERCENT,
     EU868_MAX_PACKETS_PER_HOUR,
     EU868_SF9_AIRTIME_60B_MS,
+    REGION_EU,
+    REGION_US,
     REGIONAL_CONFIGS,
     REGIONAL_LIMITS,
     SIM_DUTY_CYCLE_LIMIT_PERCENT,
     SIM_WINDOW_S,
     US915_FCC_DWELL_TIME_MS,
+    WINDOW_MS,
     RegionalDutyCycleEnforcer,
     RegionalDutyCycleLimit,
+    adaptive_duty_permille,
     duty_cycle_usage_percent,
     get_regional_limit,
     max_packets_per_hour,
+    max_tx_ms,
 )
 
 
@@ -158,6 +163,11 @@ class TestMaxPacketsPerHour:
         with pytest.raises(ValueError, match="duty_cycle_percent must be"):
             max_packets_per_hour(200.0, 101.0)
 
+    @pytest.mark.parametrize("window_s", [0, -1, -3600])
+    def test_non_positive_window_raises(self, window_s: int) -> None:
+        with pytest.raises(ValueError, match="window_s must be positive"):
+            max_packets_per_hour(200.0, 10.0, window_s=window_s)
+
 
 class TestDutyCycleUsagePercent:
     """Test duty_cycle_usage_percent calculation."""
@@ -229,3 +239,76 @@ class TestDutyCycleScenarios:
         packets = max_packets_per_hour(200.0, 100.0)
         # 3600s / 0.2s = 18000 packets
         assert packets == 18000
+
+
+class TestCCP13AdaptiveDutyPermille:
+    """Test adaptive duty cycle per CCP-13 (spec 02a.9)."""
+
+    def test_constants(self) -> None:
+        assert WINDOW_MS == 3_600_000
+        assert REGION_EU == 0
+        assert REGION_US == 1
+
+    # Region 0 (EU/AU/NZ - strict)
+    def test_region0_sparse(self) -> None:
+        # density < 3 -> 20 permille
+        assert adaptive_duty_permille(0, REGION_EU) == 20
+        assert adaptive_duty_permille(2, REGION_EU) == 20
+
+    def test_region0_moderate(self) -> None:
+        # 3 <= density <= 8 -> 10 permille
+        assert adaptive_duty_permille(3, REGION_EU) == 10
+        assert adaptive_duty_permille(5, REGION_EU) == 10
+        assert adaptive_duty_permille(8, REGION_EU) == 10
+
+    def test_region0_dense(self) -> None:
+        # density > 8 -> 5 permille
+        assert adaptive_duty_permille(9, REGION_EU) == 5
+        assert adaptive_duty_permille(100, REGION_EU) == 5
+        assert adaptive_duty_permille(255, REGION_EU) == 5
+
+    # Region 1 (US/CA - lenient)
+    def test_region1_sparse(self) -> None:
+        # density < 3 -> 50 permille
+        assert adaptive_duty_permille(0, REGION_US) == 50
+        assert adaptive_duty_permille(2, REGION_US) == 50
+
+    def test_region1_moderate(self) -> None:
+        # 3 <= density <= 8 -> 20 permille
+        assert adaptive_duty_permille(3, REGION_US) == 20
+        assert adaptive_duty_permille(5, REGION_US) == 20
+        assert adaptive_duty_permille(8, REGION_US) == 20
+
+    def test_region1_dense(self) -> None:
+        # density > 8 -> 10 permille
+        assert adaptive_duty_permille(9, REGION_US) == 10
+        assert adaptive_duty_permille(100, REGION_US) == 10
+        assert adaptive_duty_permille(200, REGION_US) == 10
+
+    def test_unknown_region_fails_closed_to_strict(self) -> None:
+        # Unknown regions should use strict budget (region 0)
+        assert adaptive_duty_permille(0, 255) == 20  # sparse
+        assert adaptive_duty_permille(5, 255) == 10  # moderate
+        assert adaptive_duty_permille(10, 255) == 5  # dense
+
+
+class TestCCP13MaxTxMs:
+    """Test max TX time calculation per CCP-13 (spec 02a.9.2)."""
+
+    def test_default_1_percent(self) -> None:
+        # 10 permille = 1% -> 36000 ms
+        assert max_tx_ms(10) == 36_000
+
+    def test_10_percent(self) -> None:
+        # 100 permille = 10% -> 360000 ms
+        assert max_tx_ms(100) == 360_000
+
+    def test_formula(self) -> None:
+        # MaxTxMs = (WINDOW_MS / 1000) * duty_permille
+        for permille in [5, 10, 20, 50, 100]:
+            expected = (WINDOW_MS // 1000) * permille
+            assert max_tx_ms(permille) == expected
+
+    def test_zero_permille(self) -> None:
+        # Edge case: 0 permille -> 0 ms
+        assert max_tx_ms(0) == 0

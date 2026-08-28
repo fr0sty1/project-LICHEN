@@ -10,10 +10,9 @@ Exposes ``/.well-known/core`` (resource discovery), ``/status``, ``/neighbors``,
 and ``/config``. Payloads use CBOR (content-format 60), the compact encoding
 appropriate for constrained LoRa links.
 
-Also provides optional :class:`~lichen.coap.resources.proxy.ProxyResource`
-compatibility support for local transports that cannot route directly to mesh
-IPv6 addresses. The authoritative LCI mesh access model remains direct IPv6 +
-CoAP routing through the local node.
+Provides :class:`~lichen.coap.resources.proxy.ProxyResource` for LCI baseline
+mesh access. Clients with link-local reachability to the gateway use ``/proxy``
+with RFC 7252 Proxy-Uri to reach native 0200::/8 mesh nodes.
 
 Observable resources (RFC 7641):
 
@@ -25,16 +24,18 @@ Observable resources (RFC 7641):
   position pack; updated by calling its ``update()`` method. ``/location``
   remains a compatibility alias.
 
-* ``PresenceResource`` — ``/presence`` — CBOR list of recently-heard neighbour
-  nodes; updated by calling ``seen()`` whenever a beacon arrives from a mesh
-  peer.
+* ``PresenceResource`` — ``/presence`` — own presence GET/PUT (status, activity,
+  msg, battery, ts); Observe notifies on change (spec 18.5).
+
+* ``PresenceCacheResource`` — ``/presence/cache`` — known neighbour presence
+  with ``age_s``; updated by ``record()``.
 
 * ``SosResource`` — ``/sos`` — emergency beacon. POST activates SOS; DELETE
   cancels; GET and Observe let any node monitor the state.
 
-Optional forward proxy resource:
+Forward proxy resource:
 
 * ``ProxyResource`` — ``/proxy`` — RFC 7252 section 5.7 forward proxy for
-  local transports without direct mesh reachability, advertising
-  ``rt = "proxy"`` in its link description.
+  LCI baseline mesh access, advertising ``rt = "proxy"`` in its link
+  description.
 """

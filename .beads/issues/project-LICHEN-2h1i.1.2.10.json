@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2h1i.1.2.10",
+  "title": "GPS-TDMA time sync integration: connect GNSS time source to TDMA scheduler, implement time discipline from GPS 1PPS",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:51:23.340851Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:51:23.340851Z",
+  "labels": [
+    "blocked:hardware",
+    "renode",
+    "zephyr"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.1.2.10",
+      "depends_on_id": "project-LICHEN-2h1i.1.2",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:51:26.159445Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -50,6 +50,7 @@
  */
 int build_info_cbor(const uint8_t *id, size_t id_len,
 		    const uint8_t *id_context, size_t id_context_len,
+		    bool has_id_context,
 		    const char *type, size_t out_len,
 		    uint8_t *buf, size_t buf_len)
 {
@@ -89,7 +90,7 @@ int build_info_cbor(const uint8_t *id, size_t id_len,
 	 * Encode as CBOR null (0xf6) when absent, bstr otherwise.
 	 * RFC 8949 Section 3.3: simple value 22 (null) = 0xf6
 	 */
-	if (id_context_len == 0) {
+	if (!has_id_context) {
 		if (off >= buf_len) return -1;
 		buf[off++] = 0xf6;
 	} else {
@@ -102,7 +103,9 @@ int build_info_cbor(const uint8_t *id, size_t id_len,
 			buf[off++] = (uint8_t)id_context_len;
 		}
 		if (off + id_context_len > buf_len) return -1;
-		memcpy(buf + off, id_context, id_context_len);
+		if (id_context_len > 0) {
+			memcpy(buf + off, id_context, id_context_len);
+		}
 		off += id_context_len;
 	}
 

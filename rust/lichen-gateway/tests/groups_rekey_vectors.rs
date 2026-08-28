@@ -20,6 +20,7 @@ fn rekey_vector_increments_epoch() {
     );
     let removed = case["removed_member"].as_str().unwrap();
     group.members.push(removed.to_string());
+    group.admins.push(removed.to_string());
     assert_eq!(
         u64::from(group.key_epoch),
         case["initial_epoch"].as_u64().unwrap()
@@ -30,4 +31,6 @@ fn rekey_vector_increments_epoch() {
         case["after_removal_epoch"].as_u64().unwrap()
     );
     assert!(!group.members.iter().any(|m| m == removed));
+    assert!(!group.admins.iter().any(|admin| admin == removed));
+    assert!(group.members.contains(&group.owner));
 }

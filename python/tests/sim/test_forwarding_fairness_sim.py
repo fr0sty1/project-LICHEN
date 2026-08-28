@@ -39,7 +39,8 @@ if TYPE_CHECKING:
 # Check if simulator is available (requires lora_medium Rust extension)
 try:
     from lichen.sim.server import SimulatorServer as _SimulatorServer
-    from lichen.sim.simulation import Simulation as _Simulation, TimeMode
+    from lichen.sim.simulation import Simulation as _Simulation
+    from lichen.sim.simulation import TimeMode
 
     HAS_SIMULATOR = True
 except ImportError:
@@ -56,7 +57,7 @@ except ImportError:
 
 
 @pytest.fixture
-async def simulator_server() -> AsyncGenerator[tuple["SimulatorServer", "Simulation"], None]:
+async def simulator_server() -> AsyncGenerator[tuple[SimulatorServer, Simulation], None]:
     """Start a simulator server with a test simulation.
 
     PARANOID: Verify server started, verify simulation created, verify cleanup.

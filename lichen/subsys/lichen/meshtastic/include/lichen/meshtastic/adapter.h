@@ -99,7 +99,6 @@ struct lichen_meshtastic_adapter_packet_info {
 	 * the data; strict lifetime discipline is no longer required.
 	 */
 	const uint8_t *payload;
-	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
 	size_t payload_len;
 	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX + 1U];
 	bool has_from;

@@ -17,6 +17,8 @@
 #include "lichen_util.h"
 #include <lichen/lichen_log.h>
 #include <lichen/link_ctx.h>
+#include "monocypher.h"
+#include "monocypher-ed25519.h"
 
 LICHEN_LOG_MODULE(lichen_ipv6, LOG_LEVEL_INF);
 
@@ -98,16 +100,13 @@ bool lichen_is_mesh_addr(const struct in6_addr *addr)
      * public internet.
      *
      * Allowed prefixes:
-     * - fd00::/8 (ULA): LICHEN mesh addresses. First byte must be 0xfd.
-     *   We accept all fd00::/8 addresses, not just our specific ULA prefix,
-     *   because mesh nodes may have multiple ULA prefixes configured.
-     *
+     * - 0200::/8: canonical key-derived native node addresses.
      * - fe80::/10 (link-local): Direct neighbor access. First byte is 0xfe,
      *   first two bits of second byte are 10 (checked via mask 0xc0 == 0x80).
      */
 
-    /* Check for ULA fd00::/8 */
-    if (addr->s6_addr[0] == 0xfd) {
+    /* Check for canonical native 0200::/8. */
+    if (addr->s6_addr[0] == 0x02) {
         return true;
     }
 
@@ -117,6 +116,27 @@ bool lichen_is_mesh_addr(const struct in6_addr *addr)
     }
 
     return false;
+}
+
+int lichen_ipv6_multicast_scope(const struct in6_addr *addr, uint8_t *scope)
+{
+    if (addr == NULL || scope == NULL) {
+        return -EINVAL;
+    }
+    if (addr->s6_addr[0] != 0xff) {
+        return -ENODATA;
+    }
+
+    /* RFC 4291: flags occupy the high nibble; scope is the low nibble. */
+    *scope = addr->s6_addr[1] & 0x0fU;
+    return 0;
+}
+
+bool lichen_ipv6_multicast_scope_is_transmittable(uint8_t scope)
+{
+    /* LICHEN link profile: scopes 2..14; 0/15 reserved, 1 interface-only. */
+    return scope >= LICHEN_IPV6_SCOPE_LINK_LOCAL &&
+           scope <= LICHEN_IPV6_SCOPE_GLOBAL;
 }
 
 int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
@@ -143,51 +163,37 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
     return 0;
 }
 
-/*
- * Compile-time check: SHA-256 digest must be at least 8 bytes for IID.
- * If the hash algorithm changes, this catches the buffer size mismatch.
- */
-#ifdef __ZEPHYR__
-BUILD_ASSERT(TC_SHA256_DIGEST_SIZE >= 8,
-             "TC_SHA256_DIGEST_SIZE must be >= 8 for IID derivation");
-#else
-typedef char _sha256_iid_check[(TC_SHA256_DIGEST_SIZE >= 8) ? 1 : -1];
-#endif
-
 int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
 {
-    int ret;
-    uint8_t hash[TC_SHA256_DIGEST_SIZE];
+    uint8_t hash[64];
 
     if (pubkey == NULL || iid == NULL) {
         LOG_ERR("ipv6_addr: pubkey_to_iid failed (NULL input)");
         return -EINVAL;
     }
 
-    ret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash, sizeof(hash));
-    if (ret != 0) {
-        LOG_ERR("ipv6_addr: pubkey_to_iid failed (SHA-256 error %d)", ret);
-        goto cleanup;
-    }
-
+    crypto_sha512(hash, pubkey, LICHEN_ED25519_PUBKEY_LEN);
     memcpy(iid, hash, 8);
     iid[0] &= ~UL_BIT;
-
-cleanup:
-    secure_zero(hash, sizeof(hash));
-    return ret;
+    crypto_wipe(hash, sizeof(hash));
+    return 0;
 }
 
 int lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr)
 {
+    uint8_t iid_copy[8];
+
     if (iid == NULL || addr == NULL) {
         LOG_ERR("ipv6_addr: make_link_local failed (NULL input)");
         return -EINVAL;
     }
 
+    /* Snapshot first so iid may point anywhere within the output object. */
+    memcpy(iid_copy, iid, sizeof(iid_copy));
+
     /* fe80::0000:0000:0000:0000 + IID */
     memcpy(addr->s6_addr, link_local_prefix, 8);
-    memcpy(&addr->s6_addr[8], iid, 8);
+    memcpy(&addr->s6_addr[8], iid_copy, sizeof(iid_copy));
     return 0;
 }
 
@@ -365,8 +371,14 @@ int lichen_yggdrasil_addr(const uint8_t pubkey[32], struct in6_addr *addr)
 		return ret;
 	}
 	memcpy(addr->s6_addr, ygg, 16);
+	crypto_wipe(ygg, sizeof(ygg));
 	return 0;
 }
+
+/*
+ * lichen_identity_ygg_addr_from_ed25519() is defined in link/identity_addr.c
+ * (always built) so callers can link under CONFIG_LICHEN_IPV6=n.
+ */
 
 int lichen_pubkey_to_human_address(const uint8_t *pubkey, char *buf, size_t buflen)
 {
@@ -392,6 +404,6 @@ int lichen_pubkey_to_human_address(const uint8_t *pubkey, char *buf, size_t bufl
 		return ret;
 	}
 	ret = lichen_iid_to_human_address(iid, buf, buflen);
-	secure_zero(iid, sizeof(iid));
+	crypto_wipe(iid, sizeof(iid));
 	return ret;
 }

@@ -2,15 +2,15 @@
   "id": "project-LICHEN-worker6-134k",
   "title": "deaddrop: wire-size storage charge vs ~40-90x decoded heap amplification",
   "description": "deaddrop.rs:1053 charges storage by wire size but retains decoded value (:1066 :1014): a 1536B pack of minimal records decodes to hundreds of owned SenmlRecords (~100KB heap) while charged 1536B - the 8KB leaf budget can hold ~700KB live heap. Gateway-side, not firmware. Fix: cap records per pack (e.g. \u003c=32) or store raw bytes and decode on read.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-28T06:53:22.712069Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-28T07:43:26.549939Z",
+  "updated_at": "2026-08-28T07:49:22.098717Z",
   "started_at": "2026-08-28T07:43:26.549939Z",
-  "lease_expires_at": "2026-08-28T07:48:26.549939Z",
-  "heartbeat_at": "2026-08-28T07:43:26.549939Z"
+  "closed_at": "2026-08-28T07:49:22.098717Z",
+  "close_reason": "Chose the bead's first option (cap records per pack at 32) over store-raw-bytes/decode-on-read: the cap is insert-time only, needs no new read-path failure modes, and bounds a stored drop's decoded heap to ~an order of magnitude of its wire charge, while raw storage would still amplify transiently on every listing render. MAX_RECORDS_PER_PACK=32 const documented with the wire-charge-vs-heap rationale and noted as a deliberate, documented divergence from the Python reference (which has no cap); enforced in add_drop (None) and post (4.00 BadRequest), with the size gate explicitly unable to catch it (33 minimal records \u003c 1536 B). decode_senml_pack itself is NOT capped so render_get listings (which legitimately exceed 32 records) keep working. No vector has \u003e32 records (max 7), so deaddrop.json stays untouched. New test pack_record_cap_bounds_heap_amplification (32 accepted, 33 rejected via both entry points, store unchanged). Verified: cargo test -p lichen-client --lib 130 passed, deaddrop_vectors 27 passed. Commit + bd flat files."
 }

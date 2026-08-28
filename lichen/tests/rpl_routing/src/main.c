@@ -35,6 +35,7 @@ static size_t dao_begin(uint8_t *buf, uint8_t sequence)
 {
 	struct lichen_rpl_dao dao = {
 		.rpl_instance_id = 1,
+		.has_dodag_id = true,
 		.dao_sequence = sequence,
 	};
 
@@ -85,6 +86,14 @@ static void add_descriptor(uint8_t *buf, size_t *len, uint8_t data_len)
 	for (uint8_t i = 0; i < data_len; i++) {
 		buf[(*len)++] = i;
 	}
+}
+
+static void add_origin_signature(uint8_t *buf, size_t *len)
+{
+	buf[(*len)++] = 0x12;
+	buf[(*len)++] = 56;
+	memset(&buf[*len], 0x5a, 56);
+	*len += 56;
 }
 
 static void dao_sequences(const uint8_t *wire, size_t len,
@@ -206,27 +215,40 @@ ZTEST(rpl_routing, test_group_cartesian_and_path_control)
 ZTEST(rpl_routing, test_tx_path_sequence_and_explicit_copy)
 {
 	uint8_t wire[64];
-	uint8_t parent[16];
 	uint8_t dao_sequence;
 	uint8_t path_sequence;
 	uint8_t lifetime = 0;
 	int len;
+	const struct rpl_route_tx_sequence_transition *first =
+		&rpl_route_tx_sequence_transitions[0];
+	const uint8_t *node = &first->expected_wire[24];
+	const uint8_t *dodag_id = &first->expected_wire[4];
+	const uint8_t *parent = &first->expected_wire[46];
 
-	address(parent, 1);
-	zassert_equal(lichen_rpl_dao_manager_init(&tx_manager, root, 1, dodag),
+	zassert_equal(lichen_rpl_dao_manager_init(&tx_manager, node,
+					    first->expected_wire[0], dodag_id),
 		      LICHEN_RPL_OK, "TX manager init failed");
 	for (size_t i = 0; i < RPL_ROUTE_TX_SEQUENCE_TRANSITION_COUNT; i++) {
 		const struct rpl_route_tx_sequence_transition *transition =
 			&rpl_route_tx_sequence_transitions[i];
 
+		memset(wire, 0xa5, sizeof(wire));
 		if (transition->advance_path_sequence) {
 			len = lichen_rpl_dao_manager_build_dao_with_lifetime(
-				&tx_manager, parent, transition->path_lifetime, wire, sizeof(wire));
+				&tx_manager, parent, transition->path_lifetime, wire,
+				LICHEN_RPL_LEAF_DAO_LEN);
 		} else {
 			len = lichen_rpl_dao_manager_build_dao_copy_with_lifetime(
-				&tx_manager, parent, lifetime, wire, sizeof(wire));
+				&tx_manager, parent, transition->path_lifetime, wire,
+				LICHEN_RPL_LEAF_DAO_LEN);
 		}
-		zassert_true(len > 0, "%s: DAO build failed", transition->name);
+		zassert_equal(len, LICHEN_RPL_LEAF_DAO_LEN,
+			      "%s: exact-size DAO build failed", transition->name);
+		zassert_mem_equal(wire, transition->expected_wire,
+				  LICHEN_RPL_LEAF_DAO_LEN,
+				  "%s: canonical wire", transition->name);
+		zassert_equal(wire[LICHEN_RPL_LEAF_DAO_LEN], 0xa5,
+			      "%s: write overrun", transition->name);
 		dao_sequences(wire, (size_t)len, &dao_sequence, &path_sequence, &lifetime);
 		zassert_equal(dao_sequence, transition->expected_dao_sequence,
 			      "%s: DAOSequence", transition->name);
@@ -237,6 +259,7 @@ ZTEST(rpl_routing, test_tx_path_sequence_and_explicit_copy)
 			      "%s: Path Lifetime", transition->name);
 		zassert_equal(wire[43], 0x80, "%s: non-canonical Path Control",
 			      transition->name);
+		zassert_equal(wire[1], 0x40, "%s: K/D flags", transition->name);
 	}
 
 	tx_manager.path_sequence = 255;
@@ -308,13 +331,17 @@ ZTEST(rpl_routing, test_tx_copy_requires_exact_successful_update)
 		      "Path Sequence mismatch changed DAOSequence");
 	tx_manager.path_sequence = path_sequence;
 
+	memset(wire, 0xa5, sizeof(wire));
 	ret = lichen_rpl_dao_manager_build_dao_with_lifetime(
-		&tx_manager, other_parent, 11, wire, sizeof(wire) - 1);
+		&tx_manager, other_parent, 11, wire, LICHEN_RPL_LEAF_DAO_LEN - 1U);
 	zassert_equal(ret, LICHEN_RPL_ERR_BUF_SMALL, "short logical update accepted");
+	for (size_t i = 0; i < sizeof(wire); i++) {
+		zassert_equal(wire[i], 0xa5, "short build mutated output");
+	}
 	zassert_equal(tx_manager.dao_sequence, dao_sequence, "failed update changed DAOSequence");
 	zassert_equal(tx_manager.path_sequence, path_sequence, "failed update changed Path Sequence");
 	ret = lichen_rpl_dao_manager_build_dao_copy_with_lifetime(
-		&tx_manager, parent, 10, wire, sizeof(wire));
+		&tx_manager, parent, 10, wire, LICHEN_RPL_LEAF_DAO_LEN);
 	zassert_true(ret > 0, "failed update replaced successful cache");
 	zassert_equal(tx_manager.dao_sequence, dao_sequence + 1,
 		      "exact copy did not advance DAOSequence");
@@ -603,6 +630,39 @@ ZTEST(rpl_routing, test_dao_base_and_options_are_exact)
 		      LICHEN_RPL_DAO_REJECTED, "trailing unsupported option accepted");
 }
 
+ZTEST(rpl_routing, test_ack_and_terminal_origin_signature)
+{
+	uint8_t dao[512];
+	uint8_t ack_buf[20];
+	struct lichen_rpl_dao_ack ack;
+	size_t len = dao_begin(dao, 7);
+
+	add_target(dao, &len, 2);
+	add_transit(dao, &len, 1, 0x40, 1, 255);
+	add_origin_signature(dao, &len);
+	dao[1] |= 0x80U;
+	memset(ack_buf, 0xa5, sizeof(ack_buf));
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(
+			      &manager, dao, len, 10, ack_buf, sizeof(ack_buf)),
+		      LICHEN_RPL_DAO_APPLIED, "signed K DAO rejected");
+	zassert_equal(lichen_rpl_dao_ack_parse(&ack, ack_buf, sizeof(ack_buf)),
+		      LICHEN_RPL_OK, "success DAO-ACK did not parse");
+	zassert_equal(ack.dao_sequence, 7, "DAO-ACK sequence mismatch");
+	zassert_equal(ack.status, 0, "DAO-ACK status mismatch");
+	zassert_true(ack.has_dodag_id, "DAO-ACK omitted DODAGID");
+	zassert_mem_equal(ack.dodag_id, dodag, sizeof(dodag), "DAO-ACK DODAGID");
+
+	/* The authenticated semantic boundary still validates signature framing. */
+	dao[len++] = LICHEN_RPL_OPT_PAD1;
+	memset(ack_buf, 0xa5, sizeof(ack_buf));
+	zassert_equal(lichen_rpl_dao_manager_process_dao_ex(
+			      &manager, dao, len, 11, ack_buf, sizeof(ack_buf)),
+		      LICHEN_RPL_DAO_REJECTED, "post-signature option accepted");
+	for (size_t i = 0; i < sizeof(ack_buf); i++) {
+		zassert_equal(ack_buf[i], 0xa5, "rejected DAO emitted an ACK");
+	}
+}
+
 ZTEST(rpl_routing, test_path_control_same_subfield_and_validation)
 {
 	uint8_t dao[512];
@@ -668,6 +728,12 @@ ZTEST(rpl_routing, test_lollipop_withdrawal_expiry_and_tombstone)
 		      "route did not expire");
 	address(target, 2);
 	zassert_false(lookup_route(&manager, target, &route), "expired route remains");
+	const struct lichen_rpl_dao_snapshot *expired = find_snapshot(&manager, target);
+	zassert_not_null(expired, "expiry discarded freshness tombstone");
+	zassert_false(expired->active, "expired tombstone remained active");
+	zassert_equal(expired->disposition, LICHEN_RPL_DAO_EXPIRED,
+		      "expiry disposition not retained");
+	zassert_equal(expired->path_sequence, 0, "expiry discarded Path Sequence");
 	zassert_false(install_one(2, 1, 0, 1, 70), "equal sequence revived expiry");
 	zassert_false(install_one(2, 1, 1, 0, 80), "withdrawal installed route");
 	zassert_false(install_one(2, 1, 1, 1, 90), "equal sequence changed tombstone");
@@ -917,7 +983,8 @@ static void assert_vector_state(struct lichen_rpl_dao_manager *dm,
 ZTEST(rpl_routing, test_canonical_route_state_vectors)
 {
 	uint8_t vector_root[16] = {
-		0xfd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+		0x02, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+		0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x01,
 	};
 
 	zassert_equal(lichen_rpl_dao_manager_init_root(&manager, vector_root, 0, vector_root),
@@ -948,8 +1015,9 @@ ZTEST(rpl_routing, test_canonical_route_state_vectors)
 			accepted = result != LICHEN_RPL_DAO_REJECTED;
 			changed = result == LICHEN_RPL_DAO_APPLIED;
 		}
-		zassert_equal(accepted, vector->accepted, "%s: acceptance (%s)",
-			      vector->name, vector->reason);
+		zassert_equal(accepted, vector->accepted,
+			      "%s: acceptance (%s): got %d expected %d", vector->name,
+			      vector->reason, accepted, vector->accepted);
 		zassert_equal(changed, vector->changed, "%s: mutation (%s)",
 			      vector->name, vector->reason);
 		assert_vector_state(&manager, vector);

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-u8wx.8",
+  "title": "Create puck and gateway app overlays/configs",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:48:13.009051Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:48:13.009051Z",
+  "labels": [
+    "zephyr",
+    "c",
+    "defer-external"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-u8wx.8",
+      "depends_on_id": "project-LICHEN-u8wx",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:48:20.736311Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

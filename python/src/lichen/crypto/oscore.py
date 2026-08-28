@@ -32,7 +32,7 @@ from __future__ import annotations
 import secrets
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from aiocoap.oscore import (
     DEFAULT_ALGORITHM,
@@ -87,6 +87,58 @@ class OscoreContextParameters:
     hashfun: str
     window_size: int
     id_context: bytes | None
+
+
+@dataclass(frozen=True)
+class OscoreKeyUpdateState:
+    """Durable active-context pointer for an atomic OSCORE key update."""
+
+    generation: int
+    context_id: bytes
+
+
+class OscoreKeyUpdateStore(Protocol):
+    """Atomic storage used to publish an OSCORE context generation."""
+
+    def load(self) -> OscoreKeyUpdateState | None:
+        """Load the durable active-context pointer."""
+
+    def compare_exchange(
+        self,
+        expected: OscoreKeyUpdateState,
+        replacement: OscoreKeyUpdateState,
+        replacement_sender_high_water: int,
+    ) -> bool:
+        """Atomically replace the pointer and initialize its sender state."""
+
+
+class OscoreKeyUpdateError(RuntimeError):
+    """An OSCORE key update was invalid or lost an atomic-store race."""
+
+
+def _sender_context_id(parameters: OscoreContextParameters) -> bytes:
+    """Return the LICHEN/Rust durable identifier for a sender context."""
+    if len(parameters.master_secret) != 16:
+        raise ValueError("LICHEN OSCORE master_secret must be 16 bytes")
+    if len(parameters.master_salt) > 8:
+        raise ValueError("LICHEN OSCORE master_salt must be at most 8 bytes")
+    if len(parameters.sender_id) > 7 or len(parameters.recipient_id) > 7:
+        raise ValueError("LICHEN OSCORE IDs must be at most 7 bytes")
+    if parameters.id_context is not None and len(parameters.id_context) > 8:
+        raise ValueError("LICHEN OSCORE id_context must be at most 8 bytes")
+
+    digest = sha256()
+    digest.update(b"LICHEN OSCORE sender context\x00")
+    for part in (parameters.master_secret, parameters.master_salt):
+        digest.update(bytes((len(part),)))
+        digest.update(part)
+    digest.update(bytes((parameters.id_context is not None,)))
+    if parameters.id_context is not None:
+        digest.update(bytes((len(parameters.id_context),)))
+        digest.update(parameters.id_context)
+    digest.update(bytes((len(parameters.sender_id),)))
+    digest.update(parameters.sender_id)
+    return digest.digest()
 
 
 class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
@@ -196,6 +248,7 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             window_size=window_size,
             id_context=self.id_context,
         )
+        self._retired = False
 
         # Validate ID lengths (RFC 8613 constraint)
         max_id_len = self.alg_aead.iv_bytes - 6
@@ -288,6 +341,40 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         """Return immutable copies of all context reconstruction inputs."""
         return self._parameters
 
+    def durable_context_id(self) -> bytes:
+        """Return the cross-implementation durable sender-context identifier."""
+        return _sender_context_id(self._parameters)
+
+    @property
+    def is_retired(self) -> bool:
+        """Whether this context was replaced and can no longer process traffic."""
+        return self._retired
+
+    def retire(self) -> None:
+        """Fail closed and overwrite Python-owned references to key material.
+
+        CPython cannot promise physical zeroization of immutable ``bytes`` copies.
+        This method nevertheless overwrites every key-bearing reference owned by
+        this object and makes all subsequent packet operations fail closed.
+        """
+        if self._retired:
+            return
+        self._retired = True
+        self.sender_key = bytes(len(self.sender_key))
+        self.recipient_key = bytes(len(self.recipient_key))
+        self.common_iv = bytes(len(self.common_iv))
+        self._parameters = OscoreContextParameters(
+            master_secret=bytes(len(self._parameters.master_secret)),
+            master_salt=bytes(len(self._parameters.master_salt)),
+            sender_id=self.sender_id,
+            recipient_id=self.recipient_id,
+            algorithm=self._parameters.algorithm,
+            hashfun=self._parameters.hashfun,
+            window_size=self._parameters.window_size,
+            id_context=self.id_context,
+        )
+        self.clear_sender_sequence_reservation(OSCORE_SEQUENCE_EXHAUSTED)
+
     def _canonical_algorithm_id(self) -> bytes:
         return int(self.alg_aead.value).to_bytes(8, "big", signed=True)
 
@@ -356,6 +443,8 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             OverflowError: If sequence number would exceed RFC 8613 limit (2^40 - 1).
                 This prevents nonce reuse which would break AEAD security.
         """
+        if self._retired:
+            raise OscoreKeyUpdateError("OSCORE context has been retired")
         # SECURITY: Check BEFORE returning to prevent nonce reuse
         if self.sender_sequence_number > _MAX_SEQUENCE_NUMBER:
             raise OverflowError("OSCORE sequence number exhausted; context must be re-established")
@@ -363,6 +452,7 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             raise OverflowError("no durable OSCORE sender sequence is reserved")
         seqno = self.sender_sequence_number
         self.sender_sequence_number += 1
+        self.post_seqnoincrease()
         return seqno
 
     def post_seqnoincrease(self) -> None:
@@ -381,11 +471,28 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         the nonce construction and MUST be discarded (see test vector
         ``piv_overflow_rejected`` in test/vectors/oscore.json).
         """
+        if self._retired:
+            raise ProtectionInvalid("OSCORE context has been retired")
         option_data = protected_message.opt.oscore
         if option_data and (option_data[0] & 0x07) > _MAX_PIV_LENGTH:
             raise ProtectionInvalid("Partial IV exceeds the RFC 8613 maximum of 5 bytes")
         outer_message, request_identifiers = super().unprotect(protected_message, request_id)
         return outer_message, request_identifiers
+
+    def protect(
+        self,
+        message: Message,
+        request_id: RequestIdentifiers | None = None,
+        *,
+        kid_context: bool | bytes = True,
+    ) -> tuple[Message, RequestIdentifiers]:
+        """Protect a message unless this context has been retired by rekeying."""
+        if self._retired:
+            raise ProtectionInvalid("OSCORE context has been retired")
+        protected, identifiers = super().protect(
+            message, request_id, kid_context=kid_context
+        )
+        return protected, identifiers
 
     def get_persisted_sequence_number(self) -> int:
         """Return the sequence number to persist for state recovery.
@@ -404,3 +511,87 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             sequence number to be reused after recovery.
         """
         return self.sender_sequence_number
+
+
+class OscoreContextSlot:
+    """One atomically replaceable, monotonic OSCORE security context."""
+
+    def __init__(self, context: MemorySecurityContext, generation: int) -> None:
+        if generation < 0 or generation > 0xFFFFFFFF:
+            raise ValueError("OSCORE key generation must fit u32")
+        if context.is_retired:
+            raise ValueError("cannot install a retired OSCORE context")
+        self._context = context
+        self._generation = generation
+
+    @classmethod
+    def restore_checked(
+        cls,
+        context: MemorySecurityContext,
+        generation: int,
+        store: OscoreKeyUpdateStore,
+    ) -> OscoreContextSlot:
+        """Restore only when context and generation match durable state."""
+        slot = cls(context, generation)
+        if store.load() != slot.durable_state():
+            raise OscoreKeyUpdateError("durable OSCORE key generation is stale or missing")
+        return slot
+
+    @property
+    def context(self) -> MemorySecurityContext:
+        """Return the currently active context."""
+        return self._context
+
+    @property
+    def generation(self) -> int:
+        """Return the currently active monotonic key generation."""
+        return self._generation
+
+    def durable_state(self) -> OscoreKeyUpdateState:
+        """Return the state that an authoritative store must contain."""
+        return OscoreKeyUpdateState(
+            generation=self._generation,
+            context_id=self._context.durable_context_id(),
+        )
+
+    def update(
+        self,
+        parameters: OscoreContextParameters,
+        generation: int,
+        store: OscoreKeyUpdateStore,
+    ) -> MemorySecurityContext:
+        """Derive, durably publish, and activate a replacement context.
+
+        The replacement generation must be exactly the current generation plus
+        one. Derivation and validation happen before durable mutation. The store
+        then atomically swaps the active pointer and initializes the replacement
+        sender high-water. Any failure leaves the current context usable.
+        """
+        if self._generation == 0xFFFFFFFF or generation != self._generation + 1:
+            raise OscoreKeyUpdateError("OSCORE key generation must increase by exactly one")
+
+        candidate_context_id = _sender_context_id(parameters)
+        candidate = MemorySecurityContext.from_parameters(parameters, starting_sequence_number=0)
+        if candidate_context_id == self._context.durable_context_id():
+            candidate.retire()
+            raise OscoreKeyUpdateError("OSCORE key update reused the active sender context")
+
+        expected = self.durable_state()
+        replacement = OscoreKeyUpdateState(
+            generation=generation,
+            context_id=candidate_context_id,
+        )
+        try:
+            committed = store.compare_exchange(expected, replacement, 0)
+        except Exception:
+            candidate.retire()
+            raise
+        if not committed:
+            candidate.retire()
+            raise OscoreKeyUpdateError("OSCORE key update lost atomic-store race")
+
+        previous = self._context
+        self._context = candidate
+        self._generation = generation
+        previous.retire()
+        return previous

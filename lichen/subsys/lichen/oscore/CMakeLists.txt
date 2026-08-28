@@ -12,7 +12,12 @@ zephyr_library_sources(
   oscore_replay.c
   oscore_nonce.c
   oscore_protect.c
+  oscore_persist.c
   hkdf.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_OSCORE_SETTINGS
+  oscore_settings.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_COAP_SERVER

@@ -37,6 +37,7 @@ static int derive_key(const uint8_t *master_secret, size_t ms_len,
 		      const uint8_t *master_salt, size_t salt_len,
 		      const uint8_t *id, size_t id_len,
 		      const uint8_t *id_context, size_t id_context_len,
+		      bool has_id_context,
 		      const char *type, size_t out_len,
 		      uint8_t *out)
 {
@@ -44,6 +45,7 @@ static int derive_key(const uint8_t *master_secret, size_t ms_len,
 	int info_len;
 
 	info_len = build_info_cbor(id, id_len, id_context, id_context_len,
+				   has_id_context,
 				   type, out_len, info, sizeof(info));
 	if (info_len < 0) {
 		return OSCORE_ERR_KEY_DERIVATION;
@@ -185,11 +187,13 @@ void oscore_nvm_register_callbacks(oscore_nvm_write_cb _Nullable write_cb,
 	k_mutex_unlock(&s_ctx_mutex);
 }
 
-int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
-		      const uint8_t *_Nullable master_salt, size_t master_salt_len,
-		      const uint8_t *_Nonnull sender_id, size_t sender_id_len,
-		      const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
-		      struct oscore_ctx *_Nullable *_Nonnull ctx_out)
+static int oscore_ctx_create_internal(const uint8_t *master_secret,
+				      const uint8_t *master_salt, size_t master_salt_len,
+				      const uint8_t *sender_id, size_t sender_id_len,
+				      const uint8_t *recipient_id, size_t recipient_id_len,
+				      const uint8_t *id_context, size_t id_context_len,
+				      bool has_id_context,
+				      struct oscore_ctx **ctx_out)
 {
 	struct oscore_ctx *ctx = NULL;
 	int ret;
@@ -204,6 +208,16 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 
 	if (master_secret == NULL) {
 		LOG_ERR("master_secret must not be NULL");
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	if (master_salt == NULL && master_salt_len > 0) {
+		LOG_ERR("master_salt must not be NULL when its length is nonzero");
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+	if ((!has_id_context && id_context_len > 0) ||
+	    (has_id_context && id_context == NULL) ||
+	    id_context_len > OSCORE_ID_CONTEXT_MAX_LEN) {
+		LOG_ERR("invalid ID Context presence or length");
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
@@ -284,12 +298,18 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 		memcpy(ctx->recipient_id, recipient_id, recipient_id_len);
 	}
 	ctx->recipient_id_len = (uint8_t)recipient_id_len;
+	ctx->has_id_context = has_id_context;
+	if (id_context_len > 0) {
+		memcpy(ctx->id_context, id_context, id_context_len);
+	}
+	ctx->id_context_len = (uint8_t)id_context_len;
 
 	/* Derive Sender Key */
 	ret = derive_key(ctx->master_secret, OSCORE_KEY_LEN,
 			 ctx->master_salt, ctx->master_salt_len,
 			 ctx->sender_id, ctx->sender_id_len,
 			 ctx->id_context, ctx->id_context_len,
+			 ctx->has_id_context,
 			 "Key", OSCORE_KEY_LEN, ctx->sender_key);
 	if (ret != OSCORE_OK) {
 		goto cleanup_on_failure;
@@ -300,6 +320,7 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 			 ctx->master_salt, ctx->master_salt_len,
 			 ctx->recipient_id, ctx->recipient_id_len,
 			 ctx->id_context, ctx->id_context_len,
+			 ctx->has_id_context,
 			 "Key", OSCORE_KEY_LEN, ctx->recipient_key);
 	if (ret != OSCORE_OK) {
 		goto cleanup_on_failure;
@@ -310,6 +331,7 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 			 ctx->master_salt, ctx->master_salt_len,
 			 NULL, 0,
 			 ctx->id_context, ctx->id_context_len,
+			 ctx->has_id_context,
 			 "IV", OSCORE_NONCE_LEN, ctx->common_iv);
 	if (ret != OSCORE_OK) {
 		goto cleanup_on_failure;
@@ -330,6 +352,21 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 	 */
 	s_seq_initialized[ctx_idx] = false;
 
+#if defined(CONFIG_LICHEN_OSCORE_SETTINGS)
+	/*
+	 * Settings state is restored only after all derived keys and identifiers
+	 * are available, because their digest is the persistent context binding.
+	 * When persistence is configured, absence of its protected authority is a
+	 * hard failure: silently starting a fresh sender/replay state would permit
+	 * nonce reuse and authenticated replay after a reboot.
+	 */
+	if (!oscore_settings_ready() ||
+	    oscore_settings_restore_context_locked(ctx, ctx_idx) != 0) {
+		ret = OSCORE_ERR_NVM_FAILED;
+		goto cleanup_on_failure;
+	}
+#endif
+
 	k_mutex_unlock(&s_ctx_mutex);
 
 	*ctx_out = ctx;
@@ -342,6 +379,35 @@ cleanup_on_failure:
 	crypto_wipe(ctx, sizeof(*ctx));
 	k_mutex_unlock(&s_ctx_mutex);
 	return ret;
+}
+
+int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
+		      const uint8_t *_Nullable master_salt, size_t master_salt_len,
+		      const uint8_t *_Nonnull sender_id, size_t sender_id_len,
+		      const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
+		      struct oscore_ctx *_Nullable *_Nonnull ctx_out)
+{
+	return oscore_ctx_create_internal(master_secret,
+					  master_salt, master_salt_len,
+					  sender_id, sender_id_len,
+					  recipient_id, recipient_id_len,
+					  NULL, 0, false, ctx_out);
+}
+
+int oscore_ctx_create_with_id_context(
+	const uint8_t *_Nonnull master_secret,
+	const uint8_t *_Nullable master_salt, size_t master_salt_len,
+	const uint8_t *_Nullable sender_id, size_t sender_id_len,
+	const uint8_t *_Nullable recipient_id, size_t recipient_id_len,
+	const uint8_t *_Nullable id_context, size_t id_context_len,
+	struct oscore_ctx *_Nullable *_Nonnull ctx_out)
+{
+	return oscore_ctx_create_internal(master_secret,
+					  master_salt, master_salt_len,
+					  sender_id, sender_id_len,
+					  recipient_id, recipient_id_len,
+					  id_context, id_context_len,
+					  id_context != NULL, ctx_out);
 }
 
 void oscore_ctx_free(struct oscore_ctx *ctx)
@@ -420,7 +486,11 @@ int oscore_ctx_create_with_eui64(const uint8_t *_Nonnull master_secret,
 	ctx->has_peer_eui64 = true;
 
 	/* Try to restore SSN from NVM if callback is registered */
-	if (s_nvm_read_cb != NULL) {
+	if (s_nvm_read_cb != NULL
+#if defined(CONFIG_LICHEN_OSCORE_SETTINGS)
+	    && !oscore_settings_ready()
+#endif
+	) {
 		uint64_t stored_ssn;
 		ret = s_nvm_read_cb(peer_eui64, &stored_ssn);
 		if (ret == 0) {
@@ -506,10 +576,34 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint64_t sender_seq)
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 
 	idx = ctx_get_index(ctx);
-	if (idx < 0) {
+	if (idx < 0 || !ctx->active || sender_seq > OSCORE_SSN_MAX + 1U) {
 		k_mutex_unlock(&s_ctx_mutex);
 		return OSCORE_ERR_INVALID_PARAM;
 	}
+#if defined(CONFIG_LICHEN_OSCORE_SETTINGS)
+	{
+		struct oscore_ctx candidate = *ctx;
+		int persist_ret;
+
+		if (s_seq_initialized[idx] && sender_seq < ctx->sender_seq) {
+			k_mutex_unlock(&s_ctx_mutex);
+			return OSCORE_ERR_NVM_FAILED;
+		}
+		candidate.sender_seq = sender_seq;
+		persist_ret = oscore_settings_commit_context_locked(&candidate, true);
+		crypto_wipe(&candidate, sizeof(candidate));
+		if (persist_ret != 0) {
+			k_mutex_unlock(&s_ctx_mutex);
+			LOG_ERR("Failed to persist protected OSCORE state: %d",
+				persist_ret);
+			return OSCORE_ERR_NVM_FAILED;
+		}
+		ctx->sender_seq = sender_seq;
+		s_seq_initialized[idx] = true;
+		k_mutex_unlock(&s_ctx_mutex);
+		return OSCORE_OK;
+	}
+#endif
 
 	write_cb = s_nvm_write_cb;
 	if (ctx->has_peer_eui64) {
@@ -667,6 +761,33 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 		k_mutex_unlock(&s_ctx_mutex);
 		return OSCORE_ERR_NO_CONTEXT;
 	}
+
+#if defined(CONFIG_LICHEN_OSCORE_SETTINGS)
+	{
+		struct oscore_ctx candidate = *ctx;
+		int persist_ret;
+
+		ssn = ctx->sender_seq;
+		durable = ssn > OSCORE_SSN_MAX - OSCORE_SSN_SAFETY_MARGIN ?
+			  OSCORE_SSN_MAX + 1U :
+			  ssn + OSCORE_SSN_SAFETY_MARGIN;
+		candidate.sender_seq = durable;
+		persist_ret = oscore_settings_commit_context_locked(
+			&candidate, s_seq_initialized[idx]);
+		crypto_wipe(&candidate, sizeof(candidate));
+		if (persist_ret != 0) {
+			k_mutex_unlock(&s_ctx_mutex);
+			LOG_ERR("Protected OSCORE state persist failed: %d",
+				persist_ret);
+			return OSCORE_ERR_NVM_FAILED;
+		}
+		if (ctx->sender_seq < durable) {
+			ctx->sender_seq = durable;
+		}
+		k_mutex_unlock(&s_ctx_mutex);
+		return OSCORE_OK;
+	}
+#endif
 
 	write_cb = s_nvm_write_cb;
 	ssn = ctx->sender_seq;

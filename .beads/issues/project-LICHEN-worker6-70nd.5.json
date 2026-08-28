@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-70nd.5",
+  "title": "Unit tests for BLE-to-SenML relay components",
+  "description": "Unit tests for UUID mapping, value parsing, and relay driver integration.\n\n**Test coverage:**\n\n1. **gatt_ipso_registry tests:**\n   - Lookup known 16-bit UUID returns correct IPSO mapping\n   - Lookup known 128-bit UUID returns correct IPSO mapping\n   - Lookup unknown UUID returns None\n   - All standard mappings from Appendix K are present\n\n2. **gatt_value_parser tests:**\n   - Parse sint16 temperature (0x2A6E): bytes([0xE8, 0x03]) -\u003e 10.0 Cel\n   - Parse uint16 humidity (0x2A6F): bytes([0x10, 0x27]) -\u003e 100.0 %RH\n   - Parse uint8 battery (0x2A19): bytes([0x64]) -\u003e 100 %\n   - Parse uint32 pressure (0x2A6D): bytes known vectors\n   - Handle invalid/truncated input gracefully\n\n3. **senml_relay tests:**\n   - Single reading produces valid SenML pack\n   - Multiple readings within window aggregate correctly\n   - Rate limiting per-device works\n   - Global rate limiting works\n   - Unknown UUID readings are dropped (or flagged)\n   - Configuration updates take effect\n\n**Output:** python/tests/test_ble_senml_relay.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:52:50.143133Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:52:50.143133Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-70nd.5",
+      "depends_on_id": "project-LICHEN-worker6-70nd",
+      "type": "parent-child",
+      "created_at": "2026-08-28T04:52:51.349863Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

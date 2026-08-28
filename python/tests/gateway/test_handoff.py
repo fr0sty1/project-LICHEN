@@ -355,11 +355,19 @@ class TestHandoffProtocol:
         assert response.dao_sequence == 42
         assert response.path_sequence == 10
         assert response.oscore_state == oscore_state
-        assert node_address not in source_registry  # Removed from source
+        # SECURITY: Node is still in registry but marked pending (two-phase commit)
+        assert node_address in source_registry
+        entry = source_registry.get(node_address)
+        assert entry is not None
+        assert entry.pending_handoff is True
 
         # Step 3: Destination accepts handoff
         dest_registry.accept_handoff(response)
         assert node_address in dest_registry
+
+        # Step 4: Source finalizes handoff after confirming delivery
+        assert source_registry.finalize_handoff(node_address) is True
+        assert node_address not in source_registry  # Now removed
 
         # Verify sequence numbers were incremented for safety
         entry = dest_registry.get(node_address)
@@ -368,6 +376,96 @@ class TestHandoffProtocol:
         assert entry.path_sequence == 11  # 10 + 1
         assert entry.oscore_state is not None
         assert entry.oscore_state.sender_sequence == 101  # 100 + 1
+
+    def test_handoff_rollback_on_failure(
+        self,
+        source_registry: NodeRegistry,
+        node_address: IPv6Address,
+    ) -> None:
+        """Rollback handoff if response delivery fails."""
+        source_registry.register(node_address, dao_sequence=42, path_sequence=10)
+        assert node_address in source_registry
+
+        request = HandoffRequest(
+            node_address=node_address,
+            timestamp=int(time.time()),
+        )
+
+        # Process request - marks node as pending
+        response = source_registry.handle_handoff_request(request)
+        assert response.status == HandoffRejectReason.SUCCESS
+        entry = source_registry.get(node_address)
+        assert entry is not None
+        assert entry.pending_handoff is True
+
+        # Simulate delivery failure - rollback
+        assert source_registry.rollback_handoff(node_address) is True
+        entry = source_registry.get(node_address)
+        assert entry is not None
+        assert entry.pending_handoff is False
+        # Node is still registered and usable
+        assert node_address in source_registry
+
+    def test_pending_handoff_rejects_new_request(
+        self,
+        source_registry: NodeRegistry,
+        node_address: IPv6Address,
+    ) -> None:
+        """Reject handoff request if node already has pending handoff."""
+        source_registry.register(node_address, dao_sequence=42, path_sequence=10)
+
+        request = HandoffRequest(
+            node_address=node_address,
+            timestamp=int(time.time()),
+        )
+
+        # First request succeeds
+        response1 = source_registry.handle_handoff_request(request)
+        assert response1.status == HandoffRejectReason.SUCCESS
+
+        # Second request rejected - pending handoff in progress
+        response2 = source_registry.handle_handoff_request(request)
+        assert response2.status == HandoffRejectReason.NODE_BUSY
+
+    def test_get_pending_handoffs(
+        self,
+        source_registry: NodeRegistry,
+        node_address: IPv6Address,
+    ) -> None:
+        """List nodes with pending handoffs."""
+        addr2 = IPv6Address("fe80::2")
+        source_registry.register(node_address, dao_sequence=1, path_sequence=1)
+        source_registry.register(addr2, dao_sequence=2, path_sequence=2)
+
+        assert source_registry.get_pending_handoffs() == []
+
+        # Initiate handoff for first node
+        request = HandoffRequest(node_address=node_address, timestamp=0)
+        source_registry.handle_handoff_request(request)
+
+        pending = source_registry.get_pending_handoffs()
+        assert len(pending) == 1
+        assert node_address in pending
+        assert addr2 not in pending
+
+    def test_finalize_nonexistent_returns_false(
+        self,
+        source_registry: NodeRegistry,
+        node_address: IPv6Address,
+    ) -> None:
+        """Finalize returns False for nonexistent node."""
+        assert source_registry.finalize_handoff(node_address) is False
+
+    def test_finalize_non_pending_returns_false(
+        self,
+        source_registry: NodeRegistry,
+        node_address: IPv6Address,
+    ) -> None:
+        """Finalize returns False for node not in pending state."""
+        source_registry.register(node_address, dao_sequence=1, path_sequence=1)
+        assert source_registry.finalize_handoff(node_address) is False
+        # Node still registered
+        assert node_address in source_registry
 
     def test_handoff_node_not_found(
         self, source_registry: NodeRegistry, node_address: IPv6Address

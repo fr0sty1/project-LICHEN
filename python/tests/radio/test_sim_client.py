@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import struct
 
 import anyio
 import pytest
+from structlog.testing import capture_logs
 
 from lichen.radio.sim_client import MAX_MESSAGE_LENGTH, SimRadio, SimRadioError
 from lichen.sim.protocol import (
@@ -155,6 +157,30 @@ async def test_transmit_success(mock_server: MockServer) -> None:
     assert channel == 0
 
 
+async def test_transmit_logs_bounded_packet_telemetry(mock_server: MockServer) -> None:
+    """Successful TX logs canonical payload bytes and SHA-256/16 hash."""
+    payload = b"Hello LICHEN!"
+    mock_server.responses = [encode_ok(), encode_tx_done(1000)]
+    radio = SimRadio("127.0.0.1", mock_server.port, "sim1", "node1", (0, 0, 0))
+
+    await radio.connect()
+    with capture_logs() as logs:
+        assert await radio.transmit(payload) is True
+    await radio.close()
+    await mock_server.wait_for_handler()
+
+    assert logs == [
+        {
+            "event": "tx",
+            "hex": "48656c6c6f204c494348454e21",
+            "len": 13,
+            "log_level": "info",
+            "node_id": "node1",
+            "packet_hash": "881a83ceb3647e2fe6bb4be7bd4aefd8",
+        }
+    ]
+
+
 async def test_transmit_failure(mock_server: MockServer) -> None:
     """Test transmission failure."""
     mock_server.responses = [
@@ -198,6 +224,32 @@ async def test_receive_success(mock_server: MockServer) -> None:
     timeout_us, channel = decode_rx_enter(rx_msg[1:])
     assert timeout_us == 5000 * 1000
     assert channel == 0
+
+
+async def test_receive_logs_bounded_packet_telemetry(mock_server: MockServer) -> None:
+    """Successful RX logs canonical payload bytes, radio data, and hash."""
+    payload = b"Hello LICHEN!"
+    mock_server.responses = [encode_ok(), encode_rx_packet(payload, -80, 100)]
+    radio = SimRadio("127.0.0.1", mock_server.port, "sim1", "node1", (0, 0, 0))
+
+    await radio.connect()
+    with capture_logs() as logs:
+        assert await radio.receive(5000) == (payload, -80, 100)
+    await radio.close()
+    await mock_server.wait_for_handler()
+
+    assert logs == [
+        {
+            "event": "rx",
+            "hex": "48656c6c6f204c494348454e21",
+            "len": 13,
+            "log_level": "info",
+            "node_id": "node1",
+            "packet_hash": "881a83ceb3647e2fe6bb4be7bd4aefd8",
+            "rssi": -80,
+            "snr": 100,
+        }
+    ]
 
 
 async def test_receive_timeout(mock_server: MockServer) -> None:
@@ -353,6 +405,73 @@ async def test_close_when_not_connected() -> None:
     radio = SimRadio("localhost", 5555, "sim1", "node1", (0, 0, 0))
     # Should not raise
     await radio.close()
+
+
+async def test_reconnect_after_disconnect() -> None:
+    """reconnect() restores usability after the server drops the connection.
+
+    The server closes the first connection immediately after acknowledging
+    REGISTER, so the next client operation raises SimRadioError. reconnect()
+    must open a fresh connection, re-register, and complete a subsequent TX
+    exchange. The server records every received message so the test can
+    prove a second REGISTER was sent on the new connection.
+    """
+    received: list[bytes] = []
+    first_connection = True
+
+    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        nonlocal first_connection
+
+        def reply(data: bytes) -> bytes:
+            return struct.pack("<I", len(data)) + data
+
+        try:
+            # REGISTER -> OK
+            (n,) = struct.unpack("<I", await reader.readexactly(4))
+            received.append(await reader.readexactly(n))
+            writer.write(reply(encode_ok()))
+            await writer.drain()
+
+            if first_connection:
+                # Drop the connection right after registration, simulating
+                # a server-initiated disconnect.
+                first_connection = False
+            else:
+                # Second (reconnected) connection: serve one TX exchange.
+                (n,) = struct.unpack("<I", await reader.readexactly(4))
+                received.append(await reader.readexactly(n))
+                writer.write(reply(encode_tx_done(1000)))
+                await writer.drain()
+        except (ConnectionError, asyncio.IncompleteReadError):
+            pass
+        finally:
+            writer.close()
+            with contextlib.suppress(ConnectionError):
+                await writer.wait_closed()
+
+    server = await asyncio.start_server(handle, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server:
+        radio = SimRadio("127.0.0.1", port, "sim1", "node1", (0, 0, 0))
+
+        await radio.connect()
+
+        # The server dropped us, so the next operation must fail.
+        with pytest.raises(SimRadioError):
+            await radio.transmit(b"lost")
+
+        # Reconnection establishes a fresh registered connection.
+        await radio.reconnect()
+        assert await radio.transmit(b"after reconnect") is True
+
+        await radio.close()
+
+    registers = [m for m in received if get_message_type(m) == MSG_REGISTER]
+    assert len(registers) == 2, "reconnect must re-register on the new connection"
+    txs = [m for m in received if get_message_type(m) == MSG_TX]
+    assert len(txs) == 1
+    payload, _channel = decode_tx(txs[0][1:])
+    assert payload == b"after reconnect"
 
 
 async def test_recv_rejects_oversized_message() -> None:

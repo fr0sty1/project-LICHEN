@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2025 Måns Ansgariusson <mansgariusson@gmail.com>
+# Copyright (c) 2026 The contributors to the LICHEN project
+
+description: |
+  Epson RX8130CE I2C real-time clock.
+
+  LICHEN binding for the out-of-tree RX8130CE driver. Property semantics
+  mirror the upstream Zephyr "epson,rx8130ce-rtc" binding (Zephyr >= 4.1);
+  the LICHEN compatible exists because the pinned Zephyr v3.7.0 has no
+  RX8130CE driver, and a duplicate compatible would collide with the
+  upstream binding in shared Zephyr workspaces >= 4.1.
+
+compatible: "lichen,rx8130ce-rtc"
+
+include: [i2c-device.yaml, rtc-device.yaml]
+
+properties:
+  clockout-frequency:
+    type: int
+    description: |
+      Frequency output on the FOUT pin in Hz. If not specified the clock
+      output is disabled.
+      - 1 # 1 Hz
+      - 1024 # 1.024 kHz
+      - 32768 # 32.768 kHz
+    enum: [1, 1024, 32768]
+
+  battery-switchover:
+    type: int
+    description: |
+      Enable the battery backup feature and specify the switchover mode.
+      If not specified the battery backup feature is left at its power-on
+      default (disabled).
+      - 1 # Non-rechargeable battery backup; i2c & FOUT disabled when VDD is below Vdet1
+      - 2 # Non-rechargeable battery backup; i2c & FOUT always on
+      - 3 # Rechargeable battery backup; i2c & FOUT disabled when VDD is below Vdet1
+      - 4 # Rechargeable battery backup; i2c & FOUT always on
+    enum: [1, 2, 3, 4]

@@ -304,6 +304,126 @@ Concurrent writers MUST use an exact revision comparison and fail rather than
 silently overwrite a newer trust state. Key generations and rotation sequences
 MUST fail closed at their integer maximum instead of wrapping.
 
+#### 8.7.4. Key Rotation Attestation
+
+Key rotation announcements use COSE_Sign1 to provide a verifiable attestation
+that a new public key is the legitimate successor to an old key. The OLD key
+signs the attestation, proving continuity of identity across the rotation.
+
+**Threat Model:**
+
+Without cryptographic attestation, an attacker could claim to be a rotated
+identity of a legitimate node. The old-key signature proves the rotation was
+authorized by the holder of the previous private key.
+
+**COSE_Sign1 Structure:**
+
+```
+COSE_Sign1 = [
+  h'a10139ffff',          ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<old-iid>'},      ; unprotected: {kid: old key's 8-byte IID}
+  h'<payload>',           ; see Payload below
+  h'<48-byte signature>'  ; Schnorr48 signature (by OLD key)
+]
+```
+
+The signature is computed using the OLD private key, attesting to the validity
+of the NEW public key.
+
+**Payload Structure (CBOR map):**
+
+| Key | Name | Type | Description |
+|-----|------|------|-------------|
+| 1 | old_pubkey | bstr(32) | Ed25519 public key being retired |
+| 2 | new_pubkey | bstr(32) | Ed25519 public key being activated |
+| 3 | rotation_seq | uint | Monotonic sequence, strictly increasing |
+| 4 | expiry | uint | Unix timestamp when attestation expires |
+
+```cbor
+{
+  1: h'<32 bytes>',       ; old_pubkey
+  2: h'<32 bytes>',       ; new_pubkey
+  3: <uint>,              ; rotation_seq
+  4: <unix timestamp>     ; expiry
+}
+```
+
+Integer keys minimize payload size. The payload is the serialized CBOR map.
+
+**Signature Computation (COSE_Sign1):**
+
+Per RFC 9052, the Sig_structure for COSE_Sign1:
+
+```
+Sig_structure = [
+  "Signature1",           ; context string
+  protected,              ; protected header bytes
+  h'',                    ; external_aad (empty)
+  payload                 ; payload bytes
+]
+sig = Schnorr48(old_privkey, SHA256(CBOR(Sig_structure)))
+```
+
+The OLD Ed25519 private key signs the canonical CBOR encoding of Sig_structure.
+
+**Receiver Validation:**
+
+On receiving a key rotation attestation:
+
+1. Decode COSE_Sign1 structure
+2. Extract `kid` from unprotected header; this identifies the old key's IID
+3. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+4. Lookup old pubkey from trust store using `kid`
+5. Verify `old_pubkey` in payload matches the stored pubkey for this IID
+6. Reconstruct Sig_structure per RFC 9052 and verify signature using old pubkey
+7. Verify `expiry` > now
+8. Verify `rotation_seq` > cached rotation_seq for this IID, or no cached entry
+9. Derive new IID from `new_pubkey` per section 8.7
+10. Update trust store: pin `new_pubkey` to the new IID, preserve rotation_seq
+11. Clear per-key replay state; the new key starts with fresh counters
+
+On validation failure, reject the rotation and retain the existing trust entry.
+
+**Rotation Sequence Persistence:**
+
+| Requirement | Behavior |
+|-------------|----------|
+| Storage | rotation_seq MUST be persisted to non-volatile storage |
+| Increment | rotation_seq MUST increment on each rotation |
+| Initial value | First rotation MUST use rotation_seq > 0 |
+| Maximum | At UINT64_MAX, rotation MUST fail closed (no wrap) |
+| Missing storage | If persistence unavailable, rotation MUST fail |
+
+Implementations MUST NOT accept a rotation with rotation_seq <= cached value.
+A node that has exhausted its rotation_seq space cannot rotate keys; it must
+be decommissioned and re-provisioned with a fresh identity.
+
+**Delivery Mechanisms:**
+
+Rotation attestations MAY be delivered via:
+- CoAP POST to `/.well-known/key-rotation` (OSCORE-protected)
+- Piggyback on DIO/DAO with attestation option (for mesh-wide propagation)
+- Out-of-band provisioning channel
+
+The delivery mechanism is deployment-specific. Regardless of mechanism, the
+attestation MUST be verified before updating trust state.
+
+**Security Considerations:**
+
+| Consideration | Behavior |
+|--------------|----------|
+| Old key compromise | Attacker can forge rotation; use expiry + monitoring |
+| Replay | rotation_seq prevents replay of old attestations |
+| Downgrade | Cannot rotate back to old key (seq must increase) |
+| Clock skew | Expiry validation requires reasonable time sync |
+| Trust continuity | New IID is cryptographically derived; cannot be spoofed |
+
+**Interaction with TOFU:**
+
+For TOFU-pinned peers, a valid rotation attestation is the ONLY way to change
+the pinned key. Key changes without attestation MUST be rejected and logged
+as potential MITM attempts.
+
 ### 8.8. OSCORE (RFC 8613)
 
 Object Security for Constrained RESTful Environments provides end-to-end
@@ -451,6 +571,612 @@ An optional control plane PSK for RPL is an acceptable tradeoff:
 Authenticated mode (per-node keys + KDC) is NOT recommended due to
 infrastructure complexity.
 
+#### 8.10.1. Root DIO Signature
+
+Root DIOs MAY carry an additional COSE_Sign1 signature as optional
+defense-in-depth over the link-layer baseline. This provides cryptographic
+proof that a DIO originates from the current DODAG root, not merely a node
+that received and forwarded it.
+
+**Threat Model:**
+
+Link-layer signatures prove "who forwarded this DIO" but not "who originated
+it." A compromised relay could modify rank, version, or MoP fields before
+re-signing at the link layer. The Root DIO Signature binds these fields to
+the root's Ed25519 key.
+
+**COSE_Sign1 Structure:**
+
+```
+COSE_Sign1 = [
+  h'a10139ffff',          ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<root-iid>'},     ; unprotected: {kid: root 8-byte IID}
+  h'<payload>',           ; see Payload below
+  h'<48-byte signature>'  ; Schnorr48 signature
+]
+```
+
+The signature is carried in an RPL DIO Option (type TBD) appended to the DIO.
+
+**Payload Structure (CBOR map):**
+
+| Key | Name | Type | Description |
+|-----|------|------|-------------|
+| 1 | dodag_id | bstr(16) | DODAGID (128-bit IPv6 address) |
+| 2 | instance | uint | RPLInstanceID |
+| 3 | version | uint | DODAGVersionNumber |
+| 4 | rank | uint | Root rank (normally 256 / ROOT_RANK) |
+| 5 | expiry | uint | Unix timestamp when signature expires |
+| 6 | root_seq | uint | Monotonic sequence, increments each DIO |
+| 7 | mop | uint | Mode of Operation (0-7) |
+
+```cbor
+{
+  1: h'<16 bytes>',       ; dodag_id
+  2: <uint>,              ; instance
+  3: <uint>,              ; version
+  4: <uint>,              ; rank
+  5: <unix timestamp>,    ; expiry
+  6: <uint>,              ; root_seq
+  7: <uint>               ; mop
+}
+```
+
+Integer keys minimize payload size. The payload is the serialized CBOR map.
+
+**Signature Computation (COSE_Sign1):**
+
+Per RFC 9052, the Sig_structure for COSE_Sign1:
+
+```
+Sig_structure = [
+  "Signature1",           ; context string
+  protected,              ; protected header bytes
+  h'',                    ; external_aad (empty)
+  payload                 ; payload bytes
+]
+sig = Schnorr48(root_privkey, SHA256(CBOR(Sig_structure)))
+```
+
+Root's Ed25519 private key signs the canonical CBOR encoding of Sig_structure.
+
+**Receiver Validation:**
+
+On receiving a DIO with Root Signature Option:
+
+1. Extract `kid` from unprotected header; verify matches DIO source address IID
+2. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+3. Lookup root pubkey from trust store (TOFU or provisioned)
+4. Reconstruct Sig_structure per RFC 9052 and verify signature
+5. Decode payload; verify `dodag_id`, `instance`, `version`, `rank`, `mop` match DIO fields
+6. Verify `expiry` > now
+7. Verify `root_seq` > cached root_seq for this DODAG, or no cached entry
+8. Cache root_seq keyed by (dodag_id, instance)
+9. Mark DIO as "root-authenticated"
+
+**Graceful Degradation:**
+
+If root pubkey is not cached (e.g., fresh node joining mesh):
+
+1. Accept DIO with link-layer signature only (baseline security)
+2. Cache root IID from DIO for later TOFU pinning
+3. Once root pubkey is learned (via EDHOC or first authenticated DIO), validate subsequent DIOs
+
+Nodes MUST NOT reject DIOs solely due to missing root signature validation
+capability. The signature is defense-in-depth, not a hard requirement.
+
+**Security Notes:**
+
+| Consideration | Behavior |
+|--------------|----------|
+| Root re-election | Clear cached root_seq; new root starts fresh |
+| root_seq wrap | MUST NOT wrap; uint64 provides ~500 years at 1/sec |
+| Signature absence | Fall back to link-layer baseline (still secure) |
+| Expired signature | Treat as unsigned; accept with link-layer auth only |
+
+**When to Include:**
+
+Root SHOULD include the signature option when:
+- Operating in adversarial environments (CONFIG_LICHEN_RPL_ROOT_SIG=y)
+- Mesh spans untrusted relay infrastructure
+- Defense-in-depth is required by deployment policy
+
+Root MAY omit the signature in trusted single-hop or small mesh deployments
+where link-layer signatures provide sufficient security.
+
+### 8.11. Tunnel Authorization (Egress Binding)
+
+When a source-routed tunnel terminates at an egress node (border router),
+the egress MUST verify the tunnel was authorized by the current DODAG root
+before decapsulating and forwarding to external networks.
+
+**Threat Model:**
+
+Without authorization, any authenticated mesh node could craft source-routed
+packets using the egress as unauthorized transit to external destinations.
+
+**COSE Algorithm Registration:**
+
+LICHEN uses Schnorr48 signatures (truncated Schnorr over Ed25519). This is
+registered as a private-use COSE algorithm:
+
+| Name | Value | Description |
+|------|-------|-------------|
+| Schnorr48-Ed25519 | -65537 | Schnorr signature, Ed25519 curve, 48-byte output |
+
+This algorithm ID is used in COSE_Sign1 protected headers throughout LICHEN.
+
+**Authorization Delivery:**
+
+Root delivers tunnel authorization via CoAP as a COSE_Sign1 structure:
+
+```
+POST coap://[egress]/.well-known/tunnel-auth
+Content-Format: application/cose; cose-type="cose-sign1" (TBD)
+OSCORE: <root-egress pairwise context>
+
+COSE_Sign1 = [
+  h'a1013a00010000',      ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<root-iid>'},     ; unprotected: {kid: root 8-byte IID}
+  h'<payload>',           ; see Payload below
+  h'<48-byte signature>'  ; Schnorr48 signature
+]
+```
+
+Message is OSCORE-protected using the pairwise context between root and
+egress (established via EDHOC). Delivery uses standard source-routing.
+
+**Payload Structure (CBOR map):**
+
+```cbor
+{
+  1: h'<prefix bytes>',   ; target: prefix_len/8 bytes, zero-padded
+  2: <0-128>,             ; prefix_len: uint
+  3: h'<16 bytes>',       ; route_hash: see Route Hash Computation
+  4: <uint>,              ; path_seq: from triggering DAO
+  5: <unix timestamp>,    ; expiry: uint
+  6: h'<8-byte IID>'      ; egress_iid: binds authorization to this egress
+}
+```
+
+Integer keys minimize payload size. The payload is the serialized CBOR map.
+
+**Route Hash Computation:**
+
+```
+route_bytes = concat(hop[0].iid, hop[1].iid, ..., hop[n].iid)
+route_hash  = SHA-256(route_bytes)[0:16]
+```
+
+Each `hop[i].iid` is the 8-byte IID from the transit node's address, in
+source-route order (first hop to last hop / egress). This matches the
+order in the IPv6 Source-Route Header.
+
+**Signature Computation (COSE_Sign1):**
+
+Per RFC 9052, the Sig_structure for COSE_Sign1:
+
+```
+Sig_structure = [
+  "Signature1",           ; context string
+  protected,              ; protected header bytes
+  h'',                    ; external_aad (empty)
+  payload                 ; payload bytes
+]
+sig = Schnorr48(root_privkey, SHA256(CBOR(Sig_structure)))
+```
+
+Root's Ed25519 private key signs the canonical CBOR encoding of Sig_structure.
+
+**Egress Validation:**
+
+On receiving tunnel-auth POST:
+
+1. Verify OSCORE protection (authenticates root as sender)
+2. Decode COSE_Sign1 structure
+3. Extract `kid` from unprotected header; verify matches current DODAG root IID (from DIO)
+4. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+5. Reconstruct Sig_structure per RFC 9052 and verify signature using root pubkey
+6. Decode payload; verify `egress_iid` matches own IID
+7. Verify `expiry` > now
+8. Verify `path_seq` > cached path_seq for this (target, route_hash), or no cached entry
+9. Cache authorization keyed by (target_prefix, route_hash)
+10. Respond 2.04 Changed
+
+On validation failure, respond 4.03 Forbidden and do not cache.
+
+On receiving source-routed data packet for decapsulation:
+
+1. Compute route_hash from Source-Route Header
+2. Lookup (inner_src.prefix, route_hash) in authorization table
+3. If missing or expired: drop, log "unauthorized tunnel"
+4. If valid: decapsulate and forward
+
+**Authorization Table:**
+
+Implementations MUST bound the authorization table. Recommended: 256 entries
+with LRU eviction. Exceeding capacity evicts least-recently-used entry.
+
+**Trigger Conditions:**
+
+Root SHOULD send tunnel-auth when:
+- A new route via an egress is installed (DAO received)
+- An existing route's path changes
+- Approaching expiry of a valid route (refresh)
+
+Root SHOULD NOT send tunnel-auth for routes that do not traverse an egress.
+Egress capability MAY be signaled via DAO option or out-of-band configuration;
+the mechanism is implementation-defined in this version.
+
+**Refresh and Expiry:**
+
+| Event | Behavior |
+|-------|----------|
+| Route unchanged, nearing expiry | Root re-sends with fresh expiry |
+| Route changes | Root sends new authorization with new route_hash |
+| Node leaves mesh | Authorization expires naturally (no explicit revoke) |
+| Root re-election | All authorizations invalid; rebuild with mesh reconvergence |
+
+**Root Re-election:**
+
+When DODAG root changes, all cached authorizations become invalid (signed by
+old root). Egress MUST clear the authorization table on detecting a new root
+identity in DIO. Tunnel authorization rebuilds as part of normal mesh
+reconvergence--new root receives DAOs and issues new authorizations. No grace
+period; the security boundary is the current root's signature.
+
+**Interaction with Trust Boundaries:**
+
+Consistent with section 18.8.2 Trust Boundaries (12-apps.md) and section 15.3
+OSCORE Replay Window, tunnel authorization is mesh-lifetime state. Egress
+restart clears the authorization table; authorizations rebuild via CoAP as
+routes re-establish.
+
+**COSE in LICHEN:**
+
+Tunnel authorization establishes COSE_Sign1 (RFC 9052) as the standard format
+for signed control messages in LICHEN. Benefits:
+
+- Standardized envelope with algorithm and key ID in headers
+- Interoperable with COSE libraries (no custom parsing)
+- Consistent with OSCORE/EDHOC CBOR ecosystem
+- Extensible (additional headers, algorithms) without format changes
+
+Future signed control messages (e.g., capability announcements, delegation
+tokens) SHOULD use COSE_Sign1 with the Schnorr48-Ed25519 algorithm (-65537)
+unless a different algorithm is explicitly required.
+
+### 8.12. Capability Announcements
+
+Mesh nodes announce their capabilities to the DODAG root via COSE_Sign1 signed
+messages. The root uses these announcements to determine which nodes can serve
+as egress points or delegate prefixes, enabling tunnel-auth (8.11) authorization.
+
+**Relationship to Tunnel Authorization:**
+
+Capability announcements flow node-to-root; tunnel authorizations flow root-to-egress.
+A node first announces its capabilities; the root then authorizes tunnels through
+nodes that announced egress capability.
+
+```
+Node (announces)  -->  Root (authorizes)  -->  Egress (validates)
+     [8.12]                                        [8.11]
+```
+
+**Capability Bits:**
+
+| Bit | Name | Description |
+|-----|------|-------------|
+| 0 | egress | Node can decapsulate and forward to external networks |
+| 1 | prefix-delegation | Node can delegate prefixes to downstream nodes |
+| 2-7 | reserved | Reserved for future use; MUST be zero |
+
+**Announcement Delivery:**
+
+Nodes deliver capability announcements via CoAP as a COSE_Sign1 structure:
+
+```
+POST coap://[root]/.well-known/capability-announce
+Content-Format: application/cose; cose-type="cose-sign1" (TBD)
+OSCORE: <announcer-root pairwise context>
+
+COSE_Sign1 = [
+  h'a10139ffff',          ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<announcer-iid>'}, ; unprotected: {kid: announcer 8-byte IID}
+  h'<payload>',           ; see Payload below
+  h'<48-byte signature>'  ; Schnorr48 signature
+]
+```
+
+Message is OSCORE-protected using the pairwise context between announcer and
+root (established via EDHOC).
+
+**Payload Structure (CBOR map):**
+
+```cbor
+{
+  1: <uint>,              ; capabilities: bitmask (see Capability Bits)
+  2: h'<prefix bytes>',   ; prefix: prefix_len/8 bytes, zero-padded
+  3: <0-128>,             ; prefix_len: uint
+  4: <unix timestamp>,    ; expiry: uint
+  5: <uint>,              ; seq: monotonically increasing sequence number
+  6: h'<8-byte IID>'      ; announcer_iid: binds announcement to this node
+}
+```
+
+| Key | Field | Type | Description |
+|-----|-------|------|-------------|
+| 1 | capabilities | uint | Bitmask of announced capabilities |
+| 2 | prefix | bytes | Prefix this announcement applies to |
+| 3 | prefix_len | uint | Prefix length in bits (0-128) |
+| 4 | expiry | uint | Unix timestamp when announcement expires |
+| 5 | seq | uint | Sequence number for replay protection |
+| 6 | announcer_iid | bytes | 8-byte IID of the announcing node |
+
+Integer keys minimize payload size. The payload is the serialized CBOR map.
+
+**Signature Computation (COSE_Sign1):**
+
+Per RFC 9052, the Sig_structure for COSE_Sign1:
+
+```
+Sig_structure = [
+  "Signature1",           ; context string
+  protected,              ; protected header bytes
+  h'',                    ; external_aad (empty)
+  payload                 ; payload bytes
+]
+sig = Schnorr48(announcer_privkey, SHA256(CBOR(Sig_structure)))
+```
+
+Announcer's Ed25519 private key signs the canonical CBOR encoding of Sig_structure.
+
+**Root Validation:**
+
+On receiving capability-announce POST:
+
+1. Verify OSCORE protection (authenticates announcer as sender)
+2. Decode COSE_Sign1 structure
+3. Extract `kid` from unprotected header; verify it matches the OSCORE sender ID
+4. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+5. Reconstruct Sig_structure per RFC 9052 and verify signature using announcer pubkey
+6. Decode payload; verify `announcer_iid` matches `kid` from unprotected header
+7. Verify `expiry` > now
+8. Verify `seq` > cached seq for this announcer_iid, or no cached entry
+9. Verify reserved capability bits (2-7) are zero
+10. Cache announcement keyed by announcer_iid
+11. Respond 2.04 Changed
+
+On validation failure, respond 4.03 Forbidden and do not cache.
+
+**Capability Table:**
+
+Root maintains a capability table mapping announcer IIDs to their capabilities:
+
+| Field | Description |
+|-------|-------------|
+| announcer_iid | 8-byte IID of the capable node |
+| capabilities | Bitmask of announced capabilities |
+| prefix | Associated prefix (for prefix-delegation) |
+| prefix_len | Length of associated prefix |
+| expiry | When this capability expires |
+| seq | Last accepted sequence number |
+
+Implementations MUST bound the capability table. Recommended: 256 entries
+with LRU eviction. Exceeding capacity evicts least-recently-used entry.
+
+**Trigger Conditions:**
+
+Nodes SHOULD send capability announcements when:
+- Joining the mesh (after EDHOC with root completes)
+- Capabilities change (e.g., gaining or losing external connectivity)
+- Approaching expiry of previous announcement (refresh)
+- After root re-election (new root needs announcements)
+
+**Interaction with Tunnel Authorization:**
+
+When root receives a DAO indicating a route through a node:
+
+1. Check capability table for that node's IID
+2. If node has egress capability (bit 0 set) and prefix matches:
+   - Send tunnel-auth (8.11) to authorize the tunnel
+3. If node lacks egress capability:
+   - Do not send tunnel-auth; route is internal-only
+
+**Root Re-election:**
+
+When DODAG root changes, capability announcements to the old root are invalid.
+Nodes MUST re-announce capabilities to the new root after detecting root change
+in DIO. The new root builds its capability table from fresh announcements.
+
+**Security Considerations:**
+
+- Announcements are signed by the announcing node, preventing spoofing
+- OSCORE provides confidentiality (capabilities not visible to relays)
+- Sequence numbers prevent replay of stale announcements
+- Expiry ensures stale capabilities do not persist indefinitely
+- Root validates announcer_iid matches the cryptographic identity
+
+### 8.13. Node Credentials
+
+Nodes MAY hold signed credentials asserting facts about the node. Credentials
+are issued by authorities (CAs, gateways, fleet operators) and presented to
+verifiers when needed.
+
+**COSE_Sign1 Structure:**
+
+```
+COSE_Sign1 = [
+  h'a10139ffff',              ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {
+    4: h'<issuer-iid>',       ; kid: issuer 8-byte IID
+    33: [<x509-chain>]        ; x5chain: optional cert chain (RFC 9360)
+  },
+  h'<payload>',               ; see Payload below
+  h'<48-byte signature>'
+]
+```
+
+**Payload (CBOR map):**
+
+```cbor
+{
+  1: h'<subject-iid>',        ; who this credential is about
+  2: "<claim-type>",          ; namespaced claim identifier
+  3: <claim-value>,           ; any CBOR type
+  4: <expiry>,                ; unix timestamp
+  5: <seq>                    ; for revocation/supersede
+}
+```
+
+**Claim Namespaces:**
+
+| Prefix | Registry | Examples |
+|--------|----------|----------|
+| `lichen:` | This spec | `lichen:fleet`, `lichen:egress`, `lichen:relay` |
+| `oidc:` | OIDC Core §5.1 | `oidc:name`, `oidc:email`, `oidc:phone_number` |
+| `vcard:` | RFC 6350 | `vcard:tel`, `vcard:org`, `vcard:geo` |
+| `jwt:` | IANA JWT Claims | `jwt:iss`, `jwt:aud` |
+| URI | Custom | `https://example.com/claims/employee_id` |
+
+**LICHEN-Defined Claims:**
+
+| Claim | Type | Description |
+|-------|------|-------------|
+| `lichen:fleet` | tstr | Fleet membership identifier |
+| `lichen:gateway_access` | [bstr] | Array of authorized gateway IIDs |
+| `lichen:egress` | bool | Permitted to route externally |
+| `lichen:relay` | bool | Permitted to relay others' traffic |
+| `lichen:emergency` | bool | Gateway relays to emergency services |
+| `lichen:emergency_callback` | tstr | Verified callback for PSAP |
+| `lichen:role` | tstr | ICS/operational role |
+
+**Trust Anchors:**
+
+Verifiers maintain a list of trusted issuer public keys. Trust MAY be
+established via:
+- TOFU (first-use pinning)
+- Pre-configured trust anchors
+- X.509 chain to trusted root CA
+- Out-of-band verification
+
+**Default CA:**
+
+LICHEN provides an optional public CA service for credential issuance.
+Deployments MAY use the default CA, self-operate a CA, or use any PKI.
+Trust anchor configuration is implementation-defined.
+
+**Verification:**
+
+1. Decode COSE_Sign1; verify algorithm is -65537
+2. If x5chain present: validate chain to trust anchor
+3. Else: lookup issuer pubkey by kid in trust store
+4. Verify signature per RFC 9052
+5. Verify subject-iid matches presenting node
+6. Verify expiry > now
+7. Verify seq > cached seq (if superseding prior credential)
+
+**Revocation:**
+
+Credentials are superseded by issuing a new credential with higher seq.
+No explicit revocation message. Short expiry (7-30 days) limits exposure.
+Gateways MAY cache and distribute CRLs; mechanism is out of scope.
+
+**Presentation:**
+
+Nodes present credentials when requested or when accessing protected
+resources. Presentation protocol is application-defined; typical pattern:
+
+```
+GET coap://[gateway]/.well-known/auth
+  -> 4.01 Unauthorized, "credential required: lichen:fleet"
+
+POST coap://[gateway]/.well-known/auth
+Content-Format: application/cose
+{credential COSE_Sign1}
+  -> 2.04 Changed (credential cached for session)
+```
+
+#### 8.13.1. Local Facts (Gateway-Issued)
+
+Gateways issue local facts for nodes in their mesh. No PKI required; trust is
+implicit (node trusts its gateway). Facts are valid within the mesh or
+federation that recognizes the issuing gateway.
+
+**Issuance:**
+
+```
+POST coap://[gateway]/.well-known/local-fact
+OSCORE: <node-gateway context>
+{"request": "relay"}
+
+Response: 2.01 Created
+Content-Format: application/cose
+{COSE_Sign1 with lichen:relay=true}
+```
+
+Gateway decides policy (who gets what facts) out of band.
+
+**Local Fact Claims:**
+
+| Claim | Type | Description |
+|-------|------|-------------|
+| `lichen:emergency` | bool | Gateway will relay to emergency services |
+| `lichen:emergency_callback` | tstr | Verified callback number for PSAP |
+| `lichen:relay` | bool | May relay others' traffic |
+| `lichen:priority` | uint | Traffic priority (0=low, 3=emergency) |
+| `lichen:channel` | [tstr] | Authorized channel/group IDs |
+| `lichen:quota` | uint | Monthly bytes (0=unlimited) |
+| `lichen:sponsored` | tstr | "Traffic sponsored by X" |
+
+**Emergency Services Authorization:**
+
+The `lichen:emergency` local fact asserts the issuing gateway will route
+emergency traffic to the regional emergency services (911, 112, 999, etc.).
+This is a gateway capability assertion — the gateway has the PSAP/emergency
+center connection and accepts responsibility for relay.
+
+Nodes with `lichen:emergency=true` MAY display "emergency services available"
+in UI. Nodes without this fact SHOULD warn users that emergency services are
+unavailable via this mesh.
+
+The optional `lichen:emergency_callback` provides a verified phone number the
+emergency center can call back. Gateway verifies ownership (SMS, voice OTP)
+before issuing.
+
+**Federation Facts:**
+
+For multi-gateway deployments, facts MAY be co-signed by multiple gateways
+or issued by a federation coordinator. Verifiers accept facts signed by any
+federated gateway they trust.
+
+```cbor
+; Single gateway
+{4: h'<gateway-iid>'}
+
+; Federation (multiple signers via COSE_Sign)
+COSE_Sign with multiple COSE_Signature entries
+```
+
+**Validity:**
+
+Local facts are mesh-lifetime. Gateway restart or root re-election
+invalidates cached facts; nodes re-request from new gateway.
+
+#### 8.13.2. CA Credentials (Portable)
+
+CA credentials (section 8.13 main text) are portable across meshes. They
+require PKI trust (x5chain or pre-configured anchor). Use for:
+
+- Identity (name, email, phone)
+- 911 authorization
+- Fleet membership (valid at any fleet gateway)
+- Organizational role
+
+Local facts and CA credentials can coexist. A node might have:
+- CA credential: `oidc:name = "Mark Atwood"` (portable identity)
+- Local fact: `lichen:priority = 2` (this mesh only)
+
 ---
 
 ## 15. Security Considerations
@@ -483,6 +1209,29 @@ Private keys MUST be stored in:
 Receivers track per-sender (epoch, seqnum) state with a 32-entry sliding
 window for out-of-order tolerance. Epoch persisted to flash; increments
 on wrap or reboot. See 02-physical-link.md:4.4 (and draft-lichen-link-01.md:5.2).
+
+**OSCORE Replay Window:**
+
+When an OSCORE Security Context is reused after a restart, its sender sequence
+reservations, recipient replay window, and response replay/correlation state
+MUST remain valid across that restart. Implementations MUST persist this
+mutable state in a versioned, authenticated record bound to the exact Security
+Context, including its algorithms, Sender ID, Recipient ID, ID Context, and
+derived key/IV identity. A sender reservation MUST be committed before its
+nonce can be used, and newly accepted request or response replay state MUST be
+committed before plaintext or a successful result is released.
+
+Persistent OSCORE state MUST be protected by an independent monotonic
+rollback-and-deletion authority and updated atomically. Missing, corrupt, torn,
+stale, rolled-back, mismatched, or unavailable state MUST fail closed. If an
+endpoint cannot restore that state, it MUST NOT reuse the affected Security
+Context; it MUST establish a fresh context with distinct key/nonce material
+before processing further traffic. Clearing a replay window while retaining
+the old context is not a re-keying event and MUST NOT make previously accepted
+messages acceptable again. These requirements implement RFC 8613 Sections 7.2
+and 7.5: an AEAD nonce is never reused with the same key, and recovered context
+state neither reuses a prior Sender Sequence Number nor accepts a prior
+message.
 
 ### 15.4. Known Limitations
 

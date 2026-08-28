@@ -660,6 +660,75 @@ def test_rrep_delivery_not_gated_by_forward_window() -> None:
     assert r.process_rrep(rrep, from_neighbor=M, now=1).delivered is True
 
 
+# The RREP replay store is pruned on the same cadence as the RREQ suppression
+# store: every 16 replay checks (project-LICHEN-worker6-m7fl). Pruning keeps
+# only in-window entries -- exactly the set that can still suppress a replay --
+# so bounded memory never weakens replay protection.
+
+
+def test_rrep_seen_pruned_periodically() -> None:
+    """RREP-only traffic prunes the replay store on the 16-check cadence."""
+    r = _router(M)
+    r.process_rreq(RREQ(originator=ORIG, destination=D, seq_num=1), from_neighbor=ORIG, now=0)
+    r.process_rrep(
+        RREP(originator=D, destination=ORIG, seq_num=1, hop_count=0),
+        from_neighbor=D,
+        now=1,
+    )
+    assert len(r._rrep_seen) == 1
+    # 16 forwarded RREPs with no intervening RREQ activity: the countdown
+    # fires and drops the entry that aged out of the suppression window.
+    for i in range(16):
+        orig = IPv6Address(f"fd00:a::{i:04x}")
+        result = r.process_rrep(
+            RREP(originator=orig, destination=ORIG, seq_num=1, hop_count=0),
+            from_neighbor=IPv6Address("fe80::c"),
+            now=20_000 + i,
+        )
+        assert result.forward is not None
+    assert len(r._rrep_seen) == 16
+    assert (D, ORIG) not in r._rrep_seen
+    # The countdown reset after pruning: another 16 checks prune again,
+    # dropping the previous batch instead of growing without bound.
+    for i in range(16):
+        orig = IPv6Address(f"fd00:b::{i:04x}")
+        r.process_rrep(
+            RREP(originator=orig, destination=ORIG, seq_num=1, hop_count=0),
+            from_neighbor=IPv6Address("fe80::c"),
+            now=40_000 + i,
+        )
+    assert len(r._rrep_seen) == 16
+
+
+def test_rrep_replay_still_suppressed_after_prune() -> None:
+    """Pruning retains in-window entries, so replay protection is unchanged."""
+    r = _router(M)
+    r.process_rreq(RREQ(originator=ORIG, destination=D, seq_num=1), from_neighbor=ORIG, now=0)
+    first = r.process_rrep(
+        RREP(originator=D, destination=ORIG, seq_num=7, hop_count=0),
+        from_neighbor=D,
+        now=1,
+    )
+    assert first.forward is not None
+    # 16 distinct replay checks trigger the periodic prune; the fresh
+    # (D, ORIG) entry is inside the window and must survive it.
+    for i in range(16):
+        orig = IPv6Address(f"fd00:c::{i:04x}")
+        r.process_rrep(
+            RREP(originator=orig, destination=ORIG, seq_num=1, hop_count=0),
+            from_neighbor=IPv6Address("fe80::c"),
+            now=2 + i,
+        )
+    assert (D, ORIG) in r._rrep_seen
+    replay = r.process_rrep(
+        RREP(originator=D, destination=ORIG, seq_num=7, hop_count=0),
+        from_neighbor=IPv6Address("fe80::b"),
+        now=20,
+    )
+    assert replay.dropped is True
+    assert replay.forward is None
+
+
 # Regression: directly-constructed RREPs bypassing RREP.from_bytes() are
 # validated at process_rrep entry (project-LICHEN-worker6-4tbd); invalid
 # fields map to RrepResult(dropped=True) instead of raising ValueError from

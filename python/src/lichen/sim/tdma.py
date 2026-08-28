@@ -12,8 +12,8 @@ from lichen.timing.sfn import TDMA_GUARD_MS, TDMA_SLOT_MS, hash_32, slot_for
 def synchronized_hop_channel(sfn: int, seed: int = 0, num_channels: int = 8) -> int:
     data = seed.to_bytes(4, "little") + ((sfn & 0xFFFFFFFF).to_bytes(4, "little"))
     h = hash_32(data)
-    n = max(num_channels, 3)
-    return 1 + (h % n)
+    data_channels = num_channels - 1
+    return 0 if data_channels <= 0 else 1 + (h % data_channels)
 
 
 @dataclass

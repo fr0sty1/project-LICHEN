@@ -23,8 +23,8 @@ fn groups_membership_vectors_parse() {
         let signature = hex(payload["signature_hex"].as_str().unwrap());
         match case["kind"].as_str().unwrap() {
             "invitation" => {
-                let role = InviteRole::parse(payload["role"].as_str().unwrap())
-                    .expect("invite role");
+                let role =
+                    InviteRole::parse(payload["role"].as_str().unwrap()).expect("invite role");
                 let invite = GroupInvitation::new(
                     payload["group_id"].as_str().unwrap().to_string(),
                     payload["group_name"].as_str().unwrap().to_string(),
@@ -44,10 +44,7 @@ fn groups_membership_vectors_parse() {
                     reason: payload["reason"].as_str().map(str::to_string),
                     signature,
                 };
-                assert_eq!(
-                    removal.group_id,
-                    payload["group_id"].as_str().unwrap()
-                );
+                assert_eq!(removal.group_id, payload["group_id"].as_str().unwrap());
                 removals += 1;
             }
             other => panic!("unknown kind {other}"),

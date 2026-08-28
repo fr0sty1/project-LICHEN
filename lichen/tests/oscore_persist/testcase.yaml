@@ -1,0 +1,9 @@
+tests:
+  lichen.oscore.persist:
+    platform_allow:
+      - qemu_x86
+    tags:
+      - lichen
+      - oscore
+      - settings
+      - security

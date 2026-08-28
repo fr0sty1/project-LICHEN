@@ -81,23 +81,14 @@ static int commit_replay(struct lichen_replay_table *replay,
 			 struct lichen_link_auth_payload *auth,
 			 const uint8_t *public_key)
 {
-	struct lichen_replay_window *replay_window;
-
 	if (replay == NULL || !auth->replay_eligible) {
 		return 0;
 	}
 	if (public_key == NULL) {
 		return -LICHEN_EAUTH;
 	}
-	replay_window = lichen_replay_get(replay, public_key);
-	if (replay_window == NULL) {
-		return -ENOMEM;
-	}
-	if (!lichen_replay_check(replay_window, auth->info.epoch,
-				 auth->info.seqnum)) {
-		return -EALREADY;
-	}
-	return 0;
+	return lichen_replay_commit(replay, public_key, auth->info.epoch,
+				    auth->info.seqnum);
 }
 
 static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
@@ -139,13 +130,13 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		goto cleanup;
 	}
 
-		/* The signer is not identified on the wire; verification against
-		 * the provisioned peer key establishes sender identity. */
+		/* The SIID is authenticated as part of the signed transcript. */
 		int verify_result = schnorr48_verify_frame(frame[0], frame[1],
 							   parsed.epoch, parsed.seqnum,
 							   parsed.dst_addr,
 							   parsed.dst_addr_len,
-							   NULL, 0,
+							   parsed.signer_iid,
+							   parsed.signer_iid_len,
 							   auth_payload,
 							   auth_payload_len,
 							   parsed.mic,
@@ -166,9 +157,7 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		}
 	}
 
-	if (ctx->peer_eui64 != NULL) {
-		memcpy(src_eui64, ctx->peer_eui64, LICHEN_EUI64_LEN);
-	} else if (ctx->peer_pubkey != NULL) {
+	if (ctx->peer_pubkey != NULL) {
 		/*
 		 * Canonical key-derived EUI-64 (spec 6.2): wire EUI-64 =
 		 * SHA-512(pubkey)[0:8] with the U/L bit set. This is the
@@ -195,6 +184,20 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		/* Canonical IID has U/L cleared, so set == flip exactly once. */
 		src_eui64[0] |= 0x02;
 	} else {
+		ret = -LICHEN_EAUTH;
+		goto cleanup;
+	}
+	if (ctx->peer_eui64 != NULL &&
+	    memcmp(ctx->peer_eui64, src_eui64, LICHEN_EUI64_LEN) != 0) {
+		ret = -LICHEN_EAUTH;
+		goto cleanup;
+	}
+
+	/* A valid signature cannot authorize a caller-selected alias. Bind the
+	 * authenticated SIID to the canonical identity for the provisioned key. */
+	if (!parsed.signer_iid_present ||
+	    parsed.signer_iid_len != LICHEN_EUI64_LEN ||
+	    memcmp(parsed.signer_iid, src_eui64, LICHEN_EUI64_LEN) != 0) {
 		ret = -LICHEN_EAUTH;
 		goto cleanup;
 	}

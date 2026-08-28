@@ -47,8 +47,8 @@ int oscore_option_parse(const uint8_t *data, size_t len,
 	uint8_t flags = *p++;
 	remaining--;
 
-	/* Reserved bit must be 0 */
-	if (flags & 0x80) {
+	/* RFC 8613 reserves the three high bits; all MUST be zero. */
+	if (flags & 0xE0) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 

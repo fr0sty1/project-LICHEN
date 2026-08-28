@@ -17,10 +17,10 @@
 
 _Static_assert(SCHNORR48_SIG_LEN == 48, "Schnorr wire signature changed");
 
-/*
- * Helper wrappers for the old API calls - pass NULL/0 for signer_iid.
- * The real API now has signer_iid and signer_iid_len parameters.
- */
+static const uint8_t test_signer_eui64[8] = {
+	0x7f, 0xd5, 0xcf, 0xc6, 0x79, 0xab, 0x63, 0x42
+};
+
 static inline int sign_frame_compat(uint8_t length, uint8_t llsec,
 				    uint8_t epoch, uint16_t seqnum,
 				    const uint8_t *dst_addr, size_t dst_addr_len,
@@ -30,7 +30,7 @@ static inline int sign_frame_compat(uint8_t length, uint8_t llsec,
 {
 	return schnorr48_sign_frame(length, llsec, epoch, seqnum,
 				    dst_addr, dst_addr_len,
-				    NULL, 0,  /* signer_iid, signer_iid_len */
+				    test_signer_eui64, sizeof(test_signer_eui64),
 				    payload, payload_len,
 				    privkey, pubkey, sig);
 }
@@ -44,7 +44,7 @@ static inline int verify_frame_compat(uint8_t length, uint8_t llsec,
 {
 	return schnorr48_verify_frame(length, llsec, epoch, seqnum,
 				      dst_addr, dst_addr_len,
-				      NULL, 0,  /* signer_iid, signer_iid_len */
+				      test_signer_eui64, sizeof(test_signer_eui64),
 				      payload, payload_len,
 				      sig, sig_len, pubkey);
 }
@@ -183,6 +183,15 @@ static const struct test_vector valid_vectors[] = {
 		.signature = "9d76e7510ffc2bad6e5d45b3b6db1ebe2586389ec18b4fb8297c4e366e912f5a0a6ac2f2e52769009e006e92ba864403",
 		.valid = 1,
 	},
+	{
+		.description = "Determinism: same seed+message must produce identical signature",
+		.seed = "deadbeefcafebabedeadbeefcafebabedeadbeefcafebabedeadbeefcafebabe",
+		.private_key = "50b8c29238a8403e0ac69e23d47b9184c371a92460d518351b099944bbdfa867",
+		.public_key = "9d7725e28403e00e9ee54f9b14c868faf99b4b2fafa936eda28f8ae40207780d",
+		.message = "64657465726d696e69736d5f74657374",
+		.signature = "6458b6517842b14bd17647835ba8764ffc300e1984a960afa4bb1ef34fb148023a1a1e2d1856979eea5a3fdf6a7e8a06",
+		.valid = 1,
+	},
 };
 
 static const struct test_vector invalid_vectors[] = {
@@ -287,6 +296,38 @@ static int test_keypair_derivation(void)
 		snprintf(msg, sizeof(msg), "vector %zu pubkey: %s", i, v->description);
 		ASSERT_MEM_EQ(got_pub, expected_pub, 32, msg);
 	}
+
+	/* RFC 8032 seed vector shared in test/vectors/x25519.json.  Keep this
+	 * key-only case separate because that corpus does not define a
+	 * Schnorr-48 message/signature pair. */
+	{
+		static const char rfc8032_seed[] =
+			"9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
+		static const char rfc8032_private_key[] =
+			"307c83864f2833cb427a2ef1c00a013cfdff2768d980c0a3a520f006904de94f";
+		static const char rfc8032_public_key[] =
+			"d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
+		uint8_t seed[32];
+		uint8_t expected_priv[32];
+		uint8_t expected_pub[32];
+		uint8_t got_priv[32];
+		uint8_t got_pub[32];
+
+		ASSERT_TRUE(hex_decode(rfc8032_seed, seed, sizeof(seed)) == sizeof(seed),
+			    "RFC 8032 seed hex_decode");
+		ASSERT_TRUE(hex_decode(rfc8032_private_key, expected_priv,
+				       sizeof(expected_priv)) == sizeof(expected_priv),
+			    "RFC 8032 private key hex_decode");
+		ASSERT_TRUE(hex_decode(rfc8032_public_key, expected_pub,
+				       sizeof(expected_pub)) == sizeof(expected_pub),
+			    "RFC 8032 public key hex_decode");
+
+		schnorr48_derive_keypair(seed, got_priv, got_pub);
+		ASSERT_MEM_EQ(got_priv, expected_priv, sizeof(got_priv),
+			      "RFC 8032 private key");
+		ASSERT_MEM_EQ(got_pub, expected_pub, sizeof(got_pub),
+			      "RFC 8032 public key");
+	}
 	return 1;
 }
 
@@ -295,7 +336,8 @@ static int test_sign_matches_vectors(void)
 	for (size_t i = 0; i < sizeof(valid_vectors) / sizeof(valid_vectors[0]); i++) {
 		const struct test_vector *v = &valid_vectors[i];
 
-		uint8_t privkey[32], pubkey[32], expected_sig[48], got_sig[48];
+		uint8_t privkey[32], pubkey[32], expected_sig[48];
+		uint8_t got_sig[48], repeated_sig[48];
 		uint8_t message[256];
 		size_t msg_len, n;
 
@@ -313,11 +355,30 @@ static int test_sign_matches_vectors(void)
 
 		int ret = schnorr48_sign(privkey, pubkey, message, msg_len, got_sig);
 		ASSERT_TRUE(ret == 0, "schnorr48_sign");
+		ret = schnorr48_sign(privkey, pubkey, message, msg_len, repeated_sig);
+		ASSERT_TRUE(ret == 0, "repeated schnorr48_sign");
 
 		char msg_buf[128];
 		snprintf(msg_buf, sizeof(msg_buf), "vector %zu signature: %s", i, v->description);
 		ASSERT_MEM_EQ(got_sig, expected_sig, 48, msg_buf);
+		ASSERT_MEM_EQ(repeated_sig, got_sig, 48, "repeated signature is deterministic");
 	}
+	return 1;
+}
+
+static int test_sign_failure_output(void)
+{
+	uint8_t private_key[32] = { 0 };
+	uint8_t public_key[32] = { 0 };
+	uint8_t signature[SCHNORR48_SIG_LEN];
+	uint8_t zero[SCHNORR48_SIG_LEN] = { 0 };
+
+	memset(signature, 0xa5, sizeof(signature));
+	ASSERT_TRUE(schnorr48_sign(private_key, public_key, NULL, 1U, signature) == -EINVAL,
+		    "sign rejects NULL message with nonzero length");
+	ASSERT_MEM_EQ(signature, zero, sizeof(signature),
+		      "failed sign leaves no partial signature");
+
 	return 1;
 }
 
@@ -365,7 +426,8 @@ static int test_verify_invalid_signatures(void)
 
 		char msg_buf[128];
 		snprintf(msg_buf, sizeof(msg_buf), "vector %zu: %s", i, v->description);
-		ASSERT_FALSE(schnorr48_verify(pubkey, message, msg_len, sig, SCHNORR48_SIG_LEN), msg_buf);
+		ASSERT_FALSE(schnorr48_verify(pubkey, message, msg_len, sig,
+					      expected_sig_len), msg_buf);
 	}
 	return 1;
 }
@@ -423,20 +485,20 @@ static int test_frame_sign_verify(void)
 	uint8_t sig[48];
 
 	/* schnorr48_sign_frame returns 0 on success */
-	ASSERT_TRUE(sign_frame_compat(58, 0x21, 1, 42, dst_addr, 2, inner_payload, 4,
+	ASSERT_TRUE(sign_frame_compat(66, 0xa1, 1, 42, dst_addr, 2, inner_payload, 4,
 					 privkey, pubkey, sig) == 0,
 		    "sign_frame returns 0 on success");
 
 	/* schnorr48_verify_frame returns 1 on valid signature */
-	ASSERT_TRUE(verify_frame_compat(58, 0x21, 1, 42, dst_addr, 2, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == 1,
+	ASSERT_TRUE(verify_frame_compat(66, 0xa1, 1, 42, dst_addr, 2, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == 1,
 		    "frame verify");
 
 	/* Wrong epoch - returns 0 (invalid signature) */
-	ASSERT_TRUE(verify_frame_compat(58, 0x21, 2, 42, dst_addr, 2, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == 0,
+	ASSERT_TRUE(verify_frame_compat(66, 0xa1, 2, 42, dst_addr, 2, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == 0,
 		    "wrong epoch should fail");
 
 	/* Wrong seqnum - returns 0 (invalid signature) */
-	ASSERT_TRUE(verify_frame_compat(58, 0x21, 1, 43, dst_addr, 2, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == 0,
+	ASSERT_TRUE(verify_frame_compat(66, 0xa1, 1, 43, dst_addr, 2, inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == 0,
 		    "wrong seqnum should fail");
 
 	return 1;
@@ -462,6 +524,10 @@ static int test_verify_bounds_checking(void)
 	/* sig_len == SCHNORR48_SIG_LEN should be accepted (still fails because pubkey is bogus, but not for length) */
 	/* The internal pubkey_valid check will return false, which is fine */
 
+	ASSERT_FALSE(schnorr48_verify(pubkey, NULL, 1U, sig,
+				      SCHNORR48_SIG_LEN),
+		     "verify rejects NULL message with nonzero length");
+
 	return 1;
 }
 
@@ -477,14 +543,18 @@ static int test_frame_bounds_checking(void)
 	uint8_t sig[48] = { 0 };
 
 	/* sign_frame should return -EINVAL for dst_addr_len > max */
-	ASSERT_TRUE(schnorr48_sign_frame(58, 0x21, 1, 42, dst_addr, 17, NULL, 0,
+	ASSERT_TRUE(schnorr48_sign_frame(72, 0xa2, 1, 42, dst_addr,
+				       sizeof(dst_addr), test_signer_eui64,
+				       sizeof(test_signer_eui64),
 					 inner_payload, 4, privkey, pubkey, sig) == -EINVAL,
-		    "sign_frame rejects dst_addr_len > 16");
+		    "sign_frame rejects destination longer than 8 bytes");
 
 	/* verify_frame should return -EINVAL for dst_addr_len > max */
-	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 42, dst_addr, 17, NULL, 0,
+	ASSERT_TRUE(schnorr48_verify_frame(72, 0xa2, 1, 42, dst_addr,
+					 sizeof(dst_addr), test_signer_eui64,
+					 sizeof(test_signer_eui64),
 					   inner_payload, 4, sig, SCHNORR48_SIG_LEN, pubkey) == -EINVAL,
-		    "verify_frame rejects dst_addr_len > 16");
+		    "verify_frame rejects destination longer than 8 bytes");
 
 	/* sig_len == 0 should be rejected */
 	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 42, NULL, 0, NULL, 0,
@@ -499,8 +569,8 @@ static int test_frame_bounds_checking(void)
 	return 1;
 }
 
-/* TODO: Update test vectors to include signer_iid field per protocol change.
- * The protocol now requires signer_iid when signature_present is true.
+/* Historical pre-SIID oracle retained for provenance only.  Active canonical
+ * vector and tamper coverage lives in tests/schnorr48_interop.
  */
 #if 0
 static int test_signed_frame_cross_language_oracle(void)
@@ -624,13 +694,14 @@ int main(void)
 
 	RUN_TEST(test_keypair_derivation);
 	RUN_TEST(test_sign_matches_vectors);
+	RUN_TEST(test_sign_failure_output);
 	RUN_TEST(test_verify_valid_signatures);
 	RUN_TEST(test_verify_invalid_signatures);
 	RUN_TEST(test_verify_bounds_checking);
 	RUN_TEST(test_sign_verify_roundtrip);
 	RUN_TEST(test_frame_sign_verify);
 	RUN_TEST(test_frame_bounds_checking);
-	/* TODO: Re-enable once test vectors updated for signer_iid */
+	/* The superseding SIID-aware oracle runs in tests/schnorr48_interop. */
 	/* RUN_TEST(test_signed_frame_cross_language_oracle); */
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);

@@ -88,11 +88,12 @@ int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
 		return -EBUSY;
 	}
 
-	uint8_t method_corr = ctx->method * 4 + ctx->corr;
+	uint8_t encoded[EDHOC_MSG1_MAX_LEN];
+	ZCBOR_STATE_E(zse, 0, encoded, sizeof(encoded), 0);
 
-	ZCBOR_STATE_E(zse, 0, msg1, msg1_size, 0);
-
-	if (!zcbor_int32_put(zse, method_corr)) {
+	/* RFC 9528 encodes METHOD directly.  The METHOD_CORR draft field was
+	 * removed before publication and must never appear on the wire. */
+	if (!zcbor_int32_put(zse, ctx->method)) {
 		return -ENOMEM;
 	}
 	if (!zcbor_int32_put(zse, EDHOC_SUITE_0)) {
@@ -102,27 +103,18 @@ int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
 		return -ENOMEM;
 	}
 
-	/* C_I encoding per RFC 9528 Section 3.3.2 (bstr_identifier):
-	 * - Values 0-23: encode as CBOR positive integer
-	 * - Values -24 to -1 (stored as 232-255): encode as CBOR negative integer
-	 * - Other values: encode as CBOR byte string
-	 */
-	if (ctx->c_i_len == 1 && ctx->c_i[0] <= 23) {
-		if (!zcbor_int32_put(zse, ctx->c_i[0])) {
-			return -ENOMEM;
-		}
-	} else if (ctx->c_i_len == 1 && ctx->c_i[0] >= 232) {
-		/* Negative integer: stored as (original + 256), reverse it */
-		if (!zcbor_int32_put(zse, (int32_t)ctx->c_i[0] - 256)) {
-			return -ENOMEM;
-		}
-	} else {
-		if (!zcbor_bstr_encode_ptr(zse, ctx->c_i, ctx->c_i_len)) {
-			return -ENOMEM;
-		}
+	/* Emit the profile's canonical byte-string form.  Decoders also accept
+	 * compact integers, but deterministic senders do not alternate forms. */
+	if (!zcbor_bstr_encode_ptr(zse, ctx->c_i, ctx->c_i_len)) {
+		return -ENOMEM;
 	}
 
-	*msg1_len = zse->payload - msg1;
+	size_t encoded_len = (size_t)(zse->payload - encoded);
+	if (msg1_size < encoded_len) {
+		return -ENOMEM;
+	}
+	memcpy(msg1, encoded, encoded_len);
+	*msg1_len = encoded_len;
 
 	/* Save msg1 for TH computation */
 	/* SECURITY: Generic error hides internal buffer sizes */
@@ -130,7 +122,7 @@ int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
 		LOG_WRN("Message too large");
 		return -ENOMEM;
 	}
-	memcpy(ctx->msg1, msg1, *msg1_len);
+	memcpy(ctx->msg1, encoded, *msg1_len);
 	ctx->msg1_len = *msg1_len;
 
 	ctx->state = EDHOC_STATE_MSG1_SENT;
@@ -143,323 +135,147 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 				 uint8_t *msg3, size_t msg3_size,
 				 size_t *msg3_len)
 {
-	int ret = 0;
-	uint8_t g_xy[32] = {0};
-	uint8_t k_3[16] = {0};
-	uint8_t iv_3[13] = {0};
-	uint8_t signature_3[EDHOC_SIG_LEN] = {0};
-	uint8_t keystream_2[128] = {0};
-	uint8_t plaintext_2[128] = {0};
-	uint8_t mac_2[32] = {0};
-	uint8_t sig_struct_2[256] = {0};
-	uint8_t mac_3[32] = {0};
-	uint8_t sig_struct_3[256] = {0};
-	uint8_t plaintext_3[EDHOC_MAX_MSG3_LEN - EDHOC_TAG_LEN] = {0};
+	int ret = -EINVAL;
+	uint8_t g_xy[32] = {0}, keystream[128] = {0}, plaintext_2[128] = {0};
+	uint8_t id_cred_r[11], cred_r[40], id_cred_i[11], cred_i[40];
+	uint8_t mac_2[32] = {0}, mac_3[32] = {0};
+	uint8_t sig_input[256] = {0}, signature_3[EDHOC_SIG_LEN] = {0};
+	uint8_t context[128] = {0}, plaintext_3[80] = {0};
+	uint8_t k_3[16] = {0}, iv_3[13] = {0}, aad[64] = {0};
+	uint8_t ciphertext_3[80] = {0}, encoded_msg3[96] = {0};
+	size_t context_len, sig_input_len, pt3_len, aad_len, encoded_len;
 
-	if (ctx == NULL || msg2 == NULL || peer_pubkey == NULL ||
-	    msg3 == NULL || msg3_len == NULL) {
+	if (ctx == NULL || msg2 == NULL || peer_pubkey == NULL || msg3 == NULL ||
+	    msg3_len == NULL) {
 		return -EINVAL;
 	}
 	if (ctx->state != EDHOC_STATE_MSG1_SENT) {
 		return -EBUSY;
 	}
-
-	/* Decode message_2 = (G_Y || CIPHERTEXT_2, C_R) */
 	ZCBOR_STATE_D(zsd, 0, msg2, msg2_len, 2, 0);
-
-	struct zcbor_string g_y_ct2;
-	if (!zcbor_bstr_decode(zsd, &g_y_ct2)) {
-		return -EINVAL;
+	struct zcbor_string combined;
+	if (!zcbor_bstr_decode(zsd, &combined) || !zcbor_payload_at_end(zsd) ||
+	    zsd->constant_state->error || combined.len <= 32 || combined.len > 160) {
+		goto fail;
 	}
-	if (g_y_ct2.len < EDHOC_X25519_KEY_LEN) {
-		return -EINVAL;
-	}
-
-	memcpy(ctx->g_y, g_y_ct2.value, EDHOC_X25519_KEY_LEN);
-	const uint8_t *ciphertext_2 = g_y_ct2.value + EDHOC_X25519_KEY_LEN;
-	size_t ct2_len = g_y_ct2.len - EDHOC_X25519_KEY_LEN;
-
-	/* Decode C_R */
-	int32_t c_r_int;
-	struct zcbor_string c_r_bstr;
-	if (zcbor_int32_decode(zsd, &c_r_int)) {
-		if (c_r_int >= 0 && c_r_int <= 255) {
-			ctx->c_r[0] = (uint8_t)c_r_int;
-			ctx->c_r_len = 1;
-		} else if (c_r_int >= -24 && c_r_int < 0) {
-			ctx->c_r[0] = (uint8_t)(c_r_int + 256);
-			ctx->c_r_len = 1;
-		} else {
-			return -EINVAL;
-		}
-	} else if (zcbor_bstr_decode(zsd, &c_r_bstr)) {
-		if (c_r_bstr.len > EDHOC_CID_MAX_LEN) {
-			return -EINVAL;
-		}
-		memcpy(ctx->c_r, c_r_bstr.value, c_r_bstr.len);
-		ctx->c_r_len = c_r_bstr.len;
-	} else {
-		return -EINVAL;
-	}
-	if (!zcbor_payload_at_end(zsd) || zsd->constant_state->error) {
-		return -EINVAL;
-	}
-
-	/* Compute shared secret G_XY */
+	memcpy(ctx->g_y, combined.value, 32);
+	const uint8_t *ciphertext_2 = combined.value + 32;
+	size_t ciphertext_2_len = combined.len - 32;
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_y);
-	/* SECURITY: Generic error hides small-order point attack detection */
 	if (is_all_zeros(g_xy, sizeof(g_xy))) {
-		LOG_WRN("Key exchange failed");
 		ret = -EACCES;
-		goto err_wipe;
+		goto fail;
 	}
-
-	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
-	uint8_t h_msg1[32];
-	ret = sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
-	if (ret != 0) {
-		goto err_wipe;
+	if ((ret = edhoc_compute_th2(ctx->g_y, ctx->msg1, ctx->msg1_len, ctx->th_2)) != 0 ||
+	    (ret = hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e)) != 0 ||
+	    (ret = edhoc_kdf_int(ctx->prk_2e, 0, ctx->th_2, 32,
+				 keystream, ciphertext_2_len)) != 0) {
+		goto fail;
 	}
-
-	uint8_t th2_input[72];  /* 32 + 32 + up to 8 for C_R */
-	size_t th2_input_len = 0;
-	memcpy(th2_input + th2_input_len, h_msg1, 32);
-	th2_input_len += 32;
-	memcpy(th2_input + th2_input_len, ctx->g_y, 32);
-	th2_input_len += 32;
-	memcpy(th2_input + th2_input_len, ctx->c_r, ctx->c_r_len);
-	th2_input_len += ctx->c_r_len;
-	ret = sha256_hash(th2_input, th2_input_len, ctx->th_2);
-	if (ret != 0) {
-		goto err_wipe;
+	for (size_t i = 0; i < ciphertext_2_len; i++) {
+		plaintext_2[i] = ciphertext_2[i] ^ keystream[i];
 	}
-
-	/* PRK_2e = HKDF-Extract(TH_2, G_XY) */
-	ret = hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-	crypto_wipe(g_xy, sizeof(g_xy));
-
-	/*
-	 * Decrypt CIPHERTEXT_2 with KEYSTREAM_2 (XOR).
-	 * RFC 9528 Section 4.3: message_2 uses XOR-only encryption without MAC.
-	 * Authenticity comes from Signature_2 which covers MAC_2 over TH_2.
-	 */
-	if (ct2_len > sizeof(keystream_2)) {
-		ret = -ENOMEM;
-		goto err_wipe;
-	}
-	ret = edhoc_kdf(ctx->prk_2e, ctx->th_2, "KEYSTREAM_2", NULL, 0,
-			keystream_2, ct2_len);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-
-	for (size_t i = 0; i < ct2_len; i++) {
-		plaintext_2[i] = ciphertext_2[i] ^ keystream_2[i];
-	}
-
-	/* Parse PLAINTEXT_2 = (ID_CRED_R, Signature_2) */
-	/* ponytail: simplified - just grab ID_CRED_R and signature */
-	ZCBOR_STATE_D(zsd_pt2, 0, plaintext_2, ct2_len, 2, 0);
-
-	struct zcbor_string id_cred_r;
-	if (!zcbor_bstr_decode(zsd_pt2, &id_cred_r)) {
-		ret = -EINVAL;
-		goto err_wipe;
-	}
-
-	/*
-	 * SECURITY: Validate ID_CRED_R against expected peer identity.
-	 * RFC 9528 requires that ID_CRED corresponds to the credential used
-	 * for verification. Without this check, a malicious party could include
-	 * arbitrary ID_CRED data while we verify against a different key.
-	 */
-	if (id_cred_r.len != EDHOC_ED25519_PK_LEN) {
-		LOG_WRN("Peer identity mismatch");
+	size_t cid_len;
+	if ((ret = edhoc_decode_identifier(plaintext_2, ciphertext_2_len, ctx->c_r,
+					   &ctx->c_r_len, &cid_len)) != 0 ||
+	    (ctx->c_i_len == ctx->c_r_len &&
+	     memcmp(ctx->c_i, ctx->c_r, ctx->c_i_len) == 0)) {
 		ret = -EACCES;
-		goto err_wipe;
+		goto fail;
 	}
-	if (crypto_verify32(id_cred_r.value, peer_pubkey) != 0) {
-		LOG_WRN("Peer identity mismatch");
+	if ((ret = edhoc_encode_id_cred(peer_pubkey, id_cred_r)) != 0 ||
+	    ciphertext_2_len < cid_len + sizeof(id_cred_r) ||
+	    memcmp(plaintext_2 + cid_len, id_cred_r, sizeof(id_cred_r)) != 0) {
 		ret = -EACCES;
-		goto err_wipe;
+		goto fail;
 	}
-
+	ZCBOR_STATE_D(zsd_sig, 0, plaintext_2 + cid_len + sizeof(id_cred_r),
+			ciphertext_2_len - cid_len - sizeof(id_cred_r), 2, 0);
 	struct zcbor_string signature_2;
-	if (!zcbor_bstr_decode(zsd_pt2, &signature_2)) {
+	if (!zcbor_bstr_decode(zsd_sig, &signature_2) || signature_2.len != EDHOC_SIG_LEN ||
+	    !zcbor_payload_at_end(zsd_sig) || zsd_sig->constant_state->error) {
 		ret = -EINVAL;
-		goto err_wipe;
+		goto fail;
 	}
-	if (signature_2.len != EDHOC_SIG_LEN) {
-		ret = -EINVAL;
-		goto err_wipe;
-	}
-	if (!zcbor_payload_at_end(zsd_pt2) || zsd_pt2->constant_state->error) {
-		ret = -EINVAL;
-		goto err_wipe;
-	}
-
-	/* PRK_3e2m = PRK_2e for SIGN_SIGN Suite 0 */
 	memcpy(ctx->prk_3e2m, ctx->prk_2e, 32);
-
-	/* Verify Signature_2 per RFC 9528 */
-	/* MAC_2 = EDHOC-KDF(PRK_3e2m, TH_2, "MAC_2", context_2, 32) */
-	uint8_t context_2[128];
-	ZCBOR_STATE_E(zse_ctx2, 0, context_2, sizeof(context_2), 0);
-	if (!zcbor_bstr_encode_ptr(zse_ctx2, ctx->c_r, ctx->c_r_len) ||
-	    !zcbor_bstr_encode_ptr(zse_ctx2, peer_pubkey, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_ctx2, ctx->th_2, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_ctx2, peer_pubkey, 32)) {
-		ret = -ENOMEM;
-		goto err_wipe;
+	edhoc_encode_credential(peer_pubkey, cred_r);
+	if ((ret = edhoc_encode_identifier(ctx->c_r, ctx->c_r_len, context,
+					   sizeof(context), &context_len)) != 0 ||
+	    context_len + 11 + 34 + 40 > sizeof(context)) {
+		goto fail;
 	}
-	size_t context_2_len = zse_ctx2->payload - context_2;
-
-	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_2, "MAC_2", context_2, context_2_len, mac_2, 32);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-
-	size_t sig_struct_2_len;
-	ret = build_sig_structure(peer_pubkey, 32, ctx->th_2, peer_pubkey, 32,
-				  mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-
-	/*
-	 * SECURITY: Constant-time signature verification.
-	 * - schnorr48_verify uses crypto_verify16 + nonzero accumulator (see schnorr48.c:156)
-	 * - volatile prevents compiler from optimizing away the check
-	 * - No logging here to avoid timing variation from log backends
-	 * - Generic error hides which verification step failed
-	 */
-	volatile int sig2_result = edhoc_verify(peer_pubkey, signature_2.value,
-						sig_struct_2, sig_struct_2_len);
-	if (sig2_result != 0) {
+	memcpy(context + context_len, id_cred_r, 11); context_len += 11;
+	context[context_len++] = 0x58; context[context_len++] = 0x20;
+	memcpy(context + context_len, ctx->th_2, 32); context_len += 32;
+	memcpy(context + context_len, cred_r, 40); context_len += 40;
+	if ((ret = edhoc_kdf_int(ctx->prk_3e2m, 2, context, context_len, mac_2, 32)) != 0 ||
+	    (ret = build_sig_structure(id_cred_r, 11, ctx->th_2, cred_r, 40,
+				       mac_2, 32, sig_input, sizeof(sig_input), &sig_input_len)) != 0 ||
+	    edhoc_verify(peer_pubkey, signature_2.value, sig_input, sig_input_len) != 0) {
 		ret = -EACCES;
-		goto err_wipe;
+		goto fail;
 	}
-	/* volatile forces constant-time path even on error (resolves i0bj timing side-channel) */
-
-	ret = compute_th(ctx->th_3, ctx->th_2, 32, ciphertext_2, ct2_len,
-			 id_cred_r.value, id_cred_r.len);
-	if (ret != 0) {
-		goto err_wipe;
+	if ((ret = edhoc_compute_transcript(ctx->th_2, plaintext_2, ciphertext_2_len,
+					    cred_r, 40, ctx->th_3)) != 0) {
+		goto fail;
 	}
-
-	/* PRK_4e3m = PRK_3e2m for SIGN_SIGN */
 	memcpy(ctx->prk_4e3m, ctx->prk_3e2m, 32);
-
-	/* Create Message 3 */
-	/* PLAINTEXT_3 = (ID_CRED_I, Signature_3) */
-
-	/* MAC_3 = EDHOC-KDF(PRK_4e3m, TH_3, "MAC_3", context_3, 32) */
-	/* context_3 = << ID_CRED_I, TH_3, CRED_I >> */
-	uint8_t context_3[128];
-	ZCBOR_STATE_E(zse_ctx3, 0, context_3, sizeof(context_3), 0);
-	if (!zcbor_bstr_encode_ptr(zse_ctx3, ctx->ed_pubkey, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_ctx3, ctx->th_3, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_ctx3, ctx->ed_pubkey, 32)) {
+	edhoc_encode_id_cred(ctx->ed_pubkey, id_cred_i);
+	edhoc_encode_credential(ctx->ed_pubkey, cred_i);
+	memcpy(context, id_cred_i, 11); context_len = 11;
+	context[context_len++] = 0x58; context[context_len++] = 0x20;
+	memcpy(context + context_len, ctx->th_3, 32); context_len += 32;
+	memcpy(context + context_len, cred_i, 40); context_len += 40;
+	if ((ret = edhoc_kdf_int(ctx->prk_4e3m, 6, context, context_len, mac_3, 32)) != 0 ||
+	    (ret = build_sig_structure(id_cred_i, 11, ctx->th_3, cred_i, 40,
+				       mac_3, 32, sig_input, sizeof(sig_input), &sig_input_len)) != 0 ||
+	    (ret = edhoc_sign(signature_3, ctx->ed_seed, ctx->ed_pubkey,
+			      sig_input, sig_input_len)) != 0) {
+		goto fail;
+	}
+	memcpy(plaintext_3, id_cred_i, 11);
+	plaintext_3[11] = 0x58; plaintext_3[12] = EDHOC_SIG_LEN;
+	memcpy(plaintext_3 + 13, signature_3, EDHOC_SIG_LEN);
+	pt3_len = 13 + EDHOC_SIG_LEN;
+	if ((ret = edhoc_kdf_int(ctx->prk_3e2m, 3, ctx->th_3, 32, k_3, 16)) != 0 ||
+	    (ret = edhoc_kdf_int(ctx->prk_3e2m, 4, ctx->th_3, 32, iv_3, 13)) != 0 ||
+	    (ret = build_enc_structure(aad, sizeof(aad), &aad_len, ctx->th_3)) != 0 ||
+	    (ret = aead_encrypt(k_3, iv_3, aad, aad_len, plaintext_3, pt3_len,
+			       ciphertext_3)) != 0 ||
+	    (ret = edhoc_compute_transcript(ctx->th_3, plaintext_3, pt3_len,
+					    cred_i, 40, ctx->th_4)) != 0) {
+		goto fail;
+	}
+	ZCBOR_STATE_E(zse_out, 0, encoded_msg3, sizeof(encoded_msg3), 0);
+	if (!zcbor_bstr_encode_ptr(zse_out, ciphertext_3, pt3_len + EDHOC_TAG_LEN)) {
 		ret = -ENOMEM;
-		goto err_wipe;
+		goto fail;
 	}
-	size_t context_3_len = zse_ctx3->payload - context_3;
-
-	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_3, "MAC_3", context_3, context_3_len, mac_3, 32);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-
-	/* Sig_structure_3 per RFC 9528/9052 */
-	size_t sig_struct_3_len;
-	ret = build_sig_structure(ctx->ed_pubkey, 32, ctx->th_3, ctx->ed_pubkey, 32,
-				  mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-
-	edhoc_sign(signature_3, ctx->ed_seed, ctx->ed_pubkey, sig_struct_3, sig_struct_3_len);
-	/* SECURITY: wipe signing key immediately after last use */
-	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
-
-	/* Encode PLAINTEXT_3 */
-	ZCBOR_STATE_E(zse_pt3, 0, plaintext_3, sizeof(plaintext_3), 0);
-	if (!zcbor_bstr_encode_ptr(zse_pt3, ctx->ed_pubkey, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_pt3, signature_3, EDHOC_SIG_LEN)) {
+	encoded_len = zse_out->payload - encoded_msg3;
+	if (msg3_size < encoded_len) {
 		ret = -ENOMEM;
-		goto err_wipe;
+		goto fail;
 	}
-	size_t pt3_len = zse_pt3->payload - plaintext_3;
-
-	/* K_3 and IV_3 for AEAD */
-	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_3, "K_3", NULL, 0, k_3, 16);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_3, "IV_3", NULL, 0, iv_3, 13);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-
-	uint8_t a_3[96];
-	size_t a_3_len;
-	ret = build_enc_structure(a_3, sizeof(a_3), &a_3_len, ctx->th_3, ctx->ed_pubkey);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-
-	/* Encrypt PLAINTEXT_3 -> CIPHERTEXT_3 (Message 3) */
-	if (msg3_size < pt3_len + 8) {
-		ret = -ENOMEM;
-		goto err_wipe;
-	}
-	ret = aead_encrypt(k_3, iv_3, a_3, a_3_len, plaintext_3, pt3_len, msg3);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-	*msg3_len = pt3_len + 8;
-
-	/* TH_4 = H(TH_3, PLAINTEXT_3, CRED_I) per RFC 9528 Section 4.1.2 */
-	ret = compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, ctx->ed_pubkey, 32);
-	if (ret != 0) {
-		goto err_wipe;
-	}
-
-	crypto_wipe(k_3, sizeof(k_3));
-	crypto_wipe(iv_3, sizeof(iv_3));
-	crypto_wipe(signature_3, sizeof(signature_3));
-	crypto_wipe(keystream_2, sizeof(keystream_2));
-	crypto_wipe(plaintext_2, sizeof(plaintext_2));
-	crypto_wipe(mac_2, sizeof(mac_2));
-	crypto_wipe(sig_struct_2, sizeof(sig_struct_2));
-	crypto_wipe(mac_3, sizeof(mac_3));
-	crypto_wipe(sig_struct_3, sizeof(sig_struct_3));
-	crypto_wipe(plaintext_3, sizeof(plaintext_3));
-	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
-
+	memcpy(msg3, encoded_msg3, encoded_len);
+	*msg3_len = encoded_len;
 	ctx->state = EDHOC_STATE_COMPLETED;
-	return 0;
+	ret = 0;
+	goto wipe;
 
-err_wipe:
+fail:
 	ctx->state = EDHOC_STATE_ERROR;
-	crypto_wipe(g_xy, sizeof(g_xy));
-	crypto_wipe(k_3, sizeof(k_3));
-	crypto_wipe(iv_3, sizeof(iv_3));
-	crypto_wipe(signature_3, sizeof(signature_3));
-	crypto_wipe(keystream_2, sizeof(keystream_2));
-	crypto_wipe(plaintext_2, sizeof(plaintext_2));
-	crypto_wipe(mac_2, sizeof(mac_2));
-	crypto_wipe(sig_struct_2, sizeof(sig_struct_2));
-	crypto_wipe(mac_3, sizeof(mac_3));
-	crypto_wipe(sig_struct_3, sizeof(sig_struct_3));
-	crypto_wipe(plaintext_3, sizeof(plaintext_3));
-	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
+wipe:
+	crypto_wipe(g_xy, sizeof(g_xy)); crypto_wipe(keystream, sizeof(keystream));
+	crypto_wipe(plaintext_2, sizeof(plaintext_2)); crypto_wipe(mac_2, sizeof(mac_2));
+	crypto_wipe(mac_3, sizeof(mac_3)); crypto_wipe(sig_input, sizeof(sig_input));
+	crypto_wipe(signature_3, sizeof(signature_3)); crypto_wipe(plaintext_3, sizeof(plaintext_3));
+	crypto_wipe(k_3, sizeof(k_3)); crypto_wipe(iv_3, sizeof(iv_3));
+	crypto_wipe(ciphertext_3, sizeof(ciphertext_3));
+	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
+	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
 	return ret;
 }
 
@@ -477,40 +293,39 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 		return -EBUSY;
 	}
 
-	/* Exact match to Python EdhocInitiator.export_oscore() derivation
-	 * (PRK_out label=7 with context=TH_4, PRK_exporter label=10,
-	 * master_secret label=0, master_salt label=1) per uk36.4.1.3.
-	 * ID assignment: sender_id=c_i, recipient_id=c_r for initiator.
+	/* RFC 9528 Sections 4.2.1 and Appendix A.1: PRK_out label 7,
+	 * PRK_exporter label 10, master_secret label 0, master_salt label 1.
+	 * Table 14 assigns sender_id=C_R and recipient_id=C_I to the initiator.
 	 * PRK wipe sequence: only on success path after derivation.
 	 */
-	ret = edhoc_kdf_int(ctx->prk_4e3m, ctx->th_4, 7,
+	ret = edhoc_kdf_int(ctx->prk_4e3m, 7,
 			    ctx->th_4, 32, prk_out, 32);
 	if (ret != 0) {
 		goto wipe;
 	}
 
-	ret = edhoc_kdf_int(prk_out, ctx->th_4, 10,
+	ret = edhoc_kdf_int(prk_out, 10,
 			    NULL, 0, prk_exporter, 32);
 	if (ret != 0) {
 		goto wipe;
 	}
 
-	ret = edhoc_kdf_int(prk_exporter, ctx->th_4, 0,
+	ret = edhoc_kdf_int(prk_exporter, 0,
 			    NULL, 0, oscore->master_secret, 16);
 	if (ret != 0) {
 		goto wipe;
 	}
 
-	ret = edhoc_kdf_int(prk_exporter, ctx->th_4, 1,
+	ret = edhoc_kdf_int(prk_exporter, 1,
 			    NULL, 0, oscore->master_salt, 8);
 	if (ret != 0) {
 		goto wipe;
 	}
 
-	memcpy(oscore->sender_id, ctx->c_i, ctx->c_i_len);
-	oscore->sender_id_len = ctx->c_i_len;
-	memcpy(oscore->recipient_id, ctx->c_r, ctx->c_r_len);
-	oscore->recipient_id_len = ctx->c_r_len;
+	memcpy(oscore->sender_id, ctx->c_r, ctx->c_r_len);
+	oscore->sender_id_len = ctx->c_r_len;
+	memcpy(oscore->recipient_id, ctx->c_i, ctx->c_i_len);
+	oscore->recipient_id_len = ctx->c_i_len;
 
 	ctx->state = EDHOC_STATE_EXPORTED;
 

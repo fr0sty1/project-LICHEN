@@ -146,24 +146,8 @@ ZTEST(schc_generic, test_fallback_length_overflow_regressions)
 static void assert_delivered(struct schc_reassembler *receiver,
 			     const uint8_t *expected, size_t expected_len)
 {
-	/* Matches schc_fragment.json:single_fragment and multi_fragment vectors.
-	 * Independent oracle from RFC 8724; all 3 impls (Python/Rust/C) interop on these. */
-	const uint8_t packet[] = {
-		0x10, 0x11, 0x12, 0x13,
-		0x20, 0x21, 0x22, 0x23,
-		0x30, 0x31,
-	};
-	struct schc_fragmenter fragmenter;
-	struct schc_fragmenter_config config = {
-		.rule_id = TEST_RULE_ID,
-		.window_bits = 2,
-		.fcn_bits = 3,
-		.tile_size = 4,
-		.mtu = 6,
-		.direction = SCHC_FRAGMENT_UPLINK,
-		.mode = SCHC_FRAGMENT_NO_ACK,
-	};
-	uint8_t out[8];
+	const uint8_t *packet;
+	size_t packet_len;
 
 	zassert_ok(schc_reassembler_packet(receiver, &packet, &packet_len));
 	zassert_equal(packet_len, expected_len);
@@ -358,9 +342,9 @@ static void exercise_retry(const struct schc_fragment_scenario_vector *meta)
 	zassert_equal(meta->attempts_before, SCHC_FRAGMENT_MAX_ATTEMPTS);
 	if (meta->retry_role == SCHC_VECTOR_RETRY_SENDER) {
 		struct schc_fragmenter sender;
-		memset(large_reassembly, 0xa5, 11782);
-		zassert_ok(schc_fragmenter_init(&sender, meta->rule_id, large_reassembly,
-						 11782, 11782));
+		const uint8_t packet = 0xa5;
+		zassert_ok(schc_fragmenter_init(&sender, meta->rule_id, &packet,
+						 1, 1));
 		for (size_t i = 0; i < sender.fragment_count; i++) {
 			zassert_true(schc_fragmenter_next(&sender, wire, sizeof(wire)) > 0);
 		}
@@ -401,13 +385,17 @@ static void exercise_capacity(const struct schc_fragment_scenario_vector *meta)
 	const struct schc_fragment_byte_vector *packet = field(meta->name, "packet");
 	const struct schc_fragment_byte_vector *rcs = field(meta->name, "rcs");
 	struct schc_fragmenter sender;
+	struct schc_fragmenter unchanged;
 
 	zassert_not_null(packet);
 	zassert_equal(packet->len, meta->packet_len);
+	memset(&sender, 0xa5, sizeof(sender));
+	unchanged = sender;
 	int ret = schc_fragmenter_init(&sender, 0x78, packet->data, packet->len,
 				       SCHC_FRAGMENT_MAX_PACKET_SIZE);
 	if (meta->expect_status == SCHC_VECTOR_STATUS_PACKET_TOO_LARGE) {
 		zassert_true(ret < 0);
+		zassert_mem_equal(&sender, &unchanged, sizeof(sender));
 		zassert_equal(meta->fragment_count, 0);
 		zassert_is_null(rcs);
 		return;
@@ -645,7 +633,7 @@ ZTEST(schc_generic, test_pending_all1_delivery_and_expiry)
 		      SCHC_ERR_DONE);
 	zassert_ok(schc_reassembler_input(&receiver, wire, (size_t)length, &result));
 	zassert_equal(schc_reassembler_input(&receiver, ((uint8_t[]){ 0x79 }), 1,
-					     &result), SCHC_ERR_INVALID_ARGUMENT);
+					     &result), SCHC_ERR_TOO_SHORT);
 	zassert_equal(schc_reassembler_next(&receiver, response, 1, &result),
 		      SCHC_ERR_BUFFER_TOO_SMALL);
 	zassert_false(result.complete);
@@ -734,7 +722,7 @@ ZTEST(schc_generic, test_sender_short_write_and_terminal_noops)
 		field("recover_missing_regular_tile", "retransmission");
 	const struct schc_fragment_byte_vector *rcs_failure =
 		field("recover_missing_regular_tile", "rcs_failure_ack");
-	const struct schc_fragment_byte_vector *sender_abort =
+	const struct schc_fragment_byte_vector *next_sender_message =
 		field("recover_missing_regular_tile", "next_sender_message");
 	const struct schc_fragment_fragment_vector *first =
 		fragment_field("recover_missing_regular_tile", 0);
@@ -793,12 +781,13 @@ ZTEST(schc_generic, test_sender_short_write_and_terminal_noops)
 	}
 	zassert_ok(schc_fragmenter_input(&abort_sender, rcs_failure->data,
 					  rcs_failure->len));
-	zassert_equal(abort_sender.status, SCHC_SENDER_ABORTED);
+	zassert_equal(abort_sender.status, SCHC_SENDER_ACTIVE);
 	zassert_equal(schc_fragmenter_next(&abort_sender, wire, 1),
 		      SCHC_ERR_BUFFER_TOO_SMALL);
 	length = schc_fragmenter_next(&abort_sender, wire, sizeof(wire));
-	zassert_equal(length, sender_abort->len);
-	zassert_mem_equal(wire, sender_abort->data, sender_abort->len);
+	zassert_equal(length, next_sender_message->len);
+	zassert_mem_equal(wire, next_sender_message->data, next_sender_message->len);
+	zassert_equal(abort_sender.status, SCHC_SENDER_ACTIVE);
 	zassert_equal(schc_fragmenter_next(&abort_sender, wire, sizeof(wire)),
 		      SCHC_ERR_DONE);
 

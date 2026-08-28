@@ -17,6 +17,8 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/ztest.h>
 
+#include "ipv6_addr.h"
+
 #include <lichen/app_identity/app_identity.h>
 #include <lichen/hal.h>
 
@@ -25,6 +27,10 @@
 #include "lichen_l2.h"
 #include "lora_l2.h"
 #include "lora_loopback_test.h"
+#include <lichen/tx_queue.h>
+
+/* White-box fault injection target: the module-static TX queue in lora_l2.c. */
+extern struct tx_queue tx_queue;
 
 LOG_MODULE_REGISTER(ping_l2_test, LOG_LEVEL_INF);
 
@@ -149,6 +155,7 @@ static uint16_t udp_checksum(const struct net_ipv6_hdr *ipv6,
 static void *ping_l2_setup(void)
 {
 	uint8_t eui64[8];
+	struct in6_addr primary_addr;
 	int ret;
 
 	zassert_true(IS_ENABLED(CONFIG_LICHEN_L2), "CONFIG_LICHEN_L2 is disabled");
@@ -166,6 +173,10 @@ static void *ping_l2_setup(void)
 
 	ret = lichen_l2_test_load_key(test_seed, test_pubkey);
 	zassert_equal(ret, 0, "failed to load deterministic test key: %d", ret);
+	ret = lichen_yggdrasil_addr(test_pubkey, &primary_addr);
+	zassert_equal(ret, 0, "failed to derive primary address: %d", ret);
+	zassert_not_null(net_if_ipv6_addr_lookup_by_iface(test_iface, &primary_addr),
+			 "key load did not install primary address");
 
 	ret = lichen_l2_test_load_link_key(test_link_key);
 	zassert_equal(ret, 0, "failed to load deterministic link key: %d", ret);
@@ -501,6 +512,98 @@ ZTEST(ping_l2, test_adaptive_duty_wiring_tracks_density)
 	zassert_equal(moderate, 20, "density 5 must yield 20 permille");
 	zassert_equal(lichen_lora_l2_current_duty_permille(), 50,
 		      "restore to sparse budget failed");
+}
+
+ZTEST(ping_l2, test_queue_stats_accessor_lifecycle)
+{
+	struct tx_queue_stats stats;
+	int ret;
+
+	/* Readable while the module is running. */
+	ret = lichen_lora_l2_queue_stats_get(&stats);
+	zassert_equal(ret, 0, "stats read failed while running: %d", ret);
+
+	ret = net_if_down(test_iface);
+	zassert_equal(ret, 0, "net_if_down failed: %d", ret);
+
+	/* Still readable while merely stopped. */
+	ret = lichen_lora_l2_queue_stats_get(&stats);
+	zassert_equal(ret, 0, "stats read failed while stopped: %d", ret);
+
+	/* Destroying the queue must fully quiesce the accessor instead of
+	 * letting it read torn-down state. */
+	ret = lichen_lora_l2_deinit();
+	zassert_equal(ret, 0, "deinit failed: %d", ret);
+	ret = lichen_lora_l2_queue_stats_get(&stats);
+	zassert_equal(ret, -ENODEV, "stats must reject after destroy: %d", ret);
+
+	/* Re-initialization restores a usable queue only after a clean
+	 * destroy, proving the accessor serialization held. */
+	ret = lichen_lora_l2_init();
+	zassert_equal(ret, 0, "re-init failed: %d", ret);
+	ret = lichen_lora_l2_queue_stats_get(&stats);
+	zassert_equal(ret, 0, "stats read failed after re-init: %d", ret);
+
+	ret = net_if_up(test_iface);
+	zassert_true(ret == 0 || ret == -EALREADY, "net_if_up failed: %d", ret);
+}
+
+ZTEST(ping_l2, test_disable_retries_incomplete_queue_destruction)
+{
+	struct tx_queue_stats stats;
+	struct lichen_frame_handle saved_handle;
+	uint8_t payload = 0xa5;
+	int slot = -1;
+	int ret;
+
+	k_sleep(K_MSEC(100));
+
+	/* Stop the module while the net iface stays up: the common disable
+	 * path below must recognize the pending destroy retry instead of
+	 * reporting a complete teardown. */
+	ret = lichen_lora_l2_stop();
+	zassert_equal(ret, 0, "stop failed: %d", ret);
+
+	/* Queue a packet and corrupt its pool handle so queue destruction
+	 * fails the way a mid-teardown failure would. */
+	ret = tx_queue_push(&tx_queue, &payload, sizeof(payload),
+			    TX_PRIORITY_BULK, k_uptime_get_32() + 60000U);
+	zassert_equal(ret, 0, "queue push failed: %d", ret);
+	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
+		if (tx_queue.entries[i].valid) {
+			slot = i;
+			break;
+		}
+	}
+	zassert_true(slot >= 0, "queued entry not found");
+	saved_handle = tx_queue.entries[slot].buffer;
+	tx_queue.entries[slot].buffer.generation++;
+
+	/* First teardown attempt: destroy fails, retry stays pending. */
+	ret = lichen_lora_l2_deinit();
+	zassert_true(ret < 0, "deinit unexpectedly succeeded with corrupted queue");
+	zassert_true(lichen_lora_l2_needs_destroy_retry(),
+		     "destroy retry flag not set");
+	zassert_equal(lichen_lora_l2_queue_stats_get(&stats), -ECANCELED,
+		      "stats must reject while destroy retry is pending");
+	zassert_equal(lichen_lora_l2_init(), -ECANCELED,
+		      "init must refuse incomplete teardown");
+
+	/* Repair the handle; the disable path must retry the deinit and
+	 * complete the queue destruction. */
+	tx_queue.entries[slot].buffer = saved_handle;
+	ret = net_if_down(test_iface);
+	zassert_equal(ret, 0, "net_if_down did not complete teardown: %d", ret);
+	zassert_false(lichen_lora_l2_needs_destroy_retry(),
+		      "disable did not complete the destroy retry");
+
+	/* A completed destroy leaves the module re-initializable. */
+	zassert_ok(lichen_lora_l2_init(), "re-init after destroy retry failed");
+	zassert_ok(lichen_lora_l2_queue_stats_get(&stats),
+		   "stats unusable after re-init");
+
+	ret = net_if_up(test_iface);
+	zassert_true(ret == 0 || ret == -EALREADY, "net_if_up failed: %d", ret);
 }
 
 ZTEST_SUITE(ping_l2, NULL, ping_l2_setup, NULL, NULL, NULL);
