@@ -996,16 +996,18 @@ impl DeadDropStore {
             .clone()
             .or_else(|| senml_text(payload, "recipient").map(str::to_owned))
             .or_else(|| senml_text(payload, "node").map(str::to_owned));
+        // Validate an explicit ID before eviction (spec 18.9: eviction admits
+        // a stored drop; it must not fire on a doomed request).
+        if let Some(id) = &params.drop_id {
+            if !is_drop_id(id) || self.find_index(id).is_some() {
+                return None;
+            }
+        }
         if !self.evict_for_space(size) {
             return None;
         }
         let drop_id = match &params.drop_id {
-            Some(id) => {
-                if !is_drop_id(id) || self.find_index(id).is_some() {
-                    return None;
-                }
-                id.clone()
-            }
+            Some(id) => id.clone(),
             None => self.generate_drop_id(),
         };
         let now = self.now();

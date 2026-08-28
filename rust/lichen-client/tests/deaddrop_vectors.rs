@@ -931,3 +931,91 @@ fn private_and_group_acl_fail_closed() {
         PickupOutcome::Forbidden
     );
 }
+
+#[test]
+fn add_drop_doomed_explicit_id_preserves_live_drops() {
+    let small = [SenmlRecord::text("content", "live")];
+    let size = senml_body(&small).len();
+    let clock = TestClock::new();
+    // Budget fits exactly one drop: any admission requires eviction.
+    let mut s = store(size, &clock);
+    assert_eq!(
+        s.add_drop(
+            &small,
+            "ctx-a",
+            &AddDropParams {
+                drop_id: Some("aa0001".into()),
+                ..Default::default()
+            },
+        ),
+        Some("aa0001".to_owned()),
+        "store filled to capacity"
+    );
+
+    // A rejected create (invalid hex / duplicate ID) must not evict the
+    // live drop to make room it will never use.
+    assert_eq!(
+        s.add_drop(
+            &small,
+            "ctx-b",
+            &AddDropParams {
+                drop_id: Some("nothex".into()),
+                ..Default::default()
+            },
+        ),
+        None,
+        "non-canonical explicit ID rejected"
+    );
+    assert_eq!(
+        s.add_drop(
+            &small,
+            "ctx-b",
+            &AddDropParams {
+                drop_id: Some("AA0001".into()),
+                ..Default::default()
+            },
+        ),
+        None,
+        "uppercase explicit ID rejected"
+    );
+    assert_eq!(
+        s.add_drop(
+            &small,
+            "ctx-b",
+            &AddDropParams {
+                drop_id: Some("aa0001".into()),
+                ..Default::default()
+            },
+        ),
+        None,
+        "duplicate explicit ID rejected"
+    );
+    assert_eq!(
+        s.storage_info().drop_count,
+        1,
+        "doomed requests destroyed no live drops"
+    );
+    assert!(matches!(
+        s.get_by_id("aa0001", None),
+        PickupOutcome::Content { .. }
+    ));
+
+    // Eviction itself still works for an admissible request.
+    clock.advance(1.0);
+    assert_eq!(
+        s.add_drop(
+            &small,
+            "ctx-b",
+            &AddDropParams {
+                drop_id: Some("aa0002".into()),
+                ..Default::default()
+            },
+        ),
+        Some("aa0002".to_owned())
+    );
+    assert_eq!(s.storage_info().drop_count, 1, "FIFO evicted the oldest");
+    assert!(matches!(
+        s.get_by_id("aa0002", None),
+        PickupOutcome::Content { .. }
+    ));
+}
