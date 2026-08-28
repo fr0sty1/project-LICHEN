@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-v3x6",
+  "title": "spec/02a:263 Off-by-one: \u003e3 missed beacons vs BEACON_TIMEOUT_SUPERFRAMES=3",
+  "description": "Section 2a.6.2 state transition table says SYNCED-\u003eDESYNCED on '\u003e3 missed beacons' (meaning 4 or more). Section 2a.6.3 defines BEACON_TIMEOUT_SUPERFRAMES=3 with description 'Consecutive missed beacons before DESYNCED' (implying transition at 3). Implementations following the table would transition at 4 missed beacons; implementations following the parameter would transition at 3. Causes interop failure in mixed deployments. Fix: Either change table to '\u003e=3' or change BEACON_TIMEOUT_SUPERFRAMES to 4.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:59:38.587222Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:59:38.587222Z",
+  "labels": [
+    "spec",
+    "ccp",
+    "desync",
+    "codereview"
+  ]
+}
