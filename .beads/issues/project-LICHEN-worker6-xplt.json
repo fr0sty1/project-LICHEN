@@ -12,6 +12,7 @@
   "updated_at": "2026-08-26T18:28:59.626893Z",
   "labels": [
     "zephyr",
-    "c"
+    "c",
+    "needs-linux"
   ]
 }
