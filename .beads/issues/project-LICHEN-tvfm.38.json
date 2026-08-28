@@ -17,7 +17,8 @@
     "owner-reserved",
     "review",
     "round1",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
