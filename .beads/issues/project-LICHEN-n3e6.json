@@ -9,7 +9,8 @@
   "created_by": "AI Agent",
   "updated_at": "2026-07-22T22:32:46.780452916Z",
   "labels": [
-    "renode"
+    "renode",
+    "needs-linux"
   ],
   "dependencies": [
     {
