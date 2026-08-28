@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 3,
   "issue_type": "decision",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-29T03:15:59.688673Z",
   "created_by": "Mark Atwood",
@@ -16,7 +15,8 @@
     "c",
     "owner-reserved",
     "review",
-    "zephyr"
+    "zephyr",
+    "local-ok"
   ],
   "dependencies": [
     {
