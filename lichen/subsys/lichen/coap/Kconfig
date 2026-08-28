@@ -162,7 +162,6 @@ config LICHEN_COAP_MSG
 	select LICHEN_COAP_STATUS
 	imply ZCBOR
 	select COAP_URI_WILDCARD
-	select COAP_EXTENDED_OPTIONS_LEN
 	help
 	  Enable CoAP server resources for application-level messaging per
 	  LCI spec section 17.5.7:
@@ -175,14 +174,6 @@ config LICHEN_COAP_MSG
 	  an optional feature for chat-like human messaging; applications
 	  may instead use CoAP directly to mesh nodes.
 
-# Decimal uint64 message IDs require up to 20 bytes in the dynamic
-# /msg/sent/<id> URI-Path segment. This module definition is parsed before the
-# unconditional upstream default, so it becomes the active default whenever
-# messaging is enabled.
-config COAP_EXTENDED_OPTIONS_LEN_VALUE
-	default 20 if LICHEN_COAP_MSG
-	default 15 if LICHEN_COAP_WAYPOINTS
-
 config LICHEN_COAP_MSG_LOG_LEVEL
 	int "CoAP msg log level"
 	depends on LICHEN_COAP_MSG
@@ -191,21 +182,6 @@ config LICHEN_COAP_MSG_LOG_LEVEL
 	help
 	  Log level for LICHEN CoAP messaging handlers:
 	  0=off, 1=error, 2=warning, 3=info, 4=debug
-
-config LICHEN_COAP_WAYPOINTS
-	bool "CoAP /waypoints collection and storage"
-	depends on LICHEN_COAP_SERVER
-	depends on LICHEN_OSCORE
-	select COAP_URI_WILDCARD
-	select COAP_EXTENDED_OPTIONS_LEN
-	help
-	  Enable the bounded /waypoints collection resource from spec/12-apps.md.
-	  GET returns canonical CBOR with offset/limit pagination. POST validates
-	  and atomically persists up to eight waypoints, requires OSCORE for remote
-	  writes, and permits trusted LCI administrators to import shared records.
-
-	  The storage provider passed to lichen_waypoints_init() is responsible for
-	  committing each versioned image transactionally before returning success.
 
 config LICHEN_COAP_RANGETEST
 	bool "CoAP /diag/rangetest and /diag/traceroute resources"
@@ -241,6 +217,7 @@ config LICHEN_COAP_KEYS
 	depends on LICHEN_SLIP_TRANSPORT
 	depends on ZCBOR
 	select COAP_URI_WILDCARD
+	imply ZCBOR
 	imply TINYCRYPT_SHA256
 	help
 	  Enable CoAP server resources for key store management per LCI spec
@@ -250,11 +227,8 @@ config LICHEN_COAP_KEYS
 	  - PUT /keys/{iid} - add/update peer key (requires local admin)
 	  - DELETE /keys/{iid} - remove peer (requires local admin)
 
-	  TOFU key pinning is enforced: once a key is learned for an IID, it
-	  cannot be changed without explicit removal. With SETTINGS enabled, the
-	  platform MUST call lichen_key_store_settings_init_protected() after its
-	  protected root/floor service is ready and before accepting peers. Until
-	  durable initialization succeeds, first-contact pinning fails closed.
+	  Keys are stored in memory. TOFU key pinning is enforced: once a key
+	  is learned for an IID, it cannot be changed without explicit removal.
 
 	  SECURITY: Write operations require local admin access (loopback or
 	  BLE LCI interface).
@@ -446,21 +420,6 @@ config LICHEN_SOS_RESOURCE
 	  - Only originator can cancel their own SOS
 	  - Sequence numbers must strictly advance (replay protection)
 	  - Originator data is securely zeroed on reset
-
-config LICHEN_PRESENCE
-	bool "Presence CBOR encoding (spec 18.5)"
-	default y
-	help
-	  Enable presence CBOR encoding and decoding per spec section 18.5.
-	  Provides data types and codec for presence payloads:
-	  - status: available, busy, away, offline, emergency
-	  - activity: stationary, moving, resting, working (optional)
-	  - msg: status message (optional)
-	  - battery: battery percentage 0-100 (optional)
-	  - low_battery: true when battery < 10% (optional)
-	  - ts: Unix timestamp
-
-	  Also provides presence cache encoding for /presence/cache endpoint.
 
 config LICHEN_CHECKIN
 	bool "Check-In / Roll Call codec and service (spec 18.6)"

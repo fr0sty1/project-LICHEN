@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-o287",
+  "title": "coap/CMakeLists.txt at HEAD references six nonexistent sources; coap subsystem generate fails on fresh clone",
+  "description": "Verified at HEAD: CMakeLists.txt:8-9 zephyr_library_sources(coap_codec.c coap_blockwise.c) and :61 coap_keys_settings.c plus gated coap_waypoints.c, coap_keys_alert.c, presence.c are all absent from the committed tree (git ls-tree confirms MISSING all six). Introduced in d76c6da69d which swept in hunks belonging to another worker's untracked WIP. CMake generate fails (cannot find source file); LICHEN_PRESENCE Kconfig (default y) references missing presence.c. Twister tests escaped because they compile .c files directly. Fix: revert the six file references and companion Kconfig hunks (waypoints/keys/msg/COAP_EXTENDED_OPTIONS_LEN_VALUE) OR land the WIP files first - re-check git status at fix time and coordinate via the owning worker's beads; then prove the fix: fresh cmake generate of the coap subsystem (host cmake or twister configure) passes at the fix commit.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:10.371594Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:06:57.02163Z",
+  "started_at": "2026-08-28T07:06:57.02163Z",
+  "lease_expires_at": "2026-08-28T07:11:57.02163Z",
+  "heartbeat_at": "2026-08-28T07:06:57.02163Z"
+}
