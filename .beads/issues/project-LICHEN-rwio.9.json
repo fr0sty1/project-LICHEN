@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 2,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-27T06:01:33.078903Z",
   "created_by": "Mark Atwood",
@@ -16,7 +15,8 @@
     "c-standards",
     "initialization",
     "owner-reserved",
-    "review"
+    "review",
+    "local-ok"
   ],
   "dependencies": [
     {
