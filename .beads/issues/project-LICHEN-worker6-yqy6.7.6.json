@@ -10,7 +10,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-29T18:14:50.200823Z",
   "labels": [
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
