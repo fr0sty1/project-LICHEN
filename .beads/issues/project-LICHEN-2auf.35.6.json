@@ -18,7 +18,8 @@
     "human",
     "too-hard",
     "validation",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
