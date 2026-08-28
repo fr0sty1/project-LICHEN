@@ -433,21 +433,15 @@ fn decoders_enforce_input_size_caps() {
     // / LICHEN_ROLLCALL_STATUS_CBOR_MAX).
     type DecodeCheck = fn(&[u8]) -> lichen_client::Error;
     let decoders: [(&str, usize, DecodeCheck); 3] = [
-        (
-            "checkin",
-            CHECKIN_CBOR_MAX,
-            |b: &[u8]| CheckIn::from_cbor(b).expect_err("over-cap must fail"),
-        ),
-        (
-            "rollcall request",
-            ROLLCALL_REQ_CBOR_MAX,
-            |b: &[u8]| RollcallRequest::from_cbor(b).expect_err("over-cap must fail"),
-        ),
-        (
-            "rollcall status",
-            ROLLCALL_STATUS_CBOR_MAX,
-            |b: &[u8]| RollcallStatus::from_cbor(b).expect_err("over-cap must fail"),
-        ),
+        ("checkin", CHECKIN_CBOR_MAX, |b: &[u8]| {
+            CheckIn::from_cbor(b).expect_err("over-cap must fail")
+        }),
+        ("rollcall request", ROLLCALL_REQ_CBOR_MAX, |b: &[u8]| {
+            RollcallRequest::from_cbor(b).expect_err("over-cap must fail")
+        }),
+        ("rollcall status", ROLLCALL_STATUS_CBOR_MAX, |b: &[u8]| {
+            RollcallStatus::from_cbor(b).expect_err("over-cap must fail")
+        }),
     ];
     for (label, max_len, decode) in decoders {
         let err = decode(&vec![0xa0; max_len + 1]);
@@ -511,4 +505,35 @@ fn rollcall_status_caps_track_arrays() {
     );
     let err = RollcallStatus::from_cbor(&over_missing).expect_err("over-cap missing must fail");
     assert!(err.to_string().contains("out_of_range"), "{err:?}");
+}
+
+/// C coerces any CBOR uint id (full u64) to its decimal form
+/// (checkin.c lichen_rollcall_request_decode); Rust must not constrain
+/// ids to i64 (conformance bead zow8).
+#[test]
+fn rollcall_request_u64_max_id_coerced() {
+    let body = Cbor::Map(vec![
+        (text("id"), uint(u64::MAX)),
+        (text("timeout_s"), uint(60)),
+    ]);
+    let req = RollcallRequest::from_cbor(&cbor_bytes(&body))
+        .expect("u64::MAX uint id must decode like C");
+    assert_eq!(req.id, "18446744073709551615");
+}
+
+/// A huge uint timeout_s exceeds the maximum in C
+/// (LICHEN_CHECKIN_ERR_TIMEOUT_MAX -> timeout_exceeds_maximum); it must
+/// not surface as invalid_timeout_value (conformance bead zow8).
+#[test]
+fn rollcall_request_huge_uint_timeout_exceeds_maximum() {
+    let body = Cbor::Map(vec![
+        (text("id"), text("roll-001")),
+        (text("timeout_s"), uint(u64::MAX)),
+    ]);
+    let err = RollcallRequest::from_cbor(&cbor_bytes(&body))
+        .expect_err("u64::MAX timeout_s must exceed the maximum");
+    assert!(
+        err.to_string().contains("timeout_exceeds_maximum"),
+        "{err:?}"
+    );
 }

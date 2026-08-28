@@ -180,15 +180,6 @@ fn as_array(v: &Value) -> Result<&Vec<Value>, Error> {
     }
 }
 
-fn as_i64(v: &Value) -> Result<i64, Error> {
-    match v {
-        Value::Integer(i) => {
-            i64::try_from(*i).map_err(|_| Error::Decode("integer out of range".into()))
-        }
-        _ => Err(Error::Decode(format!("expected integer, got {v:?}"))),
-    }
-}
-
 fn wire_u64(v: &Value) -> Result<u64, Error> {
     match v {
         Value::Integer(i) => {
@@ -450,14 +441,16 @@ impl CheckIn {
 
 impl RollcallRequest {
     fn timeout_from_wire(v: &Value) -> Result<u64, Error> {
-        let t = as_i64(v).map_err(|_| Error::Decode("invalid_timeout_value".into()))?;
-        if t <= 0 {
+        // C reads the raw uint (full u64) before range-checking, so a
+        // huge uint exceeds the maximum; only negatives are invalid.
+        let t = wire_u64(v).map_err(|_| Error::Decode("invalid_timeout_value".into()))?;
+        if t == 0 {
             return Err(Error::Decode("invalid_timeout_value".into()));
         }
-        if t > i64::try_from(MAX_TIMEOUT_S).expect("MAX_TIMEOUT_S fits i64") {
+        if t > MAX_TIMEOUT_S {
             return Err(Error::Decode("timeout_exceeds_maximum".into()));
         }
-        u64::try_from(t).map_err(|_| Error::Decode("invalid_timeout_value".into()))
+        Ok(t)
     }
 
     /// Encode the roll call initiation body as a CBOR map with text keys.
@@ -516,7 +509,10 @@ impl RollcallRequest {
             None => return Err(Error::Decode("missing_required_field_id".into())),
             Some(v) => match v {
                 Value::Text(s) => s.clone(),
-                Value::Integer(_) => as_i64(v)?.to_string(),
+                // C coerces any CBOR uint (full u64) to its decimal form.
+                Value::Integer(_) => wire_u64(v)
+                    .map_err(|_| Error::Decode("invalid_id_type".into()))?
+                    .to_string(),
                 _ => return Err(Error::Decode("invalid_id_type".into())),
             },
         };
