@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.19",
+  "title": "TX queue C conformance: enforce exhaustive vector case coverage",
+  "description": "Round-3 security review found scenario validation still covers selected cases/fields only. Cases such as expiry_multiple_packets, routing_never_starved_by_bulk, capacity_enforced_strictly, and some initial packet fields can drift without affecting generated output. Make supported case coverage explicit and exhaustive: either consume/generate every vector case or reject unknown/unconsumed cases and validate all behavior-defining fields.",
+  "acceptance_criteria": "Every case name in the four TX queue vector documents is explicitly consumed/validated or explicitly declared metadata-only; unexpected cases/fields fail generation; representative generated scenarios drive C behavior; sanitizer-backed tests pass.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:34:01.119174Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:49:54.202043Z",
+  "closed_at": "2026-08-28T03:49:54.202043Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.19",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:34:07.713716Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

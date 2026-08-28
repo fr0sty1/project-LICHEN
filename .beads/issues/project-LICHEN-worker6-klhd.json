@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-klhd",
   "title": "Domain-separate and version the Announce origin signature transcript",
   "description": "P2 security/interoperability: AnnounceMessage.signed_data() signs raw IID||pubkey||seq||rx_channel||app_data with no protocol/domain/version prefix, unlike Link and DAO Schnorr-48 transcripts. Reusing the node identity key across protocol roles leaves Announce signatures without cryptographic context binding and makes future transcript evolution ambiguous. Define a fixed LICHEN-ANNOUNCE-vN domain (with unambiguous delimiter/length framing), update the normative spec and all implementations/vectors together, and add cross-domain negative KATs proving Link/DAO/SOS material is rejected as Announce authority.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:55:22.891705Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:58:20.075654Z",
-  "started_at": "2026-08-24T15:58:20.075654Z",
-  "lease_expires_at": "2026-08-24T16:03:20.075654Z",
-  "heartbeat_at": "2026-08-24T15:58:20.075654Z"
+  "updated_at": "2026-08-28T03:38:56.520426Z",
+  "started_at": "2026-08-24T15:58:20.075654Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-g5mv",
   "title": "Fragmented RPL DIO bypasses authenticated DODAG admission",
   "description": "python/src/lichen/node.py only classifies and calls DodagState.process_authenticated_dio() in the unfragmented SCHC branch (lines 832-846). After authenticated SCHC reassembly, the fragment branch proceeds directly to generic IPv6 routing/delivery, so an otherwise valid DIO that exceeds the single-frame ceiling can never install its peer SCHC policy or join/update the DODAG. The generic path may instead deliver/route it as data. Extend the LinkLayer/Node reassembly contract so a fully authenticated fragmented DIO is admitted through the same one-use authenticated DIO validation and policy commit, with tests for valid and malformed fragmented DIOs.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:19:11.426031Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:19:29.951478Z",
-  "started_at": "2026-08-24T14:19:29.951478Z",
-  "lease_expires_at": "2026-08-24T14:24:29.951478Z",
-  "heartbeat_at": "2026-08-24T14:19:29.951478Z"
+  "updated_at": "2026-08-28T03:30:21.583631Z",
+  "started_at": "2026-08-24T14:19:29.951478Z"
 }

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-e0cd",
   "title": "[review] provisioning.py:618: TOCTOU race in finally bl",
   "description": "In provision_node(), the finally block looks up session by peer_host (`self._sessions.get(peer_host)`) rather than holding a reference to the session created at entry. If a concurrent provision_node() call for the same peer_host replaces the session during the EDHOC handshake (while awaiting receive_message/send_message), the finally block retrieves and wipes the NEW session, breaking the concurrent provisioning attempt. The _remove_session() identity check (`is session`) does not protect here because the lookup returns the new session object.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T17:05:50.130574Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T17:05:50.130574Z",
+  "updated_at": "2026-08-28T04:44:45.180221Z",
+  "closed_at": "2026-08-28T04:44:45.180221Z",
+  "close_reason": "TOCTOU race already fixed. The finally block at line 662 uses self._remove_session(session, wipe=True) with the captured session reference from line 585, not a fresh lookup via self._sessions.get(peer_host). Security comments at lines 582-584 and 658-661 document the fix rationale. The _remove_session helper safely checks self._sessions[session.peer_host] is session before deletion.",
   "labels": [
     "review"
   ]

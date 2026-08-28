@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-s2fo",
   "title": "SCHC adaptation vector fixture fields are parsed but never asserted",
   "description": "rust/lichen-schc/tests/adaptation_vectors.rs includes five raw-fragment transition-oracle fields in AdaptationVector for every feature set, but reads them only when raw-fragment-codec+test-utils compiles the production-path duplicate transition. Clippy -D warnings fails reduced feature gates. Compile those fields under the same feature condition; in the full feature gate they remain consumed and asserted by the duplicate transition test.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T16:07:06.455901Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T16:07:52.167568Z",
-  "started_at": "2026-08-24T16:07:12.895513Z",
-  "lease_expires_at": "2026-08-24T16:12:12.895513Z",
-  "heartbeat_at": "2026-08-24T16:07:12.895513Z"
+  "updated_at": "2026-08-28T03:38:55.635688Z",
+  "started_at": "2026-08-24T16:07:12.895513Z"
 }

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.7",
+  "title": "TX queue C conformance: generate priority/expiry scenario expectations",
+  "description": "Round-2 correctness review found that gen_vectors.py validates selected bounded/implementation cases but does not consume behavioral cases from tx_queue_expiry.json or tx_queue_priority.json, and main.c still uses independent handwritten behavior literals. Generate C expectations from the canonical expiry boundary/default cases and priority FIFO/alias/preemption cases, then drive the corresponding host tests from those generated values.",
+  "acceptance_criteria": "Generated header contains scenario-derived expectations from expiry and priority vector cases; C tests use those generated expectations for exact expiry boundaries, ACK/routing FIFO ordering, and priority/preemption behavior; divergence in any of the four required vector files fails generation or CTest; sanitizer-backed tests pass.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:23:09.516199Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:49:06.100649Z",
+  "closed_at": "2026-08-28T03:49:06.100649Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.7",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:23:10.551892Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

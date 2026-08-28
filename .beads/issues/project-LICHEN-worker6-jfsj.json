@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-jfsj",
   "title": "Rust authenticated DIO vector consumer ignores exact rejection reason",
   "description": "rust/lichen-schc/tests/authenticated_dio_vectors.rs asserts only Ok versus Err for negative signed security cases. A malformed vector can pass for an unrelated failure and fail to prove the intended source/root/version/scope guard. Add stable typed rejection categories or exact error tokens and assert every vector's declared expected result/cause.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T10:32:04.913781Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T10:32:21.787861Z",
-  "started_at": "2026-08-24T10:32:21.787861Z",
-  "lease_expires_at": "2026-08-24T10:37:21.787861Z",
-  "heartbeat_at": "2026-08-24T10:32:21.787861Z"
+  "updated_at": "2026-08-28T03:43:37.563947Z",
+  "started_at": "2026-08-24T10:32:21.787861Z"
 }

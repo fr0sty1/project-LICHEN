@@ -5,10 +5,12 @@
   "status": "open",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:18:23.294571Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:18:23.294571Z",
+  "updated_at": "2026-08-28T04:00:40.577505Z",
+  "started_at": "2026-08-28T04:00:23.212203Z",
   "labels": [
     "blocked:hardware",
     "renode"

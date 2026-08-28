@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-t6sj",
+  "title": "tunnel_auth revocation_root_change test expects Replay but gets Revoked",
+  "description": "Test revocation_root_change_expiry_and_lru_fail_closed in rust/lichen-gateway/src/tunnel_auth.rs:922 fails with assertion error at line 954. After revoking a claim and then trying to re-accept the same claim, the test expects TunnelAuthError::Replay but receives TunnelAuthError::Revoked. This suggests the revocation state is being checked before the replay state, which may be a logic ordering issue. The test expects that replay detection should take precedence over revocation detection for claims with the same path_seq.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:09:50.807513Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:09:50.807513Z",
+  "labels": [
+    "rust"
+  ]
+}

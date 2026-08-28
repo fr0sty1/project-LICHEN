@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.10.2",
+  "title": "Group member position calculation with bounded variance",
+  "description": "Implement group member position calculation where each member maintains a position relative to the reference point with bounded variance. Members should have individual random offsets that stay within configurable bounds around the reference point.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:34:07.932137Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:34:07.932137Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.10.2",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2.10",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:34:13.348959Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

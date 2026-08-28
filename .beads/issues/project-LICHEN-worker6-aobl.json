@@ -3,13 +3,15 @@
   "title": "Hardware quirks model for Medium simulator",
   "description": "Model real radio hardware imperfections:\n\n1. **Warm-up time**: TX/RX mode switch takes 1-5ms, packets during transition are lost\n2. **PLL lock failures**: Occasional frequency lock failure (0.1-1% of TX attempts), retry needed\n3. **Crystal drift**: ±10-30ppm frequency offset, affects capture effect and collision detection\n4. **RSSI accuracy**: Real RSSI has ±3dB error, add noise to reported values\n5. **RX deaf time**: After TX, radio is deaf for ~100μs (TX/RX turnaround)\n6. **CAD false positives/negatives**: Real CAD has ~5% error rate\n\nImplementation: Optional RadioQuirks config on SimRadio, disabled by default for deterministic tests.",
   "notes": "Design decision: Medium assigns quirks (option B), not radio declares.\n\nAPI:\n- medium.set_quirks_profile('moderate') — global default\n- medium.set_quirks('node-7', QuirkProfile(...)) — per-node override\n- medium.set_quirks('node-3', PRESETS['sx1276']) — named hardware preset\n\nNamed presets as data:\n- PRESETS['ideal'] — no quirks (deterministic tests)\n- PRESETS['moderate'] — typical real-world\n- PRESETS['sx1276'] — specific chip characteristics\n- PRESETS['garbage'] — stress testing\n\nQuirkProfile fields: warmup_ms, pll_fail_rate, crystal_ppm, rssi_noise_db, cad_false_positive_rate, cad_false_negative_rate, rx_deaf_us",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-27T01:24:20.753811Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-27T01:43:23.318374Z",
+  "updated_at": "2026-08-28T04:46:13.852695Z",
+  "closed_at": "2026-08-28T04:46:13.852695Z",
+  "close_reason": "Hardware quirks model already fully implemented in lora_medium package. QuirkProfile includes warmup_ms (TX/RX mode switch 1-5ms), pll_fail_rate (0.1-1% PLL lock failures), plus crystal_ppm, rssi_noise_db, cad_false_positive_rate, cad_false_negative_rate, rx_deaf_us. Named presets (ideal, moderate, sx1276, sx1262, garbage) available. Medium class has set_quirks/get_quirks/clear_quirks API. Comprehensive tests in python/tests/sim/test_quirks.py (315 lines).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-aobl",

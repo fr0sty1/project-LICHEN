@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.14.7",
   "title": "Spec: 11 17.5.7 Messaging",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:24:18.367313Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-31T19:24:18.367313Z",
+  "updated_at": "2026-08-28T03:09:02.668506Z",
+  "started_at": "2026-08-28T03:07:59.031793Z",
+  "closed_at": "2026-08-28T03:09:02.668506Z",
+  "close_reason": "All five concrete children are complete: Python, Rust, Zephyr, test vectors, and cross-validation.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.14.7",

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-cjba",
   "title": "Design note: peer-cap refresh starvation at MAX_PEERS/MAX_RECEIVED_ROUTE_PEERS=64 (parity-matched both impls)",
   "description": "Existing entries refreshable forever, no TTL/LRU: 64 compromised-but-authenticated gateways permanently block new legit ones. Mirrored in Rust by design. Option: idle-timeout eviction. Record decision; do not silently change semantics without cross-impl coordination.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:46:18.711205Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:47:12.835104Z",
-  "started_at": "2026-08-24T06:47:12.835104Z",
-  "lease_expires_at": "2026-08-24T06:52:12.835104Z",
-  "heartbeat_at": "2026-08-24T06:47:12.835104Z"
+  "updated_at": "2026-08-28T03:45:11.837948Z",
+  "started_at": "2026-08-24T06:47:12.835104Z"
 }

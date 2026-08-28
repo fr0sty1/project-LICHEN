@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-cdze",
   "title": "DIO time freshness is caller-stamped instead of receipt-stamped",
   "description": "Correctness/security review: DioTimeVerifier.verify accepts caller-supplied observed_monotonic. A valid receipt can be held indefinitely and then verified with the current time, resetting packet age to zero and defeating max_sample_age_s. Stamp reception time inside the LinkLayer-issued receipt or use a verifier-owned trusted monotonic clock with no caller override; add delayed-verification expiry tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:57:57.904254Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:58:02.363786Z",
-  "started_at": "2026-08-24T06:58:02.363786Z",
-  "lease_expires_at": "2026-08-24T07:03:02.363786Z",
-  "heartbeat_at": "2026-08-24T06:58:02.363786Z"
+  "updated_at": "2026-08-28T03:32:55.349362Z",
+  "started_at": "2026-08-24T06:58:02.363786Z"
 }

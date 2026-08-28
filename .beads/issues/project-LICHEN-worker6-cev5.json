@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-cev5",
   "title": "Python DODAG admission derives neighbor from mutable RxFrame after sealing",
   "description": "Final Rule/version correctness review: python/src/lichen/rpl/dodag.py:305-318 accepts and seals authenticated DIO evidence, then derives the neighbor from original received.sender_iid after the LinkLayer receipt transaction. object.__setattr__ or a concurrent mutation can attribute authenticated DIO state to a different neighbor. Expose sender IID on the sealed AuthenticatedDio, cover it in the LinkLayer-owned structural snapshot, and derive all post-admission identity only from sealed evidence. Add mutation and forced race regressions.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:47:43.937118Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:47:44.725357Z",
-  "started_at": "2026-08-24T08:47:44.725357Z",
-  "lease_expires_at": "2026-08-24T08:52:44.725357Z",
-  "heartbeat_at": "2026-08-24T08:47:44.725357Z"
+  "updated_at": "2026-08-28T03:41:08.841367Z",
+  "started_at": "2026-08-24T08:47:44.725357Z"
 }

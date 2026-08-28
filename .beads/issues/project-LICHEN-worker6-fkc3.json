@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-fkc3",
   "title": "Gateway security changes fail strict Clippy gate",
   "description": "Robustness review gate found four strict lint regressions in modified gateway source: nonminimal recipient rollback predicate in gateway.rs, collapsible OSCORE option duplicate check, needless borrow in handoff request decode, and GatewayChallengeIssuer::verify_identity exceeding argument bound. Refactor without weakening checks and rerun all-target clippy -D warnings.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:14:18.139122Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:14:23.628209Z",
-  "started_at": "2026-08-24T17:14:23.628209Z",
-  "lease_expires_at": "2026-08-24T17:19:23.628209Z",
-  "heartbeat_at": "2026-08-24T17:14:23.628209Z"
+  "updated_at": "2026-08-28T03:42:43.644249Z",
+  "started_at": "2026-08-24T17:14:23.628209Z"
 }

@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.9",
+  "title": "Group Mobility Pattern",
+  "description": "Add GroupMobility class to mobility.py - all nodes in a group move together with optional individual offset jitter. Follow RandomWaypoint pattern structure. Include tests.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:13:40.21853Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:35:42.942601Z",
+  "closed_at": "2026-08-28T03:35:42.942601Z",
+  "close_reason": "decomposed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.9",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:13:42.158109Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

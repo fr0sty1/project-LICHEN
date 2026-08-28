@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-qe4q",
   "title": "Rust SOS rate limiter fails open for public non-default limits",
   "description": "P3 security review finding in newly added rust/lichen-link/src/sos.rs (completed implementation project-LICHEN-worker6-l1qw.10.7.3.2). SosRateLimitConfig::new and public fields accept arbitrary max_per_hour and burst_allowance, but SosRateLimitState stores only [u64; 3]. If max_per_hour \u003e 3, valid_count can never reach the configured threshold and the hourly limit is disabled; if max_per_hour == 0 with no stored entry, the \u003e= check finds no oldest timestamp and then falls through to Allowed (especially with burst_remaining \u003e 0). A burst_allowance up to 255 likewise defeats the stated burst cap. Make construction validated/fallible or size storage from an enforced maximum, reject zero/out-of-range normative settings, and add max=0, max=4, large-burst, and check-after-prune tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:27:28.46668Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:30:31.793729Z",
-  "started_at": "2026-08-24T12:30:31.793729Z",
-  "lease_expires_at": "2026-08-24T12:35:31.793729Z",
-  "heartbeat_at": "2026-08-24T12:30:31.793729Z"
+  "updated_at": "2026-08-28T03:43:25.350747Z",
+  "started_at": "2026-08-24T12:30:31.793729Z"
 }

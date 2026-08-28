@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-ua21",
   "title": "SCHC appendix repeats A.3 heading and misnumbers later subsections",
   "description": "spec/appendix-schc.md labels both CoAP Compression and OSCORE Compression as A.3, then RPL Compression as A.4. Renumber OSCORE to A.4 and RPL to A.5 so cross-references remain unambiguous.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:02:15.494183Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:02:19.816271Z",
-  "started_at": "2026-08-24T12:02:19.816271Z",
-  "lease_expires_at": "2026-08-24T12:07:19.816271Z",
-  "heartbeat_at": "2026-08-24T12:02:19.816271Z"
+  "updated_at": "2026-08-28T03:45:00.118943Z",
+  "started_at": "2026-08-24T12:02:19.816271Z"
 }

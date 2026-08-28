@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-49qh",
   "title": "Unified time provider cannot adopt direct NTS RTC manual or local-client sources",
   "description": "StratumTracker.consider always requires a DioTimeOption/stratum, while NETWORK evidence always requires link signer/replay/DIO bytes. Thus direct NTS/Roughtime/SNTP and verified RTC/manual/local-client samples have no authoritative adoption path. Separate source-specific provider adoption from peer-DIO adoption with explicit policy/evidence and tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:24:13.378917Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:24:21.454783Z",
-  "started_at": "2026-08-24T06:24:21.454783Z",
-  "lease_expires_at": "2026-08-24T06:29:21.454783Z",
-  "heartbeat_at": "2026-08-24T06:24:21.454783Z"
+  "updated_at": "2026-08-28T03:41:36.897364Z",
+  "started_at": "2026-08-24T06:24:21.454783Z"
 }

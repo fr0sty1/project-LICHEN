@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-hi1z",
   "title": "DIO parser accepts the reserved G/MOP/Prf bit as a canonical control message",
   "description": "python/src/lichen/rpl/messages.py:DIO.from_bytes ignores bit 6 of the G/MOP/Prf octet: grounded reads bit7, MOP reads bits5..3 and preference bits2..0, so wire values differing only by reserved bit 0x40 parse to the same DIO and authenticated admission accepts them. DIO.to_bytes always clears that bit, creating parse/reserialize non-canonicality and cross-implementation ambiguity at a signed routing-control boundary. Reject gmop_prf \u0026 0x40 before issuing AuthenticatedDio and add direct/fragmented/vector tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:55:05.325652Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:57:14.034357Z",
-  "started_at": "2026-08-24T14:57:14.034357Z",
-  "lease_expires_at": "2026-08-24T15:02:14.034357Z",
-  "heartbeat_at": "2026-08-24T14:57:14.034357Z"
+  "updated_at": "2026-08-28T03:39:33.781201Z",
+  "started_at": "2026-08-24T14:57:14.034357Z"
 }

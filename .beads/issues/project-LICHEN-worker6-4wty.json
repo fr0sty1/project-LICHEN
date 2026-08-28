@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-4wty",
   "title": "SCHC endpoint ordering is undefined and production defaults both directions to Rule 0x78",
   "description": "spec/03-adaptation.md and draft-lichen-schc-lora-00.md reserve 0x78 for canonical A-to-B and 0x79 for B-to-A but never define how authenticated peers deterministically become A or B. Python Link/Node sender APIs default to 0x78, which makes simultaneous transfers share the same data/control Rule ID and caused ACK-REQ ambiguity. Define canonical endpoint ordering from authenticated full signer identities (with exact treatment of local vs remote), derive the outbound rule rather than silently defaulting in production, require inbound rule direction to match, and add both-direction/simultaneous/mismatched-rule vectors and tests across Python/Rust consumers.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:25:58.730906Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:26:02.620159Z",
-  "started_at": "2026-08-24T11:26:02.620159Z",
-  "lease_expires_at": "2026-08-24T11:31:02.620159Z",
-  "heartbeat_at": "2026-08-24T11:26:02.620159Z"
+  "updated_at": "2026-08-28T03:31:25.422522Z",
+  "started_at": "2026-08-24T11:26:02.620159Z"
 }

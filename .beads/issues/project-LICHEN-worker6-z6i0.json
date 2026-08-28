@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-z6i0",
   "title": "Python fragmentation targets IID while Rust and link draft require Extended EUI-64",
   "description": "Python Node sends authenticated SCHC fragments/controls to peer.iid and Link accepts Extended DST == identity.iid. Rust Link/SCHC/node consistently compares Extended DST to local_eui64 (IID with RFC4291 U/L bit flipped), and draft-lichen-link-01 defines Extended as an EUI-64. Cross-language peers therefore reject every exact-target fragment/control despite correct signatures. Make Extended wire destination canonical EUI-64 in spec/02 and Python Link/Node, derive it explicitly from key-derived IID, keep trust maps keyed by IID/full key as appropriate, and add Python↔Rust address/overhear/control vectors/tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:52:39.46356Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:52:45.169175Z",
-  "started_at": "2026-08-24T11:52:45.169175Z",
-  "lease_expires_at": "2026-08-24T11:57:45.169175Z",
-  "heartbeat_at": "2026-08-24T11:52:45.169175Z"
+  "updated_at": "2026-08-28T03:31:16.319029Z",
+  "started_at": "2026-08-24T11:52:45.169175Z"
 }

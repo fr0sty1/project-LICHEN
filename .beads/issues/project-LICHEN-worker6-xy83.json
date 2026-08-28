@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-xy83",
   "title": "Rust RPL serializer hardcodes SCHC version option bytes outside registry owner",
   "description": "Rule 7 and versioning correctness rereview: rust lichen-rpl Dio defines SCHC_RULE_VERSION_OPTION as literal 13 01 03 instead of deriving it from lichen-schc SchcRuleVersionOption current and SCHC_RULE_VERSION_TYPE. A future registry increment can update codec compatibility while emitted DIOs silently remain version 3. Remove the duplicate constant, serialize through the canonical SCHC option API, and add a test that the DIO option equals current registry serialization rather than another literal.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:15:26.546752Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:15:31.760656Z",
-  "started_at": "2026-08-24T08:15:31.760656Z",
-  "lease_expires_at": "2026-08-24T08:20:31.760656Z",
-  "heartbeat_at": "2026-08-24T08:15:31.760656Z"
+  "updated_at": "2026-08-28T03:43:40.283252Z",
+  "started_at": "2026-08-24T08:15:31.760656Z"
 }

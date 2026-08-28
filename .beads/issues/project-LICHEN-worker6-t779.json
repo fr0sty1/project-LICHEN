@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-t779",
   "title": "SCHC durable floors can alias a new key generation through Python object-id reuse",
   "description": "_AuthenticatedReassemblyManager keys generation-scoped state with id(key_generation). Active/tombstone rows retain the token object, but durable _floors retain only the integer ID. After revocation removes the generation mapping and the token is garbage-collected, Python may reuse that ID for a later generation; the stale-floor purge then mistakes the new generation for the old one. Key state by the opaque generation object itself (identity token), retaining it for the floor lifetime, and add a deterministic regression that demonstrates distinct same-pubkey generations never alias.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:56:14.492659Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:56:30.743695Z",
-  "started_at": "2026-08-24T13:56:30.743695Z",
-  "lease_expires_at": "2026-08-24T14:01:30.743695Z",
-  "heartbeat_at": "2026-08-24T13:56:30.743695Z"
+  "updated_at": "2026-08-28T03:30:22.671025Z",
+  "started_at": "2026-08-24T13:56:30.743695Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-eni9",
   "title": "First-boot slot recovery can anchor noninitial replay state at floor one",
   "description": "Security review of so3l/0919 integration: before manifest SLOT commit, if gateway-slot-replay.bin exists without its external floor, lichend writes floor=1 and loads any valid store. A noninitial generation\u003e1 store is therefore accepted against floor1; after a failed attempt both files remain and are also accepted on retry. Legitimate first-boot partial can only be generation 1 with no claims. After loading any stage\u003cSLOT recovery, require slot_replay_generation()==1 (and empty verifier state if exposed) before committing the manifest; reject higher generations and test retry with both files present.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:21:22.549952Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:21:30.970078Z",
-  "started_at": "2026-08-24T17:21:30.970078Z",
-  "lease_expires_at": "2026-08-24T17:26:30.970078Z",
-  "heartbeat_at": "2026-08-24T17:21:30.970078Z"
+  "updated_at": "2026-08-28T03:28:46.574588Z",
+  "started_at": "2026-08-24T17:21:30.970078Z"
 }

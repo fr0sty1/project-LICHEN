@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-ibs7",
   "title": "Serialize FileKeyStore writers and handle generation exhaustion",
   "description": "SECURITY/ROBUSTNESS: FileKeyStore.store_seed reads both slot generations and then writes a predictable per-slot .tmp without any inter-process lock/CAS. Concurrent rotations can select the same slot/generation, race the same temp path, lose an acknowledged seed update, or raise after another writer renames it. At generation 0xffffffff, max+1 also fails struct.pack rather than entering an explicit safe terminal state. Add process-safe serialization/unique temp handling, define u32 generation exhaustion/rollback semantics, and stress concurrent/crash boundary tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:44:46.845876Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:58:09.486947Z",
-  "started_at": "2026-08-24T15:58:09.486947Z",
-  "lease_expires_at": "2026-08-24T16:03:09.486947Z",
-  "heartbeat_at": "2026-08-24T15:58:09.486947Z"
+  "updated_at": "2026-08-28T03:39:13.551322Z",
+  "started_at": "2026-08-24T15:58:09.486947Z"
 }

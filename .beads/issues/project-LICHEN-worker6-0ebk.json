@@ -3,15 +3,13 @@
   "title": "TDMA guard and slot-duration requirements contradict the 2346 ms canonical minimum",
   "description": "Final correctness review: spec/09-packets-timing.md §14.8, python timing constants, Rust constants, and packets-timing.json require one 50 ms guard and a minimum 2346 ms slot for a maximum 255-byte SF10/125 kHz frame. spec/02a-coordinated-capacity.md still encodes guard default 100 ms and says max_airtime(current_SF)+100 ms; spec/02a-tdma.md presents a 60-byte typical packet plus 50 ms as a 250 ms slot and even says GPS may reduce the guard. These normative statements permit incompatible schedules and slots too short for the profile maximum. Align beacon field defaults, minimum-slot calculation, examples, and any guard-reduction language with the canonical maximum-frame rule and exact airtime vector.",
   "acceptance_criteria": "All normative TDMA documents and vectors require the same guard and maximum-frame-derived slot minimum at each configured data rate.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:53:07.023738Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:53:23.732107Z",
-  "started_at": "2026-08-24T14:53:23.732107Z",
-  "lease_expires_at": "2026-08-24T14:58:23.732107Z",
-  "heartbeat_at": "2026-08-24T14:53:23.732107Z"
+  "updated_at": "2026-08-28T03:30:16.596194Z",
+  "started_at": "2026-08-24T14:53:23.732107Z"
 }

@@ -1,17 +1,17 @@
 {
   "id": "project-LICHEN-6mij.2.4",
   "title": "Implement common LCI mutating op OSCORE authorization helper in coap_oscore",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 0,
   "issue_type": "task",
-  "assignee": "AI Agent",
+  "assignee": "Mark Atwood",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-23T05:21:18.583386466Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T19:19:40.231927631Z",
+  "updated_at": "2026-08-28T04:09:02.463199Z",
   "started_at": "2026-07-24T16:08:43.91424947Z",
-  "lease_expires_at": "2026-07-24T19:24:40.231927631Z",
-  "heartbeat_at": "2026-07-24T19:19:40.231927631Z",
+  "closed_at": "2026-08-28T04:09:02.463199Z",
+  "close_reason": "Fulfilled via design change: delivered as per-handler adoption of the shared coap_oscore_unprotect_resource_request() + struct coap_oscore_unprotect_result (plaintext embedded in result-\u003eplainbuf, coap_oscore.h:45-53) instead of a separate auth_mutating helper - the auth_mutating helper was deleted as orphaned (commit 0de6a9383a) after its stack-dangling payload bug (worker6-0pim). Consistency verified across ALL LCI mutating handlers: config_put and msg_inbox_post already used the helper (coap_server.c:172-216, 300-316); this session migrated the last two inline-pattern handlers, deaddrop_post and confessions_post (coap_dtn.c), and deleted the redundant static deaddrop_oscore_respond(); the helper pattern now has 127 call sites across coap_msg/config/handoff/location/waypoints/rangetest/dtn/server. keys_single_put/keys_single_delete (coap_keys.c) retain an inline-but-security-equivalent pattern (local-admin required on BOTH protected and unprotected paths, 4.01 on unprotect failure, no escaping pointers); migrating them onto the helper is owned by the in-flight coap_keys.c OSCORE verification bead held by another agent and deliberately untouched here. Verification: cppcheck warning/style/performance/portability clean on coap_dtn.c; repo-wide greps zero references to the deleted helper/struct; full twister/native_sim compile coverage for the DEADDROP file tracked as project-LICHEN-worker6-qj3l.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6mij.2.4",

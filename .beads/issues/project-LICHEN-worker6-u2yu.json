@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-u2yu",
   "title": "Time clear or expiry bypasses per-step correction bounds",
   "description": "Correctness review: ordinary StratumTracker.clear/expiry discards the current reference, and _adopt applies max_forward_step/max_backward_step only while a current sample exists. A replacement correction can therefore exceed the per-step bound while remaining under the cumulative anchor budget, contrary to spec 09. Retain a projected correction reference across non-admin invalidation and enforce per-step before cumulative bounds; only bound-admin recovery may reset it. Add clear and expiry regressions.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:51:23.947893Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:51:27.641493Z",
-  "started_at": "2026-08-24T06:51:27.641493Z",
-  "lease_expires_at": "2026-08-24T06:56:27.641493Z",
-  "heartbeat_at": "2026-08-24T06:51:27.641493Z"
+  "updated_at": "2026-08-28T03:33:02.618725Z",
+  "started_at": "2026-08-24T06:51:27.641493Z"
 }

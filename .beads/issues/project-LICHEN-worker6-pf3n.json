@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-pf3n",
   "title": "Python Node forwards IPv6 without decrementing Hop Limit",
   "description": "Security codereview finding in python/src/lichen/node.py: Node._process_received parses a valid IPv6 packet, routes it, recompresses the original ipv6_bytes, and forwards it without decrementing packet.header.hop_limit or dropping Hop Limit 0/1. This violates IPv6 relay semantics and spec/04-network.md 6.3.2, defeats the packet's loop/amplification bound, and allows cyclic routes to recirculate traffic after the bounded relay cache is displaced. Before passive learning/forwarding, reject exhausted Hop Limit and serialize an otherwise identical packet with Hop Limit decremented exactly once; preserve source/payload/checksum semantics and add unicast/multicast boundary regressions for 0, 1, and 2.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:06:17.365837Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:11:21.755691Z",
-  "started_at": "2026-08-24T13:11:21.755691Z",
-  "lease_expires_at": "2026-08-24T13:16:21.755691Z",
-  "heartbeat_at": "2026-08-24T13:11:21.755691Z"
+  "updated_at": "2026-08-28T03:30:36.697117Z",
+  "started_at": "2026-08-24T13:11:21.755691Z"
 }

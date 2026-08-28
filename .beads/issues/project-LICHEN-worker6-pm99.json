@@ -3,15 +3,13 @@
   "title": "Node restarts SCHC retry timer before repair batch finishes",
   "description": "Correctness review of pro2 implementation found Node._process_received signals outbound session activity before transmitting a negative-ACK repair batch. The driver can therefore begin the next 10-second wait while potentially slow LoRa fragment/ACK-REQ transmissions are still in progress, shortening the required post-request retransmission interval. Signal/reset the timer only after the complete repair output batch is radio-accepted; preserve terminal ACK handling and radio-failure abort behavior.",
   "notes": "Fixed with explicit paused/deadline timer state: ACK stops the old timer immediately, and a fresh full interval begins only after repair batch radio acceptance. Regression blocks repair TX beyond timer and proves no premature timeout.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:50:05.548163Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:53:03.3515Z",
-  "started_at": "2026-08-24T13:50:08.86234Z",
-  "lease_expires_at": "2026-08-24T13:55:08.86234Z",
-  "heartbeat_at": "2026-08-24T13:50:08.86234Z"
+  "updated_at": "2026-08-28T03:40:00.720696Z",
+  "started_at": "2026-08-24T13:50:08.86234Z"
 }

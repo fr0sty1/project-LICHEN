@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-9hg7",
   "title": "clippy -D warnings fails on lichen-link tests/shared_vectors.rs dead-code fields",
   "description": "tests/shared_vectors.rs CryptoMetadata fields (seed, private_key, public_key, preimage, signature) and LinkFrameVector.crypto are never read; cargo clippy -p lichen-link --all-targets -- -D warnings fails with dead_code. Pre-existing at HEAD (not introduced by worker6 fixes) and file has concurrent uncommitted WIP from another workstream (appended replay-window test). Fix by reading the fields in assertions or removing/allowing them once that WIP lands.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T02:13:06.182389Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:35:03.284541Z",
-  "started_at": "2026-08-24T11:35:03.284541Z",
-  "lease_expires_at": "2026-08-24T11:40:03.284541Z",
-  "heartbeat_at": "2026-08-24T11:35:03.284541Z"
+  "updated_at": "2026-08-28T03:44:13.877386Z",
+  "started_at": "2026-08-24T11:35:03.284541Z"
 }

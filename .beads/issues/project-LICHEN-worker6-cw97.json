@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-cw97",
   "title": "Link replay spec permits IID-only and unauthenticated state poisoning",
   "description": "spec/02-physical-link.md keys replay acceptance only by IID and does not require signature verification before replay-state mutation, despite unsigned frames and spec/03 requiring full verified signer identity/generation plus authenticate-before-context-mutation. Define replay domain as full authenticated signer/key generation (with address only as routing metadata), verification before mutation, atomic persistence, and old-generation invalidation; align replay vectors with unsigned poisoning, alias, rotation, and rollback cases.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:29:49.111678Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:29:59.868397Z",
-  "started_at": "2026-08-24T11:29:59.868397Z",
-  "lease_expires_at": "2026-08-24T11:34:59.868397Z",
-  "heartbeat_at": "2026-08-24T11:29:59.868397Z"
+  "updated_at": "2026-08-28T03:31:21.685015Z",
+  "started_at": "2026-08-24T11:29:59.868397Z"
 }

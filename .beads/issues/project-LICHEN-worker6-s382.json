@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-s382",
   "title": "Replace stale source-line anchors in SCHC specifications",
   "description": "The reviewed SCHC docs still make exact-behavior claims through mutable source line anchors: spec/appendix-schc.md cites schc.h:93, constants.toml:29-36, and option.rs:33; spec/03-adaptation.md cites rules.py:290; draft-lichen-schc-lora-00.md cites rules.rs:503 and :257. These anchors have already drifted (for example current Rule 7/specialized registry layout no longer corresponds to those numbers), so readers can be sent to unrelated definitions. Replace them with stable spec section/table names and file/module references while retaining independent normative text. Spec-only; no C/Zephyr work.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:52:25.018492Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:55:11.557578Z",
-  "started_at": "2026-08-24T15:55:11.557578Z",
-  "lease_expires_at": "2026-08-24T16:00:11.557578Z",
-  "heartbeat_at": "2026-08-24T15:55:11.557578Z"
+  "updated_at": "2026-08-28T03:42:51.346895Z",
+  "started_at": "2026-08-24T15:55:11.557578Z"
 }

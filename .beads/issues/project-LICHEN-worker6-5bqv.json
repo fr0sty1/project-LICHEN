@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-5bqv",
   "title": "Link destination gate reads mutable local-address configuration",
   "description": "P2 security/TOCTOU: LinkLayer._wire_is_for_local runs before _security_lock and reads mutable public identity.iid/identity.ygg_addr/local_short_addr fields. Concurrent reassignment can validate against transient target configuration and then commit replay/TOFU/receipt state under immutable _local_pubkey. Bind canonical local IID/EUI64/Ygg/short snapshots during __post_init__, use only snapshots in the gate, and add mutation regression.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:10:20.59902Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:10:24.213637Z",
-  "started_at": "2026-08-24T12:10:24.213637Z",
-  "lease_expires_at": "2026-08-24T12:15:24.213637Z",
-  "heartbeat_at": "2026-08-24T12:10:24.213637Z"
+  "updated_at": "2026-08-28T03:40:34.156822Z",
+  "started_at": "2026-08-24T12:10:24.213637Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-kznk",
   "title": "Allow authenticated propagation of newer DODAG versions across multiple hops",
   "description": "rust/lichen-node/src/routing/router.rs and rust/lichen-rpl/src/dodag.rs classify a DIO as root-authorized only when the immediate link signer derives to the DODAGID, then reject any version change from a peer. RPL DIOs are re-originated/relayed by non-root parents, so nodes more than one hop from the root can never adopt a root-triggered DODAGVersionNumber increment and global repair partitions the mesh. Add a separately verifiable root-owned version authorization that peers can propagate (or another spec-defined authenticated mechanism) while retaining rejection of unauthorized peer version changes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:35:59.485557Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:36:11.94551Z",
-  "started_at": "2026-08-24T17:36:11.94551Z",
-  "lease_expires_at": "2026-08-24T17:41:11.94551Z",
-  "heartbeat_at": "2026-08-24T17:36:11.94551Z"
+  "updated_at": "2026-08-28T03:28:31.186793Z",
+  "started_at": "2026-08-24T17:36:11.94551Z"
 }

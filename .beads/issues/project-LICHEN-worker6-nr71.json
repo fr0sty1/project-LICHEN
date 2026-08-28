@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-nr71",
   "title": "Bind installed gateway OSCORE contexts to canonical peer IDs",
   "description": "Security review of the new runtime GCP dispatch found Gateway::install_gcp_context accepts an arbitrary Context for a pinned public key without validating the context's sender/recipient IDs or detecting seven-byte OSCORE-ID collisions. A caller could associate the wrong traffic keys/identity with a durable pin. Require canonical local/peer seven-byte IDs, reject colliding full IIDs, and test fail-closed installation.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:45:43.831096Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:45:47.999462Z",
-  "started_at": "2026-08-24T15:45:47.999462Z",
-  "lease_expires_at": "2026-08-24T15:50:47.999462Z",
-  "heartbeat_at": "2026-08-24T15:45:47.999462Z"
+  "updated_at": "2026-08-28T03:29:53.28022Z",
+  "started_at": "2026-08-24T15:45:47.999462Z"
 }

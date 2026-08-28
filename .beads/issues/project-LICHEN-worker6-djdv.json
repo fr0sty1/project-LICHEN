@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-djdv",
   "title": "Mark u64::MAX as a valid final DAO Origin Sequence vector",
   "description": "P2 protocol/vector correctness: generate_packets_timing.py defines is_valid_dao_sequence() with sequence \u003c 0xffffffffffffffff and emits seq_max_invalid=True, while spec/05-routing.md says the counter starts above zero and at u64::MAX must not originate another DAO or wrap, and dao_origin_signature.json explicitly contains valid_max_u64_sequence. DaoManager likewise permits max as the final newly allocated sequence and only rejects a subsequent allocation. Align packets-timing generation/field naming and consumers so u64::MAX is valid when greater than the prior floor but terminal for further origination.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:07:05.366179Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:07:10.777579Z",
-  "started_at": "2026-08-24T17:07:10.777579Z",
-  "lease_expires_at": "2026-08-24T17:12:10.777579Z",
-  "heartbeat_at": "2026-08-24T17:07:10.777579Z"
+  "updated_at": "2026-08-28T03:38:33.69364Z",
+  "started_at": "2026-08-24T17:07:10.777579Z"
 }

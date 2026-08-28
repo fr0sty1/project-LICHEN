@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-jzi2",
   "title": "Canonical SCHC Rule 2/3/4 fixed-size vectors contradict their own bit arithmetic and specs",
   "description": "Correctness review: test/vectors/schc_adaptation.json:340-375 has stale/incorrect fixed-size oracles. Rule 2 says 3 bytes, stores expected≈21, but its listed fields sum to 176 bits =22 residue bytes + Rule ID =23. Rule 3 says 8 bytes and expected≈37, while its own 312-bit sum is 39 residue bytes + Rule ID =40, matching spec/03-adaptation.md:55-58 and appendix-schc.md:14. Rule 4 says 6 bytes and expected≈35, while 288 bits is 36 residue bytes + Rule ID =37, matching the same specs. spec/appendix-schc.md:12 independently and incorrectly calls Rule 2 3 bytes, while draft-lichen-schc-lora-00.md:218-238 lists the address/IID fields and calls it ~20-byte residue. Replace approximate/stale fields with exact 23/40/37-byte canonical oracles and add independent sum assertions in python/tests/test_protocol_vector_security.py.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:16:13.782063Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:20:25.977134Z",
-  "started_at": "2026-08-24T12:20:25.977134Z",
-  "lease_expires_at": "2026-08-24T12:25:25.977134Z",
-  "heartbeat_at": "2026-08-24T12:20:25.977134Z"
+  "updated_at": "2026-08-28T03:31:07.382505Z",
+  "started_at": "2026-08-24T12:20:25.977134Z"
 }

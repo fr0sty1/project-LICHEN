@@ -3,15 +3,13 @@
   "title": "Time policy replacement leaves now-disallowed current source valid",
   "description": "Post-fix correctness review: StratumTracker.replace_policy only runs age expiry. Removing the active source/peer or tightening accuracy leaves wall_clock_valid true. Atomically re-evaluate current sample/evidence under the new immutable policy, invalidate if disallowed while preserving anchor/reference/replay state, and test source, peer, and accuracy revocation.",
   "notes": "Security rereview extension: replacement revalidation remains incomplete for Internal RTC. Tightening max_sample_age_s below immutable evidence.rtc_age_seconds leaves active RTC valid because _expire_locked checks only observation age and _replacement_policy_rejection checks only class/accuracy/network peer. Re-run every policy-controlled/source-specific predicate affected by replacement; add active RTC age threshold tightening tests while preserving anchor/reference/replay semantics.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T07:34:54.479983Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:22:20.456851Z",
-  "started_at": "2026-08-24T07:35:10.020145Z",
-  "lease_expires_at": "2026-08-24T07:40:10.020145Z",
-  "heartbeat_at": "2026-08-24T07:35:10.020145Z"
+  "updated_at": "2026-08-28T03:32:33.31531Z",
+  "started_at": "2026-08-24T07:35:10.020145Z"
 }

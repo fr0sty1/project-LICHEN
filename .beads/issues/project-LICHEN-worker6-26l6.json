@@ -2,17 +2,15 @@
   "id": "project-LICHEN-worker6-26l6",
   "title": "Review: dodag.rs edge cases 2026-08-16",
   "description": "Review confidence: 85% chance of missed bug. Least confident areas: lollipop version comparison edge cases (RFC 6550 Appendix A is complex), interaction between MaxRankIncrease and version adoption. Would raise confidence if: cross-validated against another RFC 6550 implementation or fuzz tested with random DIO sequences.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T19:03:45.272189Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T19:05:52.202252Z",
+  "updated_at": "2026-08-28T03:34:45.425063Z",
   "started_at": "2026-08-16T19:03:58.515475Z",
-  "lease_expires_at": "2026-08-16T19:08:58.515475Z",
-  "heartbeat_at": "2026-08-16T19:03:58.515475Z",
   "labels": [
     "review"
   ]

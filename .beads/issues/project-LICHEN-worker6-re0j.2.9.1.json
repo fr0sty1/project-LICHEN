@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.9.1",
+  "title": "GroupMobility core class",
+  "description": "Implement the GroupMobility class following the RandomWaypoint pattern. Core features:\n- Group center movement using waypoint-based navigation\n- Member offset tracking relative to group center\n- Configuration for group size, speed, and bounds\n- Integration with MobilityManager registration",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:33:35.670546Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:45:32.739445Z",
+  "started_at": "2026-08-28T03:52:51.134858Z",
+  "closed_at": "2026-08-28T04:45:32.739445Z",
+  "close_reason": "GroupMobility implemented in python/src/lichen/sim/mobility.py:188 following RandomWaypoint state machine (virtual center + fixed member offsets, ring assignment, inset waypoint bounds). 20 new tests in tests/sim/test_group_mobility.py; 35 sim mobility tests pass; mypy strict clean; ruff clean. Shared-file addition limited to GroupMobility re-export in sim/__init__.py.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.9.1",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2.9",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:33:44.759218Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

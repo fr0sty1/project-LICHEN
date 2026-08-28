@@ -2,17 +2,15 @@
   "id": "project-LICHEN-worker6-x6op",
   "title": "Review: oscore/initiator.rs edge cases 2026-08-16",
   "description": "## Edge Case Review: oscore/src/edhoc/initiator.rs\n\n**Focus areas:** Boundary conditions, error handling, resource cleanup, race conditions, overflow\n\n### Summary\n\n| Priority | Count | Description |\n|----------|-------|-------------|\n| P0 | 3 | Panic-on-malformed-input in crypto path |\n| P1 | 2 | Error handling / validation gaps |\n| P2 | 3 | Cleanup / side-channel hygiene |\n| P3 | 1 | Error type clarity |\n\n### Confidence Calibration\n\n**Review confidence:** 85% chance no missed P0 bug in the reviewed file.\n\n**Least confident areas:**\n- Interaction with edhoc_kdf buffer limits (relies on implementation matching spec)\n- Transcript hash computation (reviewed superficially, not in scope)\n\n**Would raise confidence if:**\n- Unit tests exercising KDF output length edge cases\n- Fuzz testing with malformed Message 2 inputs\n- Property tests for all error paths\n\n### Labels\n\ncorrectness: 5, edge-case: 4, error-handling: 3, crypto-security: 1, resource-cleanup: 1, side-channel: 1, readability: 1",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T18:40:22.149691Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T18:42:41.749474Z",
+  "updated_at": "2026-08-28T03:34:52.270106Z",
   "started_at": "2026-08-16T18:40:29.639057Z",
-  "lease_expires_at": "2026-08-16T18:45:29.639057Z",
-  "heartbeat_at": "2026-08-16T18:40:29.639057Z",
   "labels": [
     "review"
   ]

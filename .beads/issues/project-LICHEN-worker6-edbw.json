@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-edbw",
   "title": "Restrict SCHC control-wire issuance to authenticated transitions",
   "description": "python/src/lichen/schc/fragment.py exposes SchcSessionManager.issue_control_wire as a generic authority mint. Any caller holding the manager can supply arbitrary canonical ACK, ACK-REQ, Sender-Abort, or Receiver-Abort bytes plus any 32-byte peer and object; the method does not prove an authenticated reassembly/sender transition or validate key_generation against current peer state. consume_fragment_wire then accepts the manager-issued token and does not inspect the stored key_generation, bypassing the intended one-use target-bound transition policy. Remove/restrict the generic issuer and issue controls only atomically inside receipt-bound reassembly or active-sender transitions; validate current generation at consume; add forged-direct-issuance tests for unknown/stale peers and every control form.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T18:01:04.125596Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T18:01:13.504434Z",
-  "started_at": "2026-08-24T18:01:13.504434Z",
-  "lease_expires_at": "2026-08-24T18:06:13.504434Z",
-  "heartbeat_at": "2026-08-24T18:01:13.504434Z"
+  "updated_at": "2026-08-28T03:28:26.61651Z",
+  "started_at": "2026-08-24T18:01:13.504434Z"
 }

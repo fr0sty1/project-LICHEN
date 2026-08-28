@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-xpo8",
   "title": "Conflicting CRC32 and FNV-1a short-address DAD algorithms in link spec",
   "description": "Correctness review: spec/02-physical-link.md defines two normative Section 4.5 DAD algorithms. Lines 185-216 derive short addresses with crc32_ieee and a truncated ASCII-LICHEN initializer; lines 425-449 instead derive them with FNV-1a32 basis 0x811C9DC5 and explicitly say the earlier hash_32 notation is wrong. Line 67 also points DAD to CRC32. Peers following the two definitions choose different 16-bit addresses and retry sequences, breaking deterministic interop and test/vectors/short_addr_dad.json. Remove the stale definition and retain one exact algorithm.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:16:12.372985Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:20:22.67475Z",
-  "started_at": "2026-08-24T12:20:22.67475Z",
-  "lease_expires_at": "2026-08-24T12:25:22.67475Z",
-  "heartbeat_at": "2026-08-24T12:20:22.67475Z"
+  "updated_at": "2026-08-28T03:31:10.339261Z",
+  "started_at": "2026-08-24T12:20:22.67475Z"
 }

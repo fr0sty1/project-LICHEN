@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-gvrv",
   "title": "Remove or implement TrustStore.verify_or_pin allow_upgrade",
   "description": "P4 API correctness: TrustStore.verify_or_pin() exposes and documents allow_upgrade, but the parameter is never read and the method has no requested trust level to apply. Passing allow_upgrade=True has exactly the same behavior as False, so callers can believe an upgrade was authorized when none occurred. Remove the no-op argument or define an explicit validated upgrade contract and add behavior tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:07:17.464905Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:07:21.766047Z",
-  "started_at": "2026-08-24T17:07:21.766047Z",
-  "lease_expires_at": "2026-08-24T17:12:21.766047Z",
-  "heartbeat_at": "2026-08-24T17:07:21.766047Z"
+  "updated_at": "2026-08-28T03:44:45.824178Z",
+  "started_at": "2026-08-24T17:07:21.766047Z"
 }

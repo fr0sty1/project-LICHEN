@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-yjum",
   "title": "Classify issued SCHC ACK authorities from immutable bytes",
   "description": "During correctness review of project-LICHEN-worker6-8j2e, LinkLayer._send_locked checks Ack.from_bytes(payload) while payload is the private _IssuedFragmentWire bytes subclass. Ack.from_bytes intentionally requires exact built-in bytes, so ordinary manager-issued ACK responses (for example C=1 0x7840) are misclassified as data and can bypass the mandatory Priority.ACK gate. Snapshot the issued authority to exact bytes for structural classification before consumption/signing, retain one-use/target binding, and add a non-compressed ACK wrong-priority regression.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T16:06:56.64039Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T16:07:00.567977Z",
-  "started_at": "2026-08-24T16:07:00.567977Z",
-  "lease_expires_at": "2026-08-24T16:12:00.567977Z",
-  "heartbeat_at": "2026-08-24T16:07:00.567977Z"
+  "updated_at": "2026-08-28T03:38:55.308938Z",
+  "started_at": "2026-08-24T16:07:00.567977Z"
 }

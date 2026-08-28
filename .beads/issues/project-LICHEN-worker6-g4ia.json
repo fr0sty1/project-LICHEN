@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-g4ia",
   "title": "Include the routing dispatch byte in the maximum Announce payload",
   "description": "P2 correctness: AnnounceMessage computes MAX_ANNOUNCE_WIRE_LENGTH as 254 - link_header(4) - signer(8) - signature(48) = 194 bytes, but Node.transmit_announce wraps every Announce with the one-byte L2 routing dispatch (0x15). An Announce at the accepted maximum (93 fixed + 101 app bytes) therefore produces a 195-byte link payload and 255-byte frame body, which LinkLayer rejects above MAX_FRAME_BODY=254 after the message has already been built and signed. Subtract the routing-dispatch byte, align spec limits/vectors, and add a Node boundary test for max accepted and max+1 app data.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:07:47.647207Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:07:52.458243Z",
-  "started_at": "2026-08-24T17:07:52.458243Z",
-  "lease_expires_at": "2026-08-24T17:12:52.458243Z",
-  "heartbeat_at": "2026-08-24T17:07:52.458243Z"
+  "updated_at": "2026-08-28T03:38:34.091332Z",
+  "started_at": "2026-08-24T17:07:52.458243Z"
 }

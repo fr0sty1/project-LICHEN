@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-glxh",
   "title": "Bound lichend configuration reads before TOML parsing",
   "description": "Robustness/security review finding in rust/lichen-gateway/src/config.rs: Config::from_file uses unbounded read_to_end, so a huge regular file can exhaust daemon memory before validation. Enforce a documented maximum config size using both metadata and a take(max+1) read, then reject growth/oversize with InvalidData and test the boundary.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:15:55.531831Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:16:14.963309Z",
-  "started_at": "2026-08-24T17:16:14.963309Z",
-  "lease_expires_at": "2026-08-24T17:21:14.963309Z",
-  "heartbeat_at": "2026-08-24T17:16:14.963309Z"
+  "updated_at": "2026-08-28T03:38:26.299378Z",
+  "started_at": "2026-08-24T17:16:14.963309Z"
 }

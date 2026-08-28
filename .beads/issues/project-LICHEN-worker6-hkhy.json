@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-hkhy",
   "title": "Rust SCHC exposes obsolete v2 and contradictory window-size constants",
   "description": "rust/lichen-schc/src/fragment.rs is a public module now implementing canonical Rule Set Version 3 fragmentation Rules 0x78/0x79, but its module doc still says Rule Set Version 2. It also publicly exports DEFAULT_WINDOW_SIZE=32 and MAX_WINDOW_SIZE=62 while the normative fixed WINDOW_SIZE is 63 tiles; MAX_WINDOW_SIZE is unused and Python exports 63 under the same name. Downstream users can select an invalid non-profile window or infer only 62 tiles. Remove/rename obsolete constants or make all public window-size APIs represent the fixed 63-tile profile, update module docs to version 3, and add a public-constant/profile consistency test.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:24:41.295244Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:24:45.72881Z",
-  "started_at": "2026-08-24T11:24:45.72881Z",
-  "lease_expires_at": "2026-08-24T11:29:45.72881Z",
-  "heartbeat_at": "2026-08-24T11:24:45.72881Z"
+  "updated_at": "2026-08-28T03:43:32.114957Z",
+  "started_at": "2026-08-24T11:24:45.72881Z"
 }

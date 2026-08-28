@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-zz1y",
+  "title": "handoff.py HandoffResponse.decode missing dao_seq/path_seq type validation",
+  "description": "File: python/src/lichen/gateway/handoff.py\nLines: 385-386, 648-649\n\nHandoffResponse.decode() extracts dao_seq and path_seq without type validation:\n\n```python\ndao_seq = data.get(_KEY_DAO_SEQ)\npath_seq = data.get(_KEY_PATH_SEQ)\n```\n\nThese values are later used in accept_handoff() with arithmetic:\n\n```python\nsafe_dao_seq = response.dao_sequence + 1\nsafe_path_seq = response.path_sequence + 1\n```\n\nIf a malformed response provides non-integer types (e.g., string, list, dict), this causes TypeError at line 648-649 instead of clean rejection at parse time.\n\nThe HandoffRequest.decode() method properly validates timestamp type (line 300-301):\n```python\nif not isinstance(timestamp, int):\n    raise HandoffError(\"timestamp must be integer\")\n```\n\nThe same pattern should be applied to dao_seq and path_seq in HandoffResponse.decode().\n\nFix: Add after lines 385-386:\n```python\nif dao_seq is not None and not isinstance(dao_seq, int):\n    raise HandoffError(\"dao_sequence must be integer\")\nif path_seq is not None and not isinstance(path_seq, int):\n    raise HandoffError(\"path_sequence must be integer\")\n```\n\nImpact: Fail-fast validation; prevents unexpected TypeError during handoff acceptance.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:45:42.823614Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:52:19.869323Z",
+  "closed_at": "2026-08-28T02:52:19.869323Z",
+  "close_reason": "Closed",
+  "labels": [
+    "security",
+    "gateway",
+    "review"
+  ]
+}

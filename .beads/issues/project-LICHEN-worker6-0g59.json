@@ -2,17 +2,15 @@
   "id": "project-LICHEN-worker6-0g59",
   "title": "Review: loadng.rs security 2026-08-16",
   "description": "Security review of rust/lichen-core/src/loadng.rs\n\nFocus: injection, buffer overflow, crypto misuse, auth bypass, input validation gaps\n\n**Review confidence: 5%** chance of missed security bug in targeted categories.\nLeast confident areas: interaction with link-layer signature verification (not in scope of this file).\nWould raise confidence if: integration review with link layer to verify callers use require_signature()/receive_rrep() correctly.\n\n**Summary:**\n- Injection: N/A (pure binary protocol, no string/command processing)\n- Buffer overflow: No issues (Rust memory safety + explicit length checks)\n- Crypto misuse: No issues (file delegates crypto to link layer, correct design)\n- Auth bypass: Well-designed API separates parsing from authentication\n- Input validation: Comprehensive (addresses, flags, error codes, hop limits, sig length)\n\n**What's Good:**\n- Extensive SECURITY: comments documenting trust boundaries\n- Typestate pattern for RouteDiscovery prevents invalid state transitions\n- RingIndex bounds checking prevents array index panics\n- Clamping hop_limit/hop_count rather than rejecting (DoS prevention)\n- Sequence number freshness uses correct half-window semantics\n\n**Findings: 1 (P2)**",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T20:19:43.552974Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T20:20:38.189192Z",
+  "updated_at": "2026-08-28T03:34:13.842106Z",
   "started_at": "2026-08-16T20:19:50.952237Z",
-  "lease_expires_at": "2026-08-16T20:24:50.952237Z",
-  "heartbeat_at": "2026-08-16T20:19:50.952237Z",
   "labels": [
     "review"
   ]

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-hs1h",
   "title": "Revoke outstanding sender-control authorities at SCHC terminal transition",
   "description": "Security review of the manager-issued raw SCHC egress fix found that _finish_unlocked drops outstanding data-fragment authorities but not previously issued sender ACK-REQ/control authorities. A timeout/repair ACK request issued just before a complete ACK, abort, cancel, policy invalidation, or expiry can therefore remain target-bound but signable for up to 60 seconds after its sender session is terminal. Bind sender-originated control authorities to the exact FragmentSender, revoke them on every terminal transition, preserve only a newly issued terminal Sender-Abort, and add a stale-control-after-success regression.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T16:08:26.245434Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T16:08:37.341027Z",
-  "started_at": "2026-08-24T16:08:37.341027Z",
-  "lease_expires_at": "2026-08-24T16:13:37.341027Z",
-  "heartbeat_at": "2026-08-24T16:08:37.341027Z"
+  "updated_at": "2026-08-28T03:38:54.185245Z",
+  "started_at": "2026-08-24T16:08:37.341027Z"
 }

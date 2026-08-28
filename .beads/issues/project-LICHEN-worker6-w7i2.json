@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-w7i2",
   "title": "SCHC replacement contexts persist duplicate admission-floor keys",
   "description": "In python/src/lichen/schc/reassembly.py, _AuthenticatedReassemblyManager.receive() consults an existing durable _floors[key] before processing a newer counter, but it never removes or folds that floor when it admits a new context or creates a rejection tombstone. export_persistence_state() then emits both an active/terminal/rejection row and a floor row for the same (local, signer, generation, Rule ID). restore_persistence_state() deliberately rejects duplicate keys, so after any hold-down has matured to a floor and the peer starts a later transfer (or sends a newer malformed opener), the signed persistence journal becomes unrestorable and the node fails on restart. Consume/fold the prior floor atomically whenever newer state takes ownership (the context/rejection high-water must retain a conservative bound), ensure terminal/expiry transition recreates the maximum floor after hold-down, and add restart round-trip tests for floor -\u003e replacement active, terminal, and rejected states.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:12:28.990641Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:12:55.558345Z",
-  "started_at": "2026-08-24T14:12:55.558345Z",
-  "lease_expires_at": "2026-08-24T14:17:55.558345Z",
-  "heartbeat_at": "2026-08-24T14:12:55.558345Z"
+  "updated_at": "2026-08-28T03:30:20.878467Z",
+  "started_at": "2026-08-24T14:12:55.558345Z"
 }

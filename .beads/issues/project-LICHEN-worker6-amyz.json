@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-amyz",
   "title": "Rust permits concurrent indistinguishable T=0 fragmentation senders",
   "description": "FragmentationPolicy tracks only peer generation/counter/version and FragmentSender::new consumes no active-session reservation. Multiple senders for the same authenticated local identity, remote signer, direction, and Rule 0x78 can be constructed and started simultaneously; with T=0 their interleaved fragments are indistinguishable. Add bounded atomic session reservation/release keyed by local/remote/direction/rule, terminal hold-down, cancellation/drop behavior, and concurrent construction/start tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T09:53:09.406343Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T09:53:16.008106Z",
-  "started_at": "2026-08-24T09:53:16.008106Z",
-  "lease_expires_at": "2026-08-24T09:58:16.008106Z",
-  "heartbeat_at": "2026-08-24T09:53:16.008106Z"
+  "updated_at": "2026-08-28T03:31:36.624483Z",
+  "started_at": "2026-08-24T09:53:16.008106Z"
 }

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.21",
+  "title": "TX queue: prevent stale deadline resurrection after half-range",
+  "description": "Round-4 security review found that 32-bit deadline_expired arithmetic can make an entry appear unexpired again when it is first serviced at least 2^31 ms after its deadline. Admission bounds future deadlines but does not bound how late expiry is checked. Store enough monotonic deadline provenance to keep queued packets expired across long inactivity and add a deadline-plus-half-range regression.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:45:22.866076Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:46:16.920881Z",
+  "started_at": "2026-08-28T03:56:44.093818Z",
+  "closed_at": "2026-08-28T04:46:16.920881Z",
+  "close_reason": "Fixed via 64-bit queue-local time base: extend_now64() low-32 forward-difference extension, deadline_expired() now 64-bit compare, enqueue computes deadline_ms64 = now_ms64 + (deadline - now), deadline_valid_future() rejects absolute deadlines beyond next half-range (delta 0 or \u003e INT32_MAX). Host test test_stale_deadline_not_resurrected_after_half_range passes; suite 37/37 under ASan+UBSan and TSan.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.21",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:45:24.501838Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

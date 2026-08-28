@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-4c6s",
+  "title": "verify_delegation_token missing resource validation allows cross-resource token reuse",
+  "description": "In delegation_tokens.py, verify_delegation_token() does not take an expected_resource parameter and does not validate that the token's resource field matches what is being accessed.\n\nImpact: A delegation token issued for group 'A' will successfully verify when presented to access group 'B', breaking resource isolation between groups.\n\nFile: python/src/lichen/crypto/delegation_tokens.py\nFunction: verify_delegation_token() (line 297)\n\nFix: Add expected_resource parameter and validate payload.resource == expected_resource before returning success.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:38:53.673817Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:46:16.821195Z",
+  "closed_at": "2026-08-28T02:46:16.821195Z",
+  "close_reason": "Closed",
+  "labels": [
+    "security",
+    "python"
+  ]
+}

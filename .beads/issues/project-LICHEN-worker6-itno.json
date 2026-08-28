@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-itno",
   "title": "Make link-draft CoAP example a valid dispatched payload",
   "description": "Correctness review found draft-lichen-link-01 §6.2 shows PLD=\u003c1 byte SCHC-compressed CoAP\u003e, contradicting §3.1/LICHEN framing: authenticated PLD begins with dispatch 0x14 and the body begins with a SCHC Rule ID, so any defined SCHC payload is at least 2 bytes (and a real CoAP residue is larger). Replace the placeholder with an explicit dispatch+valid SCHC packet and recalculate LENGTH; coordinate with project-LICHEN-worker6-2wi1 rather than merely changing old 0x3D to the still-invalid 1-byte arithmetic.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:04:38.376484Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:04:50.664332Z",
-  "started_at": "2026-08-24T13:04:50.664332Z",
-  "lease_expires_at": "2026-08-24T13:09:50.664332Z",
-  "heartbeat_at": "2026-08-24T13:04:50.664332Z"
+  "updated_at": "2026-08-28T03:40:15.408425Z",
+  "started_at": "2026-08-24T13:04:50.664332Z"
 }

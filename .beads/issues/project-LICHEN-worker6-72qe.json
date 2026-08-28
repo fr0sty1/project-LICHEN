@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-72qe",
   "title": "vectors: add loadng_discovery.json cases for hop-boundary drop, cache-fresh/gradient-empty stale case, equal-seq superiority",
   "description": "Cross-implementation oracle lacks canonical coverage for behaviors just pinned by unit tests (1leg/uosr fixes). Extend generator + JSON following existing conventions.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:46:28.518505Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:47:18.294511Z",
-  "started_at": "2026-08-24T06:47:18.294511Z",
-  "lease_expires_at": "2026-08-24T06:52:18.294511Z",
-  "heartbeat_at": "2026-08-24T06:47:18.294511Z"
+  "updated_at": "2026-08-28T03:43:50.919273Z",
+  "started_at": "2026-08-24T06:47:18.294511Z"
 }

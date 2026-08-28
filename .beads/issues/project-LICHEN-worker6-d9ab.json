@@ -3,15 +3,13 @@
   "title": "Separate SCHC packet-size limit from reconstructed IPv6 size in Rust",
   "description": "The refreshed mqtt_sn_profile_size_exact_maximum vector encodes a valid 22,554-byte SCHC packet that reconstructs to 22,581 IPv6 bytes. Rust codec applies SCHC_FRAG_MAX_PACKET_SIZE/SCHC_MAX_DECOMPRESSED to reconstructed Rule 7 output and rejects it. Align encoded SCHC admission with MAX_PACKET_SIZE=22,554 while bounding reconstructed output by the exact maximum expansion and caller buffer; add boundary tests.",
   "notes": "Fixed Rust SCHC profile-size enforcement on encoded length, not reconstructed IPv6 length. Rule255 and Rule7 exact 22554-byte encoded boundary accepted, +1 rejected; shared vectors and full suite pass.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:07:46.54719Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:48:45.991387Z",
-  "started_at": "2026-08-24T14:07:51.613777Z",
-  "lease_expires_at": "2026-08-24T14:12:51.613777Z",
-  "heartbeat_at": "2026-08-24T14:07:51.613777Z"
+  "updated_at": "2026-08-28T03:30:22.474188Z",
+  "started_at": "2026-08-24T14:07:51.613777Z"
 }

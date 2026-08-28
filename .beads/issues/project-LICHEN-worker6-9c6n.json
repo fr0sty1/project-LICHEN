@@ -3,15 +3,13 @@
   "title": "Public ReplayProtector mutation APIs can roll back live Link replay floors",
   "description": "LinkLayer exposes a public replay_protector whose reset(), import_state(), and rotate() methods remain callable after activation. import_state can replace a newer live high-water floor with an older exported state; reset/rotate delete peer state outside the Link rekey transaction. A later Link save can sign that semantic rollback at a higher persistence revision. Make replay state mutation Link-owned and lifecycle sealed: one restore before activation, monotonic/non-lowering merge only, and rotation/admin recovery only through an atomic trust transition. Expose at most a read-only facade. Add tests for import/reset/rotate after receive and active SCHC pin, and prove persistence cannot bless lowered floors.",
   "notes": "Implementation integration failure: after claiming replay ownership, LinkLayer.receive still called the public check_and_update API and raised 'live replay state is owned by LinkLayer' on every valid frame. All Link-internal replay calls must use the owner capability/internal path; add a valid signed receive regression.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T09:47:08.614541Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T10:12:21.393304Z",
-  "started_at": "2026-08-24T09:47:16.131952Z",
-  "lease_expires_at": "2026-08-24T09:52:16.131952Z",
-  "heartbeat_at": "2026-08-24T09:47:16.131952Z"
+  "updated_at": "2026-08-28T03:31:44.538052Z",
+  "started_at": "2026-08-24T09:47:16.131952Z"
 }

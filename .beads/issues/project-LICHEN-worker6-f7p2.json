@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-f7p2",
   "title": "Align link draft replay identity with full key generation",
   "description": "Cross-document correctness review found draft-lichen-link-01 §4.3/§5 still describes a trust store indexed by peer EUI-64 and a per-peer replay window, with successful verification returning only a peer identity. Updated spec/02-physical-link §4.4 normatively keys replay by (SignerPublicKey, opaque KeyGeneration), forbids SIID/EUI/address aliases as replay keys, and retires generations independently. Revise the draft so SIID only selects a bounded candidate set, verification returns full public key plus current generation token, and replay/fragment state uses that tuple; remove the misleading per-(peer,epoch) wording.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:01:40.368162Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:03:32.75139Z",
-  "started_at": "2026-08-24T13:03:32.75139Z",
-  "lease_expires_at": "2026-08-24T13:08:32.75139Z",
-  "heartbeat_at": "2026-08-24T13:03:32.75139Z"
+  "updated_at": "2026-08-28T03:30:38.132324Z",
+  "started_at": "2026-08-24T13:03:32.75139Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-5j12",
   "title": "Gateway TOFU pins keys without authenticated proof of possession",
   "description": "Security review P1. New TrustStore::verify_tofu in rust/lichen-gateway/src/trust.rs accepts only public key plus claimed IID, verifies deterministic derivation, and immediately returns PinAndAccept/inserts the key. It does not verify a Schnorr signature, OSCORE identity, challenge, or owner-issued authenticated-message capability. An unauthenticated first-contact key claim can pre-pin a gateway identity and block the legitimate key; callers are merely expected to sequence separate helpers correctly. Require proof of possession and message/domain/freshness verification in the atomic pin operation, or accept an opaque verified gateway identity capability; add tests that a derived IID/public key without a valid signed exchange cannot create a pin.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:22:22.232098Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:25:50.799416Z",
-  "started_at": "2026-08-24T12:25:50.799416Z",
-  "lease_expires_at": "2026-08-24T12:30:50.799416Z",
-  "heartbeat_at": "2026-08-24T12:25:50.799416Z"
+  "updated_at": "2026-08-28T03:30:48.705023Z",
+  "started_at": "2026-08-24T12:25:50.799416Z"
 }

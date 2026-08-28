@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-6222.1",
   "title": "Python: Key Rotation Attestation",
   "description": "Implement Key Rotation Attestation in Python using COSE_Sign1 with algorithm -65537, integer-keyed payload, RFC 9052 Sig_structure.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-27T23:39:43.772844Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-27T23:39:43.772844Z",
+  "updated_at": "2026-08-28T02:36:02.89138Z",
+  "closed_at": "2026-08-28T02:36:02.89138Z",
+  "close_reason": "Implemented Key Rotation Attestation in Python: key_rotation_attestation.py with COSE_Sign1, algorithm -65537, integer-keyed payload, RFC 9052 Sig_structure. Added 21 passing tests.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-6222.1",

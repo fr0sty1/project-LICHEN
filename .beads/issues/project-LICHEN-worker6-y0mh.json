@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-y0mh",
   "title": "SCHC public DEFAULT_WINDOW_SIZE contradicts fixed 63-tile profile",
   "description": "Correctness review: fragment.py still defines and schc.__init__ exports DEFAULT_WINDOW_SIZE=7, while the fixed profile requires WINDOW_SIZE=63 and FragmentSender rejects other values. Remove the obsolete public setting or alias it to the normative profile constant; add cross-module coverage preventing divergent public defaults.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:43:37.558852Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:43:42.238686Z",
-  "started_at": "2026-08-24T06:43:42.238686Z",
-  "lease_expires_at": "2026-08-24T06:48:42.238686Z",
-  "heartbeat_at": "2026-08-24T06:43:42.238686Z"
+  "updated_at": "2026-08-28T03:43:59.564143Z",
+  "started_at": "2026-08-24T06:43:42.238686Z"
 }

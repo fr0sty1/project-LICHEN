@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-h8ol",
   "title": "Gateway OSCORE sender state permits authenticated rollback and nonce reuse",
   "description": "GatewayOscoreSenderStore persists each ContextId as an unauthenticated 9-byte next_sequence/exhausted record with no monotonic rollback floor. A stale/corrupt-but-shaped replacement can lower next_sequence across restart, causing OSCORE AEAD nonce reuse. Seal sender-state records with gateway persistence key material, bind ContextId, maintain a durable monotonic floor/high-water that fails closed on rollback, and test tamper + rollback + restart.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T16:38:38.01016Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T16:38:44.856457Z",
-  "started_at": "2026-08-24T16:38:44.856457Z",
-  "lease_expires_at": "2026-08-24T16:43:44.856457Z",
-  "heartbeat_at": "2026-08-24T16:38:44.856457Z"
+  "updated_at": "2026-08-28T03:29:13.881355Z",
+  "started_at": "2026-08-24T16:38:44.856457Z"
 }

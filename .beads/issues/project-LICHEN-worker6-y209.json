@@ -3,15 +3,13 @@
   "title": "Implement diagnostics for Rust link persistent-state errors",
   "description": "Robustness review of wm48 found public LinkPersistentStateError lacks Display and std::error::Error, unlike existing public link errors. This prevents downstream persistence coordinators from preserving actionable error context. Add stable messages/source behavior and tests.",
   "notes": "Added stable Display and Error implementations for public LinkPersistentStateError plus diagnostic coverage. Link tests/clippy pass.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:45:06.254426Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:48:50.108767Z",
-  "started_at": "2026-08-24T14:45:11.513633Z",
-  "lease_expires_at": "2026-08-24T14:50:11.513633Z",
-  "heartbeat_at": "2026-08-24T14:45:11.513633Z"
+  "updated_at": "2026-08-28T03:43:04.238193Z",
+  "started_at": "2026-08-24T14:45:11.513633Z"
 }

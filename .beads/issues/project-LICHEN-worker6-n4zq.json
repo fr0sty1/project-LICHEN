@@ -3,15 +3,13 @@
   "title": "Provision epoch floor reads caller metadata after validation and accepts concurrent mutation",
   "description": "Fresh final timing correctness review: ProvisionVerifier._with_floor_snapshot passes caller-visible __current metadata into evaluate_epoch_floor. accepts() validates its stored snapshot, but evaluation then rereads metadata.epoch/content; a concurrent object.__setattr__ after the final accepts check can change the authoritative floor. Deterministic proof changed FLOOR+10 to FLOOR+999 and EpochFloorAuthority.current returned the forged value while subsequent verifier.accepts was false. Keep an internal detached primitive current-record snapshot distinct from the facade, or atomically capture validated primitives under the verifier lock and evaluate only that copy. Add forced mutation of epoch/version/digest/generation around floor current/adopt/status/policy transitions.",
   "notes": "Fresh final correctness rereview finds the public free functions evaluate_epoch_floor/effective_epoch_floor still bypass the repaired verifier-owned primitive transaction: they accept a duck-typed fake accepts() capability and reread facade metadata outside the verifier lock. Deterministic concurrent install returned stale F+100 after live floor advanced to F+500. Restrict authoritative evaluation to exact ProvisionVerifier transactional primitives (or make free functions explicitly non-authoritative diagnostics unable to influence EpochFloorAuthority); test fake verifier, concurrent install/clear, facade mutation, and monotonic floor.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:56:51.014999Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T09:24:41.50522Z",
-  "started_at": "2026-08-24T08:56:55.767765Z",
-  "lease_expires_at": "2026-08-24T09:01:55.767765Z",
-  "heartbeat_at": "2026-08-24T08:56:55.767765Z"
+  "updated_at": "2026-08-28T03:31:52.975546Z",
+  "started_at": "2026-08-24T08:56:55.767765Z"
 }

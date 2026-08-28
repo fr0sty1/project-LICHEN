@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-tpr2",
   "title": "MicLength.mic_len contradicts the wire selector semantics",
   "description": "Correctness review finding (P3): python/src/lichen/link/frame.py:53-67 documents selector values 0 and 1 as compatibility-only and no MIC for unsigned frames, but the public MicLength.mic_len property returns 4 and 8. Signed frames always carry 48 bytes independently of the selector (frame.py:133-135; spec/02-physical-link.md:203,246; test/vectors/mic_length_selector.json). A caller using this property for sizing or slicing will compute a wire layout the serializer/parser never emits. Remove/replace the property with profile-correct semantics (likely context-sensitive or no byte-length property) and add a regression asserting unsigned=0 and signed=48 for both selectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:47:53.261286Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:50:43.604912Z",
-  "started_at": "2026-08-24T12:50:43.604912Z",
-  "lease_expires_at": "2026-08-24T12:55:43.604912Z",
-  "heartbeat_at": "2026-08-24T12:50:43.604912Z"
+  "updated_at": "2026-08-28T03:43:26.118528Z",
+  "started_at": "2026-08-24T12:50:43.604912Z"
 }

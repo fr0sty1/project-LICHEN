@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-ywv6",
   "title": "Gateway TOFU trust state is volatile and silently resets on restart",
   "description": "Security review P2. New rust/lichen-gateway/src/trust.rs TrustStore is only an in-memory HashMap with new/default; it has no durable open/provision/commit format, rollback detection, or fail-closed startup. After any gateway restart all pins and DANE/PKIX upgrades disappear, so every peer becomes first-contact TOFU again and trust can be downgraded/re-established under changed external state. Add crash-safe durable pin/trust-level/key-rotation state with scoped integrity and explicit missing/corrupt/rollback behavior; production startup must not silently replace an existing trust store with empty state; test restart, torn write, corrupt copy, and rollback.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:22:22.689282Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:25:51.875754Z",
-  "started_at": "2026-08-24T12:25:51.875754Z",
-  "lease_expires_at": "2026-08-24T12:30:51.875754Z",
-  "heartbeat_at": "2026-08-24T12:25:51.875754Z"
+  "updated_at": "2026-08-28T03:40:23.760702Z",
+  "started_at": "2026-08-24T12:25:51.875754Z"
 }

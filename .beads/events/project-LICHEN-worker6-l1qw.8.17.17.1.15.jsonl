@@ -1,0 +1,2 @@
+{"id":"01a0466d-2bbf-7bd3-801c-a00b2e0f9b3d","issue_id":"project-LICHEN-worker6-l1qw.8.17.17.1.15","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-28T03:32:34.879775Z"}
+{"id":"01a0467c-d580-7367-9342-1c8280e7a76c","issue_id":"project-LICHEN-worker6-l1qw.8.17.17.1.15","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately","created_at":"2026-08-28T03:49:41.376224Z"}

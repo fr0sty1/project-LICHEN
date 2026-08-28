@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-o7g1",
   "title": "Bound and no-follow all vector generator check reads",
   "description": "Modified generator --check paths in test/vectors/generate_authenticated_schc_dio.py, generate_packets_timing.py, generate_announce_signed_data.py, generate_ipv6_addresses.py, generate_dao_origin_signature.py and related generators use Path.read_bytes/read_text without O_NOFOLLOW, ownership/type checks, stable snapshot checks, or a byte limit. A symlink or oversized canonical artifact can make a read-only determinism check follow an unintended file or exhaust memory. Add one shared bounded no-follow exact snapshot reader in atomic_json.py, use it for every generator check, and test symlink, nonregular, concurrent growth/change, and oversized artifacts while preserving zero-write --check behavior.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T18:02:22.780612Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T18:02:31.018108Z",
-  "started_at": "2026-08-24T18:02:31.018108Z",
-  "lease_expires_at": "2026-08-24T18:07:31.018108Z",
-  "heartbeat_at": "2026-08-24T18:02:31.018108Z"
+  "updated_at": "2026-08-28T03:42:38.668454Z",
+  "started_at": "2026-08-24T18:02:31.018108Z"
 }

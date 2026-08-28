@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-vdon",
   "title": "Native address routing and identity specs contradict canonical 0200::/8 SHA-512 derivation",
   "description": "Final correctness review found incompatible definitions of the key-derived native address space and IID algorithm. Canonical Python yggdrasil_address() fixes addr[0]=0x02 and derives the IID from SHA-512; SCHC Rules 1/6, spec/03-adaptation.md, the SCHC draft, generators, and vectors therefore match only 0200::/8. But python/src/lichen/node.py configures Router with IPv6Network('0200::/7'), python/src/lichen/schc/headers.py::_is_global admits first bytes 0x02 and 0x03, and spec/01-architecture.md, 04-network.md, 05-routing.md, 06-security.md plus vector descriptions call the space 0200::/7 or 02xx::/7. Consequently the router can classify 0300::/8 destinations as native mesh even though no canonical key derivation creates them and SCHC Rules 1/6 reject them. In addition, spec/04-network.md section 6.2 shows IID=SHA-256(pubkey)[0:8], contradicting its own references, spec/06-security, Python, and exact vectors that require SHA-512. Establish the canonical 0200::/8 + SHA-512 definition everywhere, narrow routing/global classification accordingly, update stale vector prose, and add negative coverage proving 03xx addresses are not native-profile addresses.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:56:11.759887Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:57:35.977147Z",
-  "started_at": "2026-08-24T14:57:35.977147Z",
-  "lease_expires_at": "2026-08-24T15:02:35.977147Z",
-  "heartbeat_at": "2026-08-24T14:57:35.977147Z"
+  "updated_at": "2026-08-28T03:30:14.323873Z",
+  "started_at": "2026-08-24T14:57:35.977147Z"
 }

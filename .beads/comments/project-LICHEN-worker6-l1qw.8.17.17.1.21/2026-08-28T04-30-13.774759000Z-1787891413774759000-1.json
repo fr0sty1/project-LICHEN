@@ -1,0 +1,7 @@
+{
+  "id": "1787891413774759000-1",
+  "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.21",
+  "author": "Mark Atwood",
+  "text": "Fixed on this branch (uncommitted): tx_queue.c now extends each 32-bit monotonic sample onto a queue-local 64-bit time base (tx_queue_now64/extend_now64) and stores a 64-bit absolute deadline per entry; expiry compares in 64-bit so an entry serviced \u003e=2^31 ms past its deadline stays expired (same provenance pattern as the .4 64-bit enqueue_order fix). Regression: test_stale_deadline_not_resurrected_after_half_range in lichen/tests/tx_queue/main.c (exact half-range, half-range+wrap, and long-but-legal-future cases). Host ASan+UBSan and TSan: 37/37.",
+  "created_at": "2026-08-28T04:30:13.774759Z"
+}

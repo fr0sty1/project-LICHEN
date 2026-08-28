@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.10.1",
+  "title": "RPGM core class with reference point movement",
+  "description": "Implement the core RPGM (Reference Point Group Mobility) class with reference point movement using random waypoint model. The reference point defines the group center and moves according to standard random waypoint mobility.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:33:36.994227Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:33:36.994227Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.10.1",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2.10",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:33:45.727051Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

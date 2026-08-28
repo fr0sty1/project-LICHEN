@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-xemz",
   "title": "SFN helpers accept non-octet and non-integer protocol inputs",
   "description": "python/src/lichen/timing/sfn.py hash_32/slot_for only check len(eui64), so bytearray/list inputs and non-octet integer sequences can be hashed; sfn_delta performs bitwise arithmetic without exact-int validation and accepts booleans as counters. Protocol-facing helpers should require exact bytes for EUI-64 and exact integers for u32 counters/slot counts, normalize documented out-of-range SFNs only after type validation, and test bool/float/list/bytearray inputs.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:19:14.968903Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:19:34.929751Z",
-  "started_at": "2026-08-24T14:19:34.929751Z",
-  "lease_expires_at": "2026-08-24T14:24:34.929751Z",
-  "heartbeat_at": "2026-08-24T14:19:34.929751Z"
+  "updated_at": "2026-08-28T03:43:04.524526Z",
+  "started_at": "2026-08-24T14:19:34.929751Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-ka66",
   "title": "Fail authenticated DAO origination closed on missing or corrupt TX recovery",
   "description": "P1 correctness/protocol: DaoManager._restore_tx_state() suppresses DaoPersistenceError whenever require_crash_safety=False, even when origin_identity is configured. Public build_dao() subsequently accepts the same crash-safe/fail-closed backend and originates from sequence 1, reusing a previously acknowledged Origin Sequence after corruption. TwoSlotFilePersistence also treats deletion of both TX slots as a fresh store with no explicit bootstrap/rollback anchor, so a restart can reset authenticated origination silently. Make public authenticated origination retain a terminal recovery failure independent of the legacy test flag, distinguish explicitly authorized first bootstrap from deletion/rollback, and validate restored sequence/bytes before permitting transmit.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:03:51.787688Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:03:56.238748Z",
-  "started_at": "2026-08-24T17:03:56.238748Z",
-  "lease_expires_at": "2026-08-24T17:08:56.238748Z",
-  "heartbeat_at": "2026-08-24T17:03:56.238748Z"
+  "updated_at": "2026-08-28T03:28:58.295824Z",
+  "started_at": "2026-08-24T17:03:56.238748Z"
 }

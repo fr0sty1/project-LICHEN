@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-0p4c",
+  "title": "coap_oscore_unprotect_resource_request returns 0 after sending 4.01 on ctx miss; callers double-respond",
+  "description": "Found while verifying bd 6mij.2.2. coap_oscore.c:62-65: when oscore_ctx_get_by_eui64 fails, the helper sends 4.01 via coap_oscore_send_unauthorized() and returns ITS result, which is 0 (OSCORE_OK) on send success. Documented contract ('return 0 on success, CoAP response code on error') makes callers treat 0 as 'continue'. Example: coap_msg.c msg_sent_post (line ~957) proceeds past ret!=0, then oscore.payload==NULL (memset by helper) triggers coap_oscore_respond_resource(...BAD_REQUEST...) which sends a SECOND response on the wire - the client gets 4.01 then an unprotected 4.00 for one request. Suggested fixes (owner's call): return a nonzero CoAP code after sending so callers return immediately, or have the helper take over response duty exclusively and document that callers must return without responding when result-\u003ectx==NULL and is_protected; audit existing call sites in coap_msg.c either way. Note: /keys handlers (coap_keys.c) avoid this defect by keeping the ctx-miss path inline; if they migrate to the shared helper this must be fixed first.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:45:42.458659Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:45:42.458659Z",
+  "labels": [
+    "local-ok"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-0p4c",
+      "depends_on_id": "project-LICHEN-6mij.2.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T04:45:45.056588Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

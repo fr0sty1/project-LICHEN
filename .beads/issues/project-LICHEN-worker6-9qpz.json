@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-9qpz",
   "title": "Public drain_tx_queue bypasses TX lock and double-transmits queue head",
   "description": "Python link focused regression: concurrent LinkLayer.send() and public drain_tx_queue() both reserve/transmit the same head because drain_tx_queue does not acquire _tx_lock. Radio calls overlap and one completion sees a non-head entry. Serialize the public drain path with send while retaining an internal already-locked drain helper to avoid self-deadlock; add deterministic barrier coverage and preserve queued-reservation semantics.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:58:15.140072Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:58:18.47996Z",
-  "started_at": "2026-08-24T06:58:18.47996Z",
-  "lease_expires_at": "2026-08-24T07:03:18.47996Z",
-  "heartbeat_at": "2026-08-24T06:58:18.47996Z"
+  "updated_at": "2026-08-28T03:32:54.574492Z",
+  "started_at": "2026-08-24T06:58:18.47996Z"
 }

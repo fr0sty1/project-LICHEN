@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-6lfv",
   "title": "Issued SCHC fragment wires bypass session expiry and clock fail-stop",
   "description": "SchcSessionManager.consume_fragment_wire() checks record.active but never advances/validates the session clock or expires records. An initial/retransmission _IssuedFragmentWire retained past idle_expires_at can still be consumed and transmitted without any timer maintenance call; likewise a now-NaN/regressed clock is not observed on this authority path, undermining y4vw's fail-stop guarantee. Under the manager lock, validate the shared clock and expire due records before consuming the one-use capability; stale/expired wires must return false, clock failures must revoke/unpin through the terminal cleanup. Add exact expiry-boundary and invalid-clock wire-consumption regressions.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:33:55.925208Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:34:04.010279Z",
-  "started_at": "2026-08-24T14:34:04.010279Z",
-  "lease_expires_at": "2026-08-24T14:39:04.010279Z",
-  "heartbeat_at": "2026-08-24T14:34:04.010279Z"
+  "updated_at": "2026-08-28T03:39:41.064246Z",
+  "started_at": "2026-08-24T14:34:04.010279Z"
 }

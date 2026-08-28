@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-3pc8",
   "title": "Python sender mistakes inbound ACK-REQ for outbound negative ACK",
   "description": "SchcSessionManager.record_verified_frame accepts ACK-REQ bytes 0x7800/0x7880 through Ack.from_bytes as C=0 ACKs. With simultaneous bidirectional T=0 transfers on the same Rule 0x78, Node sender-control dispatch consumes the peer's inbound-session ACK-REQ before reassembly, advances sender high-water, then drops on bitmap validation; the inbound session never receives its response. Classify ACK-REQ direction before generic ACK parsing and route it only to reassembly. Add simultaneous bidirectional same-rule/window tests including abort/ACK/ACK-REQ ambiguity.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:17:55.143795Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:19:04.955662Z",
-  "started_at": "2026-08-24T11:19:04.955662Z",
-  "lease_expires_at": "2026-08-24T11:24:04.955662Z",
-  "heartbeat_at": "2026-08-24T11:19:04.955662Z"
+  "updated_at": "2026-08-28T03:40:51.413995Z",
+  "started_at": "2026-08-24T11:19:04.955662Z"
 }

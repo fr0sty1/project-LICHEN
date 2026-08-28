@@ -2,17 +2,15 @@
   "id": "project-LICHEN-worker6-kmts",
   "title": "Review: fragment.rs 2026-08-16",
   "description": "Review of rust/lichen-schc/src/fragment.rs focusing on edge cases.\n\n## Summary\n- P0: 0 findings\n- P1: 3 findings (should fix)\n- P2: 4 findings (worth fixing)\n- P3: 2 findings (polish)\n\n## Review confidence\nConfidence: 85% chance of no missed critical bugs.\n\nLeast confident areas:\n1. The bitmap compression/decompression logic in Ack::write_to and Ack::from_bytes is complex\n2. The MIC failure recovery logic in finalize() has subtle edge cases\n3. Multi-window scenarios (window \u003e 0) have less test coverage in the visible tests\n\nWould raise confidence if:\n- More comprehensive property-based tests for bitmap encoding round-trips\n- Test vectors from RFC 8724 appendix covering multi-window scenarios\n- Fuzzing of the from_bytes parsers\n\n## Positive findings\n- Error handling is comprehensive with good use of early returns\n- The code correctly uses saturating_sub() where underflow is possible (line 271)\n- All public error types implement Display and Error traits properly\n- Fragment serialization correctly validates invariants before writing",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T19:44:44.273593Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T19:47:56.128014Z",
+  "updated_at": "2026-08-28T03:34:15.107614Z",
   "started_at": "2026-08-16T19:46:27.12615Z",
-  "lease_expires_at": "2026-08-16T19:51:27.12615Z",
-  "heartbeat_at": "2026-08-16T19:46:27.12615Z",
   "labels": [
     "review"
   ]

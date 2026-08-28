@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.17",
+  "title": "LICHEN L2 disable: propagate LoRa deinit failure",
+  "description": "Round-3 security review found lichen/subsys/lichen/l2/lichen_l2_init.c logs lichen_lora_l2_deinit() failure after stop returns -ECANCELED but later returns success based only on stop_ret. A tx_queue_destroy failure therefore leaves LoRa aborted/terminal while the interface reports successful disable. Preserve and return deinit_ret; translate stop -ECANCELED to success only when deinit succeeded.",
+  "acceptance_criteria": "Common disable returns deinit failure even when stop returned ECANCELED; returns success for ECANCELED only after successful deinit; lifecycle tests/builds pass.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:33:39.755401Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:49:48.203239Z",
+  "closed_at": "2026-08-28T03:49:48.203239Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.17",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:33:46.670448Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-wukp",
   "title": "Node stays RUNNING after terminal receive task failure",
   "description": "python/src/lichen/node.py _receive_loop correctly re-raises LinkPersistenceError/LinkSecurityClockError, but Node only probes _receive_task during start() (lines 626-634). A terminal failure occurring after start returns leaves the task completed while state remains RUNNING and the announce/adapter tasks continue; no lifecycle transition or observable failure occurs until a later stop gathers it. Add task supervision/done handling that transitions or shuts down deterministically and preserves the terminal error, with a test injecting failure after RUNNING.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:19:11.948282Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:19:30.681992Z",
-  "started_at": "2026-08-24T14:19:30.681992Z",
-  "lease_expires_at": "2026-08-24T14:24:30.681992Z",
-  "heartbeat_at": "2026-08-24T14:19:30.681992Z"
+  "updated_at": "2026-08-28T03:30:17.685056Z",
+  "started_at": "2026-08-24T14:19:30.681992Z"
 }

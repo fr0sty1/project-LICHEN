@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.11",
+  "title": "TX queue: sample admission time while holding queue lock",
+  "description": "Round-2 security review found get_now_ms() is sampled before acquiring queue-\u003elock. A caller delayed on the mutex can have its absolute deadline pass yet still be admitted; if high priority, that stale packet can preempt valid traffic before later expiry. Default deadlines are likewise based on a stale pre-lock sample. Acquire the queue lock before sampling time, handle clock failure before queue mutation, compute relative defaults from the locked sample, and preserve expire-before-admission ordering.",
+  "acceptance_criteria": "Explicit pushes delayed until their deadline are rejected without admission/preemption; default deadlines are based on the time sampled under the queue lock; clock failure occurs before mutation; deterministic race/seam tests and sanitizer-backed suite pass.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:24:24.197376Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:49:24.917242Z",
+  "closed_at": "2026-08-28T03:49:24.917242Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.11",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:24:24.816676Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

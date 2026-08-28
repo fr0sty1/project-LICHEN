@@ -3,15 +3,13 @@
   "title": "rpl_multi_instance.json excluded from Draft7 schema parametrization; no per-vector key checks",
   "description": "Only envelope equality with generator guards consumers; structural divergence surfaces as Rust panic not Python-gate failure. Add minimal per-vector assertions or schema branch.",
   "notes": "Current schema.json edit is syntactically invalid: after root properties.vectors closes near lines 51-52, the enclosing properties object is missing its closing brace before allOf. json.loads fails at line 80 char 3571. Restore the baseline \"        }\\n      },\" nesting while preserving GCP additions, then run JSON parse/schema tests.\nFinal artifact lane adds schema work tracked by q3yh: endpoint-direction/Rule7 categories, split duplicate mutation/high-water expectations, rule-version admission vectors, replay security domains, link crypto provenance, authenticated-DIO semantics. Preserve strict additionalProperties and coordinate after syntax repair.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:46:20.81706Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:51:12.265662Z",
-  "started_at": "2026-08-24T06:47:16.535162Z",
-  "lease_expires_at": "2026-08-24T06:52:16.535162Z",
-  "heartbeat_at": "2026-08-24T06:47:16.535162Z"
+  "updated_at": "2026-08-28T03:45:11.920012Z",
+  "started_at": "2026-08-24T06:47:16.535162Z"
 }

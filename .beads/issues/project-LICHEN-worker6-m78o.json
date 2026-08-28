@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-m78o",
   "title": "Define canonical signer EUI-64 derivation in link draft",
   "description": "Cross-document correctness review found draft-lichen-link-01 terminology still says EUI-64 is typically derived from LoRa hardware, then uses an undefined 'canonical EUI-64 of the signing node' for mandatory SIID. Main spec/02 §4.2 defines a key-derived local signer EUI-64 by toggling the U/L bit of the key-derived IID exactly once. Add that precise derivation and distinguish it from optional hardware identifiers/destination neighbor records so implementations do not put a radio serial address into SIID.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:08:10.016969Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:08:21.541035Z",
-  "started_at": "2026-08-24T13:08:21.541035Z",
-  "lease_expires_at": "2026-08-24T13:13:21.541035Z",
-  "heartbeat_at": "2026-08-24T13:08:21.541035Z"
+  "updated_at": "2026-08-28T03:40:08.682445Z",
+  "started_at": "2026-08-24T13:08:21.541035Z"
 }

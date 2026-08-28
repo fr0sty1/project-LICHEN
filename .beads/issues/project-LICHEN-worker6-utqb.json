@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-utqb",
   "title": "Gateway current_superframe does not compile due to signed epoch arithmetic",
   "description": "rust/lichen-gateway/src/gateway.rs current_superframe derives unix as u64 but parses the configured epoch as i64, then passes it to u64::saturating_sub. This is a hard compile failure. Parse/validate the epoch into a nonnegative u64 (or explicitly handle pre-epoch values) and cover the boundary semantics.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:53:06.436018Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:53:16.865925Z",
-  "started_at": "2026-08-24T15:53:16.865925Z",
-  "lease_expires_at": "2026-08-24T15:58:16.865925Z",
-  "heartbeat_at": "2026-08-24T15:53:16.865925Z"
+  "updated_at": "2026-08-28T03:29:50.955107Z",
+  "started_at": "2026-08-24T15:53:16.865925Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-6hoe",
   "title": "Rule 7 mixed link-local vector encodes one endpoint as IID under full mode",
   "description": "schc_adaptation.json rule7_noncanonical_link_local_full_mode_valid uses source fe90:: and destination fe80::. Normative Rule 7 has one AddressMode bit: because both are not in canonical fe80::/64, AddressMode=1 and both 128-bit addresses must be full. The vector correctly labels the source full but incorrectly labels destination_encoding=link_local_iid, contradicting its name/provenance/spec and enabling asymmetric noncanonical consumers. Set both to full and make Python/Rust consumers assert the single shared mode.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:59:15.478683Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:59:19.603582Z",
-  "started_at": "2026-08-24T11:59:19.603582Z",
-  "lease_expires_at": "2026-08-24T12:04:19.603582Z",
-  "heartbeat_at": "2026-08-24T11:59:19.603582Z"
+  "updated_at": "2026-08-28T03:40:42.34521Z",
+  "started_at": "2026-08-24T11:59:19.603582Z"
 }

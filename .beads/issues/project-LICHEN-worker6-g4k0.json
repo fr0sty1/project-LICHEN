@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-g4k0",
   "title": "Rule-Version Length=0 vector misclassifies a complete malformed TLV as truncated",
   "description": "Correctness review: rule_versioning.json dio_rule_version_parse_length_0 (around lines 116-124) uses wire 1300 and expect_error=truncated, claiming it needs 3+length bytes. In normal TLV arithmetic Type+Length+zero value is exactly two bytes and complete; it is invalid because the specialized option requires Length=1, i.e. wrong_length/malformed_length_0. authenticated_schc_dio.json uses malformed_rule_version_length_0 and rpl_messages.json uses invalid_schc_version_option, exposing the cross-artifact cause mismatch. Align the exact classification and add an independent structural assertion.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:17:03.947417Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:20:36.901801Z",
-  "started_at": "2026-08-24T12:20:36.901801Z",
-  "lease_expires_at": "2026-08-24T12:25:36.901801Z",
-  "heartbeat_at": "2026-08-24T12:20:36.901801Z"
+  "updated_at": "2026-08-28T03:43:25.95544Z",
+  "started_at": "2026-08-24T12:20:36.901801Z"
 }

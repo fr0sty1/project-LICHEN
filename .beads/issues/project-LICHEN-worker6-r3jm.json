@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-r3jm",
   "title": "Link-TX failure cluster: test_cad::test_tx_fails_after_max_retries FAILED; test_link_tx oversized-send; test_link_layer exceeds timeouts (minutes-long real backoff loops)",
   "description": "Pre-existing WIP-family failures: CAD retry exhaustion ('TX deferred: channel busy after 3 backoff cycles'), oversized_send_rejects_before_signing_without_mutation, link_layer timeout. Likely duty-cycle/backoff refactor changed timing constants making tests hang minutes. Investigate root cause; consider injectable clock; do NOT weaken assertions.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:46:28.024163Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:47:30.133579Z",
-  "started_at": "2026-08-24T06:47:30.133579Z",
-  "lease_expires_at": "2026-08-24T06:52:30.133579Z",
-  "heartbeat_at": "2026-08-24T06:47:30.133579Z"
+  "updated_at": "2026-08-28T03:33:11.232796Z",
+  "started_at": "2026-08-24T06:47:30.133579Z"
 }

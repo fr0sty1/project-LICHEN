@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-zysv",
   "title": "Rust exposes unauthenticated production RPL mutation APIs",
   "description": "RplStack::rpl_node_mut exposes RplNode, RplNode::router_mut exposes Router, and public Router process_dio/process_dio_outcome/process_dio_with_etx variants mutate neighbors/DODAG without AuthenticatedFrame. RplNode handle_frame_rpl variants likewise trust caller bytes/IID. Downstream production code can bypass process_authenticated_dio entirely. Seal raw parsers/mutators as crate-private/test/simulator APIs or require owner-issued evidence in the public production surface; add compile-fail/API tests and end-to-end bypass tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T10:32:02.652552Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T10:32:17.96088Z",
-  "started_at": "2026-08-24T10:32:17.96088Z",
-  "lease_expires_at": "2026-08-24T10:37:17.96088Z",
-  "heartbeat_at": "2026-08-24T10:32:17.96088Z"
+  "updated_at": "2026-08-28T03:31:25.973393Z",
+  "started_at": "2026-08-24T10:32:17.96088Z"
 }

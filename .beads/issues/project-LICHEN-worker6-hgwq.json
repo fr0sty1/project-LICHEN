@@ -3,13 +3,15 @@
   "title": "Implement Tunnel Authorization (spec 8.11)",
   "description": "Implement egress tunnel authorization per 06-security.md 8.11. Root sends CoAP POST to /.well-known/tunnel-auth with Schnorr48-signed authorization. Egress validates and caches. Data plane checks auth table before decapsulation.",
   "notes": "UPDATED: Now uses COSE_Sign1 (RFC 9052) with Schnorr48-Ed25519 algorithm (-65537). Implementations need COSE library or manual Sig_structure construction.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-27T23:10:47.212835Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-27T23:25:47.843511Z",
+  "updated_at": "2026-08-28T02:39:42.60632Z",
+  "closed_at": "2026-08-28T02:39:42.60632Z",
+  "close_reason": "All Python, Rust, Zephyr, vector, and cross-validation children are closed with exact decision/byte parity across the finalized fixture.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-hgwq",

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-3o0p.1",
   "title": "Python: GCP Handoff COSE_Sign1",
   "description": "Implement GCP Handoff COSE_Sign1 in Python. Algorithm -65537, integer-keyed payload, RFC 9052 Sig_structure.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-27T23:39:13.253893Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-27T23:39:13.253893Z",
+  "updated_at": "2026-08-28T02:35:38.597432Z",
+  "closed_at": "2026-08-28T02:35:38.597432Z",
+  "close_reason": "Implemented GCP Handoff COSE_Sign1 in Python: HandoffRequestCoseSign1, HandoffConfirmCoseSign1, with create/verify functions per RFC 9052 Sig_structure. Algorithm -65537, integer-keyed payloads.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-3o0p.1",

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-30pu",
   "title": "initial_startup_delay returns impossible negative delays",
   "description": "Correctness review finding (P4): python/src/lichen/timing/sfn.py:50-54 accepts an unconstrained nodes_heard value, so initial_startup_delay(-1) returns -5 even though spec/09-packets-timing.md:622 defines a count of heard nodes and the result feeds random(0, initial_delay). Negative values cannot represent a node count and make the required delay interval invalid. Validate an exact non-negative integer (including rejecting bool/non-int as appropriate) and add boundary tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:47:54.149394Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:50:45.825622Z",
-  "started_at": "2026-08-24T12:50:45.825622Z",
-  "lease_expires_at": "2026-08-24T12:55:45.825622Z",
-  "heartbeat_at": "2026-08-24T12:50:45.825622Z"
+  "updated_at": "2026-08-28T03:44:58.425681Z",
+  "started_at": "2026-08-24T12:50:45.825622Z"
 }

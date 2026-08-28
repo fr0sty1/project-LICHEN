@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-hxmo",
   "title": "SCHC retry budget ignores regular-fragment repair and timeout rounds",
   "description": "Post-fix correctness review: retry attempts increment only when All-1 is missing. Regular-fragment-only C=0 repair and repeated timeout ACK Requests can run forever while refreshing session TTL. Count every emitted repair/ACK-request round, abort exactly once at MAX_ACK_REQUESTS, remain terminal thereafter, and add regular-only NACK plus timeout exhaustion tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:02:38.471025Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:04:29.935724Z",
-  "started_at": "2026-08-24T08:04:29.935724Z",
-  "lease_expires_at": "2026-08-24T08:09:29.935724Z",
-  "heartbeat_at": "2026-08-24T08:04:29.935724Z"
+  "updated_at": "2026-08-28T03:32:21.261884Z",
+  "started_at": "2026-08-24T08:04:29.935724Z"
 }

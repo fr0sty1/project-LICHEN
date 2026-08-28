@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-px6u",
   "title": "Terminal Link persistence failure makes Node receive loop spin",
   "description": "LinkLayer.receive raises terminal persistence failure before its first await; Node._receive_loop catches generic Exception and immediately continues. After one fatal storage error the task becomes a no-await hot loop, starving the event loop and flooding logs. Expose/classify terminal Link failure and transition Node to failed/stopped or surface task failure instead of retrying. Add injected persistence-failure tests proving bounded receive calls, scheduler progress, observable lifecycle error, and no log storm.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T09:52:34.068448Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T09:52:49.770451Z",
-  "started_at": "2026-08-24T09:52:49.770451Z",
-  "lease_expires_at": "2026-08-24T09:57:49.770451Z",
-  "heartbeat_at": "2026-08-24T09:52:49.770451Z"
+  "updated_at": "2026-08-28T03:40:58.331153Z",
+  "started_at": "2026-08-24T09:52:49.770451Z"
 }

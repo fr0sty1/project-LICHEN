@@ -1,20 +1,20 @@
 {
   "id": "project-LICHEN-worker6-3h3a",
   "title": "rust/lichen-schc/src/context.rs: MSB matching panics when shift equals u128 bit width",
-  "description": "In rule_matches(), when Mo::Msb is used with mo_arg = 0 and fd.length_bits = 128 (a full IPv6 address), the calculation `shift = fd.length_bits - mo_arg` yields 128. The subsequent `val \u003e\u003e shift` panics in debug builds because shifting a u128 by 128 bits is an overflow. The guard on line 184 only rejects mo_arg \u003e length_bits, not the case where shift \u003e= 128.\n\nFix suggestion: Add an early-out check: `if mo_arg == 0 { /* comparing 0 MSBs always matches */ }` before the shift, or clamp shift to 127 max. Alternatively, use wrapping_shr or checked_shr to avoid the panic.\n\nFile: rust/lichen-schc/src/context.rs\nLine: 188\nCategory: correctness",
-  "status": "in_progress",
+  "description": "In rule_matches(), when Mo::Msb is used with mo_arg = 0 and fd.length_bits = 128 (a full IPv6 address), the calculation `shift = fd.length_bits - mo_arg` yields 128. The subsequent `val >> shift` panics in debug builds because shifting a u128 by 128 bits is an overflow. The guard on line 184 only rejects mo_arg > length_bits, not the case where shift >= 128.\n\nFix suggestion: Add an early-out check: `if mo_arg == 0 { /* comparing 0 MSBs always matches */ }` before the shift, or clamp shift to 127 max. Alternatively, use wrapping_shr or checked_shr to avoid the panic.\n\nFile: rust/lichen-schc/src/context.rs\nLine: 188\nCategory: correctness",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T03:52:50.451985Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T05:03:05.26769Z",
+  "updated_at": "2026-08-28T03:41:57.081367Z",
   "started_at": "2026-08-24T05:03:05.26769Z",
-  "lease_expires_at": "2026-08-24T05:08:05.26769Z",
-  "heartbeat_at": "2026-08-24T05:03:05.26769Z",
   "labels": [
     "bug",
     "codereview"
-  ]
+  ],
+  "closed_at": "2026-08-27T00:00:00Z",
+  "resolution": "Already fixed. In rust/lichen-schc/src/context.rs lines 246-248, the MSB matching code handles mo_arg == 0 with continue to skip the shift operation, preventing the u128 shift-by-128 panic. Test msb_matching_handles_full_width_boundaries (lines 554-626) explicitly covers this case with length_bits=128 and mo_arg=0."
 }

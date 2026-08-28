@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-bugi",
   "title": "loadng discovery: forged-RREP route poisoning — proxy flag never validated, seq ownership unverified",
   "description": "discovery.py:178-207 treats wire seq_num as authoritative; process_rrep ignores flags entirely. Hostile neighbor sends RREP(originator=D,seq=fresher,hop=1)→victim installs attacker route; poisoned grad.seq_num then emitted via proxy replies suppressing genuine discovery. Needs destination-owned sequence verification (authoritative flag + pinned key) or treat proxy replies as non-installing hints.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:46:14.713405Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:47:06.199721Z",
-  "started_at": "2026-08-24T06:47:06.199721Z",
-  "lease_expires_at": "2026-08-24T06:52:06.199721Z",
-  "heartbeat_at": "2026-08-24T06:47:06.199721Z"
+  "updated_at": "2026-08-28T03:41:34.229248Z",
+  "started_at": "2026-08-24T06:47:06.199721Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-2c0t",
   "title": "Apply u32 wrapping addition before TDMA slot modulus in Python",
   "description": "python timing.sfn.slot_for and ccp.slot_hash currently compute (hash + masked_sfn) % N without masking the sum to u32. The normative spec and Rust use wrapping-u32 addition before modulus; results diverge when the addition carries and N does not divide 2^32. Existing vectors mostly use power-of-two slot counts and miss this. Mask the sum, add independent non-power-of-two carry vectors, and align both Python entry points.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:33:55.009663Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:33:58.560477Z",
-  "started_at": "2026-08-24T15:33:58.560477Z",
-  "lease_expires_at": "2026-08-24T15:38:58.560477Z",
-  "heartbeat_at": "2026-08-24T15:33:58.560477Z"
+  "updated_at": "2026-08-28T03:30:02.963425Z",
+  "started_at": "2026-08-24T15:33:58.560477Z"
 }

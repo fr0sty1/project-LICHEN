@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-2697",
   "title": "SCHC version mismatch does not prevent fragmentation initiation",
   "description": "Correctness review: peer version policy gates compression/decompression only; independently constructible fragment senders can still fragment a large Rule255 packet under mismatch. Fragmentation initiation must require compatible authenticated peer version state. Add end-to-end tests proving an over-single-frame Rule255 packet cannot create or emit fragments on mismatch.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:59:34.021558Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:59:44.187114Z",
-  "started_at": "2026-08-24T06:59:44.187114Z",
-  "lease_expires_at": "2026-08-24T07:04:44.187114Z",
-  "heartbeat_at": "2026-08-24T06:59:44.187114Z"
+  "updated_at": "2026-08-28T03:32:50.761902Z",
+  "started_at": "2026-08-24T06:59:44.187114Z"
 }

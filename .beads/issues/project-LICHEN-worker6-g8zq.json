@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-g8zq",
   "title": "Secure request API exceeds clippy argument limit",
   "description": "rust/lichen-node/src/secure.rs send_secure_request and its internal helper take eight arguments, failing the required cargo clippy -D warnings gate. Encapsulate request method/path/payload metadata in a request descriptor or otherwise reduce API arity without weakening checked payload sizing or persistence semantics.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:53:07.127642Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:53:17.933904Z",
-  "started_at": "2026-08-24T15:53:17.933904Z",
-  "lease_expires_at": "2026-08-24T15:58:17.933904Z",
-  "heartbeat_at": "2026-08-24T15:53:17.933904Z"
+  "updated_at": "2026-08-28T03:38:58.188904Z",
+  "started_at": "2026-08-24T15:53:17.933904Z"
 }

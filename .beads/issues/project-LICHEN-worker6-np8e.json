@@ -3,15 +3,13 @@
   "title": "Time capability issuance can be bypassed through callable _issue and post-issue mutation",
   "description": "Security review: _SampleAuthority._issue is callable on every bound TimeProvider/DioTimeVerifier and bypasses all provider/verifier validation. TimeSample and ProvisionEpochMetadata are accepted by exact object identity only, but object.__setattr__ can mutate frozen dataclass fields after issuance while the issuer still accepts the object. Remove callable underscored issuance surfaces from capability instances and bind acceptance to an immutable issuer-held snapshot/authenticator of all security-relevant fields; add forged _issue and post-issuance mutation tests.",
   "notes": "Also reject authority subclasses/overridden accepts methods at tracker binding (use exact sealed authority types or a non-overridable capability record); isinstance currently admits a subclass that can return true for forged samples.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:49:34.354838Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:55:32.947993Z",
-  "started_at": "2026-08-24T06:49:56.465785Z",
-  "lease_expires_at": "2026-08-24T06:54:56.465785Z",
-  "heartbeat_at": "2026-08-24T06:49:56.465785Z"
+  "updated_at": "2026-08-28T03:33:06.342148Z",
+  "started_at": "2026-08-24T06:49:56.465785Z"
 }

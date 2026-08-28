@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-sx8h",
   "title": "Direct handoff handler strands staged node without transport outcome",
   "description": "Correctness review of shvq fix: GatewayCoordinator::handle_post_handoff delegates to stage_post_handoff and discards the returned staged address. A successful direct/generic dispatch therefore leaves the node busy forever with no commit or rollback boundary. Make the non-transactional API fail closed/rollback and ensure production uses only staged dispatch; add an invariant test.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:00:58.304399Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:01:07.258349Z",
-  "started_at": "2026-08-24T17:01:07.258349Z",
-  "lease_expires_at": "2026-08-24T17:06:07.258349Z",
-  "heartbeat_at": "2026-08-24T17:01:07.258349Z"
+  "updated_at": "2026-08-28T03:29:02.478856Z",
+  "started_at": "2026-08-24T17:01:07.258349Z"
 }

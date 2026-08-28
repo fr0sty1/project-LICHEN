@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-j2yt",
   "title": "SCHC 22,554-byte ceiling is applied to raw IPv6 instead of encoded SCHC packets",
   "description": "Correctness review of python/src/lichen/schc/headers.py found validate_full_ipv6 permits a 22,554-byte raw IPv6 packet and encode_rule255 then prepends Rule ID 255, producing a 22,555-byte SCHC Packet that FragmentSender correctly rejects. Conversely compressible packets whose raw IPv6 is slightly above 22,554 but whose encoded SCHC packet is within the 22,554-byte fragmentation ceiling are rejected early. spec/03-adaptation.md §5.6 and the SCHC draft define 22,554 as the SCHC Packet encoding/reassembly ceiling (126*179), with 1,281 explicitly meaning 1-byte Rule ID + 1,280-byte IPv6. Enforce limits on the final encoded/input SCHC packet, make Rule 255's maximum raw IPv6 length 22,553, and add exact max/max+1 tests for Rule 255 and compressed Rule 7/generic rules without conflating raw and compressed sizes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:30:53.691937Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:32:15.9829Z",
-  "started_at": "2026-08-24T13:32:15.9829Z",
-  "lease_expires_at": "2026-08-24T13:37:15.9829Z",
-  "heartbeat_at": "2026-08-24T13:32:15.9829Z"
+  "updated_at": "2026-08-28T03:30:27.02056Z",
+  "started_at": "2026-08-24T13:32:15.9829Z"
 }

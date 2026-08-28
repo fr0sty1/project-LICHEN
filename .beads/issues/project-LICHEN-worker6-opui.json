@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-opui",
   "title": "Provision persistence post-write failure leaves live stale verifier state",
   "description": "ProvisionVerifier persists install/clear state before post-hook reentry/mutation checks and in-memory commit. If a callback durably writes and then reenters, mutates, or raises, the method errors but the running verifier continues serving the old active metadata/floor while durable storage contains the new record or clear. This split brain can keep a lower epoch floor or active time after durable revocation. Introduce transactional persistence semantics or irreversibly poison/clear the verifier after any exception once persistence was invoked, so no stale floor/time reads proceed until authoritative reload. Add durable-store tests for write-then-reenter, mutate, and raise on install and clear, plus tracker invalidation/restart agreement.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T09:45:30.671936Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T09:45:35.823739Z",
-  "started_at": "2026-08-24T09:45:35.823739Z",
-  "lease_expires_at": "2026-08-24T09:50:35.823739Z",
-  "heartbeat_at": "2026-08-24T09:45:35.823739Z"
+  "updated_at": "2026-08-28T03:31:48.461979Z",
+  "started_at": "2026-08-24T09:45:35.823739Z"
 }

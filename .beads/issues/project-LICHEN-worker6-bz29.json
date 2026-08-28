@@ -3,15 +3,13 @@
   "title": "NodeConfig omits authenticated RPL admission field contract",
   "description": "Documentation review of myil implementation found NodeConfig's Attributes section does not describe rpl_instance_id, rpl_dodag_id, rpl_dodag_version, rpl_mop, or rpl_dio_expected_role, including their all-or-none admission-scope requirement and current non-storing MOP constraint. Document the public configuration contract so callers do not accidentally leave DIO bootstrap disabled or mis-scope trusted DIOs.",
   "notes": "Documented every public RPL admission configuration field, all-or-none activation, expected signer role, and current non-storing MOP 1 constraint.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:52:15.660982Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:53:05.579673Z",
-  "started_at": "2026-08-24T13:52:19.214282Z",
-  "lease_expires_at": "2026-08-24T13:57:19.214282Z",
-  "heartbeat_at": "2026-08-24T13:52:19.214282Z"
+  "updated_at": "2026-08-28T03:44:57.637929Z",
+  "started_at": "2026-08-24T13:52:19.214282Z"
 }

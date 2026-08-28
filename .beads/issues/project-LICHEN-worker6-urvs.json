@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-urvs",
   "title": "Python fragmentation version gate accepts unknown SCHC Rule IDs 8 through 254",
   "description": "Final ACK/rule correctness review: python/src/lichen/link/link_layer.py:341 gates authenticated peer compatibility only when payload[0] is 0..7 or 255. Unknown/noncanonical Rule IDs 8..254 bypass the gate and are accepted by FragmentSender because its rule_id parameter is the fragmentation rule, not the compressed packet Rule ID. Reject unknown SCHC packet Rule IDs before manager mutation and require current peer evidence for every fragmentable Rule 0, Rule 7, and Rule 255 packet. Add all boundary IDs, unknown-peer, mismatch, and no-state-mutation tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:45:59.789157Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:46:00.601971Z",
-  "started_at": "2026-08-24T08:46:00.601971Z",
-  "lease_expires_at": "2026-08-24T08:51:00.601971Z",
-  "heartbeat_at": "2026-08-24T08:46:00.601971Z"
+  "updated_at": "2026-08-28T03:32:00.160868Z",
+  "started_at": "2026-08-24T08:46:00.601971Z"
 }

@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-mh9d",
+  "title": "HandoffResource finalizes before response delivery, causing node orphaning",
+  "description": "## Location\npython/src/lichen/coap/resources/handoff.py lines 103-119\n\n## Summary\nrender_post() calls finalize_handoff() immediately after handle_handoff_request() returns SUCCESS, but BEFORE the response is actually delivered to the target gateway. If the response is lost in transit, the node is removed from the source gateway but the target gateway never received the security context. The node becomes orphaned.\n\n## Failure Scenario\n1. Gateway B sends handoff request to Gateway A\n2. Gateway A marks node pending, prepares success response with OSCORE context\n3. Gateway A calls finalize_handoff(), removing node from registry\n4. Network failure: response never reaches Gateway B\n5. Gateway B retries handoff request\n6. Gateway A returns NODE_NOT_FOUND (node already removed)\n7. Node is orphaned: source removed it, target never got the security context\n\n## Impact\n- Node loses all gateway association\n- OSCORE master_secret is lost (cannot be recovered)\n- Node cannot communicate with either gateway\n- Manual recovery required (re-provisioning)\n\n## Misleading Comment\nThe comment on lines 115-117 claims \"The target gateway simply retries and gets NODE_NOT_FOUND, indicating success.\" This is incorrect - NODE_NOT_FOUND does NOT indicate success for the target, which never received the state.\n\n## Fix Options\n1. Do NOT finalize immediately. Keep node in pending_handoff state. Use timeout-based cleanup via get_pending_handoffs() and rollback_handoff() for stale pending handoffs.\n2. Implement delivery confirmation (harder with CoAP NON, but possible with CON and tracking)\n3. At minimum: correct the misleading comment so future developers understand the tradeoff",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:45:22.775371Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:52:23.075211Z",
+  "closed_at": "2026-08-28T02:52:23.075211Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "security",
+    "handoff"
+  ]
+}

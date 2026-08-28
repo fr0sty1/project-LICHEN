@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-lwc9",
   "title": "DIO time verifier parses noncanonical bare DIO instead of authenticated L2 envelope",
   "description": "Correctness review: DioTimeVerifier passes RxFrame.payload directly to DIO.from_bytes, but authenticated routing/control L2 payloads begin with dispatch 0x15 (or SCHC dispatch before decompression). Tests sign a noncanonical bare DIO. Parse the canonical authenticated L2/RPL envelope or consume a nonforgeable verified parser result, require DIO code/type, retain the raw authenticated payload and exact option span, and add literal signed on-wire dispatch vectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:52:03.089596Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:52:06.688888Z",
-  "started_at": "2026-08-24T06:52:06.688888Z",
-  "lease_expires_at": "2026-08-24T06:57:06.688888Z",
-  "heartbeat_at": "2026-08-24T06:52:06.688888Z"
+  "updated_at": "2026-08-28T03:32:57.56764Z",
+  "started_at": "2026-08-24T06:52:06.688888Z"
 }

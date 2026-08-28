@@ -3,15 +3,13 @@
   "title": "SCHC spec omits receiver ACK response exhaustion transition",
   "description": "schc_fragmentation.json and both Python/Rust receivers count emitted ACK responses and send Receiver-Abort instead of a fifth ACK, but draft Section 5.2 says the receiver responds to every All-1/ACK REQ and only defines MAX_ACK_REQUESTS for sender request emissions. spec/03-adaptation.md is likewise silent about receiver response exhaustion. Specify the receiver counter and fifth-request Receiver-Abort transition so the vectors and implementations are normative and interoperable; clarify terminal hold-down behavior after that abort.",
   "notes": "Final security review independently found the receiver retry vector contradicted the then-current normative state machine; spec text must explicitly make this receiver counter/abort behavior normative.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:26:57.56826Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:30:04.974112Z",
-  "started_at": "2026-08-24T11:27:00.933538Z",
-  "lease_expires_at": "2026-08-24T11:32:00.933538Z",
-  "heartbeat_at": "2026-08-24T11:27:00.933538Z"
+  "updated_at": "2026-08-28T03:43:32.332822Z",
+  "started_at": "2026-08-24T11:27:00.933538Z"
 }

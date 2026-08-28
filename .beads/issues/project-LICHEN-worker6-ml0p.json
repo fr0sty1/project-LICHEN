@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-ml0p",
   "title": "EU868 duty-cycle oracle uses 200 ms while same artifact computes 369.664 ms",
   "description": "Correctness review: spec/09-packets-timing.md:141-149 and packets-timing.json duty_cycle_eu868_10pct use 200 ms for a 60-byte SF9/125kHz frame and derive 1800 packets/hour at 10%. The same generated artifact airtime_sf9_60b independently applies the stated LoRa parameters and yields 369.664 ms (packets-timing.json around lines 150-158), giving floor(360 seconds / 0.369664) = 973 whole packets/hour, not 1800. generate_packets_timing.py uses a hard-coded timing constant for one vector and computed airtime for the other. Use one explicit complete PHY parameter set and derive duty capacity from the same independent formula.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:17:02.627194Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:20:33.627278Z",
-  "started_at": "2026-08-24T12:20:33.627278Z",
-  "lease_expires_at": "2026-08-24T12:25:33.627278Z",
-  "heartbeat_at": "2026-08-24T12:20:33.627278Z"
+  "updated_at": "2026-08-28T03:31:00.991567Z",
+  "started_at": "2026-08-24T12:20:33.627278Z"
 }

@@ -3,15 +3,13 @@
   "title": "SCHC rekey reset is unauthenticated non-atomic and leaves stale senders usable",
   "description": "python/src/lichen/link/link_layer.py reset_fragmentation_for_rekey accepts only the old key, clears manager/replay separately, and does not invalidate existing FragmentSender capabilities. Tie reset to atomic old-to-new key installation, cancel old leases, block old-key RX, and test stale sender plus receive/reset interleavings.",
   "notes": "Post-fix review: reset is now old-to-new and manager/replay atomic, but concurrent handle_ack_frame/timeout can release the security lock after accept/touch, then rotation invalidates records, then return an old-key retransmission. Rotation must serialize with the full sender transition and invalidate status/capability before any output escapes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:11:38.671901Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:37:12.577293Z",
-  "started_at": "2026-08-24T06:11:50.828754Z",
-  "lease_expires_at": "2026-08-24T06:16:50.828754Z",
-  "heartbeat_at": "2026-08-24T06:11:50.828754Z"
+  "updated_at": "2026-08-28T03:33:31.249934Z",
+  "started_at": "2026-08-24T06:11:50.828754Z"
 }

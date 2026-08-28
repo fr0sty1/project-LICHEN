@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-vdot",
   "title": "Align receipt-clock tamper test with terminal security error",
   "description": "python/tests/timing/test_time_sync.py::test_link_receipt_clock_requires_exact_immutable_capability expects the internal 'binding changed' RuntimeError to escape, but LinkLayer._receipt_now intentionally converts all terminal clock failures into LinkSecurityClockError with the internal RuntimeError as __cause__ after revoking authenticated state. The fully merged timing suite therefore fails. Update the test to assert LinkSecurityClockError, terminal disablement/revocation, and a binding-changed cause rather than requiring the internal message at the public boundary.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:44:02.381153Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:48:50.142459Z",
-  "started_at": "2026-08-24T15:48:50.142459Z",
-  "lease_expires_at": "2026-08-24T15:53:50.142459Z",
-  "heartbeat_at": "2026-08-24T15:48:50.142459Z"
+  "updated_at": "2026-08-28T03:42:56.071463Z",
+  "started_at": "2026-08-24T15:48:50.142459Z"
 }

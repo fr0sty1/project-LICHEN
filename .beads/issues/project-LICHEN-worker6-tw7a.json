@@ -3,15 +3,13 @@
   "title": "FragmentSender ACK and timeout state transitions are unsynchronized",
   "description": "python/src/lichen/schc/fragment.py mutates sender state/attempts and finishes manager records outside a sender-level transaction. Concurrent ACK/timeout paths may retransmit after success or conflict. Serialize state transitions and manager acceptance/finish; add threaded barrier tests for C=1 vs C=0 and ACK vs timeout.",
   "notes": "Post-fix review: FragmentSender lock serializes sender methods, but manager receipt acceptance/touch and semantic status/attempt/finish are still separate security-lock transactions. Rotation can interleave after accept_ack/touch and before finish/return, allowing an old-key retransmission after rekey or a consumed ACK followed by finish failure. Make ACK/timeout semantic transition and manager record mutation one transaction with lock ordering tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:11:39.268115Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:37:11.662033Z",
-  "started_at": "2026-08-24T06:11:51.698538Z",
-  "lease_expires_at": "2026-08-24T06:16:51.698538Z",
-  "heartbeat_at": "2026-08-24T06:11:51.698538Z"
+  "updated_at": "2026-08-28T03:41:48.043751Z",
+  "started_at": "2026-08-24T06:11:51.698538Z"
 }

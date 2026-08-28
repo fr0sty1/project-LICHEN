@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-81b6",
   "title": "Stop deriving packets-timing expected vectors from production timing code",
   "description": "P2 test-oracle integrity: packets_timing_vectors() imports production airtime, Trickle, DAO, CSMA, SFN, time-sync, DIO/IPv6/ICMP/SCHC/frame and other helpers, executes them, and publishes their return values as canonical expected JSON. Tests and --check can therefore self-confirm regressions by regenerating the oracle from the same implementation under test. Convert normative outputs to literal/spec-formula reference calculations isolated from lichen.*, add fixed external KATs for security wire material, and have separate tests compare production to those immutable values.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:52:38.110589Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:58:18.161954Z",
-  "started_at": "2026-08-24T15:58:18.161954Z",
-  "lease_expires_at": "2026-08-24T16:03:18.161954Z",
-  "heartbeat_at": "2026-08-24T15:58:18.161954Z"
+  "updated_at": "2026-08-28T03:38:57.148891Z",
+  "started_at": "2026-08-24T15:58:18.161954Z"
 }

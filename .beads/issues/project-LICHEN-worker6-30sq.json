@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-30sq",
   "title": "FragmentSender facade retains mutable authoritative retry and session state",
   "description": "Security review: frozen dataclass state can be changed with object.__setattr__, and _set_security_state is callable. Active exact senders can lower attempts for unlimited retransmissions or alter status/fragments/manager. Keep authoritative attempts/status/fragments/binding only in manager-owned private records keyed to exact facade; expose snapshots and ensure facade mutation cannot affect retry/output/session semantics.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T07:11:36.657948Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T07:11:47.383209Z",
-  "started_at": "2026-08-24T07:11:47.383209Z",
-  "lease_expires_at": "2026-08-24T07:16:47.383209Z",
-  "heartbeat_at": "2026-08-24T07:11:47.383209Z"
+  "updated_at": "2026-08-28T03:41:26.516266Z",
+  "started_at": "2026-08-24T07:11:47.383209Z"
 }

@@ -3,15 +3,13 @@
   "title": "Rule 7 decoder accepts overlong compressed residue at profile boundary",
   "description": "python/src/lichen/schc/headers.py reconstructs a MAX_PACKET_SIZE MQTT-SN Rule 7 packet from an encoded residue and accepts one extra trailing residue byte because only the reconstructed packet length is bounded after decoding. python/tests/schc/test_headers.py::test_mqtt_sn_rule7_profile_size_boundary now fails: compress_packet(max_size_raw) + 0x00 does not raise SchcError. Preserve the j2yt MAX_PACKET_SIZE uncompressed boundary while rejecting encoded residues whose complete consumption/reconstruction is non-canonical or exceeds the Rule 7 encoded bound. Add focused exact-boundary regressions, then run SCHC tests, Ruff, mypy, and 3x review convergence.",
   "notes": "Investigation showed the production decoder was correct under j2yt/spec: 22,554 is the encoded SCHC ceiling, and an extra MQTT-SN payload byte below that ceiling is indistinguishable from legitimate payload. The stale test incorrectly bounded reconstructed IPv6. Fix updates link-local and full-address regressions to construct exactly 22,554 encoded bytes and reject encoded max+1; no production limit change. Full python/tests/schc: 346 passed.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:29:40.465857Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:32:33.472035Z",
-  "started_at": "2026-08-24T14:29:51.167616Z",
-  "lease_expires_at": "2026-08-24T14:34:51.167616Z",
-  "heartbeat_at": "2026-08-24T14:29:51.167616Z"
+  "updated_at": "2026-08-28T03:30:17.57682Z",
+  "started_at": "2026-08-24T14:29:51.167616Z"
 }

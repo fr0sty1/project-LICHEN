@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-sq2d",
+  "title": "handoff.py FreshnessState.from_cbor_map lacks type validation",
+  "description": "File: python/src/lichen/gateway/handoff.py\nLines: 236-247\n\nFreshnessState.from_cbor_map() extracts fields from CBOR without validating their types:\n\n```python\nreturn cls(\n    sequence=data[\"seq\"],\n    active_until=data.get(\"active\"),\n    retain_until=data[\"retain\"],\n    updated_at=data[\"updated\"],\n)\n```\n\nExpected types:\n- sequence: int\n- active_until: float | None\n- retain_until: float\n- updated_at: float\n\nIf malformed CBOR provides wrong types (e.g., a string for sequence), the dataclass stores them without error. Issues manifest later when the values are used (e.g., arithmetic on non-numeric sequence).\n\nCompare to OscoreState.from_cbor_map() which validates integer bounds and types carefully (lines 189-197).\n\nFix: Add type checks before construction:\n```python\nif not isinstance(data[\"seq\"], int):\n    raise HandoffError(\"sequence must be integer\")\nif not isinstance(data[\"retain\"], (int, float)):\n    raise HandoffError(\"retain_until must be numeric\")\n# etc.\n```\n\nImpact: Defense in depth; malformed handoff responses could cause unexpected exceptions instead of clean rejection.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:45:41.481517Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:52:16.549316Z",
+  "closed_at": "2026-08-28T02:52:16.549316Z",
+  "close_reason": "Closed",
+  "labels": [
+    "security",
+    "gateway",
+    "review"
+  ]
+}

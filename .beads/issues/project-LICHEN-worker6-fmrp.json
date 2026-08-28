@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-fmrp",
   "title": "Validate gateway CBOR slot-map dimensions before owned_slots",
   "description": "rust/lichen-gateway/src/resources.rs decoders truncate arbitrary CBOR integers with as u8/u16 and SlotMap::from_cbor_map accepts gateway_count=0 or ordinal\u003e=count. SlotMap::owned_slots then increments by gateway_count; zero causes an infinite loop, and wrapped/out-of-range values can produce invalid allocations. Reject negative/overflow integers, require nonzero bounded gateway_count, ordinal\u003cgateway_count, and validate contiguous ranges/capabilities before returning decoded objects. Add hostile CBOR tests including gateway_count zero.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:57:43.74233Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:58:57.919204Z",
-  "started_at": "2026-08-24T14:58:57.919204Z",
-  "lease_expires_at": "2026-08-24T15:03:57.919204Z",
-  "heartbeat_at": "2026-08-24T14:58:57.919204Z"
+  "updated_at": "2026-08-28T03:30:05.79752Z",
+  "started_at": "2026-08-24T14:58:57.919204Z"
 }

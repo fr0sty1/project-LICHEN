@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.11.1",
+  "title": "ManhattanGrid base class with grid snapping and linear movement",
+  "description": "Create the ManhattanGrid mobility class extending BaseMobility. Implement:\n- Grid coordinate system with configurable spacing parameter\n- snap_to_grid() method to align positions to nearest grid point\n- Linear movement along grid lines (horizontal or vertical only)\n- Speed parameter for movement rate\n- Initial position placement on grid\n\nReference RandomWaypoint for base class pattern.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:33:55.291401Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:33:55.291401Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.11.1",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2.11",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:34:07.208322Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-566b.1",
   "title": "Python: Delegation Tokens",
   "description": "Implement Delegation Tokens in Python using COSE_Sign1 per spec/12-apps.md section 18.8.6.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-27T23:39:13.62638Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-27T23:39:13.62638Z",
+  "updated_at": "2026-08-28T02:39:33.485763Z",
+  "closed_at": "2026-08-28T02:39:33.485763Z",
+  "close_reason": "Closed",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-566b.1",

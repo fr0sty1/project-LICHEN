@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-4dtm",
   "title": "Keep provisioning manifest stage monotonic during resume",
   "description": "Robustness review finding in rust/lichen-gateway/src/bin/lichend.rs: resuming a manifest already at Slot rewrites it to Trust before slot verification, creating a crash window that regresses the durable transaction stage. Stage commits must use max(current, completed boundary) and never move backward.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:10:02.045057Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:10:11.083089Z",
-  "started_at": "2026-08-24T17:10:11.083089Z",
-  "lease_expires_at": "2026-08-24T17:15:11.083089Z",
-  "heartbeat_at": "2026-08-24T17:10:11.083089Z"
+  "updated_at": "2026-08-28T03:38:30.40021Z",
+  "started_at": "2026-08-24T17:10:11.083089Z"
 }

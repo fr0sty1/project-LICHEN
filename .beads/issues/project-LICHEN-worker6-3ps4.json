@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-3ps4",
   "title": "Python and Rust SCHC v3 registries and selection order diverge",
   "description": "Correctness review: Python includes rule IDs64-66 and excludes 255 while Rust includes 255 and omits 64-66; Python prioritizes OSCORE rules while Rust iterates 0..6, yielding different selected IDs. Define one canonical registry membership and deterministic selection order; assert identical IDs, descriptor hashes, get, and select results; clarify building-block wire status.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:59:36.05249Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:59:48.081365Z",
-  "started_at": "2026-08-24T06:59:48.081365Z",
-  "lease_expires_at": "2026-08-24T07:04:48.081365Z",
-  "heartbeat_at": "2026-08-24T06:59:48.081365Z"
+  "updated_at": "2026-08-28T03:32:45.36955Z",
+  "started_at": "2026-08-24T06:59:48.081365Z"
 }

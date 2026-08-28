@@ -3,15 +3,13 @@
   "title": "Prevent delayed prior fragments from contaminating replacement SCHC sessions",
   "description": "Security review of spec/03-adaptation.md §5.6 and draft-lichen-schc-lora-00 terminal hold-down found that the 60-second tombstone does not fully disambiguate packets when T=0. During hold-down, regular late fragments are discarded without a normative tombstone high-water update; after expiry, any Regular/All-1 with counter greater than the stored high-water may create a session. Once a replacement session is active, there is also no rule requiring every admitted fragment to be newer than an immutable session-admission floor. Because the link replay window accepts unseen out-of-order counters, a delayed authenticated fragment from the prior packet can create or contaminate a replacement context, especially when duplicate retransmissions were allocated after the frame that produced terminal success. Define a safe session-opening/admission barrier (or a bounded lifetime/DTag mechanism) that cannot admit prior-packet fragments, advance the relevant terminal barrier on every authenticated late message, and add state-machine vectors for delayed unique regular/All-1 frames both during hold-down and after a replacement starts.",
   "notes": "Rust complete: only regular W=0 FCN=62 opens T=0; every authenticated late message advances terminal high-water; expired tombstone remains durable admission floor; replacement session enforces immutable counter floor. Restart floor persistence is signed, anti-rollback, trust/replay committed, exact-generation gated. Full tests/lints pass.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:27:40.146236Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:48:25.694396Z",
-  "started_at": "2026-08-24T13:28:23.38968Z",
-  "lease_expires_at": "2026-08-24T13:33:23.38968Z",
-  "heartbeat_at": "2026-08-24T13:28:23.38968Z"
+  "updated_at": "2026-08-28T03:30:34.270716Z",
+  "started_at": "2026-08-24T13:28:23.38968Z"
 }

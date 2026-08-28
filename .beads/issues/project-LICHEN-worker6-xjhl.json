@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-xjhl",
   "title": "Authenticated SCHC fragmentation sessions leak reservations when handles are dropped",
   "description": "Security review P3. New FragmentSender and AuthenticatedFragmentReceiver constructors reserve policy tuples in rust/lichen-schc/src/fragment.rs, but the handles do not borrow/own a release guard and implement no Drop cleanup. Only successful terminal processing or explicit cancel/timeout releases. Dropping a live handle leaves SessionBusy until the 60s inactivity deadline; the next allocation merely converts it to another 60s tombstone and still fails, allowing error/cancellation paths to strand per-peer send/receive capacity for up to two minutes repeatedly. Make reservation ownership RAII-safe or expose a policy cleanup/maintenance path that releases abandoned handles without extending hold-down unexpectedly; add drop/early-return tests for sender and receiver.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:22:21.773532Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:25:49.718298Z",
-  "started_at": "2026-08-24T12:25:49.718298Z",
-  "lease_expires_at": "2026-08-24T12:30:49.718298Z",
-  "heartbeat_at": "2026-08-24T12:25:49.718298Z"
+  "updated_at": "2026-08-28T03:43:24.881127Z",
+  "started_at": "2026-08-24T12:25:49.718298Z"
 }

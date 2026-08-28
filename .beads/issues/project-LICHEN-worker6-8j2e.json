@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-8j2e",
   "title": "Reject malformed raw SCHC fragmentation wires on send",
   "description": "LinkLayer._send_locked reserves raw payload prefixes 0x78/0x79 for SCHC fragmentation, but an unissued value that is neither a valid control nor a parseable Fragment falls through and is signed/transmitted as ordinary bulk data. For example b'\\x78' or a malformed/padded fragment bypasses create_fragment_sender and control validation. The raw fragmentation dispatch should accept only one-use _IssuedFragmentWire values or fully validated directional controls at ACK priority; reject every other 0x78/0x79 payload and add malformed/truncated/padding regression cases.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:46:35.803499Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:48:55.266538Z",
-  "started_at": "2026-08-24T15:48:55.266538Z",
-  "lease_expires_at": "2026-08-24T15:53:55.266538Z",
-  "heartbeat_at": "2026-08-24T15:48:55.266538Z"
+  "updated_at": "2026-08-28T03:39:08.101783Z",
+  "started_at": "2026-08-24T15:48:55.266538Z"
 }

@@ -2,17 +2,15 @@
   "id": "project-LICHEN-worker6-ti66",
   "title": "Review: fragment.rs security 2026-08-16",
   "description": "Security-focused code review of rust/lichen-schc/src/fragment.rs\n\nReview confidence: 15% chance of missed bug.\nLeast confident areas: bitmap manipulation arithmetic in ACK encoding/decoding, interaction with higher layers.\nWould raise confidence if: fuzz testing, explicit threat model documentation, review of callers.\n\nSummary:\n- P0: 0 (no critical bugs)\n- P1: 2 (state machine issues)\n- P2: 3 (side-channel, documentation, protocol race)\n- P3: 2 (documentation, positive finding)\n\nThe code has thorough input validation and no obvious buffer overflows or panics from malformed input. Main concerns are state machine edge cases and missing security documentation.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T19:44:30.774238Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T19:47:35.367525Z",
+  "updated_at": "2026-08-28T03:34:25.285506Z",
   "started_at": "2026-08-16T19:45:33.188171Z",
-  "lease_expires_at": "2026-08-16T19:50:33.188171Z",
-  "heartbeat_at": "2026-08-16T19:45:33.188171Z",
   "labels": [
     "review"
   ]

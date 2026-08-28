@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-9ur4",
   "title": "Packets/timing --check crashes when an output file is missing",
   "description": "generate_packets_timing.py --check calls Path.read_bytes in a comprehension without handling FileNotFoundError. A missing generated output is simply an out-of-date result and should be reported with exit status 1 while remaining read-only, not emit a traceback. Add a missing-output CLI regression.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:28:44.126141Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:29:26.371454Z",
-  "started_at": "2026-08-24T15:29:26.371454Z",
-  "lease_expires_at": "2026-08-24T15:34:26.371454Z",
-  "heartbeat_at": "2026-08-24T15:29:26.371454Z"
+  "updated_at": "2026-08-28T03:42:56.737626Z",
+  "started_at": "2026-08-24T15:29:26.371454Z"
 }

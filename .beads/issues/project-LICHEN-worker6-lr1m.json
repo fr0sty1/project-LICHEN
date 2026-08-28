@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-lr1m",
   "title": "Gateway persistent constructor exceeds clippy API arity limit",
   "description": "Gateway::new_persistent takes eight positional arguments (identity, epoch, trust, coordinator, storage, provision flag, state root, sealing seed), failing clippy -D warnings and making security-sensitive path/seed/creation-mode arguments easy to transpose. Group the persistence settings into a typed configuration value and update production/tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T16:18:19.61977Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T16:18:24.941701Z",
-  "started_at": "2026-08-24T16:18:24.941701Z",
-  "lease_expires_at": "2026-08-24T16:23:24.941701Z",
-  "heartbeat_at": "2026-08-24T16:18:24.941701Z"
+  "updated_at": "2026-08-28T03:38:54.665784Z",
+  "started_at": "2026-08-24T16:18:24.941701Z"
 }

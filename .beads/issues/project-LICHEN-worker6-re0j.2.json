@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-re0j.2",
   "title": "Topology and Mobility",
   "description": "Topology generators for creating network layouts and mobility support for dynamic node movement during simulation. Includes grid, line, random disk, and star topologies plus position updates.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:18:31.642063Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:18:31.642063Z",
+  "updated_at": "2026-08-28T03:14:13.106298Z",
+  "closed_at": "2026-08-28T03:14:13.106298Z",
+  "close_reason": "decomposed into children",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-re0j.2",

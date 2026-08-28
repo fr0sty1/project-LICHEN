@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-pdwe",
+  "title": "coap_keys_cbor.c ISO-timestamp snprintf trips -Werror=format-truncation on 32-bit targets",
+  "description": "Found while verifying bd 6mij.2.2. coap_keys_cbor.c:156 snprintf(buf, buf_len, \"%04u-%02u-%02uT%02u:%02u:%02uZ\", ...) into a 21-byte buffer: GCC 12 under the module hardening set (-Wformat-truncation=2, -Werror) errors on i386/qemu_x86 ('Z directive output may be truncated writing 1 byte into a region of size between 0 and 2'), because uint32 fields can exceed 4 digits. 64-bit native_sim CI does not see it, so any 32-bit target build of LICHEN_COAP_KEYS is broken. Fix: size the buffer for the worst case (\u003e= 23 bytes) or clamp the fields before formatting. Local validation: west build -b qemu_x86 tests/coap_keys (ZEPHYR_EXTRA_MODULES=lichen module); build previously required an uncommitted -Wno-error=format-truncation override.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T04:45:36.564528Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:45:36.564528Z",
+  "labels": [
+    "local-ok"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-pdwe",
+      "depends_on_id": "project-LICHEN-6mij.2.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T04:45:39.366212Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

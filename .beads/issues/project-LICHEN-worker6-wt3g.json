@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-wt3g",
   "title": "Independent link-addressing oracle ignores key-derived Extended EUI-64 vector",
   "description": "link-addressing.json now includes key_derived_extended_eui64 for the Python/Rust interoperability correction, but test_protocol_vector_security.py checks only the arbitrary extended_eui64 case. Independently derive the key IID with SHA-512, flip the RFC 4291 U/L bit exactly once for wire EUI-64, validate the encoded frame destination, and reconstruct the expected link-local address.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:04:51.505248Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:04:54.849241Z",
-  "started_at": "2026-08-24T12:04:54.849241Z",
-  "lease_expires_at": "2026-08-24T12:09:54.849241Z",
-  "heartbeat_at": "2026-08-24T12:04:54.849241Z"
+  "updated_at": "2026-08-28T03:43:32.160548Z",
+  "started_at": "2026-08-24T12:04:54.849241Z"
 }

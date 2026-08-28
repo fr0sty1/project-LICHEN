@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-44m9",
+  "title": "Dead Drop vectors vs spec: rate-limit and POST success response codes conflict",
+  "description": "test/vectors/deaddrop.json pins two response codes that contradict spec/12-apps.md 18.9 and the completed Python oracle (lichen/coap/resources/deaddrop.py, green pytest):\n\n1. rate_limit_rejection vector: expected.response_code=163 (5.03 Service Unavailable). Spec 18.9 'Exceeding limits returns: 4.29 Too Many Requests with Retry-After for rate limits'. Python oracle returns aiocoap.TOO_MANY_REQUESTS (157) for rate limiting and reserves 163 for storage_full. Vector description itself says 'rate limit (5.03)'.\n\n2. All post_submission/oscore_wrapped success vectors: expected.response_code=69 (2.05 Content). Spec 18.9 and LCI 17.5.8 say POST returns '2.01 Created' (65) with Location-Path; Python oracle returns CREATED (65).\n\nRust implementation (lichen-client::deaddrop, bead project-LICHEN-worker6-l1qw.9.14.8.2) follows spec+Python (4.29 for rate limit, 2.01 for POST success); vector tests document both divergences instead of matching the defective pins. Also noted: senml_payload hex in canonical_senml_payload, ttl_clamped_to_max, oscore_group_context, oscore_e2e_post_pickup_roundtrip is malformed CBOR (short length headers); senml_payload_decoded is the normative form the Python oracle uses. Decide whether to fix the vectors or change the spec.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:28:29.031933Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:28:29.031933Z",
+  "labels": [
+    "human"
+  ]
+}

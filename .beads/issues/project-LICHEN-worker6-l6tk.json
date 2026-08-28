@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-l6tk",
   "title": "Version 0 wording implies an operational uncompressed fallback registry",
   "description": "spec/03-adaptation.md labels Rule Set Version 0 as Reserved (uncompressed fallback), and rule_versioning.json says version 0 is reserved for uncompressed fallback. Current policy says Version 3 is the only operational registry and Rule 255 syntax is version-independent only under narrow out-of-DODAG policy. Clarify that version 0 is simply reserved and never activates a fallback registry; Rule 255 does not make v0 operational.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:08:40.536976Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:08:43.732632Z",
-  "started_at": "2026-08-24T12:08:43.732632Z",
-  "lease_expires_at": "2026-08-24T12:13:43.732632Z",
-  "heartbeat_at": "2026-08-24T12:08:43.732632Z"
+  "updated_at": "2026-08-28T03:43:31.382823Z",
+  "started_at": "2026-08-24T12:08:43.732632Z"
 }

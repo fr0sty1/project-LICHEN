@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-yzir",
   "title": "Align Rust gateway key rotation with canonical replay-safe transcript",
   "description": "rust/lichen-gateway/src/trust.rs still signs and verifies legacy KEY_ROTATE: || new_pubkey messages. The canonical protocol requires LICHEN-KEY-ROTATION-v1 || 0x00 || old_pubkey || old_key_derived_iid || new_pubkey || rotation_sequence_be64, with a strictly increasing nonzero persisted rotation sequence. PinnedGateway and persistence currently carry no rotation sequence, so a previously valid rotation authorization can be replayed and Rust is not interoperable with the current spec/Python implementation. Update the API, transcript, durable state, and canonical vectors/tests together.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:35:57.650836Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:36:09.08623Z",
-  "started_at": "2026-08-24T17:36:09.08623Z",
-  "lease_expires_at": "2026-08-24T17:41:09.08623Z",
-  "heartbeat_at": "2026-08-24T17:36:09.08623Z"
+  "updated_at": "2026-08-28T03:28:34.086228Z",
+  "started_at": "2026-08-24T17:36:09.08623Z"
 }

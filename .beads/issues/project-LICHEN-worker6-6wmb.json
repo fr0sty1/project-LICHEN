@@ -3,15 +3,13 @@
   "title": "Public FragmentSender can emit wire fragments without LinkLayer policy",
   "description": "python/src/lichen/schc/fragment.py exposes public FragmentSender(payload).all_fragments()/fragment builders that produce sendable wire fragments without LinkLayer.create_fragment_sender, authenticated peer Rule-version context, session ownership, or one-active-session enforcement. LinkLayer.send accepts the resulting payload. Seal wire emission behind a LinkLayer/SchcSessionManager-issued capability while preserving safe diagnostics, and add tests proving raw construction cannot emit/send policy-bypassing fragments.",
   "notes": "Independent correctness rereview finding: a caller could wrap raw fragment bytes in the SCHC L2 dispatch and bypass _IssuedFragmentWire sealing; origin/forward large packets also dropped instead of routing through Link-issued fragmentation. Fixed with exact regressions; retain in final review scope.\nLatest rereview finding: Node large-packet setup failure can abandon a prepared FragmentSender reservation/capability. Ensure every setup/send exception or rejection discards/cancels the prepared sender without freeing a replacement, with regression.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T09:47:39.019236Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T10:59:52.866092Z",
-  "started_at": "2026-08-24T09:47:48.657481Z",
-  "lease_expires_at": "2026-08-24T09:52:48.657481Z",
-  "heartbeat_at": "2026-08-24T09:47:48.657481Z"
+  "updated_at": "2026-08-28T03:31:43.098691Z",
+  "started_at": "2026-08-24T09:47:48.657481Z"
 }

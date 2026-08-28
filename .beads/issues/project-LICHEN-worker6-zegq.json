@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-zegq",
   "title": "Rust DAO authority accepts and originates noncanonical link-local identity aliases",
   "description": "Security review P1. spec/05-routing.md requires the DAO origin IPv6 address to be the signer's full primary 02xx address preserved end to end. SignatureVerifiedDao::verify_signature in rust/lichen-rpl/src/verify.rs checks only origin[8..] against iid_from_pubkey; provisioning validate_origin does the same. The new RplStack control-address split then provisions/signs/transmits DAO using canonical_link_local in provisioning.rs and transmit.rs. Thus arbitrary upper 64-bit aliases sharing the IID are signature-valid, and production emits fe80:: origins. Enforce exact ygg_addr_from_pubkey equality for DAO origin/target authority, retain link-local only for hop control where the signed origin transcript remains primary 02xx, and add rejection plus production-origin vectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:19:34.230345Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:25:37.664037Z",
-  "started_at": "2026-08-24T12:25:37.664037Z",
-  "lease_expires_at": "2026-08-24T12:30:37.664037Z",
-  "heartbeat_at": "2026-08-24T12:25:37.664037Z"
+  "updated_at": "2026-08-28T03:30:58.873298Z",
+  "started_at": "2026-08-24T12:25:37.664037Z"
 }

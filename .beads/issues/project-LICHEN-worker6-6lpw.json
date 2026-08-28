@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-worker6-6lpw",
+  "title": "P1: handoff.py atomicity bug - node orphaned on partial failure",
+  "description": "File: python/src/lichen/gateway/handoff.py\nLine: 525\n\nIn NodeRegistry.handle_handoff_request(), the node is unregistered (line 525) BEFORE the HandoffResponse is returned. If the caller fails to send the response or it is lost in transit:\n- Source gateway has already removed the node from registry\n- Target gateway never receives state\n- Node becomes orphaned (not registered anywhere)\n\nThe spec (docstring lines 7-12) describes a 5-step handoff where step 3 is 'A releases node from its registry, sends confirmation'. This implementation releases first, then returns the response for sending -- the release should be conditional on successful delivery.\n\nFix: Either use a two-phase commit (mark as 'pending handoff', then finalize on ACK), or defer unregister() until after caller confirms response was sent. Alternatively, add a timeout-based cleanup where orphaned nodes are re-registered if no confirm is received.\n\nSECURITY: This enables denial-of-service by triggering handoffs and blocking responses.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:38:14.986224Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:46:03.468397Z",
+  "closed_at": "2026-08-28T02:46:03.468397Z",
+  "close_reason": "Closed",
+  "labels": [
+    "p1",
+    "security",
+    "correctness",
+    "gateway"
+  ]
+}

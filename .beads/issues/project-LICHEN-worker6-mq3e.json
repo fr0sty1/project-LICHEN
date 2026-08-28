@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-mq3e",
   "title": "Node CoAP relay integration still seeds removed ULA addressing",
   "description": "python/tests/test_node_coap_integration.py::test_coap_get_via_relay constructs fd00:: ULA endpoints and gradient destinations after Node moved to the required key-derived 02xx native primary. The request cannot be delivered, times out, and teardown exposes CancelledError. Update the integration fixture to use yggdrasil_address(pubkey) consistently for NodeChannel URIs and gradient destinations while keeping link-local next hops; add/retain the full A-B-C request/response assertion and bounded teardown.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:14:57.368611Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:15:02.785144Z",
-  "started_at": "2026-08-24T14:15:02.785144Z",
-  "lease_expires_at": "2026-08-24T14:20:02.785144Z",
-  "heartbeat_at": "2026-08-24T14:15:02.785144Z"
+  "updated_at": "2026-08-28T03:39:45.557555Z",
+  "started_at": "2026-08-24T14:15:02.785144Z"
 }

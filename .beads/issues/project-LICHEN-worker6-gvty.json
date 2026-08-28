@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-gvty",
   "title": "Clamp trust last_seen across wall-clock regression",
   "description": "Correctness review finding in python/src/lichen/crypto/trust.py: verify_or_pin (line 450), verify_peer (line 495), and add_trust_anchor (lines 539/546) replace last_seen with raw time.time(). If the wall clock steps backward below first_seen, TrustEntry validation raises and blocks an otherwise-valid peer; smaller regressions silently decrease last_seen and persist non-monotonic recency. Clamp new timestamps to at least the existing last_seen (and first_seen) and add regression tests for all mutation paths.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T18:29:20.466185Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T18:29:37.838911Z",
-  "started_at": "2026-08-24T18:29:37.838911Z",
-  "lease_expires_at": "2026-08-24T18:34:37.838911Z",
-  "heartbeat_at": "2026-08-24T18:29:37.838911Z"
+  "updated_at": "2026-08-28T03:38:08.769196Z",
+  "started_at": "2026-08-24T18:29:37.838911Z"
 }

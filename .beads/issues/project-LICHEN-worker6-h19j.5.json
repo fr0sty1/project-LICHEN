@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-h19j.5",
   "title": "Redundant root check in select_parent after early return",
   "description": "## Location\nrust/lichen-rpl/src/dodag.rs:463\n\n## Issue\n```rust\npub fn select_parent(\u0026mut self) {\n    // SECURITY: Root nodes never select a parent - they ARE the DODAG root.\n    // Early exit prevents state corruption from malicious DIOs with low ranks.\n    if self.role == DodagRole::Root {\n        return;  // line 449-451\n    }\n    // ... lines 452-461 ...\n    let Some(best) = best else {\n        if self.role != DodagRole::Root {  // line 463 - redundant\n            // ...\n        }\n        return;\n    };\n}\n```\n\nThe check `if self.role != DodagRole::Root` at line 463 is dead code because we already returned at line 449-451 if role was Root.\n\n## Impact\nNo correctness issue. Minor readability concern - the redundant check suggests the early return might not be comprehensive, but it is.\n\n## Suggested fix\nRemove the redundant check:\n```rust\nlet Some(best) = best else {\n    let r = self.set_role(DodagRole::Unjoined);\n    assert!(r.is_ok(), \"joined DODAG can return to unjoined\");\n    self.preferred_parent = None;\n    self.rank = INFINITE_RANK;\n    return;\n};\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T20:27:20.733727Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T20:27:20.733727Z",
+  "updated_at": "2026-08-28T04:45:25.440728Z",
+  "closed_at": "2026-08-28T04:45:25.440728Z",
+  "close_reason": "The \"redundant\" root check in select_parent (line 593) is intentional defense-in-depth, not a bug. The comment at lines 588-592 explicitly documents why the check is kept: process_dio() already rejects DIOs for roots, but this check keeps that invariant runtime-enforced in release builds too, guarantees the set_role(DodagRole::Joined) below can never fire for a root, and prevents any partial mutation of root state. No changes needed - the design decision is documented and the check provides safety guarantees at minimal cost (single enum comparison).",
   "labels": [
     "readability",
     "review"

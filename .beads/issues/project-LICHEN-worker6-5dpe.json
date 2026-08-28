@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-5dpe",
   "title": "Make DAO vector --check enforce canonical bytes",
   "description": "test/vectors/generate_dao_origin_signature.py --check parses the existing JSON and compares Python objects, unlike the other hardened generators. Reordered keys, altered indentation, duplicate keys collapsed by json.loads, or other noncanonical byte changes pass while the command reports deterministic generation. Compare OUTPUT.read_bytes() against atomic_json.json_bytes(document) byte-for-byte with bounded safe reading, preserve read-only behavior, and add CLI tests for formatting, key-order, duplicate-key, missing, and oversized artifacts.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T18:01:04.132642Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T18:01:13.505961Z",
-  "started_at": "2026-08-24T18:01:13.505961Z",
-  "lease_expires_at": "2026-08-24T18:06:13.505961Z",
-  "heartbeat_at": "2026-08-24T18:01:13.505961Z"
+  "updated_at": "2026-08-28T03:42:42.982262Z",
+  "started_at": "2026-08-24T18:01:13.505961Z"
 }

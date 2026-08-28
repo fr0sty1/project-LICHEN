@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-9q98",
   "title": "Replace incorrect and untested EMA cases in CCP beacon vectors",
   "description": "test/vectors/ccp_beacon_format.json claims EMA(0,[8,12,10,11],alpha=1/4)=5.859375/384000 Q16, but the exact result is 7.15625/468992 Q16. The negative case contains no oracle at all, and python/tests/timing/test_ccp_beacon_format.py collects EMA cases but never parameterizes a test, so both errors pass silently. Replace divergence prose with language-neutral Q16.16 arithmetic-shift outputs for positive/negative samples and add an independent literal recurrence test against production EMA behavior.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:29:34.782563Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:29:52.907468Z",
-  "started_at": "2026-08-24T15:29:38.559602Z",
-  "lease_expires_at": "2026-08-24T15:34:38.559602Z",
-  "heartbeat_at": "2026-08-24T15:29:38.559602Z"
+  "updated_at": "2026-08-28T03:30:04.503164Z",
+  "started_at": "2026-08-24T15:29:38.559602Z"
 }

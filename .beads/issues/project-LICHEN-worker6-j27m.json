@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-j27m",
   "title": "SCHC session vector overstates unsupported local key-generation binding",
   "description": "test/vectors/schc_session_security.json declares both local_key_generation and remote_key_generation as state-key components, and the SCHC draft says their generation tokens, but Python _AuthenticatedReassemblyManager/SchcSessionManager bind local full public key plus only the remote trust-store generation token. LinkLayer has no live local-key rotation and persistence is restored across a new owner instance, so either the artifact/spec must precisely scope local generation as relevant only to implementations with live local rekey, or Python needs an explicit persisted local-generation model. Resolve the contract and add an assertion that the vector's listed components match executable ownership.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:59:38.945774Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:59:46.84779Z",
-  "started_at": "2026-08-24T13:59:46.84779Z",
-  "lease_expires_at": "2026-08-24T14:04:46.84779Z",
-  "heartbeat_at": "2026-08-24T13:59:46.84779Z"
+  "updated_at": "2026-08-28T03:39:57.879665Z",
+  "started_at": "2026-08-24T13:59:46.84779Z"
 }

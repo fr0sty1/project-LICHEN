@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.3",
+  "title": "TX queue: expire stale entries before rejecting incoming deadline",
+  "description": "Correctness review of project-LICHEN-worker6-l1qw.8.17.17.1 found that the new absolute-deadline validation in tx_queue_push() runs before tx_queue_push_at(), while the canonical B.3.1 push contract requires stale queued entries to expire as step 1. Rust expires existing entries before rejecting an expired incoming deadline. Move validation into the locked push sequence after expire_packets_locked() so observable queue state and packets_dropped_deadline remain cross-implementation consistent even when the incoming deadline is invalid.",
+  "acceptance_criteria": "A push with an invalid incoming deadline first expires all stale queued entries and increments deadline-drop statistics, then returns -EINVAL without admitting the incoming packet or incrementing full/preemption stats; C host tests cover the ordering and pass under ASan/UBSan.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:15:14.618816Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:48:46.518076Z",
+  "closed_at": "2026-08-28T03:48:46.518076Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.3",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:15:15.235583Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-hbz1",
   "title": "Rust LinkLayer accepts caller-forged peer IID aliases",
   "description": "Security review P2. rust/lichen-link/src/identity.rs exposes PeerIdentity.pubkey and .iid publicly, while LinkLayer::add_peer in link_layer.rs indexes and later returns that caller-supplied IID without verifying iid_from_pubkey(pubkey). A caller can register an inconsistent {pubkey, iid}; a valid frame signature under that public key is then elevated to AuthenticatedFrame whose sender IID is the forged alias, and upper layers consume it for source/routing authority. Make PeerIdentity construction invariant-preserving (private fields and/or validate in add_peer), reject inconsistent identities before state mutation, and add negative tests proving a valid signature cannot acquire a non-derived IID.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:19:33.309787Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:25:43.131512Z",
-  "started_at": "2026-08-24T12:25:43.131512Z",
-  "lease_expires_at": "2026-08-24T12:30:43.131512Z",
-  "heartbeat_at": "2026-08-24T12:25:43.131512Z"
+  "updated_at": "2026-08-28T03:40:32.251584Z",
+  "started_at": "2026-08-24T12:25:43.131512Z"
 }

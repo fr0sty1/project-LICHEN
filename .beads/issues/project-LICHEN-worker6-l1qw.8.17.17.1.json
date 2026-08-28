@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+  "title": "Zephyr: align TX queue priority ABI and deadlines with B.2 vectors",
+  "description": "Cross-validation of spec/appendix-bufferbloat.md B.2 found that Python and Rust match test/vectors/tx_queue_{bounded,expiry,priority}.json, but lichen/subsys/lichen/link/include/lichen/tx_queue.h defines a divergent four-level ABI: ROUTING=0, ACK=1, URGENT=2, BULK=3. The canonical model is SOS=0, ROUTING=1, ACK alias of ROUTING, URGENT=2, NORMAL=3, BULK=4. The C default-deadline switch also lacks SOS=2000ms, URGENT=30000ms, NORMAL=60000ms, and BULK=120000ms behavior. Update the public header, implementation, all callers/stubs, and host tests; add C conformance coverage tied to the shared vectors so numeric values, boundary expiry, preemption, explicit ENOBUFS, and default deadlines cannot drift again.",
+  "acceptance_criteria": "C priority constants exactly match the canonical five-level vector model with ACK aliasing ROUTING; default deadlines match SOS 2s, ROUTING 5s, explicit ACK 10s, URGENT 30s, NORMAL 60s, BULK 120s; all C callers and tests compile; host tx_queue tests pass with ASan/UBSan; a generated or direct vector-consumer check proves parity with tx_queue_bounded.json, tx_queue_expiry.json, tx_queue_priority.json, and tx_queue_implementation.json.",
+  "notes": "Stopped at user-requested safe checkpoint after round-4 review on 2026-08-27. Current uncommitted implementation is coherent and tested: canonical C ABI SOS=0, ROUTING/ACK=1, URGENT=2, NORMAL=3, BULK=4; canonical default/explicit deadlines; generated conformance consumer for all four tx_queue JSON documents; fixed queue ordering, deadline admission, buffer ownership, clear/destroy failure handling, terminal guards, and LoRa lifecycle propagation. Modified/new files: lichen/subsys/lichen/link/include/lichen/tx_queue.h; lichen/subsys/lichen/link/tx_queue.c; lichen/tests/tx_queue/CMakeLists.txt; lichen/tests/tx_queue/main.c; lichen/tests/tx_queue/gen_vectors.py; lichen/subsys/lichen/l2/lora_l2.c; lora_l2.h; lora_l2_internal.h; lora_l2_state.c; lora_l2_identity.c; lichen_l2_init.c. Validation at checkpoint: explicit Homebrew clang ASan+UBSan host binary 36/36 passed; normal CMake/CTest passed; qemu_x86/atom Twister l2_dispatch 1/1 configuration and 3/3 cases passed; scoped diff check, ruff/py_compile and relevant cppcheck passed (raw broad cppcheck needs Zephyr IS_ENABLED defines). Review findings .1-.20 were fixed, verified, and closed. Round-4 was not fixed because user requested stop; exact open children: .21 32-bit deadline expiry can resurrect ancient packets after \u003e=2^31 ms inactivity; .22 vector JSON loader must reject duplicate keys/non-finite constants; .23 queue stats accessor needs lifecycle synchronization with tx_queue_destroy; .25 common disable retry must recognize LORA_DESTROY_FAILED and retry deinit. .24 is a closed duplicate of .23 caused by a bd create timeout after commit. Next owner should fix .21/.22/.23/.25, rerun host ASan+UBSan and qemu Twister, then run three independent correctness/security/robustness reviews until dry before closing parent. Preserve unrelated dirty edits, especially preexisting epoch/replay/address/CSMA changes in L2 files.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:05:17.224212Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:52:48.008206Z",
+  "started_at": "2026-08-28T03:07:57.787363Z",
+  "lease_expires_at": "2026-08-28T03:57:48.008206Z",
+  "heartbeat_at": "2026-08-28T03:52:48.008206Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:05:18.459341Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

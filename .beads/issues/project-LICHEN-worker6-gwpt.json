@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-gwpt",
   "title": "TX queue completion can resolve non-head entries without removing them",
   "description": "Post-fix correctness review: TxQueue.complete(non_head, success=True) resolves True before head identity check but leaves the entry queued; fail(non_head) and signal_all_pending(False) can also leave terminally resolved entries eligible to transmit. Make exact queue mutation and reservation result atomic; wrong/non-head completion must no-op/raise unresolved, and no False-resolved entry may later transmit. Extend warning tests with reservation assertions.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:02:39.001833Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:04:30.018034Z",
-  "started_at": "2026-08-24T08:04:30.018034Z",
-  "lease_expires_at": "2026-08-24T08:09:30.018034Z",
-  "heartbeat_at": "2026-08-24T08:04:30.018034Z"
+  "updated_at": "2026-08-28T03:41:14.08449Z",
+  "started_at": "2026-08-24T08:04:30.018034Z"
 }

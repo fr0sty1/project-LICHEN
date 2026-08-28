@@ -3,15 +3,13 @@
   "title": "SCHC decompression failure trackers are not wired into production ingress",
   "description": "Rule 7 and versioning correctness rereview: Python and Rust implement RuleVersionFailureTracker and vector tests call it directly, but no production decompression or peer ingress path records failures, clears on success, or notifies an operator. The normative repeated-failures action therefore never occurs. Wire bounded per-authenticated-signer tracking around actual decompression ingress, distinguish malformed or unknown rule failures from unrelated transport errors, clear only on successful validated decompression, and emit the threshold notification exactly once per consecutive run. Add end-to-end same-peer, interleaved-peer, success-reset, eviction, unknown-rule, and below-threshold tests in Python and Rust.",
   "notes": "Correctness detail: current capacity semantics diverge before production wiring. Python evicts least-recently-used sources when full; Rust returns FailureTrackerFull and tracks no recency. Select and specify one deterministic bounded policy, then cover it in shared executable vectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:14:53.089265Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:16:10.358548Z",
-  "started_at": "2026-08-24T08:14:57.442414Z",
-  "lease_expires_at": "2026-08-24T08:19:57.442414Z",
-  "heartbeat_at": "2026-08-24T08:14:57.442414Z"
+  "updated_at": "2026-08-28T03:41:13.150284Z",
+  "started_at": "2026-08-24T08:14:57.442414Z"
 }

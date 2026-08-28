@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-jqtw",
   "title": "Timing DIO vectors lack independent envelope and checksum validation",
   "description": "The packets-timing authenticated DIO corpus is security-sensitive, but its independent test checks signatures and source/signer binding only. It does not verify that the stored SCHC dispatch wraps the exact IPv6 bytes, that IPv6 lengths/fields are coherent, that ICMPv6 checksums are valid except for the intentional negative, or that the DIO Time option span identifies the exact option. Add no-production-import checks over the envelope and each signed network case.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:06:09.829684Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:06:12.997402Z",
-  "started_at": "2026-08-24T12:06:12.997402Z",
-  "lease_expires_at": "2026-08-24T12:11:12.997402Z",
-  "heartbeat_at": "2026-08-24T12:06:12.997402Z"
+  "updated_at": "2026-08-28T03:40:37.889115Z",
+  "started_at": "2026-08-24T12:06:12.997402Z"
 }

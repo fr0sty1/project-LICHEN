@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.11.4",
+  "title": "ManhattanGrid test suite",
+  "description": "Comprehensive tests for ManhattanGrid mobility pattern:\n- Test grid snapping produces valid grid coordinates\n- Test movement stays on grid lines\n- Test intersection detection accuracy\n- Test direction changes only occur at intersections\n- Test pause probability respects configured value (statistical test)\n- Test boundary handling\n- Test deterministic behavior with seeded RNG\n\nFollow existing test patterns in python/tests/.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:35:34.016254Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:35:34.016254Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.11.4",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2.11",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:35:39.387213Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

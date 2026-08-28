@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-j6k5",
   "title": "Replace fabricated IPv6 pubkey derivation vectors with an independent oracle",
   "description": "P1 vector correctness/security: test/vectors/ipv6-addresses.json labels arbitrary pubkeys but records IID/native addresses that are not SHA-512(pubkey) derivations (for example all-zero pubkey claims all-zero IID). It also cites production Python as its oracle and has no deterministic generator/consumer. Replace the key-derived cases with an independent hashlib-based exact generator, retain EUI/short forms only as explicitly non-identity link interoperability vectors, add Python consumer checks, and ensure the canonical API exposes no ULA identity path.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T16:27:19.42921Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T16:27:25.194652Z",
-  "started_at": "2026-08-24T16:27:25.194652Z",
-  "lease_expires_at": "2026-08-24T16:32:25.194652Z",
-  "heartbeat_at": "2026-08-24T16:27:25.194652Z"
+  "updated_at": "2026-08-28T03:29:16.921223Z",
+  "started_at": "2026-08-24T16:27:25.194652Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-q1zh",
   "title": "Correct lichen-link build_frame output buffer contract",
   "description": "The public documentation for LinkLayer::build_frame in rust/lichen-link/src/link_layer.rs says the output buffer must be at least inner_payload.len() + 53 bytes. The encoded signed frame actually needs payload + destination length + 61 bytes (1 length byte + 4 fixed header bytes + 8 signer EUI-64 bytes + 48 signature bytes, in addition to destination and payload). Callers following the documented contract receive BufferTooSmall. Document the exact required size, ideally with a checked helper/test.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 4,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T17:36:00.556821Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T17:36:13.338929Z",
-  "started_at": "2026-08-24T17:36:13.338929Z",
-  "lease_expires_at": "2026-08-24T17:41:13.338929Z",
-  "heartbeat_at": "2026-08-24T17:36:13.338929Z"
+  "updated_at": "2026-08-28T03:44:43.089397Z",
+  "started_at": "2026-08-24T17:36:13.338929Z"
 }

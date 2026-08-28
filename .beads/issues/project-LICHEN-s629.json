@@ -1,12 +1,12 @@
 {
   "id": "project-LICHEN-s629",
   "title": "Codereview pass 1: verify SHA-512 bit selection in ygg_addr_from_pubkey matches Yggdrasil /7 prefix",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T15:20:11.910773939Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:20:35.255976921Z",
+  "updated_at": "2026-08-28T03:42:15.993375Z",
   "closed_at": "2026-07-22T15:20:35.255976921Z",
   "close_reason": "Pass 1 complete: bit selection verified, SHA512[0:8] with 0x02 prefix matches in Rust/C",
   "dependencies": [

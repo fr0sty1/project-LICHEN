@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-t12a",
+  "title": "AdaptiveSFSelect LoadFactor parameter unused in pseudocode",
+  "description": "spec/02a-coordinated-capacity.md line 414 declares LoadFactor as a parameter to AdaptiveSFSelect, and line 410 mentions 'load_factor \u003e 0.8' as a downgrade condition in the thresholds table. However, the pseudocode body (lines 415-422) never uses LoadFactor - it only uses Utilization. Either LoadFactor should be used per the table, or the parameter and table entry should be removed. P2 spec inconsistency.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T01:08:35.128911Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T01:10:26.815605Z",
+  "closed_at": "2026-08-28T01:10:26.815605Z",
+  "close_reason": "Fixed pseudocode: added LoadFactor \u003e 0.8 condition to step 5 to match thresholds table. Test vector select_channel_sf11_load_threshold confirms: load_factor=0.9 triggers SF=11.",
+  "labels": [
+    "p2",
+    "spec-inconsistency",
+    "correctness"
+  ]
+}

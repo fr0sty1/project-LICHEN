@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-4qtr",
   "title": "Time stratum 1 is simultaneously defined as mesh-derived and local-source quality",
   "description": "Correctness review: spec/09-packets-timing.md:303-312 defines wire stratum 1 Meaning=Mesh-derived, Source Class=Network(peer DIO). Lines 324-330 then require direct manual, initialized RTC, and non-gpsd Local-client samples to use stratum 1 while explicitly forbidding relabeling them as mesh provenance. packets-timing.json time_sync_stratum and generate_packets_timing.py:689-704 retain the name MESH_DERIVED while listing Network, Local-client, Manual/static, and Internal RTC. Although prose says stratum does not infer provenance, the normative Meaning and enum-style vector name do exactly that. Rename the quality level to provenance-neutral terminology and align the table/vector so implementations do not reject or misattribute valid local stratum-1 samples.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:18:30.912529Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:20:37.984388Z",
-  "started_at": "2026-08-24T12:20:37.984388Z",
-  "lease_expires_at": "2026-08-24T12:25:37.984388Z",
-  "heartbeat_at": "2026-08-24T12:20:37.984388Z"
+  "updated_at": "2026-08-28T03:40:32.814512Z",
+  "started_at": "2026-08-24T12:20:37.984388Z"
 }

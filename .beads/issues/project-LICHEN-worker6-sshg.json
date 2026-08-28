@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-sshg",
   "title": "lichend leaves an unzeroized identity-seed copy in its long-lived main frame",
   "description": "Security review finding: lichend copies *seed.as_bytes() into a plain [u8;32] sealing_seed before constructing trust/slot/GatewayPersistence owners. The local remains in the async main state for the daemon lifetime and is never zeroized; GatewayPersistence also holds a plain array until new_persistent moves/copies it, including early-error paths. This defeats the Zeroizing fields added to the eventual owners and leaves an unnecessary private-key duplicate in stack/future memory. Carry the seed as Zeroizing\u003c[u8;32]\u003e end-to-end (including GatewayPersistence), minimize copies, and explicitly zeroize the caller's buffer immediately after all owners derive/move their protected material; exercise early returns.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T16:46:07.200501Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T16:51:44.939835Z",
-  "started_at": "2026-08-24T16:51:44.939835Z",
-  "lease_expires_at": "2026-08-24T16:56:44.939835Z",
-  "heartbeat_at": "2026-08-24T16:51:44.939835Z"
+  "updated_at": "2026-08-28T03:42:47.217979Z",
+  "started_at": "2026-08-24T16:51:44.939835Z"
 }

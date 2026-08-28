@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-d100",
   "title": "Link replay vector fixture types are not feature-gated with their test",
   "description": "rust/lichen-link/tests/shared_vectors.rs gates test_replay_window_vectors on schnorr+std but leaves its three serde fixture structs unconditional. Clippy -D warnings for the supported schnorr without std feature set fails with dead_code. Apply the same cfg to the fixture types (or otherwise align their compilation with the test).",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T16:07:05.790283Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T16:07:11.726247Z",
-  "started_at": "2026-08-24T16:07:11.726247Z",
-  "lease_expires_at": "2026-08-24T16:12:11.726247Z",
-  "heartbeat_at": "2026-08-24T16:07:11.726247Z"
+  "updated_at": "2026-08-28T03:42:52.017355Z",
+  "started_at": "2026-08-24T16:07:11.726247Z"
 }

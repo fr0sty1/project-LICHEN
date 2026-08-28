@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-gyo1",
   "title": "Label parser-only signed-frame fixture as cryptographically invalid",
   "description": "Security review found spec/test-vectors/frame.json names frame_with_signature a signed frame with a Schnorr-48 MIC, but its 48 bytes are a repeated 0x55 placeholder and the artifact supplies no public key/transcript or explicit parser-only validity marker. Python and Rust tests accept it as a structurally valid parsed frame and never verify the signature. Although test/vectors/link_frame.json contains real independent signatures, the spec-level fixture can be mistaken for an authentication-positive vector and normalize treating S=1 plus 48 bytes as authenticated. Mark this case explicitly structural/parser-only with authentication_expected=false (or replace it with an independently valid signature and key metadata), and make consumer tests assert that parsing is not authentication; retain independent negative verification coverage for invalid 48-byte MICs.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:28:35.397985Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:29:16.193534Z",
-  "started_at": "2026-08-24T13:29:16.193534Z",
-  "lease_expires_at": "2026-08-24T13:34:16.193534Z",
-  "heartbeat_at": "2026-08-24T13:29:16.193534Z"
+  "updated_at": "2026-08-28T03:43:12.861949Z",
+  "started_at": "2026-08-24T13:29:16.193534Z"
 }

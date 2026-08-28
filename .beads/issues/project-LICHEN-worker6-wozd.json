@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-wozd",
   "title": "DAO origin vectors mark non-key-derived source aliases as accepted",
   "description": "Full Rust RPL gate  fails tests/dao_origin_vectors.rs because test/vectors/dao_origin_signature.json and its generator still label fd424c... and link-local DAO sources as accepted for pubkey 207a..., while the hardened production verifier now correctly requires source == ygg_addr_from_pubkey(pubkey) and returns DaoVerifyError::IidMismatch before crypto. The hand-coded D=0 exact-length fixture likewise expects BadSignature after a DODAG mutation but now fails earlier at canonical origin binding. Artifact owner must regenerate canonical key-derived native 02xx source/target/digest/signature literals and update any expected-stage assertions; Rust production must not relax exact identity binding. Evidence: RPL lib 141/141 passes; integration failures are dao_origin_signature_vectors_match_fixed_literals (valid_d1_self_128 Err(IidMismatch)) and exact_lengths_unknown_options_and_d0_scope_reject_before_crypto (expected BadSignature).",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:50:00.489654Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:50:08.93007Z",
-  "started_at": "2026-08-24T13:50:08.93007Z",
-  "lease_expires_at": "2026-08-24T13:55:08.93007Z",
-  "heartbeat_at": "2026-08-24T13:50:08.93007Z"
+  "updated_at": "2026-08-28T03:30:24.209289Z",
+  "started_at": "2026-08-24T13:50:08.93007Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-21rt",
   "title": "Replay admission failure evicts unrelated active replay window",
   "description": "Correctness review: ReplayProtector._get_or_create_window_unlocked evicts an existing active window before checking whether the retained-floor table can admit that eviction. If floor capacity is exhausted, the rejected new-peer admission still destroys an unrelated peer's exact bitmap/LRU state. Preflight every capacity constraint before mutation and add regression coverage proving a rejected admission leaves windows, bitmaps, floors, and LRU order unchanged.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:41:23.922505Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:41:28.043256Z",
-  "started_at": "2026-08-24T06:41:28.043256Z",
-  "lease_expires_at": "2026-08-24T06:46:28.043256Z",
-  "heartbeat_at": "2026-08-24T06:41:28.043256Z"
+  "updated_at": "2026-08-28T03:33:17.73195Z",
+  "started_at": "2026-08-24T06:41:28.043256Z"
 }

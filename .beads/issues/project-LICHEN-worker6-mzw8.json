@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-mzw8",
+  "title": "DelegationToken.from_cose_sign1 missing type validation for signature",
+  "description": "In delegation_tokens.py, from_cose_sign1() does not validate that the signature field from the CBOR array is of type bytes.\n\nImpact: A 48-character string would pass the len() check in __post_init__ but cause TypeError in schnorr48.verify(). This results in confusing exceptions instead of clean validation errors.\n\nFile: python/src/lichen/crypto/delegation_tokens.py\nFunction: DelegationToken.from_cose_sign1() (line 214)\n\nFix: Add isinstance(signature, bytes) check before passing to constructor.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:38:55.802745Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:46:20.208999Z",
+  "closed_at": "2026-08-28T02:46:20.208999Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python"
+  ]
+}

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-cogy",
   "title": "Validate DaoManager resource and clock configuration exactly",
   "description": "python/src/lichen/rpl/dao_manager.py __post_init__ only compares capacities and timing values numerically. bools, floats, infinities, and NaN can pass: for example max_targets=float('nan') disables len \u003e max_targets enforcement, and NaN lifetime_unit_seconds/freshness_retention_seconds or clock results create invalid deadlines that never expire. Validate all capacities as exact positive bounded ints, pcs/rpl IDs/sequences as exact bounded ints, timing configuration and every clock/now_seconds sample as finite non-negative values with the required monotonic policy before replay-floor persistence or route mutation. Add bool/float/NaN/infinity/huge-bound and failing-clock tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T18:02:22.780599Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T18:02:31.018108Z",
-  "started_at": "2026-08-24T18:02:31.018108Z",
-  "lease_expires_at": "2026-08-24T18:07:31.018108Z",
-  "heartbeat_at": "2026-08-24T18:02:31.018108Z"
+  "updated_at": "2026-08-28T03:42:38.49203Z",
+  "started_at": "2026-08-24T18:02:31.018108Z"
 }

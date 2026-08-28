@@ -4,10 +4,12 @@
   "status": "open",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:47.142939Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-08T05:21:21.518817Z",
+  "updated_at": "2026-08-28T03:41:59.543189Z",
+  "started_at": "2026-08-28T03:13:50.765926Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.19.3",

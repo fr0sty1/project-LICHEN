@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-12gq",
   "title": "Runtime GCP OSCORE responses omit Content-Format",
   "description": "rust/lichen-gateway/src/gateway.rs dispatch_runtime_gcp converts CoapResponse into SecureResponseData with options=\u0026[], discarding response.content_format. Decrypted clients receive CBOR/SenML-CBOR/error payloads without the CoAP Content-Format option. Encode canonical Class E option 12 into the OSCORE plaintext and assert it after decrypting the runtime response.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:55:47.859857Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:56:03.289017Z",
-  "started_at": "2026-08-24T15:56:03.289017Z",
-  "lease_expires_at": "2026-08-24T16:01:03.289017Z",
-  "heartbeat_at": "2026-08-24T15:56:03.289017Z"
+  "updated_at": "2026-08-28T03:38:55.617623Z",
+  "started_at": "2026-08-24T15:56:03.289017Z"
 }

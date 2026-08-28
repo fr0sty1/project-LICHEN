@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-4d4o",
   "title": "SCHC fragmentation normative docs and Rust timeout constant contradict canonical behavior",
   "description": "Final Rule/version correctness review: draft-lichen-schc-lora-00 says ACK bitmap 1 means missing while nearby text and spec/03 say 1 means received; it labels 78c0 as W=0 although the wire encodes W=1,C=1. Rust exposes RETRANSMISSION_TIMEOUT_S=15 while constants.toml and specs say 10, appendix-schc says MAX_ACK=3 while canonical code/vectors say 4, and the draft repeats section heading 6. Adopt canonical 10-second timeout and 4 attempts across Rust/spec/appendix/vectors, correct bitmap/example wording and headings, and add executable parameter assertions so drift fails tests.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:47:45.181887Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:47:45.947522Z",
-  "started_at": "2026-08-24T08:47:45.947522Z",
-  "lease_expires_at": "2026-08-24T08:52:45.947522Z",
-  "heartbeat_at": "2026-08-24T08:47:45.947522Z"
+  "updated_at": "2026-08-28T03:41:07.934407Z",
+  "started_at": "2026-08-24T08:47:45.947522Z"
 }

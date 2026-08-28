@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.10",
+  "title": "TX queue: document and enforce destroy quiescence contract",
+  "description": "Round-2 correctness review found tx_queue_destroy() is not an atomic lifecycle transition: tx_queue_clear() unlocks before pool and mutex teardown, so a concurrent push can enter during destruction. The public type is described as thread-safe but destroy has no external-quiescence precondition. Document that callers must stop/join all queue users before destroy and ensure production L2 follows this ordering; add a lifecycle assertion/state guard if feasible without changing the per-context design.",
+  "acceptance_criteria": "Public destroy documentation explicitly requires exclusive ownership/no concurrent operations; production teardown visibly quiesces workers before destroy; tests cover the supported lifecycle and no code claims concurrent destroy safety.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:23:15.69877Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:49:20.408999Z",
+  "closed_at": "2026-08-28T03:49:20.408999Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.10",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:23:16.47079Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -3,15 +3,13 @@
   "title": "Authenticated vector generators sign a hidden non-wire byte",
   "description": "link_frame.json defines the signed preimage as the exact encoded frame through payload excluding only MIC, but generate_authenticated_schc_dio.py and generate_packets_timing.py insert an extra 0x00 after SeqNum before signing. Verification found 0/11 DIO and 0/16 timing signatures validate over wire-minus-MIC; all validate only with the hidden byte. Define one normative link-signature preimage, remove the hidden byte, regenerate affected vectors independently, and add cross-vector verification over exact wire bytes.",
   "notes": "Design correction after reviewing normative draft-lichen-link-01.md Section 4.4 and commit 3f40a156c9: DST_LEN(1) is intentional domain separation and production Python/Rust agree. Fix the stale link_frame.json preimages/signatures and spec/02, not the authenticated generators' 0x00 for AddrMode.NONE. Include SIID(8) iff its flag is set.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:29:48.230112Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:31:50.618155Z",
-  "started_at": "2026-08-24T11:29:58.402719Z",
-  "lease_expires_at": "2026-08-24T11:34:58.402719Z",
-  "heartbeat_at": "2026-08-24T11:29:58.402719Z"
+  "updated_at": "2026-08-28T03:31:24.285561Z",
+  "started_at": "2026-08-24T11:29:58.402719Z"
 }

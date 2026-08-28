@@ -1,0 +1,2 @@
+{"id":"01a045ef-66fe-7dc3-a0dc-41842183e4a9","issue_id":"project-LICHEN-worker6-r3gz","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-28T01:15:12.510902Z"}
+{"id":"01a0462a-591e-766c-ae3f-d3cc5ace33e6","issue_id":"project-LICHEN-worker6-r3gz","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: Changed Density \u003e 10 to Density \u003e 8 in AdaptiveSFSelect pseudocode at line 418 to match DENSITY_HIGH threshold used throughout the spec and implementations","created_at":"2026-08-28T02:19:35.582422Z"}

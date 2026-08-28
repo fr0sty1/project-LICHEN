@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-5gwg",
   "title": "Node suppresses terminal LinkLayer receipt-clock failure",
   "description": "Security codereview finding across python/src/lichen/link/link_layer.py and python/src/lichen/node.py: LinkLayer._receipt_now permanently sets _receipt_clock_failed after monotonic regression/reentry and every later receive path raises RuntimeError, but Node._receive_loop catches generic Exception, logs it, and continues as though recoverable. The node remains RUNNING while authenticated ingress is permanently unavailable and may repeatedly poll/log forever. Introduce a distinct terminal link-security clock exception (or terminal LinkLayer failure state), surface it like LinkPersistenceError so Node startup/background-task monitoring observes failure, and test first regression plus subsequent receive-loop termination.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:06:17.365835Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:11:23.866323Z",
-  "started_at": "2026-08-24T13:11:23.866323Z",
-  "lease_expires_at": "2026-08-24T13:16:23.866323Z",
-  "heartbeat_at": "2026-08-24T13:11:23.866323Z"
+  "updated_at": "2026-08-28T03:40:12.454572Z",
+  "started_at": "2026-08-24T13:11:23.866323Z"
 }

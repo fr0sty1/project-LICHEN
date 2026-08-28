@@ -3,15 +3,13 @@
   "title": "Relay dedup keys use mutable hop-by-hop SCHC bytes and no longer suppress loops",
   "description": "Correctness review found Node._process_received stores delivery_payload (the received SCHC encoding) in _relay_seen, while forwarding now decompresses, decrements Hop Limit, and recompresses under the next peer's authenticated SCHC context. A looped copy therefore has a different Hop Limit and may also use a different peer-specific encoding, so it will not match the cached bytes; locally originated packets have the same problem. The cache comment still claims it prevents relay loops, but it now only catches byte-identical encodings and allows repeated LoRa forwarding until Hop Limit exhausts. Define a stable authenticated IPv6 datagram identity suitable for dedup (excluding mutable forwarding fields while retaining collision-safe packet identity), use it consistently for RX and local TX, and add multi-hop loop tests with hop-limit changes and different peer compression modes.",
   "notes": "Implemented full canonical IPv6 relay identity with Hop Limit normalized, shared RX/local-TX cache path, hit refresh, and loop tests across hop-limit and SCHC encoding changes. Awaiting 3x review; do not close yet.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:30:53.234485Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:40:34.617878Z",
-  "started_at": "2026-08-24T13:32:15.318559Z",
-  "lease_expires_at": "2026-08-24T13:37:15.318559Z",
-  "heartbeat_at": "2026-08-24T13:32:15.318559Z"
+  "updated_at": "2026-08-28T03:40:06.318079Z",
+  "started_at": "2026-08-24T13:32:15.318559Z"
 }

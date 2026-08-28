@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.11.3",
+  "title": "ManhattanGrid pause probability at intersections",
+  "description": "Add pause behavior at intersections:\n- pause_probability parameter (0.0-1.0) for chance to pause at intersection\n- Pause duration handling (fixed or random within range)\n- Integration with intersection detection from sibling task\n- State machine: MOVING -\u003e PAUSED -\u003e MOVING transitions\n\nThis completes the ManhattanGrid feature set.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:35:09.824362Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:35:09.824362Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.11.3",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2.11",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:35:16.069847Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

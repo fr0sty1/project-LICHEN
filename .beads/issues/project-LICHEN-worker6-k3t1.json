@@ -3,15 +3,13 @@
   "title": "Rule 7 invalid IPv6 address set is not normatively defined",
   "description": "spec/03 Rule 7 defines structural checks but not which IPv6 source/destination classes are invalid; appendix only says invalid addresses while vectors reject multicast source and unspecified destination. Define exact canonical source/destination validity, including unspecified, multicast, loopback, IPv4-mapped, and scoped cases as applicable, and add allow/deny vectors consumed by Python/Rust.",
   "notes": "Python implementation complete: shared validate_rule7_addresses policy is enforced on Rule 7 compression/decompression; schc_adaptation.json rule7_address_policy has a production-backed 12-vector consumer. Focused gates: 12 vector cases pass, 28 SCHC header tests pass, Ruff clean, strict mypy headers.py clean, diff-check clean. Independent 3x review pending parent orchestration. Child k3t1.1 tracks and fixes normative Rule 255 fallback behavior.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:29:50.437009Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:59:14.825134Z",
-  "started_at": "2026-08-24T11:30:02.058261Z",
-  "lease_expires_at": "2026-08-24T11:35:02.058261Z",
-  "heartbeat_at": "2026-08-24T11:30:02.058261Z"
+  "updated_at": "2026-08-28T03:43:33.06833Z",
+  "started_at": "2026-08-24T11:30:02.058261Z"
 }

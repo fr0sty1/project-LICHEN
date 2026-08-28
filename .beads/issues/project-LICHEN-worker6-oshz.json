@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-oshz",
   "title": "[review] project-LICHEN-6mij.2.4: confessions_post not migrated to coap_oscore_auth_mutating helper",
   "description": "P2 consistency — `deaddrop_post` and `msg_inbox_post` were refactored to use the new `coap_oscore_auth_mutating()` helper in `coap_oscore.c`, but `confessions_post` at `coap_dtn.c:238-314` still uses the old inline OSCORE pattern with duplicated unprotected-path logic, #ifdef guards, and manual `is_protected` tracking.\n\nThis means:\n1. Code duplication — two OSCORE auth patterns to maintain\n2. Missing local-admin enforcement — the old pattern allows any unprotected request (no is_local_admin check)\n3. Inconsistent error handling — the old pattern returns COAP_RESPONSE_CODE_BAD_REQUEST for unprotect failure (line 272) vs the correct UNAUTHORIZED\n\n**Fix:** Refactor `confessions_post` to use `coap_oscore_auth_mutating()` like the other two handlers. Note that since `confessions_post` was NOT migrated, it also has the local-admin bypass bug (no-is_local_admin check for unprotected requests).\n\n**Affected:**\n- `lichen/subsys/lichen/coap/coap_dtn.c:238-314`",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-24T15:55:24.757264855Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-24T15:55:24.757264855Z",
+  "updated_at": "2026-08-28T04:09:59.683896Z",
+  "closed_at": "2026-08-28T04:09:59.683896Z",
+  "close_reason": "confessions_post migrated to the reference helper pattern (coap_dtn.c:214-259): coap_oscore_unprotect_resource_request(..., COAP_METHOD_POST, \u0026oscore) + lichen_coap_is_local_admin guard on the unprotected path + coap_oscore_respond_resource for all responses. Behavior changes: (1) SECURITY - unprotected POST /confessions previously bypassed auth entirely; it now requires local-admin (loopback or SLIP-LCI-scope link-local), matching msg_inbox_post/deaddrop_post; (2) unprotect failure now returns UNAUTHORIZED (4.01, RFC 8613 8.2) instead of BAD_REQUEST; (3) method/NOT_ALLOWED and 4.01-on-ctx-miss now enforced by the shared helper instead of duplicated inline code; (4) all CONFIG_LICHEN_COAP_SERVER_OSCORE #ifdef blocks removed from coap_dtn.c (file no longer references the macro); (5) protected-plaintext capacity aligns to CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX (256 default) matching every other migrated handler (was LICHEN_COAP_SERVER_MAX_PAYLOAD=512). deaddrop_post migrated onto the same helper in the same change and the now-dead deaddrop_oscore_respond() static was deleted (396-\u003e293 lines). Note: the issue's prescribed fix ('use coap_oscore_auth_mutating') was superseded - that helper was deleted in 6mij.2.4's design change; the reference pattern is the one described above. Verification: cppcheck clean on coap_dtn.c; helper API cross-checked against coap_server.c reference handlers; no host/twister test compiles coap_dtn.c (CONFIG_LICHEN_COAP_DEADDROP enabled nowhere in-repo) - compile coverage tracked as project-LICHEN-worker6-qj3l.",
   "labels": [
     "local-ok"
   ],

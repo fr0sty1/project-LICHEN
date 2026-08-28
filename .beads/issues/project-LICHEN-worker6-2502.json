@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-2502",
   "title": "lichend treats identity/epoch storage errors and malformed records as first boot",
   "description": "P1 security review. Startup uses load_seed(\u0026storage).ok().flatten() and load_epoch(\u0026storage).ok().flatten().unwrap_or(128). Any read/I/O error is discarded; malformed-length records also map to None. Seed failure generates and writes a new identity before later mismatch exit, while epoch failure resets/persists 128. This contradicts fail-closed comments, destroys recovery evidence, and permits replay-state rollback. Distinguish Missing from Corrupt/Unavailable, create state only on confirmed missing first boot, never overwrite failed existing records, and test I/O errors, short/long records, corruption, and rollback.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:23:43.989998Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:25:47.537744Z",
-  "started_at": "2026-08-24T12:25:47.537744Z",
-  "lease_expires_at": "2026-08-24T12:30:47.537744Z",
-  "heartbeat_at": "2026-08-24T12:25:47.537744Z"
+  "updated_at": "2026-08-28T03:30:47.456518Z",
+  "started_at": "2026-08-24T12:25:47.537744Z"
 }

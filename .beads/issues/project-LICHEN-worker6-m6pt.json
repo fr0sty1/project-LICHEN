@@ -2,17 +2,15 @@
   "id": "project-LICHEN-worker6-m6pt",
   "title": "Review: headers.py edge-cases 2026-08-16",
   "description": "## Review Summary\n\n**File:** python/src/lichen/schc/headers.py\n**Focus:** Edge cases (boundary conditions, error handling, overflow)\n**Language:** Python (library mode, crypto deps detected)\n\n### Findings by Priority\n- **P0:** 0\n- **P1:** 2 (correctness bugs)\n- **P2:** 3 (validation/error handling)\n- **P3:** 2 (dead code, docs)\n\n### Confidence Calibration\nReview confidence: 15% chance of missed bug.\nLeast confident areas: The OSCORE option parsing logic (_valid_oscore_option) has complex offset arithmetic - additional edge cases in malformed option values possible.\nWould raise confidence if: Fuzz testing against malformed CoAP packets.\n\n### Linting\n- ruff check: All checks passed\n- mypy --strict: Success (no issues)\n\nEpic ID: project-LICHEN-worker6-m6pt",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "epic",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T19:09:56.223579Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T19:11:08.80494Z",
+  "updated_at": "2026-08-28T03:34:39.82703Z",
   "started_at": "2026-08-16T19:09:57.222506Z",
-  "lease_expires_at": "2026-08-16T19:14:57.222506Z",
-  "heartbeat_at": "2026-08-16T19:09:57.222506Z",
   "labels": [
     "review"
   ]

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-drqc",
   "title": "Fail SCHC floor restore when rebased hold-down deadline overflows",
   "description": "Correctness review of the restart-safe SCHC floor fix found restore_receiver_floor uses now_ms.saturating_add(hold_down). At now_ms near u64::MAX this produces until_ms \u003c= now_ms, so the restored tombstone can expire immediately instead of enforcing a full hold-down. Use checked_add and reject before consuming/mutating persistent state; test the overflow boundary.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:46:38.645593Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:46:42.462511Z",
-  "started_at": "2026-08-24T15:46:42.462511Z",
-  "lease_expires_at": "2026-08-24T15:51:42.462511Z",
-  "heartbeat_at": "2026-08-24T15:46:42.462511Z"
+  "updated_at": "2026-08-28T03:29:51.333586Z",
+  "started_at": "2026-08-24T15:46:42.462511Z"
 }

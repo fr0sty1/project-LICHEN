@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-62e4",
   "title": "Link persistence journal cannot detect complete deletion or signed revision rollback",
   "description": "Final ACK security review: python/src/lichen/link/link_layer.py:1280-1283 treats a completely absent slot/anchor set as a clean first boot, and the anchor-missing path accepts any signed revision-1 slot. An attacker or fault that deletes the current files (or restores a previously captured signed revision-1 slot while removing the anchor/newer slot) resets inbound replay floors, pins, retired-key lineage, and TX counters on restart. The journal signature proves authenticity but not freshness because its anchor is rollbackable in the same storage domain. Add an explicit authenticated virgin/bootstrap decision plus a monotonic anti-rollback anchor supplied independently of the journal (or a fail-closed equivalent), and test complete deletion, anchor deletion plus old rev1 restoration, full old journal restoration, normal first boot, and crash at each slot/anchor write boundary.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:40:52.661477Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:40:58.388607Z",
-  "started_at": "2026-08-24T08:40:58.388607Z",
-  "lease_expires_at": "2026-08-24T08:45:58.388607Z",
-  "heartbeat_at": "2026-08-24T08:40:58.388607Z"
+  "updated_at": "2026-08-28T03:32:04.454029Z",
+  "started_at": "2026-08-24T08:40:58.388607Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-z0j7",
   "title": "LinkLayer reads rekeyed peer registry outside security lock",
   "description": "Security review: _find_sender snapshots _rekeyed_peers.values() without the security lock while rotation mutates the dict from another thread. Concurrent receive/rekey can raise iteration errors or observe incoherent candidates. Snapshot candidate identities under _security_lock without awaiting, retain final retired-key check, and add threaded receive/rotation stress for linearizable outcomes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T07:13:27.62286Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T07:13:32.998333Z",
-  "started_at": "2026-08-24T07:13:32.998333Z",
-  "lease_expires_at": "2026-08-24T07:18:32.998333Z",
-  "heartbeat_at": "2026-08-24T07:13:32.998333Z"
+  "updated_at": "2026-08-28T03:43:45.573163Z",
+  "started_at": "2026-08-24T07:13:32.998333Z"
 }

@@ -1,16 +1,19 @@
 {
   "id": "project-LICHEN-worker6-vm4o",
   "title": "rust/lichen-schc/src/codec.rs: Integer overflow in CoAP option delta calculation",
-  "description": "In has_oscore_option(), line 212 computes `ext + 269` where ext is u16. When ext \u003e= 65267 (i.e., the extended delta value is 65267-65535), this overflows u16 and wraps around. This can cause incorrect option number tracking, potentially leading to false positives or false negatives for OSCORE option detection.\n\n**Location:** line 212\n**Category:** integer-overflow\n\n**Fix suggestion:** Cast ext to u32 before adding 269, or use checked_add and return false on overflow: `(ext as u32).checked_add(269).map(|d| d as u16)?` or simply use u32 for delta throughout.",
-  "status": "open",
+  "description": "In has_oscore_option(), line 212 computes `ext + 269` where ext is u16. When ext >= 65267 (i.e., the extended delta value is 65267-65535), this overflows u16 and wraps around. This can cause incorrect option number tracking, potentially leading to false positives or false negatives for OSCORE option detection.\n\n**Location:** line 212\n**Category:** integer-overflow\n\n**Fix suggestion:** Cast ext to u32 before adding 269, or use checked_add and return false on overflow: `(ext as u32).checked_add(269).map(|d| d as u16)?` or simply use u32 for delta throughout.",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T03:43:07.571344Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T03:43:07.571344Z",
+  "updated_at": "2026-08-27T00:00:00.000000Z",
   "labels": [
     "bug",
     "codereview"
-  ]
+  ],
+  "closed_at": "2026-08-27T00:00:00.000000Z",
+  "resolution": "invalid",
+  "resolution_notes": "The reported bug does not exist. The code at lines 438 and 459 correctly casts the u16 to usize BEFORE adding 269. The addition occurs on usize values (at least 32 bits), so 65535 + 269 = 65804 fits safely with no overflow. The line number in the bead (212) is also incorrect."
 }

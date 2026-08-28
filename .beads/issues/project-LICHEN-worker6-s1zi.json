@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-s1zi",
   "title": "rust/lichen-schc/src/codec.rs: Integer overflow in CoAP option number accumulation",
   "description": "In has_oscore_option(), line 240 performs `opt_num += delta` where both are u16. If the accumulated option number exceeds 65535, it wraps around. A carefully crafted CoAP payload could cause opt_num to wrap to exactly 9, falsely triggering OSCORE detection and causing the wrong compression rule to be selected.\n\n**Location:** line 240\n**Category:** integer-overflow\n\n**Fix suggestion:** Use saturating_add or checked_add: `opt_num = opt_num.saturating_add(delta); if opt_num \u003e 9 { return false; }` - saturating at max means we'll always hit the \u003e9 check after overflow.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T03:43:09.19136Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T03:43:09.19136Z",
+  "updated_at": "2026-08-28T04:44:40.29085Z",
+  "closed_at": "2026-08-28T04:44:40.29085Z",
+  "close_reason": "The integer overflow fix is already implemented. In has_oscore_option() (lines 397-485), opt_num is declared as usize (line 411), not u16, and the addition uses checked_add() at line 466-469 which returns None on overflow, causing the function to safely return false. No vulnerable opt_num += delta pattern exists in the codebase.",
   "labels": [
     "bug",
     "codereview"

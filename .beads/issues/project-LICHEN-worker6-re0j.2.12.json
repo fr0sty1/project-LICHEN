@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.12",
+  "title": "Scenario DSL Mobility Integration",
+  "description": "Add 'mobility' event type to scenario.py to attach/detach mobility patterns to nodes. Syntax: mobility: {node: node-0, pattern: random_waypoint, params: {...}}. Update ScenarioRunner to step MobilityManager.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:13:46.814127Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T04:45:41.881355Z",
+  "started_at": "2026-08-28T03:52:49.505333Z",
+  "closed_at": "2026-08-28T04:45:41.881355Z",
+  "close_reason": "Mobility event DSL implemented in scenario.py: attach {node, pattern, params} + detach {pattern: null}, MOBILITY_PATTERNS factory registry, runner-owned MobilityManager stepped per tick (interpolations -\u003e mobility -\u003e events order, pause/stop freeze dt clock). 15 new tests; tests/sim 1567 passed 0 failed; ruff/mypy clean on touched lines.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.12",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:13:47.409921Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

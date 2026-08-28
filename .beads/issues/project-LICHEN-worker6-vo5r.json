@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-vo5r",
+  "title": "scripts/fanout.py default endpoint heft:4000 is dead (404)",
+  "description": "scripts/fanout.py:14 defaults LITELLM_URL to http://heft:4000/v1 which returns 404. Same failure seen in spinbead comments (bead yqy6.9.3). Either fix the default, fail fast with a clear error when unreachable, or retire the script in favor of native subagents. opencode.json provider 'LiteLLM on heft' also points there and may be equally dead.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:48:37.032053Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:48:37.032053Z"
+}

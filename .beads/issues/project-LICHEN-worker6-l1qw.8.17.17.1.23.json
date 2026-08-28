@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.23",
+  "title": "LoRa L2: synchronize queue stats with queue destruction",
+  "description": "Round-4 correctness review found lichen_lora_l2_queue_stats_get() can race lichen_lora_l2_deinit()/tx_queue_destroy(). The accessor permits non-UNINIT states and only takes the queue lock, while destroy requires exclusive quiescence; a state-only check has a TOCTOU window. Add lifecycle synchronization covering the public stats accessor and destruction, plus a regression.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:47:03.353644Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:56:48.34275Z",
+  "started_at": "2026-08-28T03:56:48.34275Z",
+  "lease_expires_at": "2026-08-28T04:01:48.34275Z",
+  "heartbeat_at": "2026-08-28T03:56:48.34275Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.23",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:47:04.318273Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

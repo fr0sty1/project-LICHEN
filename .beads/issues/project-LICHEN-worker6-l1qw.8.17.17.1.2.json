@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.2",
+  "title": "TX queue C conformance: validate behavioral vector cases",
+  "description": "Robustness review of the new B.2 C vector generator found that it opens tx_queue_bounded.json and tx_queue_implementation.json but consumes only the bounded capacity and ENOBUFS constant. Changes to canonical preemption, same/lower-priority backpressure, expiry, FIFO pop order, or implementation-contract expectations would not affect the generated header or fail CTest. Validate the named behavioral cases and expected outcomes while generating the header so every required vector file is a meaningful build oracle.",
+  "acceptance_criteria": "gen_vectors.py validates named bounded and implementation cases for priority values, deadlines, preemption victim/action, same/lower-priority rejection, expiry action/stat, FIFO priority order, ENOBUFS, deadline-before-capacity ordering, and oldest-lowest preemption; malformed or divergent vectors fail generation with a clear error; normal generation and sanitizer-backed CTest pass.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:14:38.476369Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:48:42.704828Z",
+  "closed_at": "2026-08-28T03:48:42.704828Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.2",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:14:39.06939Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

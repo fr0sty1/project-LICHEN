@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-aq6i",
   "title": "Couple atomic publication bound to rollback readability",
   "description": "Correctness review of icxb found atomic_write_json_batch enforces _MAX_OUTPUT_ARTIFACT_BYTES independently from _MAX_RECOVERY_ARTIFACT_BYTES. If configuration or tests lower the recovery bound without also lowering the output bound, the writer can publish a new artifact that its next transaction refuses to back up. Cap each encoded artifact by min(publication_limit, recovery_limit), retain aggregate enforcement, and adjust the exact-bound regression to prove the replacement remains recovery-readable.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T18:16:40.46426Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T18:16:46.818885Z",
-  "started_at": "2026-08-24T18:16:46.818885Z",
-  "lease_expires_at": "2026-08-24T18:21:46.818885Z",
-  "heartbeat_at": "2026-08-24T18:16:46.818885Z"
+  "updated_at": "2026-08-28T03:42:38.159985Z",
+  "started_at": "2026-08-24T18:16:46.818885Z"
 }

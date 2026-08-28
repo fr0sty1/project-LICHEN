@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-qalb",
   "title": "Rule 7 security oracle validates address encodings independently instead of shared mode",
   "description": "python/tests/test_protocol_vector_security.py derives source_encoding and destination_encoding independently from each address prefix. Rule 7 has one shared AddressMode bit: IID mode is canonical only when both endpoints are fe80::/64; otherwise both fields are full. The oracle therefore rejects the correct mixed fe90/fe80 vector and could bless a mixed encoding. Derive the expected encoding once from the address pair and assert both fields agree.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:02:50.064577Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:02:53.110731Z",
-  "started_at": "2026-08-24T12:02:53.110731Z",
-  "lease_expires_at": "2026-08-24T12:07:53.110731Z",
-  "heartbeat_at": "2026-08-24T12:02:53.110731Z"
+  "updated_at": "2026-08-28T03:40:41.358041Z",
+  "started_at": "2026-08-24T12:02:53.110731Z"
 }

@@ -3,15 +3,13 @@
   "title": "Packet-format DIO vectors are generated from the production helper they claim to oracle",
   "description": "Final correctness review: test/vectors/generate_packets_timing.py packets_formats_vectors() imports RPL_DIO_FIELDS and dio_packet_bytes from python/src/lichen/packets/formats.py to generate rpl_dio_skeleton and all dio_rank_* expected hex. python/tests/test_packets_timing.py then regenerates with the same helper and only independently checks length/tail, so corruption in the DIO base layout can update both implementation and vectors undetected. The metadata also omits the distinct RFC 6550 Flags octet: dio_packet_bytes emits two zero octets after DTSN but comments both as reserved, and RPL_DIO_FIELDS lists only Reserved. Replace generation with a literal independent 24-byte DIO base encoder (Instance, Version, Rank, G/MOP/Prf, DTSN, Flags, Reserved, DODAGID), independently pin every rank vector byte, and keep production comparison separate.",
   "acceptance_criteria": "DIO expected bytes and field metadata are spec-derived without importing the production packet-format helper; tests independently pin all base fields and edge ranks.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:53:07.535531Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:53:24.433397Z",
-  "started_at": "2026-08-24T14:53:24.433397Z",
-  "lease_expires_at": "2026-08-24T14:58:24.433397Z",
-  "heartbeat_at": "2026-08-24T14:53:24.433397Z"
+  "updated_at": "2026-08-28T03:39:33.254926Z",
+  "started_at": "2026-08-24T14:53:24.433397Z"
 }

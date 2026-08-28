@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-r3gz",
+  "title": "spec/02a AdaptiveSFSelect pseudocode uses Density\u003e10 but should be Density\u003e8",
+  "description": "## Location\nspec/02a-coordinated-capacity.md line 417\n\n## Problem\nThe AdaptiveSFSelect pseudocode step 3 says:\n```\n3. IF (Density \u003e 10) OR (Utilization \u003e 150) THEN SF = MIN(12, SF + 2)\n```\n\nBut the threshold should be Density \u003e 8, not Density \u003e 10.\n\n## Evidence of inconsistency\n\nWithin the same spec document:\n- Line 392 (SelectChannel): `IF Density \u003e 8 THEN RETURN 0`\n- Line 409 (table SF9 row): `Density \u003e 8` triggers downgrade\n- Line 411 (table SF11 row): `Density \u003e 8` triggers downgrade\n- Line 449 (AdaptiveDutyPermille): `IF Density \u003e 8 THEN`\n\nIn implementations:\n- C: `LICHEN_RF_DENSITY_HIGH = 8`\n- Rust: `DENSITY_HIGH: u8 = 8`\n\nIn test vectors:\n- ccp16.json line 189: \"density=10 forces channel 0, sf=11 (density\u003e8).\"\n\n## Impact\nAn implementation following the pseudocode literally would use Density \u003e 10 while implementations following the table, other pseudocode, or test vectors would use Density \u003e 8. This causes different SF selection behavior for density values 9-10.\n\n## Fix\nChange line 417 from:\n```\n3. IF (Density \u003e 10) OR (Utilization \u003e 150) THEN SF = MIN(12, SF + 2)\n```\nto:\n```\n3. IF (Density \u003e 8) OR (Utilization \u003e 150) THEN SF = MIN(12, SF + 2)\n```",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T01:15:12.495516Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:19:35.474017Z",
+  "closed_at": "2026-08-28T02:19:35.474017Z",
+  "close_reason": "Fixed: Changed Density \u003e 10 to Density \u003e 8 in AdaptiveSFSelect pseudocode at line 418 to match DENSITY_HIGH threshold used throughout the spec and implementations"
+}

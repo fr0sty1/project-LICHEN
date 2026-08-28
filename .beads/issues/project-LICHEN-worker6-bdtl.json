@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-worker6-bdtl",
+  "title": "DelegationTokenPayload.from_cbor missing type validation",
+  "description": "In delegation_tokens.py, from_cbor() does not type-check fields after CBOR decoding.\n\nImpact: If delegate is a string instead of bytes, it passes len() validation but silently fails during IID comparison (returns 'DELEGATE_MISMATCH' instead of a type error). Similar issues exist for scope, resource, expiry, and seq fields.\n\nFile: python/src/lichen/crypto/delegation_tokens.py\nFunction: DelegationTokenPayload.from_cbor() (line 158)\n\nFix: Add explicit type checks for each field:\n- delegate: isinstance(v, bytes)\n- scope: isinstance(v, int)\n- resource: isinstance(v, str)\n- expiry: isinstance(v, int)\n- seq: isinstance(v, int)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:38:57.619007Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:38:57.619007Z",
+  "labels": [
+    "python"
+  ]
+}

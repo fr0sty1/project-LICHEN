@@ -3,15 +3,13 @@
   "title": "Bound restored Rust link trust records by configured peer capacity",
   "description": "Correctness review of wm48 found LinkLayer::restore_peer_trust_state validates conflicts but can insert a signed record when peers.len()==max_peers, exceeding the configured bounded trust/replay capacity. Reject restore at capacity before mutation; test that state remains unchanged.",
   "notes": "Fixed restore capacity: validates configured-peer and replay capacities before any mutation; non-mutation test added. Full link tests/clippy pass.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:37:13.025444Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:48:49.289915Z",
-  "started_at": "2026-08-24T14:37:18.963088Z",
-  "lease_expires_at": "2026-08-24T14:42:18.963088Z",
-  "heartbeat_at": "2026-08-24T14:37:18.963088Z"
+  "updated_at": "2026-08-28T03:39:35.078084Z",
+  "started_at": "2026-08-24T14:37:18.963088Z"
 }

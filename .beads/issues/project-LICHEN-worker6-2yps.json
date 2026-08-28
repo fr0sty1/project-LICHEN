@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-2yps",
+  "title": "Vectors: confessions.json senml_cbor_hex is corrupt CBOR",
+  "description": "The senml_cbor_hex in test/vectors/confessions.json vector anonymous_confession_default is not valid CBOR and contradicts the vector's own senml_json: (1) content text header claims 75 bytes but the following bytes contain a NUL, 'theforward' (missing space) and 'today' (text absent from senml_json which has 65 chars); strict parse fails at offset 66 (utf-8 error inside the text string). (2) stray byte 0x8b after the lat f64. (3) stray 0x01 after the anonymous record value. (4) trailing a900 garbage after the ttl record. (5) anonymous/ttl v fields encode as bare integers (02 01) but the repo canonical SenML codec (lichen-senml wire.rs, byte-parity with Python lichen.senml.codec.pack per test/vectors/senml_location.json) always encodes v as f64 (0xfb). No test in the repo consumes this hex byte-exactly (python/tests/test_node_coap_integration.py only asserts it is parseable hex), so the corruption is currently invisible to CI. Discovered while implementing Rust confessions (project-LICHEN-worker6-l1qw.9.14.9.2); Rust vector tests use senml_json fields plus hex oracles computed once from the independent Python pack() codec instead.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:23:11.277639Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:23:11.277639Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2yps",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.9.14.9.2",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T03:23:12.280456Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

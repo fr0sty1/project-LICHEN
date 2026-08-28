@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-oolm",
   "title": "Update authenticated fragmented-DIO reassembly mock with Rule 255 provenance",
   "description": "python/tests/test_node.py::test_link_issues_authenticated_dio_from_verified_reassembly monkeypatches the SCHC reassembly manager to return (ReceiverResult, raw_ipv6), so LinkLayer assigns sentinel rule_id=-1 and the new authenticated-DIO Rule 255 provenance check rejects it. Update the mock to the current return contract including literal Rule 255 and retain an assertion that non-255 provenance is rejected.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:23:28.288715Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:23:50.594936Z",
-  "started_at": "2026-08-24T15:23:50.594936Z",
-  "lease_expires_at": "2026-08-24T15:28:50.594936Z",
-  "heartbeat_at": "2026-08-24T15:23:50.594936Z"
+  "updated_at": "2026-08-28T03:39:21.05308Z",
+  "started_at": "2026-08-24T15:23:50.594936Z"
 }

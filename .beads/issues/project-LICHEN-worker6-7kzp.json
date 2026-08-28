@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-7kzp",
   "title": "Move normative TDMA initialization requirements out of AGENTS.md references",
   "description": "Correctness review found spec/09-packets-timing.md §14.8 declares the mutable contributor instruction file AGENTS.md and hard-coded source line numbers (AGENTS.md:179/:218, lichen_link_init():147, etc.) normative for protocol initialization/FSM behavior. These references are not stable specification anchors, line numbers already drift, and non-Zephyr implementations cannot conform to C symbol ordering as protocol semantics. State any genuinely normative dependency ordering directly in an appropriate spec section with stable section links; keep platform-specific implementation guidance non-normative. Spec-only fix; no C/Zephyr work is required in this session.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:07:47.213256Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:07:55.13534Z",
-  "started_at": "2026-08-24T13:07:55.13534Z",
-  "lease_expires_at": "2026-08-24T13:12:55.13534Z",
-  "heartbeat_at": "2026-08-24T13:07:55.13534Z"
+  "updated_at": "2026-08-28T03:43:10.236837Z",
+  "started_at": "2026-08-24T13:07:55.13534Z"
 }

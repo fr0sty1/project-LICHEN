@@ -3,15 +3,13 @@
   "title": "Python FragmentSender cannot consume authenticated abort controls",
   "description": "SchcSessionManager.record_verified_frame parses every authenticated response as Ack, so canonical Sender-Abort 78fe and Receiver-Abort 78ffff never become pending evidence; transition_ack has no abort branch. An active FragmentSender cannot stop timers, release state, report failure, or enter terminal hold-down on an authenticated peer abort as required by the spec. Add typed authenticated control admission and terminal transitions for aborts with signer/target/generation/replay binding, plus forged/wrong-session/duplicate/timeout race tests and shared vectors.",
   "notes": "Independent rereview found stale/unsolicited canonical ACK could fall through into reassembly and elicit Receiver-Abort instead of silent discard. Fixed with regression.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T09:50:42.675431Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T10:54:58.52634Z",
-  "started_at": "2026-08-24T09:50:47.482612Z",
-  "lease_expires_at": "2026-08-24T09:55:47.482612Z",
-  "heartbeat_at": "2026-08-24T09:50:47.482612Z"
+  "updated_at": "2026-08-28T03:31:37.970996Z",
+  "started_at": "2026-08-24T09:50:47.482612Z"
 }

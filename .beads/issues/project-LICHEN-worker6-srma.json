@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-srma",
   "title": "Fail slot reallocation when too few replacement slots exist",
   "description": "P1 correctness: rust/lichen-gateway/src/slot.rs find_next_available promises the same count as lost_count but returns a shorter Vec when the superframe has insufficient free slots. Callers can silently under-allocate while believing GCP conflict recovery completed. Return a capacity error unless exactly lost_count replacements are found and add a fully occupied vector test.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:10:48.177079Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:10:52.471572Z",
-  "started_at": "2026-08-24T15:10:52.471572Z",
-  "lease_expires_at": "2026-08-24T15:15:52.471572Z",
-  "heartbeat_at": "2026-08-24T15:10:52.471572Z"
+  "updated_at": "2026-08-28T03:30:04.51335Z",
+  "started_at": "2026-08-24T15:10:52.471572Z"
 }

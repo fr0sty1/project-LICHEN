@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-lyrl",
   "title": "Rule 7 AddressMode table ambiguously permits noncanonical link-local IID mode",
   "description": "spec/03-adaptation.md Rule 7 residue table says AddressMode=0 when both addresses are link-local, but the normative prose and uniqueness rule require both addresses specifically in canonical fe80::/64. Implementers following the table could encode fe80::/10 addresses outside /64 in IID-only mode and create an ambiguous/noncanonical wire representation. Change the table wording to the exact fe80::/64 predicate and keep the full-mode rule explicit.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:01:55.094316Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:02:00.430561Z",
-  "started_at": "2026-08-24T12:02:00.430561Z",
-  "lease_expires_at": "2026-08-24T12:07:00.430561Z",
-  "heartbeat_at": "2026-08-24T12:02:00.430561Z"
+  "updated_at": "2026-08-28T03:43:32.325651Z",
+  "started_at": "2026-08-24T12:02:00.430561Z"
 }

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-eqmd",
   "title": "Python SCHC fragmentation version gate only protects Rule 255 payloads",
   "description": "Rule 7 and versioning correctness rereview: LinkLayer.create_fragment_sender checks authenticated version compatibility only when the compressed packet begins with Rule 255. Rule 0 through 7 packets can be fragmented for an unknown or mismatched peer with no accepted version DIO, even though fragmentation rules and compression rules require identical versioned registries. Require a current owner-validated peer version context before creating any fragmented sender, regardless of data Rule ID, and reject unknown, mismatch, stale, retired, and mutated contexts before manager state changes. Add Rule 0, Rule 7, Rule 255, unknown peer, matching peer, and mismatch vectors.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T08:13:42.814964Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T08:13:47.508922Z",
-  "started_at": "2026-08-24T08:13:47.508922Z",
-  "lease_expires_at": "2026-08-24T08:18:47.508922Z",
-  "heartbeat_at": "2026-08-24T08:13:47.508922Z"
+  "updated_at": "2026-08-28T03:32:11.425858Z",
+  "started_at": "2026-08-24T08:13:47.508922Z"
 }

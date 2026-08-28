@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-yqy6.2.11",
   "title": "R1 Neo: RX8130CE RTC",
   "description": "Enable RX8130CE RTC on R1 Neo. I2C bus is modeled but Zephyr binding not enabled. Would provide persistent time across power cycles.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-29T18:13:10.89991Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-29T18:13:10.89991Z",
+  "updated_at": "2026-08-28T04:45:27.756862Z",
+  "closed_at": "2026-08-28T04:45:27.756862Z",
+  "close_reason": "RX8130CE RTC enabled on R1 Neo. Pinned Zephyr v3.7.0 has no RX8130CE driver (upstream added it in 4.1), so added out-of-tree shim following the repo's AG3335 driver convention: lichen/drivers/rtc/ (driver+Kconfig+CMakeLists), lichen/dts/bindings/rtc/lichen,rx8130ce-rtc.yaml (compatible lichen,rx8130ce-rtc - upstream epson,rx8130ce-rtc string would hard-collide with 4.1+ workspaces per edtlib duplicate-binding check), board DTS node rtc@32 (label rx8130ce; rtc/rtc0/rtc1 labels are statically claimed by Nordic SoC validation) and CONFIG_RTC=y in board defconfig. Driver scope: init + get/set time (BCD, k_sem locked, FOUT/battery-switchover init props); no alarms/IRQ (no IRQ line in HW facts). Verification: west build -b r1_neo lichen/apps/test_blink with local SDK 0.16.8 + 4.1.0 workspace = full build+link SUCCESS (driver obj compiled, warning-free). Puck target: DTS+Kconfig stages pass (node bound in generated zephyr.dts, CONFIG_LICHEN_RTC_RX8130CE=y, CONFIG_RTC=y) and driver obj compiles in puck context, but full puck link currently fails on PRE-EXISTING errors in lichen/subsys/lichen/coap/* (4.1-vs-3.7 API mismatch: coap_client send_mutex, -Werror=switch-enum, CBOR static asserts) from other in-flight work - not caused by this change. v3.7.0 API compat cross-checked against upstream v3.7.0 headers (util.h bcd2bin/bin2bcd, RTC_LOG_LEVEL module template, RTC_INIT_PRIORITY, rtc-driver struct, rtc-device.yaml) but not compile-run: no v3.7.0 tree locally. Compile-verified only; HW validation pending (I2C address 0x32, backup-battery switchover mode left at power-on default until bench confirms backup supply topology).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-yqy6.2.11",

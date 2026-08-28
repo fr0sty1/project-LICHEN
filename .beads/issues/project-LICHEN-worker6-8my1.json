@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-8my1",
   "title": "Link receipt freshness survives monotonic clock regression",
   "description": "LinkLayer receipt clock validates only finite nonnegative values and stores no nondecreasing high-water. If its exact MonotonicClock callback regresses after receipt issuance, purge compares against a lower now and otherwise-expired DIO/rekey/ACK evidence can remain elevatable. Bind a monotonic high-water to the Link/capability and permanently fail receipt issuance and elevation on regression, including concurrent reads. Add regression-before-consume/elevate and concurrent clock tests for every receipt consumer.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T09:48:43.964087Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T09:48:49.751931Z",
-  "started_at": "2026-08-24T09:48:49.751931Z",
-  "lease_expires_at": "2026-08-24T09:53:49.751931Z",
-  "heartbeat_at": "2026-08-24T09:48:49.751931Z"
+  "updated_at": "2026-08-28T03:41:03.03925Z",
+  "started_at": "2026-08-24T09:48:49.751931Z"
 }

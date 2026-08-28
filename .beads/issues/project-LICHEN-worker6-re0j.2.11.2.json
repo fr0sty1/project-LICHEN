@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.11.2",
+  "title": "ManhattanGrid intersection detection and direction selection",
+  "description": "Implement intersection behavior for ManhattanGrid:\n- detect_intersection() method to check if node is at a grid intersection\n- Random direction selection at intersections (up/down/left/right excluding reverse)\n- Direction state tracking for current movement direction\n- Handle edge cases: corners, boundaries of simulation area\n\nDepends on base class being in place.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:34:28.418438Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:34:28.418438Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.11.2",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2.11",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:34:40.191737Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

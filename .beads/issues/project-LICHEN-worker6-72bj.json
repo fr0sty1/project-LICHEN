@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-72bj",
   "title": "LichenFrame serializer does not enforce its declared field types",
   "description": "Correctness/type-contract review of python/src/lichen/link/frame.py found _validate only exact-checks mic_length. Values such as epoch=True or seqnum=True are accepted as counters; floats can pass range checks and later raise AttributeError at to_bytes(); a non-AddrMode addr_mode fails through an incidental attribute error; and non-bool signature_present/encrypted values are treated by truthiness. This yields exceptions outside FrameError and permits noncanonical caller state despite a protocol serializer API. Validate exact AddrMode, bool flags, exact int epoch/seqnum excluding bool, and bytes fields before arithmetic/serialization; add exhaustive invalid-type tests and retain FrameError (or a clearly documented TypeError contract) consistently.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:30:54.14858Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:32:16.664054Z",
-  "started_at": "2026-08-24T13:32:16.664054Z",
-  "lease_expires_at": "2026-08-24T13:37:16.664054Z",
-  "heartbeat_at": "2026-08-24T13:32:16.664054Z"
+  "updated_at": "2026-08-28T03:43:10.646574Z",
+  "started_at": "2026-08-24T13:32:16.664054Z"
 }

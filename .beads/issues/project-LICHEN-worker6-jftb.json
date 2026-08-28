@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-jftb",
   "title": "Rust SCHC Rules0/5 match fe80::/10 while reconstructing exact fe80::/64",
   "description": "Correctness review: Rust selects Rules0/5 for any fe80::/10 address but elides/reconstructs an exact fe80::/64 prefix, corrupting valid non-/64 link-local addresses. Use exact link-local /64 matching for every IID-only rule. Shared fe80:0:0:1:: vectors must fall back to Rule255 and round-trip unchanged in Python/Rust.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:59:34.520403Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:59:45.162604Z",
-  "started_at": "2026-08-24T06:59:45.162604Z",
-  "lease_expires_at": "2026-08-24T07:04:45.162604Z",
-  "heartbeat_at": "2026-08-24T06:59:45.162604Z"
+  "updated_at": "2026-08-28T03:32:49.499569Z",
+  "started_at": "2026-08-24T06:59:45.162604Z"
 }

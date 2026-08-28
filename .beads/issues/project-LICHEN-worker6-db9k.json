@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-db9k",
   "title": "StratumTracker transitions race and can regress replay/time state",
   "description": "Correctness/robustness review: StratumTracker has no lock across expiry, validation, replay high-water checks, adoption, clear, reads, or admin reset. Concurrent providers can validate against stale state; same-signer counters can commit out of order and regress the high-water mark, and an older sample can overwrite a newer reference. Serialize every read and transition under one reentrant lock and add barrier-controlled same-signer and competing-source races.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T06:52:21.596427Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T06:52:25.985643Z",
-  "started_at": "2026-08-24T06:52:25.985643Z",
-  "lease_expires_at": "2026-08-24T06:57:25.985643Z",
-  "heartbeat_at": "2026-08-24T06:52:25.985643Z"
+  "updated_at": "2026-08-28T03:32:56.660533Z",
+  "started_at": "2026-08-24T06:52:25.985643Z"
 }

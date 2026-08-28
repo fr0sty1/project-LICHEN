@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-mgop",
   "title": "Rust authenticated fragmentation API is unavailable in no_std builds",
   "description": "The auth-policy change gates the only public FragmentSender::new, FragmentationPolicy::accept_peer, and production AuthenticatedPeerSchcContext issuance behind feature=std; new_unchecked is private. lichen-schc therefore compiles no_std only because outbound authenticated fragmentation is dead/unconstructible, violating the embedded-default contract. Design a no_std-capable Link evidence/policy interface without weakening issuance or revocation, expose usable sender construction, and add no-default compile/API tests plus behavioral parity with std.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T09:50:25.169193Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T09:50:32.721684Z",
-  "started_at": "2026-08-24T09:50:32.721684Z",
-  "lease_expires_at": "2026-08-24T09:55:32.721684Z",
-  "heartbeat_at": "2026-08-24T09:50:32.721684Z"
+  "updated_at": "2026-08-28T03:31:39.04065Z",
+  "started_at": "2026-08-24T09:50:32.721684Z"
 }

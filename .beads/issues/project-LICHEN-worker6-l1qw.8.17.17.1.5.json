@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.5",
+  "title": "TX queue: make clear/destroy retryable on frame-pool release failure",
+  "description": "Security review found that tx_queue_clear() ignores lichen_frame_pool_release() failures and marks entries invalid, while POSIX tx_queue_destroy() destroys the mutex before frame-pool destruction. A release failure can lose the live handle and then return EBUSY after synchronization is irreversibly destroyed, making retry unsafe. Preserve entry validity on release failure, expose/propagate clear failure, and order destroy operations so a failed destroy leaves a retryable object. Update every caller and declaration.",
+  "acceptance_criteria": "Clear returns and propagates frame release errors without discarding live handles; destroy does not destroy queue synchronization until the frame pool is successfully releasable/destroyed; failure-injection tests prove retry succeeds; all declarations/callers/stubs compile and sanitizer-backed tests pass.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:16:42.245075Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:48:56.277326Z",
+  "closed_at": "2026-08-28T03:48:56.277326Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.5",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:16:42.864602Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

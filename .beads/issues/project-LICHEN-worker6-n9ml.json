@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-n9ml",
   "title": "Rust generic SCHC selection mislabels plaintext as OSCORE",
   "description": "Rust OSCORE and plaintext rule descriptors are identical and OSCORE Rules5/6 precede Rules0/1, so SchcContext::select_rule chooses a security-significant OSCORE ID for plaintext fields. The updated rule_versioning consumer already fails left=5/right=0. Require trusted parsed OSCORE evidence or exclude OSCORE rules from generic selection; update vectors/tests for both plaintext and genuine OSCORE.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T10:32:04.460439Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T10:32:21.033809Z",
-  "started_at": "2026-08-24T10:32:21.033809Z",
-  "lease_expires_at": "2026-08-24T10:37:21.033809Z",
-  "heartbeat_at": "2026-08-24T10:32:21.033809Z"
+  "updated_at": "2026-08-28T03:40:53.459247Z",
+  "started_at": "2026-08-24T10:32:21.033809Z"
 }

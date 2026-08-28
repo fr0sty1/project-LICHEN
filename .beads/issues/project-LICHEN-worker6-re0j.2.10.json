@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.10",
+  "title": "Reference Point Group Mobility (RPGM) Pattern",
+  "description": "Add RPGM class - a reference point moves via random waypoint while group members maintain relative positions with bounded variance. More complex than simple group mobility. Include tests.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:13:43.222024Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:35:42.629561Z",
+  "closed_at": "2026-08-28T03:35:42.629561Z",
+  "close_reason": "decomposed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.10",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:13:43.742511Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

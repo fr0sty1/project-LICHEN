@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-c0b3",
+  "title": "handoff.py OscoreState.from_cbor_map lacks type validation for bytes/str fields",
+  "description": "File: python/src/lichen/gateway/handoff.py\nLines: 199-211\n\nOscoreState.from_cbor_map() validates integer bounds for numeric fields (lines 189-197):\n- replay_index, replay_bitfield, sender_sequence: checked against 0 to 2^64-1\n- window_size: checked against 1 to 256\n\nHowever, lines 199-206 extract fields WITHOUT type validation:\n\n```python\nreturn cls(\n    master_secret=params[_KEY_OSCORE_SECRET],\n    master_salt=params[_KEY_OSCORE_SALT],\n    sender_id=params[_KEY_OSCORE_SENDER_ID],\n    recipient_id=params[_KEY_OSCORE_RECIPIENT_ID],\n    algorithm=params[_KEY_OSCORE_ALG],\n    hashfun=params[_KEY_OSCORE_HASHFUN],\n    window_size=window_size,\n    id_context=params.get(_KEY_OSCORE_ID_CTX),\n    ...\n)\n```\n\nExpected types:\n- master_secret: bytes\n- master_salt: bytes\n- sender_id: bytes\n- recipient_id: bytes\n- algorithm: int\n- hashfun: str\n- id_context: bytes | None\n\nPython dataclasses do not enforce type hints at runtime. A malicious CBOR payload could inject wrong types (e.g., master_secret=123 as int) that create an invalid OscoreState. This causes downstream failures when the state is used for OSCORE crypto operations.\n\nFix: Add type checks before construction:\n\n```python\nmaster_secret = params[_KEY_OSCORE_SECRET]\nif not isinstance(master_secret, bytes):\n    raise HandoffError(\"master_secret must be bytes\")\nmaster_salt = params[_KEY_OSCORE_SALT]\nif not isinstance(master_salt, bytes):\n    raise HandoffError(\"master_salt must be bytes\")\n# etc.\n```\n\nImpact: Defense in depth for handoff protocol. Malformed payloads rejected early with clear error instead of cryptic crypto failures.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:51:52.429925Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:51:52.429925Z",
+  "labels": [
+    "gateway",
+    "review",
+    "security"
+  ]
+}

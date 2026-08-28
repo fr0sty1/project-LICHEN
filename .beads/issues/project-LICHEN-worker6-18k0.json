@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-18k0",
   "title": "DAO vector claims DODAGID but encodes the no-DODAGID form",
   "description": "Correctness review: test/vectors/rpl_messages.json:122-132 names dao_base and describes Base RPL DAO with DODAGID, but encoded is only 00000005 (the 4-byte no-D form), flags are zero, and dodag_id is null. test/vectors/generate.py:2552-2557 has the same contradiction. A DAO with DODAGID must set D (kd_flags bit 6) and append 16 bytes (20-byte base), as spec/03-adaptation.md:102-105 states. Either rename/document this as the no-DODAGID fallback case or encode the claimed form.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:17:01.363253Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:20:30.341888Z",
-  "started_at": "2026-08-24T12:20:30.341888Z",
-  "lease_expires_at": "2026-08-24T12:25:30.341888Z",
-  "heartbeat_at": "2026-08-24T12:20:30.341888Z"
+  "updated_at": "2026-08-28T03:43:25.967231Z",
+  "started_at": "2026-08-24T12:20:30.341888Z"
 }

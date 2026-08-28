@@ -3,15 +3,13 @@
   "title": "Bind SCHC fragmentation contexts and tombstones to key generation",
   "description": "Security review found an identity-domain mismatch across the updated specs. draft-lichen-link-01 §4.3 says both replay and SCHC fragmentation state use (SignerPublicKey, KeyGeneration), but spec/03-adaptation.md §5.6 and draft-lichen-schc-lora-00 §5 key active contexts/tombstones only by local/full remote signer identities plus directional Rule ID. A trust-store generation can change while the same public key/EUI alias is reinstalled, so keying only by public-key identity can let a new generation inherit or collide with retired-generation partial reassembly/tombstone state. Make the opaque current key-generation token an explicit component of remote fragmentation ownership (and local generation where relevant), require current-generation revalidation before mutation/control responses, invalidate retired generations atomically, and add vectors/tests for revoke/reinstall of the same public key.",
   "notes": "Rust complete: opaque runtime and durable trust-generation identities propagate from authenticated link evidence through peer authority, permits, active sessions, tombstones, and persisted floors. Same-key revoke/reinstall retires old capability and atomically isolates state. Full link/SCHC/node tests, clippy, fmt, and no-default checks pass.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:27:39.664007Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:48:24.796418Z",
-  "started_at": "2026-08-24T13:28:22.711567Z",
-  "lease_expires_at": "2026-08-24T13:33:22.711567Z",
-  "heartbeat_at": "2026-08-24T13:28:22.711567Z"
+  "updated_at": "2026-08-28T03:30:34.993669Z",
+  "started_at": "2026-08-24T13:28:22.711567Z"
 }

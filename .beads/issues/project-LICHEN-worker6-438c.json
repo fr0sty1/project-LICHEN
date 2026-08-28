@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-438c",
+  "title": "P2: handoff.py no replay_bitfield size validation",
+  "description": "File: python/src/lichen/gateway/handoff.py\nLine: 188\n\nIn OscoreState.from_cbor_map(), replay_bitfield is extracted from CBOR with no size validation:\n\n    replay_bitfield=replay[1],\n\nPython integers are arbitrary precision. An attacker-crafted CBOR payload could set replay_bitfield to an astronomically large value (e.g., 2^1000000), causing memory exhaustion when stored and processed.\n\nOSCORE replay windows are typically 32 or 64 bits. The code should validate:\n    if not 0 \u003c= replay_bitfield \u003c 2**64:\n        raise HandoffError('replay_bitfield out of range')\n\nFix: Add bounds check for replay_bitfield and replay_index in from_cbor_map(). Consider also validating window_size has a reasonable maximum.\n\nImpact: Memory DoS via malformed handoff response.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:38:27.473938Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:46:12.913572Z",
+  "closed_at": "2026-08-28T02:46:12.913572Z",
+  "close_reason": "Closed",
+  "labels": [
+    "p2",
+    "security",
+    "gateway"
+  ]
+}

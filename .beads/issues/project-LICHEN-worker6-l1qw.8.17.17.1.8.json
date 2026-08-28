@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.8",
+  "title": "LoRa L2: propagate TX queue destroy failure during deinit",
+  "description": "Round-2 correctness review found lichen/subsys/lichen/l2/lora_l2.c logs tx_queue_destroy() failure but still transitions to LORA_UNINIT and returns success. With retryable clear/destroy failures, later init may memset/reinitialize queue and pool synchronization that remains live. Keep the context from becoming reinitializable and propagate the error when queue destruction fails; add lifecycle failure coverage if a suitable seam exists.",
+  "acceptance_criteria": "lora_deinit (or equivalent) returns the tx_queue_destroy error and does not transition to an uninitialized/reinitializable state on failure; successful deinit behavior remains unchanged; affected tests/builds pass.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:23:10.187232Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:49:10.919209Z",
+  "closed_at": "2026-08-28T03:49:10.919209Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.8",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:23:11.267451Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

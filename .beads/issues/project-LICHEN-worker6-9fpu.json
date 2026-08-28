@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-9fpu",
   "title": "Durably commit every persistent TrustStore security mutation",
   "description": "python/src/lichen/crypto/trust.py accepts a persistence backend but verify_or_pin, add_trust_anchor, revoke, and remove mutate memory and return success without saving; only rotate_key performs a transactional persistence commit. A crash after a first TOFU pin, anchor upgrade, or revocation therefore reopens first-contact trust or resurrects a revoked key, while the API has already reported success. When persistence is configured, make each security transition commit before exposure with full in-memory rollback on any BaseException; retain clearly named unsafe test-only in-memory helpers if needed. Add crash/failing-backend/CAS tests for every mutator.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T18:01:04.126392Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T18:01:13.365051Z",
-  "started_at": "2026-08-24T18:01:13.365051Z",
-  "lease_expires_at": "2026-08-24T18:06:13.365051Z",
-  "heartbeat_at": "2026-08-24T18:01:13.365051Z"
+  "updated_at": "2026-08-28T03:28:23.779183Z",
+  "started_at": "2026-08-24T18:01:13.365051Z"
 }

@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-ldd3",
+  "title": "spec/02a: MitigateInterference empty slot_map allows TX",
+  "description": "MitigateInterference step 3 (line 585) checks 'IF Op.SlotMap is non-empty AND Slot NOT IN Op.SlotMap'. When slot_map is empty (root assigned zero slots), condition evaluates false and node proceeds to TX. But line 78 says empty array indicates no transmit slots and joiners MUST NOT transmit outside slot_map. Fix: 'IF Op.SlotMap is empty OR Slot NOT IN Op.SlotMap THEN defer'.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:23:04.735436Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:29:50.920725Z",
+  "closed_at": "2026-08-28T02:29:50.920725Z",
+  "close_reason": "Closed",
+  "labels": [
+    "spec",
+    "correctness",
+    "interop"
+  ]
+}

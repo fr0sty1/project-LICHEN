@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-yba2",
+  "title": "rust/lichen-rpl dodag.rs: reject-silently at MAX_PARENT_CANDIDATES prevents adopting better parents",
+  "description": "Python fix (project-LICHEN-worker6-dbdn) added MAX_PARENTS=16 with eviction of the worst non-preferred parent when a strictly better candidate arrives (dodag.py _make_room_for). Rust rust/lichen-rpl/src/dodag.rs lines 449-456 instead silently drops any NEW candidate when at MAX_PARENT_CANDIDATES=16 capacity, so a node at capacity can never replace a degraded parent with a genuinely better one until the parent is pruned by other means. Divergence from the Python eviction semantics; consider parity: evict highest path_cost non-preferred parent when incoming candidate is strictly better. Note rust ParentCandidate has no last_heard field.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:28:37.150531Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:28:37.150531Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-yba2",
+      "depends_on_id": "project-LICHEN-worker6-dbdn",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T03:28:37.937652Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

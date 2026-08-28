@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-82g4",
   "title": "Make standalone gateway current-slot helper honor slots-per-superframe",
   "description": "P3 correctness/API invariant: rust/lichen-gateway/src/slot.rs current_slot_from_timestamp(timestamp, duration_s, start) returns elapsed seconds modulo duration and has no slots_per_superframe parameter. It is only a slot index when every slot is exactly one second; the same module's validated SuperframeConfig supports arbitrary duration_s/slots_per_superframe and correctly scales . Calling the public standalone helper for e.g. 60 seconds/240 slots returns 0..59 instead of 0..239 and can schedule transmission in the wrong quarter of the superframe. Remove/deprecate the inconsistent helper or accept validated slot dimensions and share the SuperframeConfig calculation; add non-1-second-slot vectors and reject timestamps before the configured epoch rather than silently saturating if the protocol requires synchronized time.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T15:02:31.716697Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T15:03:23.759652Z",
-  "started_at": "2026-08-24T15:03:23.759652Z",
-  "lease_expires_at": "2026-08-24T15:08:23.759652Z",
-  "heartbeat_at": "2026-08-24T15:03:23.759652Z"
+  "updated_at": "2026-08-28T03:42:57.110282Z",
+  "started_at": "2026-08-24T15:03:23.759652Z"
 }

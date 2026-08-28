@@ -1,13 +1,17 @@
 {
   "id": "project-LICHEN-worker6-7gk6",
   "title": "presence.py: No size limit on nodes array in PresenceCache.from_mapping (line 236-238). Malicious payload with millions of entries could cause memory exhaustion.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-26T17:15:54.81809Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T17:15:54.81809Z",
+  "updated_at": "2026-08-28T03:52:07.733515Z",
+  "started_at": "2026-08-28T03:12:07.213031Z",
+  "closed_at": "2026-08-28T03:52:07.733515Z",
+  "close_reason": "Bound verified: MAX_CACHE_ENTRIES=256 guard pre-existed in working tree (presence.py:272); added missing boundary tests (256 accept, 257 reject) in tests/test_presence.py. 322-test touched-area run green.",
   "labels": [
     "bug"
   ]

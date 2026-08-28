@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-worker6-ahpr",
+  "title": "P1: handoff.py missing expiry validation in COSE request",
+  "description": "File: python/src/lichen/gateway/handoff.py\nLines: 667, 690-712\n\nHandoffRequestCosePayload has an 'expiry' field (line 667) specifying when the request expires, but nothing validates that current_time \u003c expiry:\n- from_cbor() parses expiry but doesn't check it\n- HandoffRequestCoseSign1.verify() checks signature but not expiry\n- No caller in this module validates expiry\n\nThis allows replay of captured handoff requests after their intended expiry time, bypassing the time-limited validity that expiry is meant to enforce.\n\nFix: Add expiry validation in verify() or create a validate_request() method that checks:\n1. ts \u003c= current_time (request not from future)\n2. current_time \u003c expiry (request not expired)\n\nSECURITY: Enables replay attacks on handoff protocol.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T02:38:22.939279Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T02:46:08.401709Z",
+  "closed_at": "2026-08-28T02:46:08.401709Z",
+  "close_reason": "Closed",
+  "labels": [
+    "p1",
+    "security",
+    "correctness",
+    "gateway"
+  ]
+}

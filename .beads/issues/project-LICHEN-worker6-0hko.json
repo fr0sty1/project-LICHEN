@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-0hko",
   "title": "Rust gateway provisions a link-local DODAG ID that cannot satisfy root key authority",
   "description": "Security review P1. Gateway::new in rust/lichen-gateway/src/gateway.rs sets root_addr and DODAG ID to identity_pubkey_link_local. The convergence DIO admission path requires a root-rank signer to bind full ygg_addr_from_pubkey(pubkey) to the DODAG ID, while spec defines root/DODAG identity as primary 02xx. With a link-local DODAG, a legitimate gateway root DIO is classified as Peer then rejected for role mismatch (or mismatches a correctly configured 02xx DODAG), preventing authenticated joins and weakening root identity semantics. Provision gateway root_addr/dodag_id from the full key-derived primary 02xx address and retain a separate link-local control source; add gateway-to-node authenticated DIO admission coverage.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T12:19:36.996982Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T12:25:41.98735Z",
-  "started_at": "2026-08-24T12:25:41.98735Z",
-  "lease_expires_at": "2026-08-24T12:30:41.98735Z",
-  "heartbeat_at": "2026-08-24T12:25:41.98735Z"
+  "updated_at": "2026-08-28T03:30:49.584354Z",
+  "started_at": "2026-08-24T12:25:41.98735Z"
 }

@@ -3,15 +3,13 @@
   "title": "Node still uses ULA as its primary address and classifies native 02xx peers as external",
   "description": "Correctness review of python/src/lichen/node.py found Node.__post_init__ constructs Router(node_address=fd00::/64 + identity.iid) through _build_address and supplies no 0200::/7 mesh prefix. spec/04-network.md §6.1 requires the key-derived native Yggdrasil 02xx address as the sole routable primary, explicitly eliminates ULA, and says local 02xx traffic stays on LoRa. Consequently packets addressed to this node's actual yggdrasil_address are not DELIVER_LOCAL, and other native mesh peers default to EXTERNAL/RPL-parent routing instead of gradient/LOADng mesh routing. Initialize the router with yggdrasil_address(identity.pubkey), classify/configure 0200::/7 as mesh-local, remove the Node ULA helper, and add local-delivery plus isolated-mesh routing tests using key-derived addresses.",
   "notes": "Implemented in python/src/lichen/node.py: exact yggdrasil_address primary, 0200::/7 mesh classification, exact native announce gradients; focused/adjacent tests green. Awaiting 3x review; do not close yet.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T13:30:51.862993Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T13:40:32.482215Z",
-  "started_at": "2026-08-24T13:32:13.326246Z",
-  "lease_expires_at": "2026-08-24T13:37:13.326246Z",
-  "heartbeat_at": "2026-08-24T13:32:13.326246Z"
+  "updated_at": "2026-08-28T03:30:34.573237Z",
+  "started_at": "2026-08-24T13:32:13.326246Z"
 }

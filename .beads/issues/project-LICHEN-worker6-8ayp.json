@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-8ayp",
   "title": "Python vector consumer has SyntaxError in fragmentation-direction branch",
   "description": "python/tests/test_vectors.py line ~3656 has an elif category == fragmentation_direction indented inside the preceding port-boundary branch, with a misindented body comment. The module cannot collect, blocking all vector gates. Restore valid mutually exclusive branch structure, execute every endpoint-direction semantic field, and run Ruff/strict mypy/full vector consumers after the artifact owner freezes.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T11:45:54.642638Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T11:45:58.188353Z",
-  "started_at": "2026-08-24T11:45:58.188353Z",
-  "lease_expires_at": "2026-08-24T11:50:58.188353Z",
-  "heartbeat_at": "2026-08-24T11:45:58.188353Z"
+  "updated_at": "2026-08-28T03:31:19.982951Z",
+  "started_at": "2026-08-24T11:45:58.188353Z"
 }

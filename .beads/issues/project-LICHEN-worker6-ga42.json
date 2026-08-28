@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ga42",
+  "title": "Fix tunnel-auth COSE example algorithm encoding off by one",
+  "description": "spec/06-security.md section 8.11 normatively assigns Schnorr48-Ed25519 algorithm -65537, but the example protected-header bytes a10139ffff decode to -65536. The mathematically correct deterministic CBOR for {1: -65537} is a1013a00010000. Reconcile the example/comment and directly coupled tunnel-auth vectors without changing the assigned algorithm; add a doc/vector consistency assertion so implementations do not diverge.",
+  "notes": "Corrected only the tunnel-authorization COSE_Sign1 protected-header example in spec/06-security.md section 8.11 from a10139ffff (-65536) to canonical a1013a00010000 ({1:-65537}); preserved all unrelated accumulated spec edits. Directly coupled Python/Rust tunnel implementations already use the correct bytes, and python/tests/gateway/test_tunnel_auth.py contains a fixed byte-for-byte independent assertion. Validation: scoped section search confirms exactly one correct encoding and no stale encoding in 8.11; cbor2 decodes the bytes as {1:-65537} and canonical re-encoding is identical; focused canonical vector test passed; git diff --check passed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T01:50:18.429047Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T01:54:35.456658Z",
+  "started_at": "2026-08-28T01:53:09.472072Z",
+  "closed_at": "2026-08-28T01:54:35.456658Z",
+  "close_reason": "Tunnel-auth example now encodes normative COSE algorithm -65537 and scoped consistency checks pass"
+}

@@ -2,15 +2,13 @@
   "id": "project-LICHEN-worker6-jus4",
   "title": "CoAP vector integration tests hard-code obsolete vector cardinalities",
   "description": "python/tests/test_node_coap_integration.py asserts deaddrop.json and confessions.json each contain exactly four vectors, but the canonical artifacts now contain 18 and 17 valid vectors. This fails before validating any payloads and makes normal vector growth a test break. Replace cardinality literals with semantic required-case/name/category coverage and iterate every current vector, retaining CoAP/SenML validation.",
-  "status": "in_progress",
+  "status": "open",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-24T14:14:57.99489Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-24T14:15:03.785786Z",
-  "started_at": "2026-08-24T14:15:03.785786Z",
-  "lease_expires_at": "2026-08-24T14:20:03.785786Z",
-  "heartbeat_at": "2026-08-24T14:15:03.785786Z"
+  "updated_at": "2026-08-28T03:43:05.235767Z",
+  "started_at": "2026-08-24T14:15:03.785786Z"
 }

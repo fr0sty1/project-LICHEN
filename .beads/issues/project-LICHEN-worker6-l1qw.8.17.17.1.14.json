@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-worker6-l1qw.8.17.17.1.14",
+  "title": "TX queue destroy: prevent retry after failed rollback restoration",
+  "description": "Round-2 security review found that if frame_pool_destroy succeeds, pthread_mutex_destroy fails, and fallible frame_pool reinitialization also fails, the object retains a queue mutex but an invalid pool mutex; retry enters invalid synchronization. Remove reliance on fallible rollback or mark the object terminal and make every later queue/destroy operation reject without touching destroyed synchronization.",
+  "acceptance_criteria": "Every tx_queue_destroy failure either leaves a fully retryable object or a clearly terminal object whose later public operations fail safely without locking destroyed state; failure-path tests cover the supported behavior; host sanitizer suite passes.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:24:30.11032Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:49:36.991931Z",
+  "closed_at": "2026-08-28T03:49:36.991931Z",
+  "close_reason": "Implemented and verified by host sanitizer suite plus review cycle; superseding round-4 findings are tracked separately",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.8.17.17.1.14",
+      "depends_on_id": "project-LICHEN-worker6-l1qw.8.17.17.1",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:24:30.797382Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

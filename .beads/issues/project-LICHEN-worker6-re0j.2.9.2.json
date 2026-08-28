@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-re0j.2.9.2",
+  "title": "Add offset jitter support",
+  "description": "Add optional jitter support to GroupMobility:\n- Per-member offset jitter around their base offset position\n- Configurable jitter magnitude and update frequency\n- Smooth jitter transitions to avoid teleporting\n- Maintain group cohesion while adding realistic variation",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T03:34:05.558391Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T03:34:05.558391Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-re0j.2.9.2",
+      "depends_on_id": "project-LICHEN-worker6-re0j.2.9",
+      "type": "parent-child",
+      "created_at": "2026-08-28T03:34:11.396271Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
