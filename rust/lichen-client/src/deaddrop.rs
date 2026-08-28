@@ -51,6 +51,12 @@ pub const MAX_TTL: u64 = 7 * 24 * 3600;
 /// Length of a drop ID in hex chars (e.g. `7f3a9c`; 3 random bytes).
 const DROP_ID_HEX_LEN: usize = 6;
 
+/// Bounded CSPRNG draws when minting a drop ID (spec 18.9 IDs are 24-bit).
+///
+/// Collisions are negligible until the space is nearly full; giving up with
+/// a store-full outcome keeps a saturated store from spinning forever.
+const MAX_ID_ATTEMPTS: usize = 32;
+
 /// Raw CoAP response code bytes used by the Dead Drop outcomes.
 pub mod code {
     /// 2.01 Created (POST success, `Location-Path: /deaddrop/{id}`).
@@ -711,7 +717,10 @@ pub enum PostOutcome {
     /// 4.29 Too Many Requests; `retry_after` seconds for `Retry-After`.
     TooManyRequests { retry_after: u64 },
     /// 5.03 Service Unavailable with CBOR details
-    /// `{reason: "storage_full", retry_after, available_kb}`.
+    /// `{reason: "storage_full", retry_after, available_kb}`. Also returned
+    /// when the 24-bit drop-ID space is exhausted (a storage-full form: the
+    /// store cannot admit another drop). Live drops are never evicted for a
+    /// request that ends in this outcome.
     ServiceUnavailable { retry_after: u64, available_kb: f64 },
 }
 
@@ -896,20 +905,24 @@ impl DeadDropStore {
     /// Three bytes are drawn from the OS CSPRNG (`getrandom`), mirroring the
     /// Python reference's `secrets.token_hex(3)`: the 6-hex format is fixed
     /// by spec 18.9, so unpredictability against enumeration is the
-    /// achievable property. Collisions are retried until a free ID is found.
-    fn generate_drop_id(&mut self) -> String {
-        loop {
+    /// achievable property. Collisions are retried, but only up to
+    /// [`MAX_ID_ATTEMPTS`] draws; `None` means the 2^24 ID space is
+    /// effectively exhausted (or the CSPRNG failed) and the store cannot
+    /// admit the drop.
+    fn generate_drop_id(&mut self) -> Option<String> {
+        for _ in 0..MAX_ID_ATTEMPTS {
             let mut bytes = [0u8; DROP_ID_HEX_LEN / 2];
-            fill_random(&mut bytes).expect("OS CSPRNG unavailable");
+            fill_random(&mut bytes).ok()?;
             let id = format!(
                 "{:0width$x}",
                 u32::from_be_bytes([0, bytes[0], bytes[1], bytes[2]]),
                 width = DROP_ID_HEX_LEN
             );
             if self.find_index(&id).is_none() {
-                return id;
+                return Some(id);
             }
         }
+        None
     }
 
     /// Remove timestamps older than the 1-hour window from every bucket.
@@ -971,9 +984,10 @@ impl DeadDropStore {
     /// Add a drop directly (mesh delivery or tests).
     ///
     /// Returns the drop ID, or `None` when the pack is invalid, exceeds
-    /// [`MAX_DROP_SIZE`], the budget cannot be met, or the requested ID or
-    /// privacy policy is invalid. An explicit `ttl` of zero is honored as
-    /// immediate expiry.
+    /// [`MAX_DROP_SIZE`], the budget or the drop-ID space is exhausted, or
+    /// the requested ID or privacy policy is invalid. No live drop is
+    /// evicted for a request that returns `None`. An explicit `ttl` of zero
+    /// is honored as immediate expiry.
     pub fn add_drop(
         &mut self,
         payload: &[SenmlRecord],
@@ -999,18 +1013,24 @@ impl DeadDropStore {
             .or_else(|| senml_text(payload, "recipient").map(str::to_owned))
             .or_else(|| senml_text(payload, "node").map(str::to_owned));
         // Validate an explicit ID before eviction (spec 18.9: eviction admits
-        // a stored drop; it must not fire on a doomed request).
-        if let Some(id) = &params.drop_id {
-            if !is_drop_id(id) || self.find_index(id).is_some() {
-                return None;
+        // a stored drop; it must not fire on a doomed request). A generated
+        // ID is likewise minted first so a saturated ID space cannot evict.
+        let generated = match &params.drop_id {
+            Some(id) => {
+                if !is_drop_id(id) || self.find_index(id).is_some() {
+                    return None;
+                }
+                None
             }
-        }
+            None => Some(self.generate_drop_id()?),
+        };
         if !self.evict_for_space(size) {
             return None;
         }
-        let drop_id = match &params.drop_id {
-            Some(id) => id.clone(),
-            None => self.generate_drop_id(),
+        let drop_id = match (&params.drop_id, generated) {
+            (Some(id), _) => id.clone(),
+            (None, Some(id)) => id,
+            (None, None) => return None,
         };
         let now = self.now();
         self.drops.push(StoredDrop {
@@ -1055,13 +1075,20 @@ impl DeadDropStore {
             Err(()) => return PostOutcome::BadRequest,
         };
         let size = request.body.len();
+        // Mint the ID before eviction: a store that cannot admit another
+        // drop (ID space exhausted) must not evict live drops first.
+        let Some(drop_id) = self.generate_drop_id() else {
+            return PostOutcome::ServiceUnavailable {
+                retry_after: 3600,
+                available_kb: self.available_kb(),
+            };
+        };
         if !self.evict_for_space(size) {
             return PostOutcome::ServiceUnavailable {
                 retry_after: 3600,
                 available_kb: self.available_kb(),
             };
         }
-        let drop_id = self.generate_drop_id();
         let recipient = senml_text(&records, "recipient")
             .map(str::to_owned)
             .or_else(|| senml_text(&records, "node").map(str::to_owned));
