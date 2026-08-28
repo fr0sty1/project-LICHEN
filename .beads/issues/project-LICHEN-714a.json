@@ -13,7 +13,8 @@
   "close_reason": "Fixed: generic nRF52840 DK no longer enables LoRa L2 without a lora0 alias; supported LoRa board configs explicitly enable CONFIG_LORA; requested west build passes.",
   "labels": [
     "owner-reserved",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
