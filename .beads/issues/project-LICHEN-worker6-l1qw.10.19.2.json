@@ -1,15 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.19.2",
   "title": "Rust: Check-In / Roll Call implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:46.191815Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-28T03:41:58.943495Z",
+  "updated_at": "2026-08-28T05:01:43.558211Z",
   "started_at": "2026-08-28T03:13:46.184618Z",
+  "closed_at": "2026-08-28T05:01:43.558211Z",
+  "close_reason": "Rust Check-In/Roll Call per spec 12-apps.md 18.6: new lichen-client::checkin module (CheckIn, CheckInStatus, RollcallRequest, RollcallStatus, RollcallResponder, RollcallMissing) with byte-exact CBOR codecs matching test/vectors/checkin_rollcall.json oracle; validation carries vector error codes verbatim (missing_required_field_*, invalid_status_value, incomplete_coordinate_pair, coordinate_out_of_range, invalid_timeout_value, timeout_exceeds_maximum); integer rollcall id coerced to decimal text; constants MAX_CHECKINS/MAX_ROLLCALLS=256, DEFAULT_TIMEOUT_S=60, MAX_TIMEOUT_S=604800; registered in lib.rs with re-exports. Tests: cargo test -p lichen-client --test checkin_rollcall_vectors 6 passed/0 failed; lib 130 passed/0 failed; sibling vector targets all green (messaging 3, position_cache 2, position_senml 4, presence 3, rangetest 6, receipt 3). Python oracle pytest python/tests/coap/test_sos_resource.py: 107 passed. cargo fmt clean on touched files; clippy zero findings on checkin code (3 remaining lib clippy errors are in another worker's in-flight deaddrop.rs/msg.rs, untracked/uncommitted). Note: waypoint_vectors.rs failure in worktree is another worker's untracked in-flight file, not touched. Commit f37bff72e0",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.19.2",
