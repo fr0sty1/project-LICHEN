@@ -5,19 +5,19 @@
   "status": "open",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-28T01:45:47.682914Z",
   "created_by": "Mark Atwood",
   "updated_at": "2026-06-28T02:21:01.709734Z",
   "closed_at": "2026-06-28T02:21:01.709734Z",
-  "close_reason": "Fixed: Added explicit NULL check with printk warning before early return. The function now logs 'WARN: secure_zero called with NULL pointer' in release builds instead of silently returning. Also added #include <zephyr/sys/printk.h>.",
+  "close_reason": "Fixed: Added explicit NULL check with printk warning before early return. The function now logs 'WARN: secure_zero called with NULL pointer' in release builds instead of silently returning. Also added #include \u003czephyr/sys/printk.h\u003e.",
   "labels": [
     "contract",
     "exhaustive",
     "owner-reserved",
     "review",
-    "round1"
+    "round1",
+    "local-ok"
   ],
   "dependencies": [
     {
