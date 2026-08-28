@@ -15,6 +15,23 @@
 static uint16_t coap_port = 5683U;
 COAP_SERVICE_DEFINE(lichen_coap_server, NULL, &coap_port, 0);
 
+/* Probe resource joined to the service so coap_resource_parse_observe()
+ * can allocate from the shared observer pool and register onto
+ * OBS_PROBE_RESOURCE->observers. */
+#include <zephyr/version.h>
+static const char *const obs_probe_path[] = {"diag", "obsprobe", NULL};
+COAP_RESOURCE_DEFINE(obs_probe, lichen_coap_server,
+		     {
+			     .path = obs_probe_path,
+		     });
+/* COAP_RESOURCE_DEFINE names the symbol coap_resource_<name> on 3.x and
+ * plain <name> on 4.x (see coap_service.h). */
+#if KERNEL_VERSION_NUMBER >= 0x040000
+#define OBS_PROBE_RESOURCE (&obs_probe)
+#else
+#define OBS_PROBE_RESOURCE (&coap_resource_obs_probe)
+#endif
+
 #include "rangetest_vectors.inc"
 
 /* Large enough for the largest canonical SenML pack in the vectors. */
@@ -407,6 +424,150 @@ ZTEST(coap_rangetest, test_traceroute_max_hops_encode) {
 	len = lichen_traceroute_encode(tight, sizeof(tight), hops,
 				       LICHEN_RANGETEST_MAX_HOPS);
 	zassert_equal(len, -ENOBUFS, "bound must be exact");
+}
+
+/* Builds a GET with an Observe option and a token, aimed at the probe
+ * resource (which belongs to the service, so observer registration works). */
+static int build_observe_request(struct coap_packet *request, uint8_t *buf,
+				 size_t buf_size, uint32_t observe)
+{
+	const uint8_t token[4] = {0xa1, 0xa2, 0xa3, 0xa4};
+	int ret;
+
+	/* coap_find_options() parses up to max_len, not the written
+	 * length; 0xff padding reads as the payload marker so option
+	 * parsing stops deterministically after the Observe option. */
+	memset(buf, 0xff, buf_size);
+	ret = coap_packet_init(request, buf, buf_size, COAP_VERSION_1,
+			       COAP_TYPE_CON, sizeof(token), token,
+			       COAP_METHOD_GET, coap_next_id());
+	if (ret != 0) {
+		return ret;
+	}
+	return coap_append_option_int(request, COAP_OPTION_OBSERVE, observe);
+}
+
+ZTEST(coap_rangetest, test_observe_registered_only_on_success) {
+	struct coap_packet request;
+	uint8_t pkt_buf[64];
+	struct sockaddr_in6 peer = {.sin6_family = AF_INET6};
+	static const uint8_t bad_body[] = {0x01}; /* not a CBOR map */
+	const uint8_t *saved_payload = request_payload;
+	size_t saved_len = request_payload_len;
+	int ret;
+
+	init_provider();
+
+	/* 4.00 path: an Observe request with an invalid body must not
+	 * consume an observer slot (RFC 7641 registration happens only
+	 * after the request fully validates). */
+	ret = build_observe_request(&request, pkt_buf, sizeof(pkt_buf), 0U);
+	zassert_ok(ret, "packet init");
+	request_payload = bad_body;
+	request_payload_len = sizeof(bad_body);
+	ret = lichen_rangetest_get_handler(OBS_PROBE_RESOURCE, &request,
+					   (struct sockaddr *)&peer,
+					   sizeof(peer));
+	request_payload = saved_payload;
+	request_payload_len = saved_len;
+	zassert_ok(ret, "handler");
+	zassert_equal(response_code, COAP_RESPONSE_CODE_BAD_REQUEST,
+		      "invalid body must 4.00");
+	zassert_true(sys_slist_is_empty(&OBS_PROBE_RESOURCE->observers),
+		     "4.00 must not consume an observer slot");
+
+	/* Success path: an Observe request with an empty body registers. */
+	ret = build_observe_request(&request, pkt_buf, sizeof(pkt_buf), 0U);
+	zassert_ok(ret, "packet init");
+	request_payload = NULL;
+	request_payload_len = 0U;
+	ret = lichen_rangetest_get_handler(OBS_PROBE_RESOURCE, &request,
+					   (struct sockaddr *)&peer,
+					   sizeof(peer));
+	zassert_ok(ret, "handler");
+	zassert_true(response_code == COAP_RESPONSE_CODE_CONTENT,
+		     "code got 0x%02x", response_code);
+	zassert_false(sys_slist_is_empty(&OBS_PROBE_RESOURCE->observers),
+		      "successful Observe GET must register");
+
+	/* Cleanup: cancellation (Observe=1) removes the observer again.
+	 * Use an explicit empty body so the cancellation cannot be
+	 * preempted by a decode failure. */
+	ret = build_observe_request(&request, pkt_buf, sizeof(pkt_buf), 1U);
+	zassert_ok(ret, "packet init");
+	request_payload = NULL;
+	request_payload_len = 0U;
+	ret = lichen_rangetest_get_handler(OBS_PROBE_RESOURCE, &request,
+					   (struct sockaddr *)&peer,
+					   sizeof(peer));
+	request_payload = saved_payload;
+	request_payload_len = saved_len;
+	zassert_ok(ret, "handler");
+	zassert_true(sys_slist_is_empty(&OBS_PROBE_RESOURCE->observers),
+		     "Observe=1 must deregister");
+}
+
+ZTEST(coap_rangetest, test_skip_item_rejects_wrapping_map_argument) {
+	/* Unknown-key value is a map with an 8-byte argument of 2^63:
+	 * doubling it would wrap to 0 and make the container look empty,
+	 * re-aligning the parse (conformance bead w4n8). The body must be
+	 * rejected outright; without the fix it would be accepted and the
+	 * trailing interval_ms key honored. */
+	static const uint8_t body[] = {
+		0xa2, /* map(2) */
+		0x65, 'o', 't', 'h', 'e', 'r', /* "other" */
+		0xbb, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, /* map(2^63) with no content */
+		0x6b, 'i', 'n', 't', 'e', 'r', 'v', 'a', 'l', '_',
+		'm', 's', /* "interval_ms" */
+		0x19, 0x03, 0xe8, /* 1000 */
+	};
+	struct lichen_rangetest_interval decoded = {
+		.has_interval_ms = true,
+		.interval_ms = 0xcafeU,
+	};
+
+	zassert_true(lichen_rangetest_interval_decode(body, sizeof(body),
+						      &decoded) < 0,
+		     "wrapping map argument must be rejected");
+	zassert_true(decoded.has_interval_ms, "decode must be atomic");
+	zassert_equal(decoded.interval_ms, 0xcafeU, "decode must be atomic");
+}
+
+ZTEST(coap_rangetest, test_interval_floor_1000ms) {
+	struct lichen_rangetest_interval decoded = {
+		.has_interval_ms = true,
+		.interval_ms = 0xcafeU,
+	};
+
+	/* 999 ms is below the 1 s floor (conformance bead 1t99): a 1 ms
+	 * continuous test would flood the radio once a scheduler consumes
+	 * the interval. */
+	static const uint8_t below[] = {
+		0xa1, /* map(1) */
+		0x6b, 'i', 'n', 't', 'e', 'r', 'v', 'a', 'l', '_',
+		'm', 's', /* "interval_ms" */
+		0x19, 0x03, 0xe7, /* 999 */
+	};
+	zassert_true(lichen_rangetest_interval_decode(below, sizeof(below),
+						      &decoded) < 0,
+		     "interval_ms 999 must be rejected");
+	zassert_true(decoded.has_interval_ms, "decode must be atomic");
+	zassert_equal(decoded.interval_ms, 0xcafeU, "decode must be atomic");
+
+	/* Exactly 1000 ms is the inclusive floor (the valid vector uses
+	 * it) and still decodes. */
+	static const uint8_t at_floor[] = {
+		0xa1, /* map(1) */
+		0x6b, 'i', 'n', 't', 'e', 'r', 'v', 'a', 'l', '_',
+		'm', 's', /* "interval_ms" */
+		0x19, 0x03, 0xe8, /* 1000 */
+	};
+	zassert_ok(lichen_rangetest_interval_decode(
+			   at_floor, sizeof(at_floor), &decoded),
+		   "interval_ms 1000 is the inclusive floor");
+	zassert_true(decoded.has_interval_ms, "floor value decodes");
+	zassert_equal(decoded.interval_ms, 1000U, "floor value is 1000");
 }
 
 static void *suite_setup(void)

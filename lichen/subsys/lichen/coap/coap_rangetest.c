@@ -33,6 +33,10 @@
 #define RANGETEST_TRACE_CBOR_MAX 720U
 #define RANGETEST_DECODE_MAX_ENTRIES 32U
 #define RANGETEST_SKIP_MAX_DEPTH 8U
+/* Floor for a continuous-test interval (spec 18.7): anything shorter
+ * floods the radio once a scheduler consumes it. The valid vector uses
+ * exactly 1000, so the floor is inclusive. */
+#define RANGETEST_INTERVAL_MIN_MS 1000U
 
 static struct lichen_rangetest_config s_config;
 static uint8_t s_eui64[LICHEN_RANGETEST_EUI64_LEN];
@@ -251,8 +255,20 @@ static bool cur_skip_item(struct cbor_cursor *c)
 			}
 			c->off += (size_t)argument;
 		} else if (major == 0x80U || major == 0xa0U) {
-			uint64_t slots = major == 0xa0U ? argument * 2U : argument;
+			uint64_t slots;
 
+			if (major == 0xa0U) {
+				/* Reject arguments whose doubling would
+				 * wrap; a wrapped slot count makes the
+				 * container look empty and re-aligns the
+				 * parse on untrusted input. */
+				if (argument > UINT64_MAX / 2U) {
+					return false;
+				}
+				slots = argument * 2U;
+			} else {
+				slots = argument;
+			}
 			if (slots == 0U) {
 				/* fall through to the unwind below */
 			} else if (depth >= RANGETEST_SKIP_MAX_DEPTH) {
@@ -547,7 +563,7 @@ static int interval_handle_key(const uint8_t *key, size_t key_len,
 
 	if (key_len == 11U && memcmp(key, "interval_ms", 11U) == 0) {
 		if (out->has_interval_ms || !cur_read_uint(c, &value) ||
-		    value == 0U) {
+		    value == 0U || value < RANGETEST_INTERVAL_MIN_MS) {
 			return -EBADMSG;
 		}
 		out->has_interval_ms = true;
@@ -772,15 +788,6 @@ int lichen_rangetest_get_handler(struct coap_resource *resource,
 			resource, request, addr, addr_len, &oscore,
 			COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
-	if (observe_count == 1) {
-		ret = coap_resource_parse_observe(resource, request, addr);
-		if (ret < 0) {
-			return coap_oscore_respond_resource(
-				resource, request, addr, addr_len, &oscore,
-				COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0,
-				NULL, 0);
-		}
-	}
 	ret = lichen_rangetest_interval_decode(oscore.payload,
 					       oscore.payload_len, &interval);
 	if (ret < 0) {
@@ -801,6 +808,18 @@ int lichen_rangetest_get_handler(struct coap_resource *resource,
 		return coap_oscore_respond_resource(
 			resource, request, addr, addr_len, &oscore,
 			COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0, NULL, 0);
+	}
+	/* RFC 7641: only register the observer once the request is fully
+	 * validated and the response is guaranteed; a 4.00/5.03 must not
+	 * consume an observer slot. */
+	if (observe_count == 1) {
+		ret = coap_resource_parse_observe(resource, request, addr);
+		if (ret < 0) {
+			return coap_oscore_respond_resource(
+				resource, request, addr, addr_len, &oscore,
+				COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, 0,
+				NULL, 0);
+		}
 	}
 	return coap_oscore_respond_resource(resource, request, addr, addr_len,
 					    &oscore, COAP_RESPONSE_CODE_CONTENT,
