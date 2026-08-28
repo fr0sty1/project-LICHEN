@@ -15,7 +15,8 @@
   "heartbeat_at": "2026-07-22T14:16:43.717080491Z",
   "labels": [
     "defer-external",
-    "renode"
+    "renode",
+    "needs-linux"
   ],
   "dependencies": [
     {
