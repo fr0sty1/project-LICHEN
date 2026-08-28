@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-a9t1",
+  "title": "spec/02a:336 Pseudocode OnMissedSuperframe ignores SYNCED state missed-beacon transition",
+  "description": "Section 2a.6.2 FSM table defines SYNCED-\u003eDESYNCED transition on '\u003e3 missed beacons'. Section 2a.6.6 pseudocode provides OnMissedSuperframe() but it explicitly ignores SYNCED state: 'IF State != RECOVERING THEN RETURN State'. There is no procedure for handling missed beacons in SYNCED state. Implementers have no algorithm for this required state transition. Fix: Add OnMissedBeacon() procedure that tracks missed_beacon_count in SYNCED state and transitions to DESYNCED when threshold exceeded.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:59:45.590567Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:59:45.590567Z",
+  "labels": [
+    "spec",
+    "ccp",
+    "desync",
+    "codereview"
+  ]
+}

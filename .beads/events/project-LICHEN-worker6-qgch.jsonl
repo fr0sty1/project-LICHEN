@@ -1,3 +1,4 @@
 {"id":"01a00deb-b993-7cec-a3be-9b383782f17c","issue_id":"project-LICHEN-worker6-qgch","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-17T04:12:27.411847Z"}
 {"id":"01a00deb-b99b-7e40-b8e8-71cca9f3b367","issue_id":"project-LICHEN-worker6-qgch","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T04:12:27.419934Z"}
 {"id":"01a00deb-b99e-7e9e-a5de-aa20da64322f","issue_id":"project-LICHEN-worker6-qgch","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T04:12:27.422958Z"}
+{"id":"01a045e1-456c-7aae-a23b-27d0204c9541","issue_id":"project-LICHEN-worker6-qgch","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: local-ok","created_at":"2026-08-28T00:59:46.412701Z"}
