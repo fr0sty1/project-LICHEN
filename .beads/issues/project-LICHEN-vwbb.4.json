@@ -12,7 +12,8 @@
   "started_at": "2026-07-24T16:08:39.73347607Z",
   "labels": [
     "defer-external",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
