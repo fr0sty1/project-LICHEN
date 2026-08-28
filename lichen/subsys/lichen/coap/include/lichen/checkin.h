@@ -396,7 +396,12 @@ int lichen_rollcall_req_from_cbor(const uint8_t *_Nonnull buf, size_t len,
 /**
  * @brief Encode a roll-call status document.
  * Canonical key order: id, started, timeout_s, responded, missing.
- * @return 0 on success, -LICHEN_CHECKIN_ERR_BUFFER_TOO_SMALL.
+ *
+ * Responded entries carry a status string; an out-of-range status value
+ * fails closed instead of indexing the string table.
+ *
+ * @return 0 on success, -LICHEN_CHECKIN_ERR_BUFFER_TOO_SMALL, or
+ *         -LICHEN_CHECKIN_ERR_INVALID_STATUS for an out-of-range status.
  */
 int lichen_rollcall_status_to_cbor(const struct lichen_rollcall_status *_Nonnull s,
 				   uint8_t *_Nonnull buf, size_t cap, size_t *_Nonnull out_len);
@@ -504,7 +509,9 @@ lichen_rollcall_find(struct lichen_checkin_service *_Nonnull svc,
  * Adds or updates the node in the responded list (removed from missing).
  *
  * @return 0 on success, -ENOENT if the roll call is unknown,
- *         -ENOSPC if the track list is full.
+ *         -ENOSPC if the track list is full,
+ *         -LICHEN_CHECKIN_ERR_INVALID_STATUS if track->status is out of
+ *         range (it is rendered verbatim in the 18.6.3 document).
  */
 int lichen_rollcall_record_responded(struct lichen_rollcall *_Nonnull rc,
 				     const struct lichen_rollcall_track *_Nonnull track);
@@ -515,7 +522,10 @@ int lichen_rollcall_record_responded(struct lichen_rollcall *_Nonnull rc,
  * Adds or updates the node in the missing list (removed from responded).
  *
  * @return 0 on success, -ENOENT if the roll call is unknown,
- *         -ENOSPC if the track list is full.
+ *         -ENOSPC if the track list is full,
+ *         -LICHEN_CHECKIN_ERR_INVALID_STATUS if track->status is out of
+ *         range (a track may later move back to responded, where its
+ *         status is rendered).
  */
 int lichen_rollcall_record_missing(struct lichen_rollcall *_Nonnull rc,
 				   const struct lichen_rollcall_track *_Nonnull track);

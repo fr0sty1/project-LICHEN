@@ -1216,6 +1216,11 @@ int lichen_rollcall_status_to_cbor(const struct lichen_rollcall_status *s,
 
 	for (size_t i = 0; i < s->responded_count; i++) {
 		const struct lichen_rollcall_track *t = &s->responded[i];
+		const char *status_str = lichen_checkin_status_str(t->status);
+
+		if (status_str == NULL) {
+			return -LICHEN_CHECKIN_ERR_INVALID_STATUS;
+		}
 
 		n = cbor_encode_header(p, rem, 5, 3U);
 		if (n == 0U) {
@@ -1259,8 +1264,7 @@ int lichen_rollcall_status_to_cbor(const struct lichen_rollcall_status *s,
 		p += n;
 		rem -= n;
 
-		n = cbor_encode_tstr(p, rem, STATUS_STRINGS[t->status],
-				     strlen(STATUS_STRINGS[t->status]));
+		n = cbor_encode_tstr(p, rem, status_str, strlen(status_str));
 		if (n == 0U) {
 			return -LICHEN_CHECKIN_ERR_BUFFER_TOO_SMALL;
 		}
@@ -1713,6 +1717,11 @@ static int rollcall_move_track(struct lichen_rollcall_track *dst,
 int lichen_rollcall_record_responded(struct lichen_rollcall *rc,
 				     const struct lichen_rollcall_track *track)
 {
+	/* A track may move back to responded later, where its status is
+	 * rendered; reject out-of-range values at the public entry. */
+	if (lichen_checkin_status_str(track->status) == NULL) {
+		return -LICHEN_CHECKIN_ERR_INVALID_STATUS;
+	}
 	return rollcall_move_track(rc->responded, &rc->responded_count,
 				   LICHEN_ROLLCALL_TRACK_MAX,
 				   rc->missing, &rc->missing_count, track);
@@ -1721,6 +1730,9 @@ int lichen_rollcall_record_responded(struct lichen_rollcall *rc,
 int lichen_rollcall_record_missing(struct lichen_rollcall *rc,
 				   const struct lichen_rollcall_track *track)
 {
+	if (lichen_checkin_status_str(track->status) == NULL) {
+		return -LICHEN_CHECKIN_ERR_INVALID_STATUS;
+	}
 	return rollcall_move_track(rc->missing, &rc->missing_count,
 				   LICHEN_ROLLCALL_TRACK_MAX,
 				   rc->responded, &rc->responded_count, track);

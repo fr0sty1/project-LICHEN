@@ -217,7 +217,6 @@ config LICHEN_COAP_KEYS
 	depends on LICHEN_SLIP_TRANSPORT
 	depends on ZCBOR
 	select COAP_URI_WILDCARD
-	imply ZCBOR
 	imply TINYCRYPT_SHA256
 	help
 	  Enable CoAP server resources for key store management per LCI spec
@@ -473,7 +472,11 @@ config LICHEN_CHECKIN_PAYLOAD_MAX
 	help
 	  Static buffer used to decode requests and encode list/status
 	  documents. Must bound the worst-case {"checkins":[...]} document
-	  for the configured store sizes.
+	  for the configured store sizes; this is enforced at build time
+	  (MAX_CHECKINS x worst-case entry, LICHEN_CHECKIN_ENTRY_CBOR_MAX
+	  in lichen/checkin.h, plus wrapper). A build error here means the
+	  buffer cannot hold that document: raise this value or lower
+	  CONFIG_LICHEN_CHECKIN_MAX_CHECKINS.
 
 config LICHEN_CHECKIN_LOG_LEVEL
 	int "Check-In / Roll Call log level"

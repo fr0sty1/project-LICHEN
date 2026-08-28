@@ -675,6 +675,88 @@ static int test_track_capacity_full(void)
 	return 1;
 }
 
+static int test_rollcall_invalid_status_rejected(void)
+{
+	static struct lichen_checkin_entry checkins[1];
+	static struct lichen_rollcall rollcalls[1];
+	struct lichen_checkin_service svc;
+	struct lichen_rollcall *rc;
+	struct lichen_rollcall_track track;
+	struct lichen_rollcall_status st;
+	uint8_t wire[LICHEN_ROLLCALL_REQ_CBOR_MAX];
+	uint8_t render[LICHEN_ROLLCALL_STATUS_CBOR_MAX];
+	size_t wire_len;
+	size_t render_len;
+	enum lichen_checkin_status bogus =
+		(enum lichen_checkin_status)99;
+
+	lichen_checkin_service_init(&svc, checkins, 1U, rollcalls, 1U);
+	lichen_checkin_service_set_time(&svc, 1716742800U);
+
+	{
+		struct lichen_rollcall_req req;
+
+		memset(&req, 0, sizeof(req));
+		strcpy(req.id, "roll-001");
+		ASSERT_EQ(lichen_rollcall_req_to_cbor(&req, wire,
+						      sizeof(wire),
+						      &wire_len), 0, "encode");
+		ASSERT_EQ(lichen_rollcall_post(&svc, wire, wire_len, NULL),
+			  LICHEN_CHECKIN_CODE_CREATED, "created");
+	}
+
+	rc = lichen_rollcall_find(&svc, "roll-001");
+	ASSERT_EQ(rc != NULL, 1, "found");
+
+	/* Out-of-range status is rejected at the public entry points;
+	 * the track lists must stay untouched. */
+	memset(&track, 0, sizeof(track));
+	make_node(track.node, sizeof(track.node), 0x2222U);
+	track.ts = 1716742801U;
+	track.status = bogus;
+	ASSERT_EQ(lichen_rollcall_record_responded(rc, &track),
+		  -LICHEN_CHECKIN_ERR_INVALID_STATUS, "responded rejected");
+	ASSERT_EQ(rc->responded_count, 0U, "responded unchanged");
+	ASSERT_EQ(lichen_rollcall_record_missing(rc, &track),
+		  -LICHEN_CHECKIN_ERR_INVALID_STATUS, "missing rejected");
+	ASSERT_EQ(rc->missing_count, 0U, "missing unchanged");
+
+	/* The encoder also fails closed on a caller-supplied struct. */
+	memset(&st, 0, sizeof(st));
+	strcpy(st.id, "roll-001");
+	st.started = 1716742800U;
+	st.timeout_s = 60U;
+	st.responded_count = 1U;
+	make_node(st.responded[0].node, sizeof(st.responded[0].node),
+		  0x3333U);
+	st.responded[0].ts = 1716742801U;
+	st.responded[0].status = bogus;
+	ASSERT_EQ(lichen_rollcall_status_to_cbor(&st, render,
+						 sizeof(render),
+						 &render_len),
+		  -LICHEN_CHECKIN_ERR_INVALID_STATUS,
+		  "encoder rejects out-of-range status");
+
+	/* A valid status still renders and round-trips. */
+	st.responded[0].status = LICHEN_CHECKIN_STATUS_DELAYED;
+	ASSERT_EQ(lichen_rollcall_status_to_cbor(&st, render,
+						 sizeof(render),
+						 &render_len), 0,
+		  "valid status renders");
+	{
+		struct lichen_rollcall_status parsed;
+
+		ASSERT_EQ(lichen_rollcall_status_from_cbor(render,
+							   render_len,
+							   &parsed), 0,
+			  "decode");
+		ASSERT_EQ(parsed.responded_count, 1U, "one responded");
+		ASSERT_EQ(parsed.responded[0].status,
+			  LICHEN_CHECKIN_STATUS_DELAYED, "status kept");
+	}
+	return 1;
+}
+
 /* --- list encodings (oracle GET shapes) --- */
 
 static int test_list_encode_shapes(void)
@@ -814,6 +896,7 @@ int main(void)
 	RUN_TEST(test_rollcall_capacity_unavailable);
 	RUN_TEST(test_rollcall_expiry_and_defaults);
 	RUN_TEST(test_track_capacity_full);
+	RUN_TEST(test_rollcall_invalid_status_rejected);
 	RUN_TEST(test_list_encode_shapes);
 	RUN_TEST(test_config_codec_and_due);
 	RUN_TEST(test_buffer_too_small);

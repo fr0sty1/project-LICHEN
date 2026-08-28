@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-tdgv",
+  "title": "lichen_rollcall_status_to_cbor: unguarded STATUS_STRINGS index, OOB on caller-supplied enum",
+  "description": "checkin.c:1262 indexes STATUS_STRINGS[t-\u003estatus] (3-element) with status copied verbatim from caller via public lichen_rollcall_record_responded/record_missing (checkin.c:1706-1720). Any value \u003e=3 is OOB read/hard-fault class on MCU. Sibling lichen_checkin_to_cbor defends exactly this via status_str()==NULL -\u003e -INVALID_STATUS (checkin.c:439-444). Fix: validate status in record_* entry points and/or guard index in status_to_cbor, symmetric with checkin codec; host-suite test with out-of-range enum.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:12.631779Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:09:57.4545Z",
+  "started_at": "2026-08-28T07:07:38.887437Z",
+  "closed_at": "2026-08-28T07:09:57.4545Z",
+  "close_reason": "lichen_rollcall_status_to_cbor no longer indexes STATUS_STRINGS unguarded: responded-loop status now goes through lichen_checkin_status_str() with a NULL -\u003e -LICHEN_CHECKIN_ERR_INVALID_STATUS fail-closed return, symmetric with lichen_checkin_to_cbor's defense. lichen_rollcall_record_responded/record_missing validate track-\u003estatus at the public entry points (status is rendered when a track moves back to responded), so stored state can never hold an out-of-range value. Header docs updated with the new return values. Regression test_rollcall_invalid_status_rejected added: bogus enum 99 rejected by both record_* entry points with lists untouched, encoder returns -INVALID_STATUS on a hostile struct, valid status still renders and round-trips. Evidence: host suite 16/16 pass under ASan/UBSan; cppcheck findings identical to baseline (5 pre-existing in main.c, none new)."
+}
