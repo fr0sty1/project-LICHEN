@@ -14,7 +14,8 @@
   "close_reason": "Converted test_node_server.py to push-based RX, 758 tests pass",
   "labels": [
     "owner-reserved",
-    "renode"
+    "renode",
+    "needs-linux"
   ],
   "dependencies": [
     {
