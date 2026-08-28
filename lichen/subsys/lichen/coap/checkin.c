@@ -1612,6 +1612,16 @@ uint8_t lichen_rollcall_post(struct lichen_checkin_service *svc,
 			     const uint8_t *buf, size_t len,
 			     enum lichen_checkin_error *detail)
 {
+	/* Legacy creator-less path: re-posts of existing ids keep the
+	 * original wipe semantics (vectors and host suite rely on it). */
+	return lichen_rollcall_post_ex(svc, buf, len, NULL, detail);
+}
+
+uint8_t lichen_rollcall_post_ex(struct lichen_checkin_service *svc,
+				const uint8_t *buf, size_t len,
+				const char *creator,
+				enum lichen_checkin_error *detail)
+{
 	struct lichen_rollcall_req req;
 	struct lichen_rollcall *rc = NULL;
 	uint64_t started;
@@ -1658,6 +1668,28 @@ uint8_t lichen_rollcall_post(struct lichen_checkin_service *svc,
 		rc = &svc->rollcalls[svc->rollcall_count++];
 		memset(rc, 0, sizeof(*rc));
 		strcpy(rc->id, req.id);
+		if (creator != NULL &&
+		    strlen(creator) < LICHEN_ROLLCALL_CREATOR_MAX) {
+			strcpy(rc->creator, creator);
+			rc->has_creator = true;
+		}
+	} else {
+		/* Re-post of a known id: only the recorded creator may
+		 * update it (bead wtmn). The creator's own re-post keeps
+		 * the responded/missing lists; anyone else is refused. */
+		bool same = (rc->has_creator && creator != NULL)
+				    ? strcmp(rc->creator, creator) == 0
+				    : (!rc->has_creator && creator == NULL);
+
+		if (!same) {
+			if (detail != NULL) {
+				*detail = LICHEN_CHECKIN_ERR_CREATOR_MISMATCH;
+			}
+			return LICHEN_CHECKIN_CODE_FORBIDDEN;
+		}
+		rc->started = started;
+		rc->timeout_s = timeout_s;
+		return LICHEN_CHECKIN_CODE_CREATED;
 	}
 	rc->started = started;
 	rc->timeout_s = timeout_s;

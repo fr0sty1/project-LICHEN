@@ -114,6 +114,8 @@ extern "C" {
 
 /** Maximum roll-call id length (32 chars + NUL) */
 #define LICHEN_ROLLCALL_ID_MAX 33
+/** Buffer for a creator identity: full IPv6 text (45) + NUL. */
+#define LICHEN_ROLLCALL_CREATOR_MAX 46
 
 /** Conservative CBOR size bound for a check-in payload */
 #define LICHEN_CHECKIN_CBOR_MAX 512
@@ -187,6 +189,7 @@ enum lichen_checkin_code {
 	LICHEN_CHECKIN_CODE_BAD_REQUEST = 0x80, /**< 4.00 Bad Request */
 	LICHEN_CHECKIN_CODE_NOT_FOUND = 0x81,   /**< 4.04 Not Found */
 	LICHEN_CHECKIN_CODE_UNAVAILABLE = 0xA3, /**< 5.03 Service Unavailable */
+	LICHEN_CHECKIN_CODE_FORBIDDEN = 0x83,   /**< 4.03 Forbidden */
 };
 
 /**
@@ -214,6 +217,7 @@ enum lichen_checkin_error {
 	LICHEN_CHECKIN_ERR_NODE_FORMAT,      /**< node is not full-notation IPv6 */
 	LICHEN_CHECKIN_ERR_INVALID_TS,       /**< negative timestamp */
 	LICHEN_CHECKIN_ERR_TS_FUTURE,        /**< timestamp too far in the future */
+	LICHEN_CHECKIN_ERR_CREATOR_MISMATCH, /**< re-post by a non-creator */
 	LICHEN_CHECKIN_ERR_MISSING_ID,       /**< missing_required_field_id */
 	LICHEN_CHECKIN_ERR_INVALID_ID,       /**< id is not tstr/uint */
 	LICHEN_CHECKIN_ERR_INVALID_TIMEOUT,  /**< invalid_timeout_value (<= 0) */
@@ -303,6 +307,10 @@ struct lichen_rollcall {
 	struct lichen_rollcall_track
 		missing[LICHEN_ROLLCALL_TRACK_MAX];   /**< Missing entries */
 	size_t missing_count;
+	/** Authenticated creator identity text (IPv6 address), when the
+	 * creating request carried one. Recorded at creation time only. */
+	bool has_creator;
+	char creator[LICHEN_ROLLCALL_CREATOR_MAX];
 };
 
 /**
@@ -505,6 +513,25 @@ uint8_t lichen_checkin_post(struct lichen_checkin_service *_Nonnull svc,
 uint8_t lichen_rollcall_post(struct lichen_checkin_service *_Nonnull svc,
 			     const uint8_t *_Nonnull buf, size_t len,
 			     enum lichen_checkin_error *_Nullable detail);
+
+/**
+ * @brief Submit or re-submit a roll call with creator identity binding
+ *        (spec 18.6.2; bead wtmn).
+ *
+ * Semantics on an existing id:
+ * - creator matches the recorded creator (or both unknown): the started /
+ *   timeout fields update and the responded/missing lists are preserved.
+ * - creator differs (including unknown vs known): 4.03 Forbidden; the
+ *   entry is untouched. A non-creator cannot reset or squat an in-flight
+ *   roll call.
+ *
+ * @param creator NUL-terminated authenticated identity text (peer IPv6
+ *                address), or NULL when no identity is available.
+ */
+uint8_t lichen_rollcall_post_ex(struct lichen_checkin_service *_Nonnull svc,
+				const uint8_t *_Nonnull buf, size_t len,
+				const char *_Nullable creator,
+				enum lichen_checkin_error *_Nullable detail);
 
 /**
  * @brief Find a live roll call by id (expiry prunes first).

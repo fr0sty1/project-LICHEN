@@ -90,6 +90,27 @@ static void service_tick_locked(void)
  * @brief Whether a self-asserted node address text matches the request
  *        source address (used for OSCORE-authenticated check-ins).
  */
+/* Authenticated identity text for creator binding: the peer IPv6
+ * address (or NULL when the peer is not a usable IPv6 source). The
+ * OSCORE context is bound to the source address, so this text identifies
+ * the authenticated sender. */
+static const char *peer_identity_text(char *buf, size_t buf_len,
+				      const struct sockaddr *addr,
+				      socklen_t addr_len)
+{
+	if (addr == NULL || addr_len < sizeof(struct sockaddr_in6) ||
+	    addr->sa_family != AF_INET6 ||
+	    buf_len < LICHEN_ROLLCALL_CREATOR_MAX) {
+		return NULL;
+	}
+	if (net_addr_ntop(AF_INET6,
+			 &((const struct sockaddr_in6 *)addr)->sin6_addr,
+			 buf, buf_len) == NULL) {
+		return NULL;
+	}
+	return buf;
+}
+
 static bool node_matches_peer(const char *node, const struct sockaddr *addr,
 			      socklen_t addr_len)
 {
@@ -199,11 +220,8 @@ int lichen_rollcall_post_handler(struct coap_resource *resource,
 {
 	struct coap_oscore_unprotect_result oscore;
 	struct lichen_rollcall_req req;
-	struct lichen_rollcall *rc;
+	char creator_text[LICHEN_ROLLCALL_CREATOR_MAX];
 	enum lichen_checkin_error detail = LICHEN_CHECKIN_OK;
-	size_t responded_count = 0U;
-	size_t missing_count = 0U;
-	bool existing = false;
 	uint8_t code;
 	int ret;
 
@@ -226,6 +244,9 @@ int lichen_rollcall_post_handler(struct coap_resource *resource,
 						    COAP_RESPONSE_CODE_BAD_REQUEST,
 						    0, NULL, 0U);
 	}
+	const char *creator = peer_identity_text(creator_text,
+						 sizeof(creator_text), addr,
+						 addr_len);
 	ret = lichen_rollcall_req_from_cbor(oscore.payload,
 					    oscore.payload_len, &req);
 	if (ret != LICHEN_CHECKIN_OK) {
@@ -238,26 +259,9 @@ int lichen_rollcall_post_handler(struct coap_resource *resource,
 
 	k_mutex_lock(&s_lock, K_FOREVER);
 	service_tick_locked();
-	rc = lichen_rollcall_find(&s_service, req.id);
-	if (rc != NULL) {
-		existing = true;
-		responded_count = rc->responded_count;
-		missing_count = rc->missing_count;
-	}
-	code = lichen_rollcall_post(&s_service, oscore.payload,
-				    oscore.payload_len, &detail);
-	if (existing && code == LICHEN_CHECKIN_CODE_CREATED) {
-		/* Re-post of a known id: the service layer resets its
-		 * tracking lists unconditionally. Creator identity is not
-		 * recorded in this layer, so the reset cannot be
-		 * conditioned on it; keep the responded/missing lists
-		 * (the update stays a capacity/timing operation only). */
-		rc = lichen_rollcall_find(&s_service, req.id);
-		if (rc != NULL) {
-			rc->responded_count = responded_count;
-			rc->missing_count = missing_count;
-		}
-	}
+	code = lichen_rollcall_post_ex(&s_service, oscore.payload,
+				       oscore.payload_len, creator,
+				       &detail);
 	k_mutex_unlock(&s_lock);
 
 	if (code == LICHEN_CHECKIN_CODE_UNAVAILABLE) {

@@ -162,6 +162,27 @@ static size_t encode_checkin(uint8_t *buf, size_t cap, const char *node,
 	return len;
 }
 
+/* call_handler with a non-default source address (identity tests). */
+static int call_handler_from(
+	int (*handler)(struct coap_resource *, struct coap_packet *,
+		       struct sockaddr *, socklen_t),
+	struct coap_resource *resource, uint8_t method,
+	const char *const *path, const uint8_t *payload, size_t payload_len,
+	const uint8_t addr_bytes[16])
+{
+	uint8_t buf[PACKET_SIZE];
+	struct coap_packet request;
+	struct sockaddr_in6 addr = {.sin6_family = AF_INET6};
+
+	memcpy(addr.sin6_addr.s6_addr, addr_bytes, 16);
+	build_request(&request, buf, method, path, payload, payload_len);
+	response_code = 0U;
+	response_payload_len = 0U;
+	int ret = handler(resource, &request, (struct sockaddr *)&addr,
+			  sizeof(addr));
+	return ret == 0 ? response_code : ret;
+}
+
 static size_t encode_rollcall(uint8_t *buf, size_t cap, const char *id)
 {
 	struct lichen_rollcall_req r;
@@ -560,6 +581,63 @@ static void before(void *fixture)
 	lichen_checkin_resource_set_time(0U, true);
 	memset(lichen_checkin_resource_service(), 0,
 	       sizeof(*lichen_checkin_resource_service()));
+}
+
+/* Creator-bound roll-call re-posts (bead wtmn): the creator may update
+ * started/timeout while preserving the tracking lists; any other
+ * identity gets 4.03 and the entry is untouched. */
+ZTEST(checkin_resource, test_rollcall_repost_creator_binding) {
+	struct coap_resource resource;
+	struct lichen_checkin_service *svc = lichen_checkin_resource_service();
+	static const uint8_t other_peer[16] = {0x20, 0x01, 0x0d, 0xb8,
+					       0x00, 0x00, 0x00, 0x00,
+					       0x00, 0x00, 0x00, 0x00,
+					       0x00, 0x00, 0x00, 0x02};
+	uint8_t payload[64];
+	size_t payload_len;
+	struct lichen_rollcall *rc;
+
+	init_resource(&resource);
+	lichen_checkin_resource_set_time(1716742800U, true);
+
+	/* Creator creates the roll call. */
+	payload_len = encode_rollcall(payload, sizeof(payload), "roll-w");
+	zassert_equal(call_handler(lichen_rollcall_post_handler, &resource,
+				   COAP_METHOD_POST, ROLLCALL_PATH, payload,
+				   payload_len),
+		      COAP_RESPONSE_CODE_CREATED);
+
+	/* Someone responds; the creator's later re-post must keep it. */
+	rc = lichen_rollcall_find(svc, "roll-w");
+	zassert_not_null(rc, "roll call exists");
+	rc->responded_count = 1U;
+	rc->missing_count = 1U;
+
+	/* Creator re-post: 2.01, lists preserved, timing updated. */
+	lichen_checkin_resource_set_time(1716742860U, true);
+	zassert_equal(call_handler(lichen_rollcall_post_handler, &resource,
+				   COAP_METHOD_POST, ROLLCALL_PATH, payload,
+				   payload_len),
+		      COAP_RESPONSE_CODE_CREATED);
+	rc = lichen_rollcall_find(svc, "roll-w");
+	zassert_not_null(rc, "roll call still exists");
+	zassert_equal(rc->responded_count, 1U, "creator re-post preserves");
+	zassert_equal(rc->missing_count, 1U, "creator re-post preserves");
+	zassert_equal(rc->started, 1716742860U, "started updated");
+	zassert_true(rc->has_creator, "creator recorded");
+
+	/* A different identity re-posting the same id: 4.03, untouched. */
+	payload_len = encode_rollcall(payload, sizeof(payload), "roll-w");
+	lichen_checkin_resource_set_time(1716742920U, true);
+	zassert_equal(call_handler_from(lichen_rollcall_post_handler,
+					&resource, COAP_METHOD_POST,
+					ROLLCALL_PATH, payload, payload_len,
+					other_peer),
+		      COAP_RESPONSE_CODE_FORBIDDEN);
+	rc = lichen_rollcall_find(svc, "roll-w");
+	zassert_not_null(rc, "entry untouched by the rejected re-post");
+	zassert_equal(rc->started, 1716742860U, "started not changed");
+	zassert_equal(rc->responded_count, 1U, "lists not wiped");
 }
 
 ZTEST_SUITE(checkin_resource, NULL, NULL, before, NULL, NULL);
