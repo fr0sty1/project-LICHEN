@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-y0q1",
+  "title": "rangetest: RANGETEST_TRACE_CBOR_MAX 640 below worst-case 657 for 8 full-form hops",
+  "description": "lichen/subsys/lichen/coap/coap_rangetest.c:29: 640 bytes but module's own LICHEN_RANGETEST_MAX_HOPS=8 with 39-char full-notation IPv6 needs 41 envelope + 8x77 = 657 (45-char worst case 705). Legal traceroutes fail closed 5.03 via -ENOBUFS at :826-831. Fix: raise to \u003e=720 (41+8x83); add a host/twister test exercising max-hop traceroute encode.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:15.394528Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:29:43.082665Z",
+  "started_at": "2026-08-28T07:27:32.611806Z",
+  "closed_at": "2026-08-28T07:29:43.082665Z",
+  "close_reason": "coap_rangetest.c: RANGETEST_TRACE_CBOR_MAX 640 -\u003e 720 with derivation comment (worst case 41 fixed + 8x83 per max-length hop = 705 bytes; 8 hops x [map(1)+\"addr\"(5)+0x78-hdr 45-char addr(47)+\"rssi\"(5)+f64(9)+\"rtt_ms\"(7)+f64(9)]). New ztest test_traceroute_max_hops_encode asserts canonical 8-hop/45-char-addr encode == 705 exactly and -ENOBUFS at 704 (old 640 could not hold it). Twister qemu_x86/atom: 1/1 configs, 7/7 test cases passed (6 original vector cases still byte-exact). Commits: \u003ccode\u003e + beads state."
+}
