@@ -12,6 +12,9 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-08-27T18:56:47.542995Z",
   "started_at": "2026-08-27T18:52:35.171359Z",
+  "labels": [
+    "needs-linux"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-7dyd",
