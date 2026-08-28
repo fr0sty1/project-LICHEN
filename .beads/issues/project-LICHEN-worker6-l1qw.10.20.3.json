@@ -1,15 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.10.20.3",
   "title": "Zephyr: Range Testing implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:51.921981Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-28T03:41:58.634105Z",
+  "updated_at": "2026-08-28T04:12:30.3532Z",
   "started_at": "2026-08-28T03:13:49.730086Z",
+  "closed_at": "2026-08-28T04:12:30.3532Z",
+  "close_reason": "Zephyr C implementation of spec 18.7 Range Testing: coap_rangetest.c + header (POST/GET /diag/rangetest with exact SenML+CBOR packs, GET /diag/traceroute, provider config API, Observe support, strict CBOR decoders), Kconfig LICHEN_COAP_RANGETEST + CMake wiring, coap_server doc comment, and lichen/tests/coap_rangetest twister suite consuming test/vectors/rangetest.json via generated fixture (gen_vectors.py). Verified locally: west twister -p qemu_x86/atom with ZEPHYR_EXTRA_MODULES=lichen, Zephyr SDK 0.16.8 on 4.1.0 workspace — 1/1 configurations passed, 6/6 test cases passed (all 23 vectors byte-exact incl. all 4.00 rejects, decode oracle verdicts, state/interval/update semantics, codec edge contracts). Cross-checked against python/src/lichen/coap/resources/rangetest.py and rust/lichen-client/src/rangetest.rs semantics (unknown keys ignored, uint-only values). Commit d76c6da69d.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.10.20.3",
