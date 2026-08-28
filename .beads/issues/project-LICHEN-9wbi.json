@@ -12,7 +12,8 @@
   "closed_at": "2026-07-15T04:47:51.545972Z",
   "close_reason": "Added admissibility check to Rust parent hysteresis and regression test; focused tests and library clippy pass.",
   "labels": [
-    "owner-reserved"
+    "owner-reserved",
+    "local-ok"
   ],
   "dependencies": [
     {
