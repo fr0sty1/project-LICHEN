@@ -26,6 +26,7 @@ Run waves until bd ready is empty:
 6. Repeat until bd ready empty or 3 consecutive waves with no progress
 
 Rules:
+- NEVER use /tmp for build dirs or caches - use /Volumes/Attic/tmp/ instead
 - Claim only what you're about to work on
 - If stuck on a bead for >5 minutes, unclaim and move on
 - Decompose rather than wrestle with complex beads
