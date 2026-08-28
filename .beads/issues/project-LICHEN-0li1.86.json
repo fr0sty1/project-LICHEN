@@ -16,7 +16,8 @@
     "owner-reserved",
     "review",
     "review-r3",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
