@@ -186,6 +186,7 @@ config LICHEN_COAP_MSG_LOG_LEVEL
 config LICHEN_COAP_RANGETEST
 	bool "CoAP /diag/rangetest and /diag/traceroute resources"
 	depends on LICHEN_COAP_SERVER
+	depends on LICHEN_OSCORE
 	help
 	  Enable the range testing resources per spec/12-apps.md section 18.7:
 	  - POST /diag/rangetest - extended range test (18.7.2), responds with
@@ -438,12 +439,21 @@ config LICHEN_CHECKIN
 config LICHEN_CHECKIN_RESOURCE
 	bool "Check-In / Roll Call CoAP resources (/checkin, /rollcall)"
 	depends on LICHEN_CHECKIN
+	depends on LICHEN_COAP_SERVER
 	default n
 	help
 	  Register /checkin, /rollcall, and /config/checkin CoAP resources
-	  against the lichen_coap_server service. Requires
-	  CONFIG_LICHEN_COAP_SERVER_STANDALONE for the resource iterable
-	  section. The module owns a mutex-serialized service instance sized
+	  against the lichen_coap_server CoAP service (the resources are
+	  defined with COAP_RESOURCE_DEFINE(..., lichen_coap_server, ...)).
+	  The service must therefore come from either:
+	  - CONFIG_LICHEN_COAP_SERVER_STANDALONE: the subsystem-owned
+	    coap_server.c service, which also declares the
+	    coap_resource_lichen_coap_server iterable section, or
+	  - an application-owned CoAP service that declares that iterable
+	    section and links the handler symbols (as the puck and gateway
+	    apps do).
+	  Without one of the two, the resource definitions fail at link time.
+	  The module owns a mutex-serialized service instance sized
 	  by CONFIG_LICHEN_CHECKIN_MAX_CHECKINS / MAX_ROLLCALLS.
 
 config LICHEN_CHECKIN_MAX_CHECKINS
