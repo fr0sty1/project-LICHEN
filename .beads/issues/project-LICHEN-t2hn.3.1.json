@@ -6,7 +6,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T23:12:03.670929Z",
   "created_by": "Mark Atwood",
@@ -19,7 +18,8 @@
     "meshtastic",
     "owner-reserved",
     "protobuf",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
