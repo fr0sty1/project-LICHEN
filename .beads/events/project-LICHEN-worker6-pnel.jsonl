@@ -2,3 +2,4 @@
 {"id":"01a00dec-0dcc-7da4-83cb-701a3f5130d2","issue_id":"project-LICHEN-worker6-pnel","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-17T04:12:48.972895Z"}
 {"id":"01a00dec-0ddc-72af-b4ff-965f6a7f3d50","issue_id":"project-LICHEN-worker6-pnel","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: codereview","created_at":"2026-08-17T04:12:48.988176Z"}
 {"id":"01a0319d-64bc-7b9c-8128-aa5fe6b28672","issue_id":"project-LICHEN-worker6-pnel","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: zephyr","created_at":"2026-08-24T02:33:13.660761Z"}
+{"id":"01a045db-59f9-770c-af98-9c4578255374","issue_id":"project-LICHEN-worker6-pnel","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: needs-linux","created_at":"2026-08-28T00:53:18.457462Z"}
