@@ -15,7 +15,8 @@
     "native_sim",
     "owner-reserved",
     "simulation",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
