@@ -61,6 +61,7 @@ hardware as a reflash -- same radios, new protocol.
 - [Appendix H: Bufferbloat Avoidance](appendix-bufferbloat.md) - Queue Management and Latency
 - [Appendix I: Border Router Hardware](appendix-border-router.md) - Hardware Options
 - [Appendix J: C Code Safety](appendix-c-safety.md) - Compiler Hardening and Coding Rules
+- [Appendix K: BLE GATT Mapping](appendix-gatt-ipso.md) - GATT to IPSO/SenML Translation
 
 ### Acknowledgments
 
