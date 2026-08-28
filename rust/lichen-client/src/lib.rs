@@ -13,6 +13,7 @@
 //! Transport (UDP/SLIP/BLE) is intentionally out of scope here; apps pair
 //! these types with a CoAP transport such as `lichen-coap`.
 
+pub mod checkin;
 pub mod config;
 pub mod identity;
 pub mod keys;
@@ -31,6 +32,10 @@ mod error;
 pub use error::Error;
 
 // Re-export key types for convenience
+pub use checkin::{
+    CheckIn, CheckInStatus, RollcallMissing, RollcallRequest, RollcallResponder, RollcallStatus,
+    CHECKIN_STATUS_VALUES, DEFAULT_TIMEOUT_S, MAX_CHECKINS, MAX_ROLLCALLS, MAX_TIMEOUT_S,
+};
 #[cfg(feature = "tokio")]
 pub use config::{ConfigClient, ConfigClientError};
 pub use config::{ConfigUpdate, ConfigUpdateError, NodeConfig, NodeRole};
