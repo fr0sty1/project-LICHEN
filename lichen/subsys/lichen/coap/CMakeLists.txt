@@ -5,6 +5,9 @@
 
 zephyr_library()
 
+zephyr_library_sources(coap_codec.c)
+zephyr_library_sources(coap_blockwise.c)
+
 zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_CLIENT
   coap_client.c
 )
@@ -37,13 +40,26 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_MSG
   coap_msg.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_WAYPOINTS
+  coap_waypoints.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_RANGETEST
+  coap_rangetest.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_KEYS
   coap_keys.c
   coap_keys_cbor.c
   coap_keys_format.c
   coap_keys_store.c
+  coap_keys_alert.c
   coap_keys_oscore.c
 )
+
+if(CONFIG_LICHEN_COAP_KEYS AND CONFIG_SETTINGS)
+  zephyr_library_sources(coap_keys_settings.c)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_LOCATION
   coap_location.c
@@ -69,6 +85,10 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_SOS_ALERT
 
 zephyr_library_sources_ifdef(CONFIG_LICHEN_SOS_RESOURCE
   sos_resource.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_PRESENCE
+  presence.c
 )
 
 if(CONFIG_LICHEN_COAP_LOCATION OR CONFIG_LICHEN_COAP_METRICS)

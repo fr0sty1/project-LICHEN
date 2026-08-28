@@ -14,6 +14,8 @@
  * - /neighbors - Neighbor table (GET)
  * - /keys - Peer key store (GET/PUT/DELETE, per LCI spec; see coap_keys.c)
  * - /msg/inbox - Messages (GET/POST)
+ * - /diag/rangetest - Range testing (GET/POST, spec 18.7, when enabled)
+ * - /diag/traceroute - Mesh path discovery (GET, spec 18.7.4, when enabled)
  * - /deaddrop - DTN dead drop (POST, GET?recipient=...) when enabled
  * - /confessions - Anonymous board (POST/GET, rate-limited RAM-only, per project-LICHEN-2nnd.4.2)
  *
