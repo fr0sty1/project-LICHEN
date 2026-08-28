@@ -13,7 +13,8 @@
   "labels": [
     "defer-external",
     "ec2",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
