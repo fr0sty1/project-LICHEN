@@ -13,7 +13,8 @@
   "closed_at": "2026-07-10T23:35:44.480234Z",
   "close_reason": "done",
   "labels": [
-    "owner-reserved"
+    "owner-reserved",
+    "local-ok"
   ],
   "dependencies": [
     {
