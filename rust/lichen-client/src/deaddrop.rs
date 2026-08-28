@@ -73,6 +73,9 @@ pub mod code {
     pub const NOT_FOUND: u8 = 132;
     /// 4.13 Request Entity Too Large (spec 18.9: max drop size 1536 B).
     pub const ENTITY_TOO_LARGE: u8 = 141;
+    /// 5.00 Internal Server Error (invariant-violation outcome; never
+    /// emitted while the store invariants hold).
+    pub const INTERNAL_SERVER_ERROR: u8 = 160;
     /// 4.29 Too Many Requests with `Retry-After` (spec 18.9).
     pub const TOO_MANY_REQUESTS: u8 = 157;
     /// 5.03 Service Unavailable with CBOR details (spec 18.9).
@@ -752,6 +755,11 @@ pub enum PickupOutcome {
     /// 4.04 Not Found (unknown/expired ID, or a private drop of another
     /// context — hidden to conceal existence).
     NotFound,
+    /// 5.00 Internal Server Error. Unreachable while the store invariants
+    /// hold (stored records are decode-validated, so re-encoding cannot
+    /// fail); returned instead of masking a violated invariant as an empty
+    /// 2.05.
+    InternalError,
 }
 
 impl PickupOutcome {
@@ -761,6 +769,7 @@ impl PickupOutcome {
             Self::Content { .. } => code::CONTENT,
             Self::Forbidden => code::FORBIDDEN,
             Self::NotFound => code::NOT_FOUND,
+            Self::InternalError => code::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -1149,12 +1158,16 @@ impl DeadDropStore {
     /// Handle `GET /deaddrop`: wrapped listing as SenML+CBOR (Content-Format
     /// 112), each drop prefixed with `id` / `age_s` / `ttl` / `size`
     /// metadata records followed by its own payload records.
+    ///
+    /// `Err` is unreachable while the store invariants hold (every stored
+    /// record was decode-validated, so the wrapped pack always re-encodes);
+    /// a failure is surfaced instead of masked as an empty listing.
     pub fn render_get(
         &mut self,
         context_id: Option<&str>,
         filter: &DropFilter<'_>,
         observe: bool,
-    ) -> GetResponse {
+    ) -> Result<GetResponse, Error> {
         let views = self.drops(context_id, filter);
         let mut records = Vec::new();
         for view in &views {
@@ -1164,12 +1177,12 @@ impl DeadDropStore {
             records.push(SenmlRecord::number("size", "B", view.size as f64));
             records.extend(view.records.iter().cloned());
         }
-        let payload = encode_senml_pack(&records).unwrap_or_default();
-        GetResponse {
+        let payload = encode_senml_pack(&records)?;
+        Ok(GetResponse {
             payload,
             content_format: 112,
             observe: observe.then_some(self.version),
-        }
+        })
     }
 
     /// Handle `GET /deaddrop/{id}`: a single drop's SenML payload with
@@ -1192,7 +1205,13 @@ impl DeadDropStore {
                 _ => PickupOutcome::Forbidden,
             };
         }
-        let payload = encode_senml_pack(&drop.records).unwrap_or_default();
+        // Unreachable while the store invariants hold (records are
+        // decode-validated at insert); surface the violation instead of
+        // masking it as an empty 2.05.
+        let payload = match encode_senml_pack(&drop.records) {
+            Ok(payload) => payload,
+            Err(_) => return PickupOutcome::InternalError,
+        };
         let remaining = drop
             .ttl
             .saturating_sub((now - drop.created).max(0.0) as u64);

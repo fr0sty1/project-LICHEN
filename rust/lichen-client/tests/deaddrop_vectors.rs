@@ -281,14 +281,16 @@ fn pickup_with_pending_matches_vector() {
             )
             .is_some());
     }
-    let response = s.render_get(
-        None,
-        &DropFilter {
-            node: Some("abc123"),
-            ..Default::default()
-        },
-        false,
-    );
+    let response = s
+        .render_get(
+            None,
+            &DropFilter {
+                node: Some("abc123"),
+                ..Default::default()
+            },
+            false,
+        )
+        .expect("listing encodes");
     assert_eq!(response.content_format, 112);
     assert_eq!(pending_for(&mut s, "abc123"), 2);
     assert_eq!(code::CONTENT, 69);
@@ -473,14 +475,16 @@ fn ttl_expired_pickup_returns_empty_content() {
         )
         .is_some());
 
-    let response = s.render_get(
-        None,
-        &DropFilter {
-            node: Some(v["recipient"].as_str().unwrap()),
-            ..Default::default()
-        },
-        false,
-    );
+    let response = s
+        .render_get(
+            None,
+            &DropFilter {
+                node: Some(v["recipient"].as_str().unwrap()),
+                ..Default::default()
+            },
+            false,
+        )
+        .expect("listing encodes");
     // GET still succeeds (2.05) with an empty listing; 0 pending.
     assert_eq!(response.content_format, 112);
     assert_eq!(v["expected"]["response_code"].as_u64(), Some(69));
@@ -848,7 +852,9 @@ fn observe_notification_matches_vector() {
     let clock = TestClock::new();
     let mut s = store(STORAGE_LEAF, &clock);
     let before = s.observe_version();
-    let initial: GetResponse = s.render_get(None, &DropFilter::default(), true);
+    let initial: GetResponse = s
+        .render_get(None, &DropFilter::default(), true)
+        .expect("listing encodes");
     assert_eq!(initial.content_format, 112);
     assert_eq!(initial.observe, Some(before));
 
@@ -864,7 +870,9 @@ fn observe_notification_matches_vector() {
             },
         )
         .is_some());
-    let notification = s.render_get(None, &DropFilter::default(), true);
+    let notification = s
+        .render_get(None, &DropFilter::default(), true)
+        .expect("listing encodes");
     assert_eq!(notification.content_format, 112, "vector ct=112");
     assert_eq!(notification.observe, Some(before + 1), "Observe option set");
     let listing = lichen_client::deaddrop::decode_senml_pack(&notification.payload).unwrap();
@@ -954,6 +962,13 @@ fn generated_drop_ids_are_canonical_and_unique() {
         ids.len(),
         "store rejects duplicate IDs, so minted IDs are unique: {ids:?}"
     );
+}
+
+#[test]
+fn internal_error_outcome_maps_to_500() {
+    let outcome = PickupOutcome::InternalError;
+    assert_eq!(outcome.response_code(), code::INTERNAL_SERVER_ERROR);
+    assert_eq!(code::INTERNAL_SERVER_ERROR, 160); // 5.00
 }
 
 #[test]
