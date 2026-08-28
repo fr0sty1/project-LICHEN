@@ -16,7 +16,8 @@
   "labels": [
     "defer-external",
     "renode",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
