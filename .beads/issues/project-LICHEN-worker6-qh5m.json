@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-qh5m",
+  "title": "checkin_resource.c: set_time override writes unlocked (torn 64-bit read on 32-bit targets)",
+  "description": "checkin_resource.c:45-49 lichen_checkin_resource_set_time writes s_time_overridden/s_time_override without s_lock while resource_now() reads them under it - torn 64-bit read possible on 32-bit targets. Fix: take s_lock in the setter.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:26.897565Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:19:44.349401Z",
+  "started_at": "2026-08-28T07:05:40.939197Z",
+  "closed_at": "2026-08-28T07:19:44.349401Z",
+  "close_reason": "lichen_checkin_resource_set_time now takes s_lock around the s_time_overridden/s_time_override writes; resource_now() reads them under the same lock (only caller path is service_tick_locked, invoked with the mutex held), closing the torn 64-bit read on 32-bit targets. Verified: twister lichen.checkin_resource on qemu_x86_64 8/8 test cases passed."
+}
