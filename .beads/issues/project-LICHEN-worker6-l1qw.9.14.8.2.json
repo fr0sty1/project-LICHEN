@@ -1,15 +1,17 @@
 {
   "id": "project-LICHEN-worker6-l1qw.9.14.8.2",
   "title": "Rust: Dead Drop implementation",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-31T19:25:16.846436Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-28T03:42:01.92774Z",
+  "updated_at": "2026-08-28T05:15:11.115029Z",
   "started_at": "2026-08-28T03:13:48.688077Z",
+  "closed_at": "2026-08-28T05:15:11.115029Z",
+  "close_reason": "Implemented Dead Drop as lichen-client::deaddrop sibling to rangetest (spec 18.9, LCI 17.5.8): spec constants (6 POSTs/h, 1536B max, 8KB/32KB budgets, 24h/7d retention), owned SenML-CBOR pack codec (RFC 8428 int labels + JSON-style names, cbor2-compatible shortest-form ints/f64), DeadDropStore with OSCORE write gate (4.01 oscore_required), rate limit 6/h sliding window with global reaping, size/storage gates, expired-then-oldest FIFO eviction, ttl/expires clamping, privacy ACL (public/private/group fail-closed), node/type/after filters, Observe versioning, PickupOutcome/PostOutcome raw CoAP codes, /deaddrop path consts. Vectors test drives all 18 deaddrop.json vectors field-by-field. Two vector pins diverge from spec+Python oracle (rate_limit 163 vs 4.29/157; post-success 69 vs 2.01/65) - filed human bead project-LICHEN-worker6-44m9; implementation follows spec. Tests: cargo test -p lichen-client deaddrop_vectors 22/22 pass, lib 130/130 pass (89/89 on clean tree; checkin suite failures pre-existing from another bead's uncommitted JSON); Python oracle pytest test_deaddrop_resource.py 79 passed. Commit 8ad264de35.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.9.14.8.2",
