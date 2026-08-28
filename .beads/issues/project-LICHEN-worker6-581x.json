@@ -10,7 +10,8 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-08-26T19:04:11.216814Z",
   "labels": [
-    "codereview"
+    "codereview",
+    "local-ok"
   ],
   "dependencies": [
     {
