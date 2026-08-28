@@ -3,3 +3,4 @@
 {"id":"01a0450c-ff7a-7791-a74e-553dca59f52f","issue_id":"project-LICHEN-worker6-l1qw.3.7.6","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: schc","created_at":"2026-08-27T21:07:54.874497Z"}
 {"id":"01a0450c-ff7e-7b27-a98c-ac471dc3000c","issue_id":"project-LICHEN-worker6-l1qw.3.7.6","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: link","created_at":"2026-08-27T21:07:54.878732Z"}
 {"id":"01a0450c-ff82-7f2e-a4a3-7fa21e291555","issue_id":"project-LICHEN-worker6-l1qw.3.7.6","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: security","created_at":"2026-08-27T21:07:54.882995Z"}
+{"id":"01a045e0-fe2f-7d56-889d-ea0fb8fc67ee","issue_id":"project-LICHEN-worker6-l1qw.3.7.6","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: local-ok","created_at":"2026-08-28T00:59:28.175875Z"}

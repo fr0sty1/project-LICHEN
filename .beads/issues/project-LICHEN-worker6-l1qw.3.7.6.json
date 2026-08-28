@@ -14,7 +14,8 @@
     "zephyr",
     "schc",
     "link",
-    "security"
+    "security",
+    "local-ok"
   ],
   "dependencies": [
     {
