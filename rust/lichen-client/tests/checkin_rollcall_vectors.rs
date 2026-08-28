@@ -11,9 +11,11 @@
 //! form that the reference resource (and this codec) coerces to text on
 //! decode — mirroring the Python oracle, whose re-dump would also emit text.
 
+use ciborium::value::Value as Cbor;
 use lichen_client::checkin::{
-    CheckIn, RollcallRequest, RollcallStatus, CHECKIN_STATUS_VALUES, DEFAULT_TIMEOUT_S,
-    MAX_CHECKINS, MAX_ROLLCALLS, MAX_TIMEOUT_S,
+    CheckIn, RollcallRequest, RollcallStatus, CHECKIN_CBOR_MAX, CHECKIN_STATUS_VALUES,
+    DEFAULT_TIMEOUT_S, MAX_CHECKINS, MAX_ROLLCALLS, MAX_TIMEOUT_S, ROLLCALL_REQ_CBOR_MAX,
+    ROLLCALL_STATUS_CBOR_MAX, ROLLCALL_TRACK_MAX,
 };
 use serde_json::Value;
 use std::fs;
@@ -266,4 +268,247 @@ fn rollcall_request_builder_rejects_out_of_range_timeout() {
     let mut over = base;
     over.timeout_s = Some(MAX_TIMEOUT_S + 1);
     assert!(over.to_cbor().is_err(), "timeout > max must fail encode");
+}
+
+// ── Decoder conformance pins (C codec parity) ────────────────────────────
+
+/// Encode a hand-built CBOR value; used to construct hostile inputs the
+/// oracle JSON does not carry. Encoding is scaffolding only — assertions
+/// are on rejection codes, never on these bytes as golden data.
+fn cbor_bytes(v: &Cbor) -> Vec<u8> {
+    let mut out = Vec::new();
+    ciborium::into_writer(v, &mut out).expect("CBOR encode to Vec cannot fail");
+    out
+}
+
+fn text(s: &str) -> Cbor {
+    Cbor::Text(s.into())
+}
+
+fn uint(n: u64) -> Cbor {
+    Cbor::Integer(n.into())
+}
+
+fn vector_wire(name: &str) -> Vec<u8> {
+    let vectors = load_vectors();
+    let v = vectors
+        .iter()
+        .find(|v| v["name"] == name)
+        .unwrap_or_else(|| panic!("vector {name} missing"));
+    hex_decode(v)
+}
+
+fn find_vector(name: &str) -> Value {
+    load_vectors()
+        .into_iter()
+        .find(|v| v["name"] == name)
+        .unwrap_or_else(|| panic!("vector {name} missing"))
+}
+
+#[test]
+fn decoders_reject_trailing_bytes() {
+    // C returns LICHEN_CHECKIN_ERR_TRAILING_DATA for bytes after the
+    // top-level item; all three Rust decoders must agree.
+    for (name, path) in [
+        ("checkin_minimal", "checkin"),
+        ("rollcall_minimal", "request"),
+        ("rollcall_status_response", "status"),
+    ] {
+        let mut bytes = vector_wire(name);
+        bytes.push(0xff);
+        let err = match path {
+            "checkin" => CheckIn::from_cbor(&bytes).expect_err(name),
+            "request" => RollcallRequest::from_cbor(&bytes).expect_err(name),
+            _ => RollcallStatus::from_cbor(&bytes).expect_err(name),
+        };
+        assert!(
+            err.to_string().contains("trailing_data"),
+            "{name}: trailing byte accepted: {err:?}"
+        );
+    }
+}
+
+#[test]
+fn decoders_reject_duplicate_map_keys() {
+    // RFC 8949 §5.6: duplicate keys are not valid; C rejects with
+    // LICHEN_CHECKIN_ERR_DUPLICATE_KEY (first-wins would hide them).
+    let node = "0200:0000:0000:0000:0011:2233:4455:6677";
+
+    let checkin_dup = Cbor::Map(vec![
+        (text("node"), text(node)),
+        (text("ts"), uint(1716742800)),
+        (text("ts"), uint(1716742801)),
+        (text("status"), text("ok")),
+    ]);
+    let err = CheckIn::from_cbor(&cbor_bytes(&checkin_dup)).expect_err("duplicate ts");
+    assert!(err.to_string().contains("duplicate_key"), "{err:?}");
+
+    let request_dup = Cbor::Map(vec![
+        (text("id"), text("roll-001")),
+        (text("id"), text("roll-002")),
+    ]);
+    let err = RollcallRequest::from_cbor(&cbor_bytes(&request_dup)).expect_err("duplicate id");
+    assert!(err.to_string().contains("duplicate_key"), "{err:?}");
+
+    let status_dup = Cbor::Map(vec![
+        (text("id"), text("roll-001")),
+        (text("id"), text("roll-001")),
+    ]);
+    let err = RollcallStatus::from_cbor(&cbor_bytes(&status_dup)).expect_err("duplicate id");
+    assert!(err.to_string().contains("duplicate_key"), "{err:?}");
+
+    // Duplicate keys inside a track entry are rejected too.
+    let track_dup = Cbor::Map(vec![
+        (text("id"), text("roll-001")),
+        (text("started"), uint(1716742800)),
+        (text("timeout_s"), uint(60)),
+        (
+            text("responded"),
+            Cbor::Array(vec![Cbor::Map(vec![
+                (text("node"), text(node)),
+                (text("node"), text(node)),
+                (text("ts"), uint(1716742810)),
+                (text("status"), text("ok")),
+            ])]),
+        ),
+        (text("missing"), Cbor::Array(vec![])),
+    ]);
+    let err = RollcallStatus::from_cbor(&cbor_bytes(&track_dup)).expect_err("duplicate node");
+    assert!(err.to_string().contains("duplicate_key"), "{err:?}");
+}
+
+#[test]
+fn checkin_node_format_pinned_by_vector() {
+    let v = find_vector("checkin_node_format");
+    let valid = v["valid_node_examples"].as_array().expect("valid examples");
+    let invalid = v["invalid_node_examples"]
+        .as_array()
+        .expect("invalid examples");
+
+    let make = |node: &str| CheckIn {
+        node: node.into(),
+        ts: 1716742800,
+        status: lichen_client::checkin::CheckInStatus::Ok,
+        lat: None,
+        lon: None,
+        msg: None,
+    };
+
+    for example in valid {
+        let node = example.as_str().expect("node text");
+        let wire = make(node)
+            .to_cbor()
+            .unwrap_or_else(|e| panic!("valid node example {node} rejected on encode: {e:?}"));
+        CheckIn::from_cbor(&wire)
+            .unwrap_or_else(|e| panic!("valid node example {node} rejected on decode: {e:?}"));
+    }
+
+    for example in invalid {
+        let node = example.as_str().expect("node text");
+        let err = make(node)
+            .to_cbor()
+            .expect_err("invalid node example must fail encode");
+        assert!(
+            err.to_string().contains("invalid_node_format"),
+            "encode({node}): {err:?}"
+        );
+
+        let wire = cbor_bytes(&Cbor::Map(vec![
+            (text("node"), text(node)),
+            (text("ts"), uint(1716742800)),
+            (text("status"), text("ok")),
+        ]));
+        let err = CheckIn::from_cbor(&wire).expect_err("invalid node example must fail decode");
+        assert!(
+            err.to_string().contains("invalid_node_format"),
+            "decode({node}): {err:?}"
+        );
+    }
+}
+
+#[test]
+fn decoders_enforce_input_size_caps() {
+    // Raw input beyond the per-payload bound is rejected before parsing
+    // (C buffer bounds LICHEN_CHECKIN_CBOR_MAX / LICHEN_ROLLCALL_REQ_CBOR_MAX
+    // / LICHEN_ROLLCALL_STATUS_CBOR_MAX).
+    type DecodeCheck = fn(&[u8]) -> lichen_client::Error;
+    let decoders: [(&str, usize, DecodeCheck); 3] = [
+        (
+            "checkin",
+            CHECKIN_CBOR_MAX,
+            |b: &[u8]| CheckIn::from_cbor(b).expect_err("over-cap must fail"),
+        ),
+        (
+            "rollcall request",
+            ROLLCALL_REQ_CBOR_MAX,
+            |b: &[u8]| RollcallRequest::from_cbor(b).expect_err("over-cap must fail"),
+        ),
+        (
+            "rollcall status",
+            ROLLCALL_STATUS_CBOR_MAX,
+            |b: &[u8]| RollcallStatus::from_cbor(b).expect_err("over-cap must fail"),
+        ),
+    ];
+    for (label, max_len, decode) in decoders {
+        let err = decode(&vec![0xa0; max_len + 1]);
+        assert!(
+            err.to_string().contains("payload_exceeds_maximum"),
+            "{label}: over-cap input accepted: {err:?}"
+        );
+        // Exactly at the bound the size gate passes (failure is then
+        // ordinary CBOR handling of the filler bytes, not the cap).
+        let err = decode(&vec![0xa0; max_len]);
+        assert!(
+            !err.to_string().contains("payload_exceeds_maximum"),
+            "{label}: at-cap input hit the size gate: {err:?}"
+        );
+    }
+}
+
+#[test]
+fn rollcall_status_caps_track_arrays() {
+    let node = "0200:0000:0000:0000:0011:2233:4455:6677";
+    let responder = || {
+        Cbor::Map(vec![
+            (text("node"), text(node)),
+            (text("ts"), uint(1716742810)),
+            (text("status"), text("ok")),
+        ])
+    };
+    let missing = || {
+        Cbor::Map(vec![
+            (text("node"), text(node)),
+            (text("last_seen"), uint(1716740000)),
+        ])
+    };
+    let status = |responded: Vec<Cbor>, missing_list: Vec<Cbor>| {
+        cbor_bytes(&Cbor::Map(vec![
+            (text("id"), text("roll-001")),
+            (text("started"), uint(1716742800)),
+            (text("timeout_s"), uint(60)),
+            (text("responded"), Cbor::Array(responded)),
+            (text("missing"), Cbor::Array(missing_list)),
+        ]))
+    };
+
+    // At the cap the document decodes.
+    let at_cap = status(vec![responder(); ROLLCALL_TRACK_MAX], vec![]);
+    let decoded = RollcallStatus::from_cbor(&at_cap).expect("cap-sized track array must decode");
+    assert_eq!(decoded.responded.len(), ROLLCALL_TRACK_MAX);
+    assert_eq!(decoded.missing.len(), 0);
+
+    // One past the cap is rejected (C LICHEN_CHECKIN_ERR_OUT_OF_RANGE).
+    let over = status(
+        (0..ROLLCALL_TRACK_MAX + 1).map(|_| responder()).collect(),
+        vec![],
+    );
+    let err = RollcallStatus::from_cbor(&over).expect_err("over-cap responded must fail");
+    assert!(err.to_string().contains("out_of_range"), "{err:?}");
+
+    let over_missing = status(
+        vec![],
+        (0..ROLLCALL_TRACK_MAX + 1).map(|_| missing()).collect(),
+    );
+    let err = RollcallStatus::from_cbor(&over_missing).expect_err("over-cap missing must fail");
+    assert!(err.to_string().contains("out_of_range"), "{err:?}");
 }

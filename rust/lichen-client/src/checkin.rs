@@ -22,6 +22,19 @@
 //! rejections use the vector error codes verbatim (e.g.
 //! `missing_required_field_node`) so cross-implementation tests can pin
 //! them exactly.
+//!
+//! Decoder strictness (matching the C codec in
+//! `lichen/subsys/lichen/coap/checkin.c`): inputs larger than the
+//! per-payload bounds below are rejected (`payload_exceeds_maximum`),
+//! bytes after the top-level item are rejected (`trailing_data`),
+//! duplicate map keys are rejected (`duplicate_key`, RFC 8949 §5.6), and
+//! the check-in `node` must be a full-notation IPv6 address, exactly 8
+//! colon-separated groups of 4 hex digits (`invalid_node_format`). Codes
+//! `payload_exceeds_maximum` and `out_of_range` (over-length roll-call
+//! track arrays) are not pinned by current vectors; they mirror the C
+//! `LICHEN_CHECKIN_ERR_*` names in vector style.
+
+use std::io::Cursor;
 
 use ciborium::value::Value;
 
@@ -35,6 +48,18 @@ pub const MAX_ROLLCALLS: usize = 256;
 pub const DEFAULT_TIMEOUT_S: u64 = 60;
 /// Maximum roll call timeout in seconds: 7 days (spec 18.6.2).
 pub const MAX_TIMEOUT_S: u64 = 7 * 86_400;
+/// Conservative CBOR size bound for a check-in payload
+/// (`LICHEN_CHECKIN_CBOR_MAX` in `lichen/checkin.h`).
+pub const CHECKIN_CBOR_MAX: usize = 512;
+/// Conservative CBOR size bound for a roll-call request
+/// (`LICHEN_ROLLCALL_REQ_CBOR_MAX`).
+pub const ROLLCALL_REQ_CBOR_MAX: usize = 160;
+/// Conservative CBOR size bound for a roll-call status document
+/// (`LICHEN_ROLLCALL_STATUS_CBOR_MAX`).
+pub const ROLLCALL_STATUS_CBOR_MAX: usize = 5120;
+/// Tracked responders/missing entries per roll call
+/// (`LICHEN_ROLLCALL_TRACK_MAX`).
+pub const ROLLCALL_TRACK_MAX: usize = 32;
 
 /// Valid check-in `status` values in wire order (spec 18.6.1).
 pub const CHECKIN_STATUS_VALUES: [&str; 3] = ["ok", "help", "delayed"];
@@ -184,6 +209,63 @@ fn as_f64(v: &Value) -> Result<f64, Error> {
     }
 }
 
+/// Gate raw input at the per-payload size bound before parsing.
+fn check_input_len(bytes: &[u8], max_len: usize) -> Result<(), Error> {
+    if bytes.len() > max_len {
+        return Err(Error::Decode("payload_exceeds_maximum".into()));
+    }
+    Ok(())
+}
+
+/// Decode exactly one CBOR item, rejecting bytes after it (C
+/// `LICHEN_CHECKIN_ERR_TRAILING_DATA`; same pattern as `deaddrop.rs`).
+fn decode_item(bytes: &[u8]) -> Result<Value, Error> {
+    let mut cursor = Cursor::new(bytes);
+    let value: Value =
+        ciborium::from_reader(&mut cursor).map_err(|e| Error::Decode(e.to_string()))?;
+    if cursor.position() as usize != bytes.len() {
+        return Err(Error::Decode("trailing_data".into()));
+    }
+    Ok(value)
+}
+
+/// RFC 8949 §5.6: keys within a map must be unique; first-wins lookup
+/// would silently accept duplicates the reference codec rejects (C
+/// `LICHEN_CHECKIN_ERR_DUPLICATE_KEY`). Same discipline as msg.rs.
+fn reject_duplicate_keys(map: &[(Value, Value)]) -> Result<(), Error> {
+    for (index, (key, _)) in map.iter().enumerate() {
+        if map[..index].iter().any(|(prev, _)| prev == key) {
+            return Err(Error::Decode("duplicate_key".into()));
+        }
+    }
+    Ok(())
+}
+
+/// Full-notation IPv6 check: exactly 8 groups of 4 hex digits separated
+/// by colons (39 characters). Port of C `lichen_checkin_addr_valid`;
+/// case-insensitive on hex digits, per the `checkin_node_format` vector.
+fn is_valid_node_format(addr: &str) -> bool {
+    let bytes = addr.as_bytes();
+    if bytes.len() != 39 {
+        return false;
+    }
+    let (groups, last) = bytes.split_at(35);
+    groups
+        .chunks_exact(5)
+        .all(|g| g[4] == b':' && g[..4].iter().all(u8::is_ascii_hexdigit))
+        && last.iter().all(u8::is_ascii_hexdigit)
+}
+
+/// Shared `from_cbor` prologue: size gate, single-item parse with
+/// trailing-byte rejection, map shape, and duplicate-key rejection.
+fn decode_map(bytes: &[u8], max_len: usize) -> Result<Vec<(Value, Value)>, Error> {
+    check_input_len(bytes, max_len)?;
+    let value = decode_item(bytes)?;
+    let map = as_map(&value)?.clone();
+    reject_duplicate_keys(&map)?;
+    Ok(map)
+}
+
 /// Decode an optional coordinate, enforcing inclusive bounds and finiteness.
 fn opt_coord(map: &[(Value, Value)], key: &str, limit: f64) -> Result<Option<f64>, Error> {
     match text_key(map, key) {
@@ -261,7 +343,7 @@ mod wire {
 
 impl CheckIn {
     fn validate(&self) -> Result<(), Error> {
-        if self.node.is_empty() {
+        if !is_valid_node_format(&self.node) {
             return Err(Error::Encode("invalid_node_format".into()));
         }
         for (c, limit) in [(self.lat, 90.0_f64), (self.lon, 180.0_f64)] {
@@ -322,34 +404,32 @@ impl CheckIn {
     /// Unknown fields are ignored (matching the reference resource);
     /// required-field and range violations carry the vector error codes.
     pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
-        let value: Value =
-            ciborium::from_reader(bytes).map_err(|e| Error::Decode(e.to_string()))?;
-        let map = as_map(&value)?;
+        let map = decode_map(bytes, CHECKIN_CBOR_MAX)?;
 
-        let node = match text_key(map, "node") {
+        let node = match text_key(&map, "node") {
             None => return Err(Error::Decode("missing_required_field_node".into())),
             Some(v) => match v.as_text() {
-                Some(s) if !s.is_empty() => s.to_owned(),
+                Some(s) if is_valid_node_format(s) => s.to_owned(),
                 _ => return Err(Error::Decode("invalid_node_format".into())),
             },
         };
-        let ts = match text_key(map, "ts") {
+        let ts = match text_key(&map, "ts") {
             None => return Err(Error::Decode("missing_required_field_ts".into())),
             Some(v) => wire_u64(v).map_err(|_| Error::Decode("invalid_ts_value".into()))?,
         };
-        let status = match text_key(map, "status") {
+        let status = match text_key(&map, "status") {
             None => return Err(Error::Decode("missing_required_field_status".into())),
             Some(v) => match v.as_text() {
                 Some(s) => CheckInStatus::from_wire(s)?,
                 None => return Err(Error::Decode("invalid_status_value".into())),
             },
         };
-        let lat = opt_coord(map, "lat", 90.0)?;
-        let lon = opt_coord(map, "lon", 180.0)?;
+        let lat = opt_coord(&map, "lat", 90.0)?;
+        let lon = opt_coord(&map, "lon", 180.0)?;
         if lat.is_none() != lon.is_none() {
             return Err(Error::Decode("incomplete_coordinate_pair".into()));
         }
-        let msg = match text_key(map, "msg") {
+        let msg = match text_key(&map, "msg") {
             None => None,
             Some(v) => match v.as_text() {
                 Some(s) => Some(s.to_owned()),
@@ -430,11 +510,9 @@ impl RollcallRequest {
     /// reference resource does the same); missing `timeout_s` means
     /// [DEFAULT_TIMEOUT_S] server-side and is left as [None] here.
     pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
-        let value: Value =
-            ciborium::from_reader(bytes).map_err(|e| Error::Decode(e.to_string()))?;
-        let map = as_map(&value)?;
+        let map = decode_map(bytes, ROLLCALL_REQ_CBOR_MAX)?;
 
-        let id = match text_key(map, "id") {
+        let id = match text_key(&map, "id") {
             None => return Err(Error::Decode("missing_required_field_id".into())),
             Some(v) => match v {
                 Value::Text(s) => s.clone(),
@@ -442,18 +520,18 @@ impl RollcallRequest {
                 _ => return Err(Error::Decode("invalid_id_type".into())),
             },
         };
-        let from = match text_key(map, "from") {
+        let from = match text_key(&map, "from") {
             None => None,
             Some(v) => match v.as_text() {
                 Some(s) => Some(s.to_owned()),
                 None => return Err(Error::Decode("invalid_from_type".into())),
             },
         };
-        let ts = match text_key(map, "ts") {
+        let ts = match text_key(&map, "ts") {
             None => None,
             Some(v) => Some(wire_u64(v).map_err(|_| Error::Decode("invalid_ts_value".into()))?),
         };
-        let timeout_s = match text_key(map, "timeout_s") {
+        let timeout_s = match text_key(&map, "timeout_s") {
             None => None,
             Some(v) => Some(Self::timeout_from_wire(v)?),
         };
@@ -470,6 +548,7 @@ impl RollcallRequest {
 impl RollcallStatus {
     fn responder_from_wire(v: &Value) -> Result<RollcallResponder, Error> {
         let map = as_map(v)?;
+        reject_duplicate_keys(map)?;
         let node = text_key(map, "node")
             .and_then(Value::as_text)
             .ok_or_else(|| Error::Decode("invalid_responder_node".into()))?
@@ -487,6 +566,7 @@ impl RollcallStatus {
 
     fn missing_from_wire(v: &Value) -> Result<RollcallMissing, Error> {
         let map = as_map(v)?;
+        reject_duplicate_keys(map)?;
         let node = text_key(map, "node")
             .and_then(Value::as_text)
             .ok_or_else(|| Error::Decode("invalid_missing_node".into()))?
@@ -536,37 +616,24 @@ impl RollcallStatus {
 
     /// Decode a roll call status document.
     pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
-        let value: Value =
-            ciborium::from_reader(bytes).map_err(|e| Error::Decode(e.to_string()))?;
-        let map = as_map(&value)?;
+        let map = decode_map(bytes, ROLLCALL_STATUS_CBOR_MAX)?;
 
-        let id = text_key(map, "id")
+        let id = text_key(&map, "id")
             .and_then(Value::as_text)
             .ok_or_else(|| Error::Decode("missing_required_field_id".into()))?
             .to_owned();
         let started = wire_u64(
-            text_key(map, "started")
+            text_key(&map, "started")
                 .ok_or_else(|| Error::Decode("invalid_started_value".into()))?,
         )
         .map_err(|_| Error::Decode("invalid_started_value".into()))?;
         let timeout_s = wire_u64(
-            text_key(map, "timeout_s")
+            text_key(&map, "timeout_s")
                 .ok_or_else(|| Error::Decode("invalid_timeout_value".into()))?,
         )
         .map_err(|_| Error::Decode("invalid_timeout_value".into()))?;
-        let responded = as_array(
-            text_key(map, "responded")
-                .ok_or_else(|| Error::Decode("invalid_responded_type".into()))?,
-        )?
-        .iter()
-        .map(RollcallStatus::responder_from_wire)
-        .collect::<Result<Vec<_>, _>>()?;
-        let missing = as_array(
-            text_key(map, "missing").ok_or_else(|| Error::Decode("invalid_missing_type".into()))?,
-        )?
-        .iter()
-        .map(RollcallStatus::missing_from_wire)
-        .collect::<Result<Vec<_>, _>>()?;
+        let responded = Self::tracks_from_wire(&map, "responded", Self::responder_from_wire)?;
+        let missing = Self::tracks_from_wire(&map, "missing", Self::missing_from_wire)?;
 
         Ok(Self {
             id,
@@ -575,5 +642,22 @@ impl RollcallStatus {
             responded,
             missing,
         })
+    }
+
+    /// Decode a responded/missing array, capped at [ROLLCALL_TRACK_MAX]
+    /// entries (C `LICHEN_ROLLCALL_TRACK_MAX`; over-cap arrays are C's
+    /// `LICHEN_CHECKIN_ERR_OUT_OF_RANGE`).
+    fn tracks_from_wire<T>(
+        map: &[(Value, Value)],
+        key: &str,
+        decode_entry: fn(&Value) -> Result<T, Error>,
+    ) -> Result<Vec<T>, Error> {
+        let items = as_array(
+            text_key(map, key).ok_or_else(|| Error::Decode(format!("invalid_{key}_type")))?,
+        )?;
+        if items.len() > ROLLCALL_TRACK_MAX {
+            return Err(Error::Decode("out_of_range".into()));
+        }
+        items.iter().map(decode_entry).collect()
     }
 }
