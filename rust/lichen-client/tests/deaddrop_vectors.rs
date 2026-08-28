@@ -933,6 +933,30 @@ fn private_and_group_acl_fail_closed() {
 }
 
 #[test]
+fn generated_drop_ids_are_canonical_and_unique() {
+    let clock = TestClock::new();
+    let mut s = store(STORAGE_LEAF, &clock);
+    let mut ids = Vec::new();
+    for i in 0..16 {
+        let drop_id = s
+            .add_drop(
+                &[SenmlRecord::text("content", &format!("m-{i}"))],
+                "ctx-a",
+                &AddDropParams::default(),
+            )
+            .expect("generated ID accepted");
+        assert!(is_drop_id(&drop_id), "canonical 6-hex: {drop_id}");
+        ids.push(drop_id);
+    }
+    let unique: std::collections::HashSet<&String> = ids.iter().collect();
+    assert_eq!(
+        unique.len(),
+        ids.len(),
+        "store rejects duplicate IDs, so minted IDs are unique: {ids:?}"
+    );
+}
+
+#[test]
 fn add_drop_doomed_explicit_id_preserves_live_drops() {
     let small = [SenmlRecord::text("content", "live")];
     let size = senml_body(&small).len();

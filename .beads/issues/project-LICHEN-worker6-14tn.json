@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-14tn",
+  "title": "deaddrop: 24-bit predictable drop IDs enable enumeration; group drops leak existence via 4.03",
+  "description": "deaddrop.rs:897-911 generate_drop_id masks splitmix64(now ^ counter) to 0xFF_FFFF - no entropy beyond 24-bit output space; GET /deaddrop/{id} is unrate-limited so 2^24 enumeration is hours of traffic; 4.03 for group drops confirms existence/ACL boundary to non-recipients (:1156-1163), public drops leak content. 6-hex length is spec-baked (18.9 example) so unpredictability is the achievable fix. Fix: derive IDs from CSPRNG (getrandom; std crate) or HMAC(server_secret, context||counter); consider counting misses against a limiter. Keep vector conformance (vectors pin format, not entropy).",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:14.713207Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:18:14.716499Z",
+  "started_at": "2026-08-28T07:18:14.716499Z",
+  "lease_expires_at": "2026-08-28T07:23:14.716499Z",
+  "heartbeat_at": "2026-08-28T07:18:14.716499Z"
+}

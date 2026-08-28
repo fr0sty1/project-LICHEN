@@ -16,6 +16,7 @@ tokio = ["lichen-coap/tokio"]
 [dependencies]
 serde        = { version = "1", features = ["derive"] }
 ciborium     = "0.2"
+getrandom    = { version = "0.2", features = ["std"] }
 lichen-senml = { path = "../lichen-senml" }
 lichen-core  = { path = "../lichen-core" }
 lichen-coap  = { path = "../lichen-coap", optional = true }

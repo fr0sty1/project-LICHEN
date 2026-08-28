@@ -31,6 +31,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ciborium::value::Value;
+use getrandom::getrandom as fill_random;
 
 use crate::Error;
 
@@ -827,7 +828,6 @@ pub struct DeadDropStore {
     request_times: HashMap<String, Vec<f64>>,
     current_storage: usize,
     version: u64,
-    id_counter: u64,
 }
 
 impl DeadDropStore {
@@ -850,7 +850,6 @@ impl DeadDropStore {
             request_times: HashMap::new(),
             current_storage: 0,
             version: 0,
-            id_counter: 0,
         })
     }
 
@@ -892,18 +891,21 @@ impl DeadDropStore {
         self.drops.iter().position(|d| d.id == drop_id)
     }
 
-    /// Generate an unused canonical drop ID (splitmix64 over clock/counter;
-    /// no external RNG dependency).
+    /// Generate an unused canonical drop ID.
+    ///
+    /// Three bytes are drawn from the OS CSPRNG (`getrandom`), mirroring the
+    /// Python reference's `secrets.token_hex(3)`: the 6-hex format is fixed
+    /// by spec 18.9, so unpredictability against enumeration is the
+    /// achievable property. Collisions are retried until a free ID is found.
     fn generate_drop_id(&mut self) -> String {
         loop {
-            self.id_counter = self.id_counter.wrapping_add(1);
-            let mut z = self.now().to_bits() ^ self.id_counter.wrapping_mul(0x9E37_79B9_7F4A_7C15);
-            z ^= z >> 30;
-            z = z.wrapping_mul(0xBF58_476D_1CE4_E5B9);
-            z ^= z >> 27;
-            z = z.wrapping_mul(0x94D0_49BB_1331_11EB);
-            z ^= z >> 31;
-            let id = format!("{:0width$x}", z & 0xFF_FFFF, width = DROP_ID_HEX_LEN);
+            let mut bytes = [0u8; DROP_ID_HEX_LEN / 2];
+            fill_random(&mut bytes).expect("OS CSPRNG unavailable");
+            let id = format!(
+                "{:0width$x}",
+                u32::from_be_bytes([0, bytes[0], bytes[1], bytes[2]]),
+                width = DROP_ID_HEX_LEN
+            );
             if self.find_index(&id).is_none() {
                 return id;
             }
