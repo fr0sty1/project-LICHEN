@@ -16,7 +16,8 @@
   "close_reason": "Proved lora_ping boots and externally transmits on T-Echo, RAK4631, and Nucleo WL55JC Renode backends with retained artifact hashes/logs; classified T1000-E hardware BLOCKED under project-LICHEN-sr55; cleanup and three-pass review completed.",
   "labels": [
     "owner-reserved",
-    "renode"
+    "renode",
+    "needs-linux"
   ],
   "dependencies": [
     {
