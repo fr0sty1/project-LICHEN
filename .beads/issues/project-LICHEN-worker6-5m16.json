@@ -11,6 +11,7 @@
   "updated_at": "2026-08-17T15:39:28.643157Z",
   "labels": [
     "bug",
-    "codereview"
+    "codereview",
+    "local-ok"
   ]
 }
