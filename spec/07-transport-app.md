@@ -26,6 +26,7 @@ IANA-registered services where applicable.
 | 5685 | Raw UDP | Cayenne LPP | LoRa Alliance |
 | 5686 | Raw UDP | APRS-IS | ASCII |
 | 5687 | Raw UDP | NMEA | ASCII |
+| 5688 | Raw UDP | Crypto Relay | CAIP-2 (chain ID) |
 | 10883 | MQTT-SN | Pub/Sub | OASIS |
 
 **Port Selection Rationale:**
@@ -57,6 +58,7 @@ forwarding traffic to external networks.
 | 5685 (Cayenne) | LoRaWAN application server |
 | 5686 (APRS-IS) | APRS-IS TCP or AX.25 RF |
 | 5687 (NMEA) | Serial NMEA or CoAP/SenML |
+| 5688 (Crypto Relay) | Chain-native RPC (JSON-RPC, REST) |
 
 This approach keeps mesh traffic compact while maintaining interoperability
 at network boundaries.
@@ -74,7 +76,7 @@ LICHEN uses port-based dispatch instead because:
 3. OS and network stacks can filter by port without application involvement.
 
 If LICHEN required more than 16 application types, the discriminator approach
-would be more efficient. Current allocation uses 7 of 16 available slots.
+would be more efficient. Current allocation uses 8 of 16 available slots.
 
 **Protocols Not Included:**
 
@@ -306,6 +308,73 @@ $GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A
 
 Useful for bridging legacy GPS devices or marine equipment. Gateways may
 convert to SenML or CoT for integration with other systems.
+
+#### 10.1.6. Cryptocurrency Relay (Port 5688)
+
+Raw transaction relay for blockchain networks. Payload is CBOR:
+
+```cbor
+{
+  1: "bip122:000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+  2: h'0100000001...'
+}
+```
+
+| Key | Type | Description |
+|-----|------|-------------|
+| 1 | string | CAIP-2 chain identifier |
+| 2 | bytes | Raw transaction, chain-native encoding |
+
+**CAIP-2 Chain Identifiers:**
+
+Chain identifiers follow the Chain Agnostic Improvement Proposal 2 format:
+
+| Chain | CAIP-2 Identifier | Tx Size |
+|-------|-------------------|---------|
+| Bitcoin mainnet | `bip122:000000000019d6689c085ae165831e93...` | ~250 B |
+| Bitcoin testnet | `bip122:000000000933ea01ad0ee984209779ba...` | ~250 B |
+| Ethereum mainnet | `eip155:1` | ~100-500 B |
+| Zcash mainnet | `bip122:00040fe8ec8471911baa1db1266ea15d...` | 250 B (t) / 2-3 KB (z) |
+| Nano | `nano:mainnet` | ~200 B |
+| Stellar | `stellar:pubnet` | ~100-300 B |
+
+Full registry: https://github.com/ChainAgnostic/CAIPs
+
+**Response:**
+
+```cbor
+{
+  1: "bip122:000000000019d6689c085ae165831e93...",
+  2: h'abc123...',   // transaction hash
+  3: 0               // status: 0=accepted, 1=rejected, 2=unknown
+}
+```
+
+**Size Limits:**
+
+Transactions exceeding SCHC fragmentation capacity (~1.3 KB mandatory,
+~22 KB theoretical max) may fail or require multiple duty cycles. Privacy
+coin transactions with zero-knowledge proofs (Zcash shielded, Monero) are
+near or above this limit.
+
+**Gateway Operation:**
+
+Border router maintains RPC connections to blockchain nodes or light clients.
+On receiving port 5688 traffic:
+
+1. Parse CAIP-2 identifier from key 1
+2. Route raw transaction (key 2) to appropriate network
+3. Return transaction hash and acceptance status
+
+The mesh is transport-agnostic; cryptographic validity is the wallet's
+responsibility. LICHEN nodes never hold private keys.
+
+**Security Note:**
+
+Transaction relay does not require OSCORE if the transaction is already
+cryptographically signed by the wallet. The mesh sees opaque bytes.
+However, an observer can see that *someone* is transacting. For privacy,
+use OSCORE or chain-level privacy features (shielded addresses, mixers).
 
 ### 10.2. CoAP (Port 5683)
 
