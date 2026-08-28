@@ -38,7 +38,6 @@ static struct lichen_rangetest_config s_config;
 static uint8_t s_eui64[LICHEN_RANGETEST_EUI64_LEN];
 static uint32_t s_seq;
 static uint32_t s_interval_ms = LICHEN_RANGETEST_DEFAULT_INTERVAL_MS;
-static bool s_initialized;
 static K_MUTEX_DEFINE(s_mutex);
 
 #if IS_ENABLED(CONFIG_LICHEN_COAP_RANGETEST)
@@ -673,7 +672,6 @@ int lichen_rangetest_init(const struct lichen_rangetest_config *config)
 	s_config.eui64 = s_eui64;
 	s_seq = 0U;
 	s_interval_ms = LICHEN_RANGETEST_DEFAULT_INTERVAL_MS;
-	s_initialized = true;
 	k_mutex_unlock(&s_mutex);
 	return 0;
 }
