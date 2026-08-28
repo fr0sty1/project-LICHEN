@@ -1075,6 +1075,14 @@ impl DeadDropStore {
     }
 
     /// Handle `POST /deaddrop` (spec 18.9 gate order).
+    ///
+    /// Rate-limit semantics (matching the Python reference): the hourly
+    /// quota counts **drops created** — `record_request` runs only on the
+    /// success path. `4.13` oversize and `4.00` undecodable bodies return
+    /// before the rate check and do not consume quota; the parse/unwrap
+    /// work they cost is charged to the sender's link budget, not the
+    /// bucket. This mirrors `deaddrop.py::render_post`, whose gate order
+    /// is identical.
     pub fn post(&mut self, request: &PostRequest) -> PostOutcome {
         // Writes MUST be OSCORE-protected; identity is bound post-unprotect.
         let Some(context_id) = request.identity.clone() else {

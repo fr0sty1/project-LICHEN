@@ -1010,26 +1010,120 @@ Content-Format: application/cbor
 Creator automatically becomes owner. Group ID derived from name hash or
 randomly generated.
 
-**Invitations:**
+**Group Invitation COSE_Sign1:**
+
+Invitations use COSE_Sign1 (RFC 9052) with Schnorr48-Ed25519, consistent with
+tunnel authorization (8.11). This provides cryptographic proof of inviter
+authority without requiring OSCORE protection on the delivery path.
 
 Owner or admin invites a node:
 
 ```
 POST coap://[target-node]/groups/invite
-Content-Format: application/cbor
+Content-Format: application/cose; cose-type="cose-sign1"
 
-{
-  "group_id": "team-alpha",
-  "group_name": "Team Alpha",
-  "mcast": "ff35:0040:...",
-  "inviter": "0200:...:1111",
-  "role": "member",            ; "member" or "admin"
-  "expires": 1716829200,       ; invitation expiry
-  "signature": "<inviter's signature over above fields>"
-}
+COSE_Sign1 = [
+  h'a10139ffff',          ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<inviter-iid>'},  ; unprotected: {kid: inviter 8-byte IID}
+  h'<payload>',           ; see Payload below
+  h'<48-byte signature>'  ; Schnorr48 signature
+]
 
 Response: 2.04 Changed (accepted) or 4.03 Forbidden (declined)
 ```
+
+**Payload Structure (CBOR map):**
+
+```cbor
+{
+  1: h'<group-id bytes>',   ; group_id: group identifier (tstr or bstr)
+  2: "Team Alpha",          ; group_name: human-readable name (tstr)
+  3: h'<16-byte mcast>',    ; mcast: IPv6 multicast address
+  4: <0 or 1>,              ; role: 0=member, 1=admin (uint)
+  5: <unix timestamp>,      ; expiry: invitation expiration (uint)
+  6: h'<8-byte IID>',       ; invitee_iid: target node IID (bstr)
+  7: h'<8-byte nonce>'      ; nonce: replay protection (bstr)
+}
+```
+
+Integer keys minimize payload size. The payload is the serialized CBOR map.
+
+| Key | Name | Type | Description |
+|-----|------|------|-------------|
+| 1 | group_id | bstr/tstr | Group identifier |
+| 2 | group_name | tstr | Human-readable group name |
+| 3 | mcast | bstr (16) | Group multicast IPv6 address |
+| 4 | role | uint | 0 = member, 1 = admin |
+| 5 | expiry | uint | Unix timestamp when invitation expires |
+| 6 | invitee_iid | bstr (8) | Target node's 8-byte IID |
+| 7 | nonce | bstr (8) | Random nonce for replay protection |
+
+**Signature Computation (COSE_Sign1):**
+
+Per RFC 9052, the Sig_structure for COSE_Sign1:
+
+```
+Sig_structure = [
+  "Signature1",           ; context string
+  protected,              ; protected header bytes: h'a10139ffff'
+  h'',                    ; external_aad (empty)
+  payload                 ; payload bytes
+]
+sig = Schnorr48(inviter_privkey, SHA256(CBOR(Sig_structure)))
+```
+
+Inviter's Ed25519 private key signs the canonical CBOR encoding of Sig_structure.
+
+**Validation (Invitee):**
+
+On receiving invitation POST:
+
+1. Decode COSE_Sign1 structure
+2. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+3. Extract `kid` from unprotected header as inviter IID
+4. Lookup inviter's public key (from neighbor table or cached group member list)
+5. Reconstruct Sig_structure per RFC 9052 and verify signature
+6. Decode payload; verify `invitee_iid` matches own IID
+7. Verify `expiry` > now
+8. Check nonce not in per-inviter replay ledger; if duplicate, reject
+9. Record (inviter_iid, nonce) in replay ledger
+10. If inviter is unknown or untrusted, prompt user for acceptance
+11. On acceptance: add group to local store, respond 2.04 Changed
+12. On rejection: respond 4.03 Forbidden
+
+On validation failure at any step, respond 4.00 Bad Request (malformed) or
+4.03 Forbidden (signature/authority failure) and do not process.
+
+**Nonce Tracking:**
+
+Each invitee maintains a per-inviter nonce ledger to prevent replay:
+
+| Inviter IID | Nonces (ring buffer, 32 entries) |
+|-------------|----------------------------------|
+| 0x1111...   | {0xaabb..., 0xccdd..., ...}     |
+
+Ledger is RAM-only (cleared on reboot), consistent with Trust Boundaries above.
+A nonce collision from the same inviter within a single boot cycle rejects the
+invitation. After reboot, the ledger is empty; old replayed invitations may be
+re-accepted if still within expiry--this is acceptable given the session-scoped
+trust model.
+
+**Delivery Without OSCORE:**
+
+Group invitations MAY be delivered without OSCORE protection. The COSE_Sign1
+envelope provides:
+
+- **Authentication:** Signature proves inviter possesses private key
+- **Integrity:** Payload cannot be modified without invalidating signature
+- **Authorization:** Receiver verifies inviter is owner/admin of claimed group
+
+OSCORE is NOT required because:
+- Invitation contains no secrets (group key is distributed separately)
+- Confidentiality of group name/membership is not a security goal
+- Invitee can verify invitation independently via COSE_Sign1
+
+For deployments requiring invitation confidentiality (hidden group names),
+wrap the POST in OSCORE using an existing pairwise context.
 
 Target validates inviter's signature. If accepted, target adds group to
 local store and requests key (if encrypted).
@@ -1237,6 +1331,144 @@ Content-Format: application/cbor
 
 Key distribution is out-of-band or via secure unicast to each member.
 
+#### 18.8.6. Delegation Tokens
+
+Delegation tokens allow owners and admins to grant specific capabilities to
+other nodes without transferring full role privileges. Tokens are COSE_Sign1
+structures signed by the delegator.
+
+**COSE_Sign1 Structure:**
+
+```
+COSE_Sign1 = [
+  h'a10139ffff',          ; protected: {1: -65537} (alg: Schnorr48-Ed25519)
+  {4: h'<delegator-iid>'}, ; unprotected: {kid: delegator 8-byte IID}
+  h'<payload>',           ; see Payload Structure below
+  h'<48-byte signature>'  ; Schnorr48 signature
+]
+```
+
+**Payload Structure (CBOR map):**
+
+| Key | Name | Type | Description |
+|-----|------|------|-------------|
+| 1 | delegate | bstr(8) | Delegate node IID (8 bytes) |
+| 2 | scope | uint | Capability bitmap (see below) |
+| 3 | resource | tstr | Group ID or resource path |
+| 4 | expiry | uint | Unix timestamp |
+| 5 | seq | uint | Strictly increasing sequence number |
+
+```cbor
+{
+  1: h'<8-byte delegate IID>',  ; delegate: who receives the capability
+  2: <scope bitmap>,            ; scope: what capabilities are granted
+  3: "team-alpha",              ; resource: which group or resource
+  4: <unix timestamp>,          ; expiry: when token expires
+  5: <sequence number>          ; seq: replay protection
+}
+```
+
+**Scope Bitmap:**
+
+| Bit | Value | Capability | Owner | Admin |
+|-----|-------|------------|-------|-------|
+| 0 | 0x01 | invite | Yes | Yes |
+| 1 | 0x02 | remove | Yes | Yes |
+| 2 | 0x04 | distribute_key | Yes | No |
+| 3 | 0x08 | rekey | Yes | No |
+| 4 | 0x10 | read_members | Yes | Yes |
+
+Owners may delegate any combination of capabilities. Admins may only delegate
+`invite`, `remove`, and `read_members` (scope & 0x13). Attempts to delegate
+capabilities beyond one's role are rejected.
+
+**Signature Computation (per RFC 9052):**
+
+```
+Sig_structure = [
+  "Signature1",           ; context string
+  protected,              ; protected header bytes (h'a10139ffff')
+  h'',                    ; external_aad (empty)
+  payload                 ; payload bytes (CBOR-encoded map)
+]
+sig = Schnorr48(delegator_privkey, SHA256(CBOR(Sig_structure)))
+```
+
+**Token Issuance:**
+
+```
+POST coap://[delegator]/groups/{group_id}/tokens
+Content-Format: application/cose; cose-type="cose-sign1"
+OSCORE: <pairwise context>
+
+{
+  "delegate": "0200:...:3333",
+  "scope": 3,               ; invite + remove
+  "expiry": 1716829200,
+  "duration_s": 86400       ; alternative to expiry
+}
+
+Response: 2.01 Created
+Content-Format: application/cose; cose-type="cose-sign1"
+
+<COSE_Sign1 token>
+```
+
+**Token Presentation:**
+
+When exercising delegated authority, the delegate includes the token:
+
+```
+POST coap://[target-node]/groups/invite
+Content-Format: application/cbor
+
+{
+  "group_id": "team-alpha",
+  "group_name": "Team Alpha",
+  "mcast": "ff35:0040:...",
+  "inviter": "0200:...:3333",       ; delegate (not original delegator)
+  "role": "member",
+  "expires": 1716829200,
+  "signature": "<delegate's signature>",
+  "delegation": <COSE_Sign1 token>  ; proof of delegated authority
+}
+```
+
+**Validation (numbered list):**
+
+1. Decode COSE_Sign1 structure from `delegation` field
+2. Extract `kid` from unprotected header; verify it identifies a known owner or admin of the resource
+3. Verify algorithm in protected header is -65537 (Schnorr48-Ed25519)
+4. Reconstruct Sig_structure per RFC 9052 and verify signature using delegator's pubkey
+5. Decode payload; verify `delegate` matches the `inviter` field (the node exercising the capability)
+6. Verify `expiry` > now
+7. Verify `seq` > cached seq for this (delegator, delegate, resource) tuple, or no cached entry
+8. Verify `scope` includes the capability being exercised (e.g., bit 0 for invite)
+9. Verify delegator's role permits delegating this scope (admin cannot delegate bit 2 or 3)
+10. If all checks pass, process the request as if from the delegator's role
+11. Cache (delegator, delegate, resource, seq) to prevent replay
+
+On validation failure, respond 4.03 Forbidden with diagnostic:
+
+```cbor
+{"error": "delegation_invalid", "reason": "scope_exceeded"}
+```
+
+**Revocation:**
+
+Delegation tokens cannot be explicitly revoked. Compensating controls:
+
+- Short expiry times (RECOMMENDED: 24 hours maximum)
+- Rekeying the group invalidates all tokens for that resource
+- Demoting the delegator invalidates their tokens (validation step 9 fails)
+
+**Security Considerations:**
+
+- Tokens are bearer credentials; protect in transit with OSCORE
+- Delegators SHOULD log token issuance for audit
+- Receivers MUST verify the full delegation chain (delegator role, scope limits)
+- The `seq` field prevents replay of expired-but-not-yet-stale tokens
+
 ### 18.9. Dead Drop
 
 Asynchronous, rate-limited data drops for store-and-forward style communication without direct addressing. Nodes POST SenML-formatted payloads to `/deaddrop`; others retrieve via GET (with optional Observe). Ideal for leaving sensor data, short files (as base64 in SenML), waypoints, or "messages in a bottle" for later pickup. See also LCI 17.5.8 for client UI.
@@ -1270,7 +1502,7 @@ Eviction: expired first, then oldest. No dynamic allocation; static buffers per 
 
 **OSCORE Requirements:**
 - **Writes (POST):** MUST be protected with OSCORE. Unprotected POSTs → `4.01 Unauthorized {"error": "oscore_required"}`. Supports both pairwise (EDHOC-derived) and group contexts.
-- **Reads (GET):** Public drops allowed without; private drops require matching OSCORE context or return 4.03 Forbidden. Use `oscore` option in requests.
+- **Reads (GET):** Public drops allowed without; private drops require matching OSCORE context, or return 4.04 Not Found to conceal existence (both the Python reference resource and the Rust client return 4.04 for a private drop whose context does not match, so a non-recipient cannot distinguish "absent" from "not yours"); group drops with a non-matching context return 4.03 Forbidden. Use `oscore` option in requests.
 - Integrates with trust model (TOFU/DANE/PKIX from section 8). Group drops use OSCORE group key for multicast-like sharing.
 - Replay protection via OSCORE sequence numbers; nodes track recent nonces.
 
