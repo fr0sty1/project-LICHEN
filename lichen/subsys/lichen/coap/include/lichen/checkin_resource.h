@@ -13,6 +13,14 @@
  * - GET  /rollcall[/<id>]  (18.6.3)  -> 2.05 status document(s)
  * - PUT  /config/checkin   (18.6.4)  -> 2.04 Changed / 4.00
  *
+ * Write endpoints (POST/PUT) require the request to be OSCORE-protected
+ * or to originate from the local admin; other sources are answered with
+ * 4.01 Unauthorized. An OSCORE-protected POST /checkin must
+ * self-identify: the payload "node" address must equal the request
+ * source address (4.03 Forbidden otherwise). A POST /rollcall that
+ * re-posts a known id updates the entry but does not reset its
+ * responded/missing tracking lists.
+ *
  * The module owns a single service instance sized by
  * CONFIG_LICHEN_CHECKIN_MAX_CHECKINS / CONFIG_LICHEN_CHECKIN_MAX_ROLLCALLS
  * and serializes access with a mutex (the core service itself is

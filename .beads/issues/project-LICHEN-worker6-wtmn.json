@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-wtmn",
+  "title": "Identity-bound roll-call reset in service layer",
+  "description": "project-LICHEN-worker6-w063 mitigated id-reset list-wiping at the resource layer (counts restored after lichen_rollcall_post). Proper fix: record creator identity (source address) on struct lichen_rollcall in lichen/checkin.c and only wipe responded/missing when re-POST comes from the creator — requires extending the oracle-matched service API and test/vectors/checkin_rollcall.json (Python oracle) in lockstep.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T07:18:08.762584Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:18:08.762584Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-wtmn",
+      "depends_on_id": "project-LICHEN-worker6-w063",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T07:18:09.332503Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

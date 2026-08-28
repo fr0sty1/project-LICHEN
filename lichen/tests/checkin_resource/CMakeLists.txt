@@ -8,6 +8,7 @@ project(checkin_resource)
 target_include_directories(app PRIVATE
   ../../include
   ../../subsys/lichen/coap/include
+  ../../subsys/lichen/oscore/include
 )
 
 target_compile_definitions(app PRIVATE
@@ -15,8 +16,9 @@ target_compile_definitions(app PRIVATE
   CONFIG_LICHEN_CHECKIN_RESOURCE=0
   CONFIG_LICHEN_CHECKIN_MAX_CHECKINS=8
   CONFIG_LICHEN_CHECKIN_MAX_ROLLCALLS=2
-  CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX=1024
+  CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX=2560
   CONFIG_LICHEN_CHECKIN_LOG_LEVEL=4
+  CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX=320
 )
 
 target_sources(app PRIVATE
