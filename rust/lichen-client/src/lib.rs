@@ -15,6 +15,7 @@
 
 pub mod checkin;
 pub mod config;
+pub mod deaddrop;
 pub mod identity;
 pub mod keys;
 pub mod keystore;
@@ -39,6 +40,12 @@ pub use checkin::{
 #[cfg(feature = "tokio")]
 pub use config::{ConfigClient, ConfigClientError};
 pub use config::{ConfigUpdate, ConfigUpdateError, NodeConfig, NodeRole};
+pub use deaddrop::{
+    clamp_ttl, code, decode_senml_pack, encode_senml_pack, extract_ttl, is_drop_id, AddDropParams,
+    Clock, DeadDropStore, DropFilter, DropView, GetResponse, PickupOutcome, PostOutcome,
+    PostRequest, Privacy, SenmlRecord, StorageInfo, DEFAULT_TTL, MAX_DROP_SIZE, MAX_TTL,
+    POSTS_PER_HOUR, STORAGE_BR, STORAGE_LEAF,
+};
 pub use identity::{IdentityAddresses, NodeIdentity};
 #[cfg(feature = "tokio")]
 pub use identity::{IdentityClient, IdentityClientError};

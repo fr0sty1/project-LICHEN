@@ -68,6 +68,17 @@ pub const POS: &str = "/pos";
 /// Create or share a waypoint (POST, `application/cbor`). §18.3.2.
 pub const WAYPOINTS: &str = "/waypoints";
 
+// --- Dead Drop (spec §18.9, LCI §17.5.8) ------------------------------------
+
+/// Store-and-forward dead drop collection (POST to create, GET to list,
+/// Observable). §18.9.
+pub const DEADDROP: &str = "/deaddrop";
+
+/// A specific dead drop `/deaddrop/{id}`; `id` is the 6-hex drop ID.
+pub fn deaddrop_id(id: &str) -> String {
+    format!("/deaddrop/{id}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -88,5 +99,11 @@ mod tests {
     #[test]
     fn waypoint_path_matches_application_spec() {
         assert_eq!(WAYPOINTS, "/waypoints");
+    }
+
+    #[test]
+    fn deaddrop_paths_match_application_spec() {
+        assert_eq!(DEADDROP, "/deaddrop");
+        assert_eq!(deaddrop_id("7f3a9c"), "/deaddrop/7f3a9c");
     }
 }
