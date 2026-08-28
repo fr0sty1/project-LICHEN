@@ -380,6 +380,35 @@ ZTEST(coap_rangetest, test_codec_contract_edges) {
 		      -EINVAL);
 }
 
+ZTEST(coap_rangetest, test_traceroute_max_hops_encode) {
+	/* 720 mirrors RANGETEST_TRACE_CBOR_MAX in coap_rangetest.c. */
+	uint8_t sized[720U];
+	uint8_t tight[704U];
+	struct lichen_rangetest_hop hops[LICHEN_RANGETEST_MAX_HOPS];
+	int len;
+
+	/* 45 chars is the longest IPv6 text form (INET6_ADDRSTRLEN - 1),
+	 * which encodes with the 0x78 two-byte string header. */
+	for (size_t i = 0U; i < LICHEN_RANGETEST_MAX_HOPS; i++) {
+		memset(hops[i].addr, 'f', LICHEN_RANGETEST_ADDR_MAX - 1U);
+		hops[i].addr[LICHEN_RANGETEST_ADDR_MAX - 1U] = '\0';
+		hops[i].rssi = -65.0 - (double)i;
+		hops[i].rtt_ms = 100.0 + (double)i;
+		zassert_equal(strnlen(hops[i].addr, sizeof(hops[i].addr)),
+			      LICHEN_RANGETEST_ADDR_MAX - 1U, "addr len");
+	}
+
+	len = lichen_traceroute_encode(sized, sizeof(sized), hops,
+				       LICHEN_RANGETEST_MAX_HOPS);
+	zassert_equal(len, 705, "canonical max-hop length");
+
+	/* 704 cannot hold the 705-byte document (the old 640 buffer could
+	 * not either); the encoder must report the overflow, not truncate. */
+	len = lichen_traceroute_encode(tight, sizeof(tight), hops,
+				       LICHEN_RANGETEST_MAX_HOPS);
+	zassert_equal(len, -ENOBUFS, "bound must be exact");
+}
+
 static void *suite_setup(void)
 {
 	return NULL;

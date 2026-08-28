@@ -26,7 +26,11 @@
 #include <lichen/coap_oscore.h>
 
 #define RANGETEST_SENML_CBOR_MAX 192U
-#define RANGETEST_TRACE_CBOR_MAX 640U
+/* Traceroute worst case: map(1) + "hops"(5) + array(1) + 8 x 83 bytes per
+ * max-length hop (map(1) + "addr"(5) + 2+45 addr + "rssi"(5) + f64(9) +
+ * "rtt_ms"(7) + f64(9)) + "total_hops"(11) + uint(1) + "total_rtt_ms"(13) +
+ * f64(9) = 41 + 8*83 = 705; 720 leaves headroom. */
+#define RANGETEST_TRACE_CBOR_MAX 720U
 #define RANGETEST_DECODE_MAX_ENTRIES 32U
 #define RANGETEST_SKIP_MAX_DEPTH 8U
 
