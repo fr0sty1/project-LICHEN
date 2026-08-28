@@ -11,7 +11,8 @@
   "updated_at": "2026-07-19T18:35:49Z",
   "labels": [
     "defer-external",
-    "renode"
+    "renode",
+    "needs-linux"
   ],
   "dependencies": [
     {
