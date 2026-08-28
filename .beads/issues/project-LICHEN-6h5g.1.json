@@ -13,7 +13,8 @@
   "close_reason": "Implemented with triple code review",
   "labels": [
     "owner-reserved",
-    "renode"
+    "renode",
+    "needs-linux"
   ],
   "dependencies": [
     {
