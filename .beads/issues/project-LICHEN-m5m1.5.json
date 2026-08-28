@@ -16,7 +16,8 @@
   "close_reason": "Corrected test taxonomy: 60 scenarios WIN; app_identity and ping_l2 are reproducible FAILs on valid Native64 backends; no test scenario is BLOCKED.",
   "labels": [
     "owner-reserved",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
