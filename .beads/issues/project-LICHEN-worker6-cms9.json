@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-cms9",
+  "title": "Dashboard: float(value) crashes on non-numeric SenML",
+  "description": "In partial_metrics (app.py line 213), `_metrics_history[key].append(float(value))` is called without validating that value is numeric. If the CoAP node returns malformed SenML (e.g., a string value for a metric), this raises ValueError and returns 500 to the client. Should wrap in try/except or validate type before conversion.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:27:24.648052Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:29:26.565822Z",
+  "closed_at": "2026-08-27T23:29:26.565822Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug",
+    "dashboard"
+  ]
+}

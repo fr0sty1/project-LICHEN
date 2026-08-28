@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-iemi.1",
+  "title": "Check: Invitation ledgers are process-lifetime",
+  "description": "Verify Python/Rust/Zephyr do NOT persist consumed_invitations, invitations, or retired_epochs dicts. Restart must clear these. Spec: 12-apps.md 18.8.2 Trust Boundaries.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:21:32.282257Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:21:32.282257Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-iemi.1",
+      "depends_on_id": "project-LICHEN-worker6-iemi",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:21:32.920106Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

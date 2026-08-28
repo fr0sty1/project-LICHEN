@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-g4v1",
+  "title": "spec/02a-coordinated-capacity.md:389 - SF8 missing from thresholds table",
+  "description": "The Adaptive SF thresholds table lists SF 7, 9, 10, 11, 12 but omits SF8. However, AdaptiveSFSelect step 4 can produce SF8 via 'SF = MAX(7, SF - 1)' when upgrading from SF9. Implementations have no defined sensitivity or transition conditions for SF8, making the procedure behavior undefined for this case.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:47:37.922016Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:47:37.922016Z",
+  "labels": [
+    "spec",
+    "completeness",
+    "ccp"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-mj4y",
+  "title": "P2: Unchecked CBOR data iteration in partial_metrics",
+  "description": "File: python/src/lichen/dashboard/app.py\nLine: 197\n\nThe partial_metrics handler does 'for rec in data:' assuming data is iterable. If the CoAP /metrics endpoint returns malformed CBOR (e.g., an integer instead of a list), this raises TypeError and returns a 500 error.\n\nFix: Add type check before iteration:\n  if data and isinstance(data, (list, tuple)):\n      for rec in data:",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:18:01.304924Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:28:07.807803Z",
+  "closed_at": "2026-08-27T23:28:07.807803Z",
+  "close_reason": "Closed",
+  "labels": [
+    "dashboard",
+    "input-validation"
+  ]
+}

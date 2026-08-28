@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-rc0k.5",
+  "title": "Cross-validate: Group Invitation COSE_Sign1 parity",
+  "description": "Cross-validate Group Invitation COSE_Sign1 across Python, Rust, and Zephyr implementations. Ensure all implementations produce identical output for same inputs and accept each other's signatures.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:30.588458Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:30.588458Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rc0k.5",
+      "depends_on_id": "project-LICHEN-worker6-rc0k",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:31.271736Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

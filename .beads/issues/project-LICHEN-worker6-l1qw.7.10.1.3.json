@@ -1,17 +1,18 @@
 {
   "id": "project-LICHEN-worker6-l1qw.7.10.1.3",
   "title": "Zephyr: CoAP message parse/serialize",
-  "status": "in_progress",
+  "notes": "Implemented allocation-free RFC 7252 message codec in coap_codec.c/.h with zero-copy parse, canonical bounded serialization, token/options/payload handling, extended delta/length forms, cumulative-option overflow checks, malformed/truncated/reserved rejection, and failure atomicity. Added shared coap_messages.json vector consumer plus focused edge tests in lichen/tests/coap_codec and narrow CoAP build wiring. Validation: host Apple clang ASan/UBSan ctest 1/1 PASS; local Zephyr 4.1 qemu_x86 4/4 PASS (used approved verification-only -Wno-error=duplicated-branches for unrelated Zephyr logging macro warning; production warnings remained fatal); Python CoAP vector/property scope 60 passed, 1 skipped, 3 expected xfailed; Rust coap_rfc_vectors 3/3 PASS with unique target dir; ruff clean; scoped git diff --check clean. Pinned Zephyr 3.7 clone is unavailable locally per AGENTS, so the allowed Zephyr 4.1 smoke gate was used.",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:45:55.303472Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-27T23:04:21.487335Z",
+  "updated_at": "2026-08-27T23:17:36.198798Z",
   "started_at": "2026-08-26T19:09:09.594274Z",
-  "lease_expires_at": "2026-08-27T23:09:21.487335Z",
-  "heartbeat_at": "2026-08-27T23:04:21.487335Z",
+  "closed_at": "2026-08-27T23:17:36.198798Z",
+  "close_reason": "RFC 7252 codec and canonical vector/edge coverage implemented; all scoped host, QEMU, Python, and Rust validation passed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.7.10.1.3",

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l6rf.5",
+  "title": "Cross-validate: Path transition parity",
+  "description": "Verify Python/Rust/Zephyr produce identical path-switch decisions given same DIO sequence and threshold config. Simulator test with marginal signal node.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:21:51.130096Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:21:51.130096Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l6rf.5",
+      "depends_on_id": "project-LICHEN-worker6-l6rf",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:21:51.965306Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

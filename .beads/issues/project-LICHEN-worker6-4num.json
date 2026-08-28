@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-4num",
+  "title": "Bind Zephyr OSCORE sender and recipient state to secure Settings",
+  "description": "Zephyr OSCORE implements generic SSN callbacks and persist-before-output sender handling, but repo-wide production search finds no oscore_nvm_register_callbacks caller. Recipient request/response replay windows are RAM-only. Add a namespace-separated authenticated/versioned Settings backend and startup registration, durable sender reservation plus recipient replay commit before plaintext/output, independent rollback/deletion floors, bounded exact records, crash recovery, and deterministic QEMU reboot/corruption/torn/rollback/nonce-reuse tests.",
+  "notes": "Implemented a bounded authenticated/versioned alternating-slot Settings backend in namespace lichen/oscore, backed by a distinct device-root-derived monotonic CAS authority. Persistent exact context records bind algorithm/replay parameters, sender/recipient IDs, ID Context, derived keys/common IV; sender floors and request/response replay/correlation windows are committed before live state/plaintext/output. Virgin, deletion, corruption, torn write, rollback, wrong-root, capacity, and authority atomic-failure paths fail closed. Existing NVM callbacks remain compatible when CONFIG_LICHEN_OSCORE_SETTINGS=n; production Settings mode requires authority registration. Validation: local Zephyr 4.1 qemu_x86 isolated oscore_persist suite passed 4/4; existing full OSCORE settings-disabled regression passed 38/38 after final response-protect ordering change; scoped cppcheck C23 passed; git diff --check passed. QEMU success marker observed before the bounded run target timeout (Zephyr QEMU remains running after ztest completion). Concurrent external edits in spec/06-security.md were preserved; contradictory stale replay-persistence wording is tracked by discovered follow-up project-LICHEN-worker6-btg2.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:14:54.472037Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:33:48.100762Z",
+  "started_at": "2026-08-28T00:07:18.976023Z",
+  "closed_at": "2026-08-28T00:33:48.100762Z",
+  "close_reason": "Closed"
+}

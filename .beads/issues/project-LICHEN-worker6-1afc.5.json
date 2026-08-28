@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-1afc.5",
+  "title": "Cross-validate: Capability Announcements parity",
+  "description": "Cross-validate Capability Announcements implementations across Python, Rust, and Zephyr for parity.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:28.578482Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:28.578482Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1afc.5",
+      "depends_on_id": "project-LICHEN-worker6-1afc",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:29.495861Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

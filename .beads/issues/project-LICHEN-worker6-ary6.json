@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-ary6",
+  "title": "test_compatible_with_tdma_implementation asserts non-zero but not equality",
+  "description": "## Location\n\npython/tests/link/test_channel.py:169-184\n\n## Bug\n\nTestSynchronizedHopChannelCompatibility.test_compatible_with_tdma_implementation computes ch_channel and ch_tdma for matching inputs but only asserts that both are \u003e= 1. The test title and docstring claim to verify channel.py produces compatible results with tdma.py, but the test never asserts ch_channel == ch_tdma.\n\n## Impact\n\nIf someone accidentally breaks compatibility between the two implementations (e.g., by changing the hash input order or using a different modulus), this test would NOT catch the regression. The test provides false confidence in implementation parity.\n\n## Fix\n\nAdd equality assertion: assert ch_channel == ch_tdma, f\"sfn={sfn}, seed={seed}: {ch_channel} != {ch_tdma}\"",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:55:25.333219Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:59:03.473232Z",
+  "closed_at": "2026-08-27T23:59:03.473232Z",
+  "close_reason": "Closed",
+  "labels": [
+    "test-integrity"
+  ]
+}

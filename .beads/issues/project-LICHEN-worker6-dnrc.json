@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-dnrc",
+  "title": "P2: CoAP context creation race condition",
+  "description": "File: python/src/lichen/dashboard/app.py\nLines: 66-70\n\nThe _get_coap_ctx() function checks if _coap_ctx is None and creates a context. Two concurrent calls can both pass the None check, both create contexts, and one gets orphaned - a resource leak.\n\nFix: Use an asyncio.Lock to protect context creation:\n  async with _coap_lock:\n      if _coap_ctx is None:\n          _coap_ctx = await Context.create_client_context()",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:17:58.485101Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:28:04.988397Z",
+  "closed_at": "2026-08-27T23:28:04.988397Z",
+  "close_reason": "Closed",
+  "labels": [
+    "dashboard",
+    "race-condition"
+  ]
+}

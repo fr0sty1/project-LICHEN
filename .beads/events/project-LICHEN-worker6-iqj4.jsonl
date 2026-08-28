@@ -1,0 +1,4 @@
+{"id":"01a04584-05bf-7088-b0d5-a1263bfec24b","issue_id":"project-LICHEN-worker6-iqj4","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-27T23:17:55.263036Z"}
+{"id":"01a04584-05c7-7cec-b6fe-54da382a9291","issue_id":"project-LICHEN-worker6-iqj4","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: dashboard","created_at":"2026-08-27T23:17:55.271848Z"}
+{"id":"01a04584-05ce-79a4-820f-b6dc14e5a4c5","issue_id":"project-LICHEN-worker6-iqj4","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: race-condition","created_at":"2026-08-27T23:17:55.278633Z"}
+{"id":"01a04586-b991-7bf2-8d17-aafdc4b7a845","issue_id":"project-LICHEN-worker6-iqj4","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed by copying the set before iteration: for ws in list(_ws_clients):","created_at":"2026-08-27T23:20:52.369784Z"}

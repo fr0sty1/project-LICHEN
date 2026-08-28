@@ -2,11 +2,13 @@
   "id": "project-LICHEN-worker6-1har",
   "title": "fuzz_fragment: Add rule_id boundary testing",
   "description": "The fuzz_fragment target hardcodes rule_id=0 in FragmentSender::new. This misses boundary testing for check_rule() which accepts 0-127 and rejects 128+. Extract rule_id from fuzzer input to test the full range including edge values 127 and 128.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-16T20:05:31.385091Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-16T20:05:31.385091Z"
+  "updated_at": "2026-08-27T23:51:47.810213Z",
+  "closed_at": "2026-08-27T23:51:47.810213Z",
+  "close_reason": "Closed"
 }

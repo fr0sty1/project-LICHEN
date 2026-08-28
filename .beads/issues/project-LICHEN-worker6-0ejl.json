@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-0ejl",
+  "title": "P2: random.seed(42) pollutes global random state on every request",
+  "description": "File: python/src/lichen/dashboard/app.py\nLine: 316-317\n\nBug: The `partial_topology_data()` handler calls `random.seed(42)` inside the function body when generating fallback mock data. This reseeds the global `random` module on every request when no simulator data is available.\n\nImpact:\n- Makes all subsequent `random` calls predictable after this endpoint is hit\n- Could cause subtle reproducibility bugs in other parts of the application using `random`\n- If `random` is used for anything security-adjacent elsewhere, this weakens it\n\nFix: Use a local Random instance instead of reseeding the global:\n```python\nrng = random.Random(42)\nmock = [\n    {\n        \"id\": f\"n{i}\",\n        \"x\": rng.uniform(0, 800),\n        \"y\": rng.uniform(0, 380),\n        ...\n    }\n    ...\n]\n```",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:27:20.508233Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:33:41.263072Z",
+  "closed_at": "2026-08-27T23:33:41.263072Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview:P2",
+    "bug",
+    "python"
+  ]
+}

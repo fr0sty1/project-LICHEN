@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-iawy",
+  "title": "root_dio_signature.py: from_cbor raises KeyError instead of ValueError for missing keys",
+  "description": "In RootDioSignaturePayload.from_cbor() lines 151-159, if required keys are missing from the decoded CBOR map, a KeyError is raised with just the numeric key constant (e.g., KeyError: 1). This provides poor error context for debugging.\n\nFile: python/src/lichen/crypto/root_dio_signature.py\nLines: 151-159\n\nFailure scenario: CBOR payload missing a required field (e.g., no instance key). Caller sees 'KeyError: 2' with no indication it means 'instance field missing' or which payload type failed.\n\nFix: Wrap in try/except KeyError and raise ValueError with descriptive message, or use dict.get() with explicit key presence checking.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:47:36.54439Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:47:36.54439Z",
+  "labels": [
+    "robustness",
+    "codereview"
+  ]
+}

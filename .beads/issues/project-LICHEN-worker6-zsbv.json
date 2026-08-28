@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-zsbv",
+  "title": "test_channel.py: off-by-one in test_sfn_wrapping upper bound assertion",
+  "description": "## Location\npython/tests/link/test_channel.py:132-133\n\n## Bug\nTest asserts `1 \u003c= ch \u003c= 63` with `n_channels=64`, but `synchronized_hop_channel` returns `1 + (h % 64)` which yields [1, 64].\n\n```python\nch1 = synchronized_hop_channel(0xFFFFFFFF, seed=0, n_channels=64)\nch2 = synchronized_hop_channel(0x100000000, seed=0, n_channels=64)\nassert 1 \u003c= ch1 \u003c= 63   # BUG: should be \u003c= 64\nassert 1 \u003c= ch2 \u003c= 63   # BUG: should be \u003c= 64\n```\n\n## Impact\nTest could incorrectly fail (false positive) if hash produces valid output 64. Currently passes because specific inputs produce 2 and 38.\n\n## Fix\nChange `\u003c= 63` to `\u003c= 64` on both lines.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:49:46.694827Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:52:52.811423Z",
+  "closed_at": "2026-08-27T23:52:52.811423Z",
+  "close_reason": "Fixed off-by-one: changed upper bound assertions from 63 to 64 on lines 132-133",
+  "labels": [
+    "bug",
+    "test"
+  ]
+}

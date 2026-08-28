@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-7q71",
+  "title": "spec/02a-coordinated-capacity.md:137 - Inverted DODAG Preference logic",
+  "description": "The spec says to prefer the root with the 'lowest RPL DODAG Preference field value' where 'lower = less preferred, per RFC 6550'. This is contradictory - if lower values are less preferred (correct per RFC 6550), then preferring the LOWEST value means selecting the LEAST preferred root, which inverts the intended behavior. Should say 'highest' to prefer the most preferred root.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:47:27.488937Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:47:27.488937Z",
+  "labels": [
+    "spec",
+    "correctness",
+    "ccp"
+  ]
+}

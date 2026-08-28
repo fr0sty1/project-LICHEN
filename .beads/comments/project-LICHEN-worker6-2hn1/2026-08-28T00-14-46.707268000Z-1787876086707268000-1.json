@@ -1,0 +1,7 @@
+{
+  "id": "1787876086707268000-1",
+  "issue_id": "project-LICHEN-worker6-2hn1",
+  "author": "Mark Atwood",
+  "text": "Implemented explicit OSCORE Observe response association in /Volumes/Attic/Desktop/Projects/crates/oscore/src/lib.rs: begin/unprotect_observe_response requires a fresh explicit responder PIV, uses a dedicated commit-only receive replay window, preserves ordinary request-PIV one-shot behavior, and documents caller token/cancellation plus cached retransmission contract. Added upstream tests for multiple notifications, fresh-PIV one-shot regression, duplicate/out-of-order/old replay behavior, corruption/wrong-context/drop atomicity, no-PIV rejection, and 40-bit terminal sequence. Added public re-export coverage in rust/lichen-oscore/tests/observe_responses.rs. Validation: external cargo fmt --check; cargo test (63 unit + 9 vectors); cargo test --all-features (101 unit + 10 vectors); cargo check --no-default-features; clippy --lib no-default/all-features -D warnings. Main workspace: lichen-oscore all-features (3 unit, 4 parity +1 ignored, 4 key update, 1 Observe wrapper, 14 vectors), lichen-coap all-features (61 unit +3 RFC +10 Observe +2 app); lichen-oscore and lichen-coap no_std checks; clippy -D warnings. rust/Cargo.lock and pre-existing dirty rust/lichen-oscore/src/lib.rs were unchanged.",
+  "created_at": "2026-08-28T00:14:46.707268Z"
+}

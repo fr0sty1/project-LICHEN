@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-iemi.3",
+  "title": "Check: OSCORE replay windows are process-lifetime",
+  "description": "Verify Python/Rust/Zephyr do NOT persist OSCORE recipient replay windows or response replay state. Restart must clear these. Spec: 06-security.md 15.3 OSCORE Replay Window.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:21:35.996065Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:21:35.996065Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-iemi.3",
+      "depends_on_id": "project-LICHEN-worker6-iemi",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:21:36.694904Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

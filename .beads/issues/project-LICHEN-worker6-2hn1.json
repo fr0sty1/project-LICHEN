@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-2hn1",
+  "title": "Allow multiple OSCORE Observe responses for one request PIV",
+  "description": "RFC 8613 Observe responses reuse the original request KID/PIV in AAD while each notification carries a fresh responder PIV. The patched dependency at /Volumes/Attic/Desktop/Projects/crates/oscore currently rejects a second response in Context::begin_unprotect_response because is_received_response_reuse(request_seq) is checked before the explicit response PIV and PendingResponse::commit always marks the request PIV used. Add an explicit Observe/multi-response API or response mode that permits multiple responses only when each carries a fresh authenticated responder PIV; preserve one-shot behavior for ordinary responses and no-PIV responses. Track the responder replay window atomically after authentication, reject duplicate/old/corrupt/wrong-context inputs without state mutation, cover 40-bit bounds, and expose the API through rust/lichen-oscore for rust/lichen-node secure Observe integration.",
+  "acceptance_criteria": "A client context accepts multiple authenticated responses bound to one original request PIV only through the Observe API and only with unique explicit responder PIVs; exact retransmissions can be recognized without advancing replay state; duplicate/old/corrupt/wrong-context/no-PIV second responses fail atomically; 40-bit exhaustion is enforced; upstream and lichen-oscore tests, fmt, clippy, and no_std checks pass.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:55:52.966887Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:14:51.402082Z",
+  "started_at": "2026-08-27T23:57:28.286869Z",
+  "closed_at": "2026-08-28T00:14:51.402082Z",
+  "close_reason": "Closed"
+}

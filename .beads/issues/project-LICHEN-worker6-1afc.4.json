@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1afc.4",
+  "title": "Vectors: Capability Announcements test cases",
+  "description": "Generate test vectors for Capability Announcements to enable cross-implementation validation.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:24.47085Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:43:05.482922Z",
+  "closed_at": "2026-08-27T23:43:05.482922Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1afc.4",
+      "depends_on_id": "project-LICHEN-worker6-1afc",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:25.77216Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-s2qx",
+  "title": "Wire Zephyr TOFU Settings backend and persistent revision floor",
+  "description": "lichen_key_store_settings_init(auth_key,min_revision) exists and focused tests pass, but repo-wide production search finds no caller. The required auth_key and trusted monotonic min_revision are not sourced or persisted, so Zephyr never restores TOFU pins at boot and cannot independently detect snapshot rollback. Add lifecycle wiring after protected storage/identity availability, derive or provision a device-secret namespace-separated authentication key, persist an independent monotonic/deletion floor, fail closed on missing/corrupt/rollback state, and add QEMU Settings reboot/torn/rollback tests.",
+  "notes": "Replaced the unsafe production auth_key/min_revision entry point with a protected lifecycle contract. Platform derives a 32-byte TOFU Settings MAC key from a non-exported device root using the fixed LICHEN-TOFU-SETTINGS-AUTH-v1 context, loads an independent deletion/rollback-resistant floor, and advances it by atomic CAS only after the authenticated Settings generation commits. Runtime publication waits for both commits. Boot accepts only the slot whose exact revision equals the protected floor; authenticated virgin state requires both floor and Settings to be absent. Missing active slot, corruption/wrong root, stale snapshots, one-sided deletion, unanchored first-write tear, authority errors, non-monotonic/overflow revisions, and positive callback errors fail closed. Established failed floor advancement safely restores the prior authorized slot; matching keys are idempotent; mismatches alert without mutation; full stores never evict. Validation: isolated Zephyr 4.1 qemu_x86 production-source build warning-free, 9/9 PASS, PROJECT EXECUTION SUCCESSFUL. Existing coap_keys full Kconfig/CMake configure passed; original broad test main object and production settings object compiled successfully (only upstream Zephyr header conversion warnings).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:14:52.529642Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:43:19.155742Z",
+  "started_at": "2026-08-27T23:30:27.917135Z",
+  "closed_at": "2026-08-27T23:43:19.155742Z",
+  "close_reason": "Closed"
+}

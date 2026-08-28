@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-trx5",
+  "title": "dashboard: Alert comparison crashes on non-numeric SenML values",
+  "description": "In python/src/lichen/dashboard/app.py lines 250-265, the alert comparison code uses raw SenML values without type checking. If a metric record has a non-numeric 'v' field (string, bool, list, dict), the comparison 'val \u003e= thresholds[\"crit\"]' raises TypeError.\n\nThe float crash fix at lines 240-246 only protects history tracking (with try/except around float()). The alert comparison is a separate code path that lacks the same protection.\n\nFix: Add isinstance(val, (int, float)) check before alert comparisons, or wrap in try/except TypeError.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:36:55.16776Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:30.636144Z",
+  "closed_at": "2026-08-27T23:39:30.636144Z",
+  "close_reason": "Closed"
+}

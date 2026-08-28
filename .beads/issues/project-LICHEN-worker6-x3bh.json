@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-x3bh",
+  "title": "root_dio_signature.py: from_cose_sign1 assumes unprotected header is dict",
+  "description": "In from_cose_sign1() line 228, unprotected.get(COSE_KID_LABEL) assumes the unprotected header is a dict. If a malformed COSE_Sign1 structure has a non-dict value (e.g., None, array), this raises AttributeError instead of a clear ValueError.\n\nFile: python/src/lichen/crypto/root_dio_signature.py\nLine: 228\n\nFailure scenario: Attacker sends COSE_Sign1 with unprotected header as null or array. Verifier crashes with AttributeError instead of rejecting with proper validation error. May leak implementation details or cause unexpected crash paths.\n\nFix: Validate isinstance(unprotected, dict) before calling .get().",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:47:29.079684Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:47:29.079684Z",
+  "labels": [
+    "correctness",
+    "codereview"
+  ]
+}

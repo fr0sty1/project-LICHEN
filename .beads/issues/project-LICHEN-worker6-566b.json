@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-566b",
+  "title": "COSE: Delegation Tokens",
+  "description": "Implement Delegation Tokens using COSE_Sign1 per spec/12-apps.md section 18.8.6. Algorithm -65537, integer-keyed payload, RFC 9052 Sig_structure.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:07.443099Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:07.443099Z"
+}

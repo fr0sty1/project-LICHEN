@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-74dc",
+  "title": "fuzz targets fail to build with Linux clang default (gnu17): [[nodiscard]] in schnorr48.h needs C23",
+  "description": "lichen/tests/fuzz fuzz_schnorr48 with Linux clang + libFuzzer (waves-base workstation, clang default -std=gnu17) fails parsing lichen/subsys/lichen/link/include/lichen/schnorr48.h:107/122/149 'error: expected expression' — the [[nodiscard]] C23 attribute. macOS AppleClang 21 defaults to gnu23 so the host build passes (m9m4 verified there). Fix candidate: force a C23-or-later std (e.g. target_compile_options(... -std=c2x)) in lichen/tests/fuzz/CMakeLists.txt, or guard the attribute for pre-C23. Discovered while verifying m9m4 on the workstation; pre-existing, unrelated to the include-dir fix (build previously died earlier at lichen/lichen_log.h).",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:34:53.203039Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:34:53.203039Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-74dc",
+      "depends_on_id": "project-LICHEN-worker6-m9m4",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T23:34:53.650148Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

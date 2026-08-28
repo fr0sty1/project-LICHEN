@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-worker6-1afc.1",
+  "title": "Python: Capability Announcements",
+  "description": "Python implementation of Capability Announcements using COSE_Sign1 per spec/06-security.md section 8.12.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:12.986794Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:51:44.268645Z",
+  "closed_at": "2026-08-27T23:51:44.268645Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1afc.1",
+      "depends_on_id": "project-LICHEN-worker6-1afc",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:14.244247Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

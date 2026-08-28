@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-l6rf.3",
+  "title": "Zephyr: Path transition thresholds",
+  "description": "Add Kconfig for PATH_SWITCH_HYSTERESIS, PATH_SWITCH_HOLD_TIME, PREFER_LORA. Implement hysteresis and hold time in parent selection logic.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:19:50.16903Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:19:50.16903Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-l6rf.3",
+      "depends_on_id": "project-LICHEN-worker6-l6rf",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:19:50.772706Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

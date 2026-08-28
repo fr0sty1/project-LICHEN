@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-iqj4",
+  "title": "P1: WebSocket broadcast race condition in dashboard app",
+  "description": "File: python/src/lichen/dashboard/app.py\nLine: 129\n\nThe _broadcast_ws function iterates over _ws_clients with 'for ws in _ws_clients:' and then awaits ws.send_text(). During that await, another coroutine can execute ws_events() and call '_ws_clients.add(websocket)' at line 344, modifying the set during iteration.\n\nThis causes RuntimeError: Set changed size during iteration.\n\nFix: Copy the set before iterating:\n  for ws in list(_ws_clients):\nor use a lock.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:17:55.243098Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:20:52.355622Z",
+  "closed_at": "2026-08-27T23:20:52.355622Z",
+  "close_reason": "Fixed by copying the set before iteration: for ws in list(_ws_clients):",
+  "labels": [
+    "dashboard",
+    "race-condition"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-bedw.1",
+  "title": "Python: Node Credentials",
+  "description": "Implement node credential handling: issue, present, verify. Namespaced claims, COSE_Sign1, optional x5chain.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:46:17.348184Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:46:17.348184Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-bedw.1",
+      "depends_on_id": "project-LICHEN-worker6-bedw",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:46:18.243659Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

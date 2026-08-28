@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-lq00",
+  "title": "P1: WebSocket timeout bug on Python 3.10 - wrong exception type caught",
+  "description": "File: python/src/lichen/dashboard/app.py\nLine: 352-353\n\nBug: Code catches `TimeoutError` but `asyncio.wait_for()` raises `asyncio.TimeoutError`.\n\nIn Python 3.10, these are different exception types. Only in Python 3.11+ did `asyncio.TimeoutError` become an alias for `TimeoutError`.\n\nThe code requires Python 3.10+ (uses `X | Y` union syntax), so this bug affects Python 3.10 users.\n\nImpact: On Python 3.10, WebSocket connections crash on timeout instead of receiving keep-alive pings. The exception propagates, falls through to `except Exception: break`, and the connection closes unexpectedly.\n\nFix: Catch `asyncio.TimeoutError` instead of `TimeoutError`, or catch both:\n```python\nexcept (TimeoutError, asyncio.TimeoutError):\n    await websocket.send_text('{\"event\":\"ping\"}')\n```",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:27:18.989889Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:29:37.812837Z",
+  "closed_at": "2026-08-27T23:29:37.812837Z",
+  "close_reason": "Fixed by catching both TimeoutError and asyncio.TimeoutError at line 385 with noqa comment for ruff UP041",
+  "labels": [
+    "codereview:P1",
+    "bug",
+    "python"
+  ]
+}

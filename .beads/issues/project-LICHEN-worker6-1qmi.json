@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-1qmi",
+  "title": "meshcore_gateway_adapter ztest: stack overflow in test_send_channel_text_allows_external_emit_after_ack",
+  "description": "On AWS waves-base (native_sim/native/64, gcc 11.5, hardened flags), lichen/tests/meshcore_gateway_adapter now BUILDS (after worker6-b86j switch-enum fixes: hal_bridge.c cases + meshcore/adapter.c:396 LICHEN_MESHCORE_PENDING_MAX case) — the image could not compile at all before. ztest run: 13 tests PASS, then test_send_channel_text_allows_external_emit_after_ack dies with 'ZEPHYR FATAL ERROR 2: Stack overflow on CPU 0' (idle thread, stack-protector @ kernel/compiler_stack_protect.c:39). Not caused by the switch-case fixes (case label has no runtime effect; suite was previously unbuildable/unrunnable on this baseline). Likely needs larger ztest/idle stack in that test's prj.conf or a shallower call path in test_send_channel_text.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:33:43.433752Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:33:43.433752Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-1qmi",
+      "depends_on_id": "project-LICHEN-worker6-b86j",
+      "type": "discovered-from",
+      "created_at": "2026-08-27T23:33:44.132134Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

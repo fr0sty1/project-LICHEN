@@ -1,1 +1,2 @@
 {"id":"019f975d-691e-721e-baf2-f4772c1a2bcb","issue_id":"project-LICHEN-worker6-l1qw.7.11","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-07-25T03:41:49.21414Z"}
+{"id":"01a045a4-bfc4-7ba0-9699-8ed534a1ecc5","issue_id":"project-LICHEN-worker6-l1qw.7.11","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"All six Observe implementation/vector children are closed; Rust generic Observe completed in project-LICHEN-worker6-l1qw.7.11.2.","created_at":"2026-08-27T23:53:40.036763Z"}

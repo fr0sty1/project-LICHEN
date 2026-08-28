@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-2it8.4",
+  "title": "Vectors: Root DIO Signature test cases",
+  "description": "Create test vectors for Root DIO Signature covering sign/verify round-trip, edge cases, and known-answer tests.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:25.894972Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:25.894972Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-2it8.4",
+      "depends_on_id": "project-LICHEN-worker6-2it8",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:27.259998Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

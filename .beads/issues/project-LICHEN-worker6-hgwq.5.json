@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-hgwq.5",
+  "title": "Cross-validate: Tunnel auth parity",
+  "description": "Verify Python/Rust/Zephyr produce identical tunnel-auth validation results given same CBOR input. Use vectors from hgwq.4.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:21:53.405888Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:21:53.405888Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-hgwq.5",
+      "depends_on_id": "project-LICHEN-worker6-hgwq",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:21:54.036645Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,20 +1,189 @@
 {
   "id": "project-LICHEN-worker6-l1qw.13.1.2",
   "title": "Storage: secure persistence",
-  "notes": "2026-08-26 bounded secure-persistence audit: NOT isolated or complete enough to claim. Python production python/src/lichen/crypto/key_persistence.py::FileKeyStore is already the exact target of in-progress P1 project-LICHEN-worker6-rxer (rollback/deletion/equal-generation divergence). Rust production rust/lichen-gateway/src/bin/lichend.rs is already the exact target of in-progress P1 project-LICHEN-worker6-xyk3 (atomic no-replace publication), project-LICHEN-worker6-2502 (fail closed on storage errors/corruption), project-LICHEN-worker6-izg5 (0600/0700/no-follow/ownership), plus P2 project-LICHEN-worker6-so3l (recoverable first-boot transaction). Duplicate open bead project-LICHEN-worker6-l1qw.11.2.1 tracks persistent identity across reboots and documents the same owners. Platform acceptance is additionally unmet: spec/06-security.md §15.2 requires a hardware secure element or flash with readout protection, but Zephyr lichen/subsys/lichen/link/link_ctx.c persists ed25519_sk in a generic CRC-only NVS tuple, ignores save_tuple() errors in lichen_link_load_key(), and has no secure-element/readout-protection backend or associated identity persistence test. Python/Rust-only work cannot satisfy this all-platform key-lifecycle task, and excluded C/Zephyr must not be edited here. Leave open/unclaimed until the active storage beads converge and a fail-closed protected Zephyr key backend is implemented and tested. No files modified or tests run.",
+  "notes": "2026-08-27 secure-persistence aggregate audit after Zephyr identity-store completion: NOT COMPLETE and no source edits made in this leaf. Proven satisfied slices: Zephyr app identity now has bounded versioned EUI/public-key/CRC records, record-before-marker commit/recovery, fail-closed corruption/error semantics and deterministic qemu_x86 reboot tests (l1qw.11.2.1, IPv6 off/on 15/15); Zephyr TOFU has an authenticated two-generation Settings backend and deterministic torn/corrupt/rollback tests (l1qw.6.6.2.8); Python transactional OSCORE SQLite context persistence is closed (2auf.66); Zephyr OSCORE sender persistence mechanics and NVM failure paths exist.\\n\\nRead-only production wiring audit found unresolved guarantees: (1) identity CRC/marker has no independent authenticated monotonic/deletion rollback authority; (2) lichen_key_store_settings_init has no production caller, auth-key source, or durable trusted min_revision provider; (3) lichen_l2_init unconditionally clears RAM-only link replay windows on reboot; (4) oscore_nvm_register_callbacks has no production caller and recipient replay windows are RAM-only. Created exact P1 blockers hcbi, s2qx, szi7, and 4num and linked them.\\n\\nAlso linked active owned blockers instead of colliding: Python identity rollback rxer; Rust gateway identity atomic create/error/permissions/first-boot xyk3,2502,izg5,so3l; trust authentication/durability 68st,ffnz,ywv6,ta0c; Link restart/rollback/transaction/concurrency/import c1fr,62e4,m1az,szxc,uf09; OSCORE rollback/sender/recipient 5rx2,h8ol,mamj. Both sibling agents confirmed no current persistence-path overlap, but these Beads are already in_progress under external ownership. The immediately preceding same-tree deterministic qemu_x86 app_identity Settings/core gates remain green (IPv6 off/on 15/15); no rerun was necessary because this aggregate made no source changes.",
   "status": "open",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-25T03:42:19.75243Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-26T16:37:06.501367Z",
+  "updated_at": "2026-08-27T23:17:23.626311Z",
+  "started_at": "2026-08-27T23:11:56.488289Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
       "depends_on_id": "project-LICHEN-worker6-l1qw.13.1",
       "type": "parent-child",
       "created_at": "2026-07-25T03:42:20.624021Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-hcbi",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:10.256297Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-s2qx",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:13.161515Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-szi7",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:16.412557Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-4num",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:19.500029Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-rxer",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:22.350004Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-xyk3",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:25.916519Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-2502",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:29.290033Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-izg5",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:31.955074Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-so3l",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:35.120537Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-68st",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:38.103961Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-ffnz",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:41.169826Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-c1fr",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:44.614901Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-62e4",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:47.599034Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-m1az",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:50.814392Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-szxc",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:54.752328Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-uf09",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:15:58.069013Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-5rx2",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:16:22.646089Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-h8ol",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:16:30.42552Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-mamj",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:16:33.144839Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-ywv6",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:16:59.419334Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-worker6-l1qw.13.1.2",
+      "depends_on_id": "project-LICHEN-worker6-ta0c",
+      "type": "blocks",
+      "created_at": "2026-08-27T23:17:02.09743Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

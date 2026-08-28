@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-worker6-hgwq.1",
+  "title": "Python: Tunnel authorization root + egress",
+  "description": "Root side: send tunnel-auth POST when route via egress installed. Egress side: tunnel-auth resource, validate signature, cache authorization, check on decapsulation. Per spec 8.11.",
+  "notes": "Requires COSE_Sign1 encoding. Use pycose or manual Sig_structure.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:11:23.61699Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:25:49.233729Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-hgwq.1",
+      "depends_on_id": "project-LICHEN-worker6-hgwq",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:11:24.160017Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-worker6-nkd8",
+  "title": "dashboard: CoAP context never closed - resource leak on shutdown",
+  "description": "P1 bug in python/src/lichen/dashboard/app.py\n\n**Location:** lines 71-78 (creation), 400-408 (lifespan)\n\n**Issue:** _coap_ctx is created via Context.create_client_context() but never closed. The _lifespan() context manager starts/stops the refresh task but does NOT call _coap_ctx.shutdown().\n\n**Impact:** aiocoap contexts hold UDP sockets and internal state. Without shutdown(), sockets leak on server restart. Repeated restarts could exhaust file descriptors.\n\n**Fix:** Add _coap_ctx cleanup to _lifespan():\n```python\n@asynccontextmanager\nasync def _lifespan(app: Starlette) -\u003e AsyncGenerator[None, None]:\n    await _start_refresh_task()\n    try:\n        yield\n    finally:\n        await _stop_refresh_task()\n        if _coap_ctx is not None:\n            await _coap_ctx.shutdown()\n```",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:32:57.21366Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:37:11.000619Z",
+  "closed_at": "2026-08-27T23:37:11.000619Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug",
+    "python",
+    "dashboard"
+  ]
+}

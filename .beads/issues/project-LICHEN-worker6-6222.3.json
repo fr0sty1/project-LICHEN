@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-6222.3",
+  "title": "Zephyr: Key Rotation Attestation",
+  "description": "Implement Key Rotation Attestation in Zephyr C using COSE_Sign1 with algorithm -65537, integer-keyed payload, RFC 9052 Sig_structure.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:50.54801Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:50.54801Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-6222.3",
+      "depends_on_id": "project-LICHEN-worker6-6222",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:51.928386Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

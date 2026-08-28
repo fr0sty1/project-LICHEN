@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-qpco.4",
+  "title": "Vectors: GCP Slot Claim COSE_Sign1 test cases",
+  "description": "Generate test vectors for GCP Slot Claim COSE_Sign1. Include valid signatures, invalid signatures, malformed payloads, and edge cases.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:23.738048Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:23.738048Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-qpco.4",
+      "depends_on_id": "project-LICHEN-worker6-qpco",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:25.072302Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

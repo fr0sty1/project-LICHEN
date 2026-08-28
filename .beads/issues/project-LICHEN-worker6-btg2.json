@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-worker6-btg2",
+  "title": "Reconcile stale OSCORE replay persistence prohibition in security spec",
+  "description": "spec/06-security.md Section 15.3 currently says OSCORE recipient/response replay state MUST NOT persist and restart may re-accept captures. This contradicts project-LICHEN-worker6-4num's required and implemented fail-closed Settings persistence for sender reservations plus recipient/response replay state. Update the normative paragraph to require authenticated/versioned context-bound persistence with protected monotonic rollback/deletion authority, or explicit fresh-key establishment on restart. The spec file had a concurrent large external edit during 4num, so this was deliberately not edited in that leaf.",
+  "notes": "Confirmed spec/06-security.md was stable for more than eight minutes before editing and both active sibling workers reported no ownership. Replaced only Section 15.3 OSCORE replay-persistence contradiction: reused contexts now require versioned/authenticated exact-context-bound persistence, commit-before-nonce/plaintext semantics, independent monotonic rollback/deletion authority, fail-closed corrupt/torn/stale/missing/unavailable handling, and fresh distinct key/nonce material when recovery is impossible. Wording is aligned with RFC 8613 Sections 7.2 and 7.5. Scoped repository search found no remaining stale process-lifetime/MUST-NOT-persist/restart-reaccept claim; git diff --check passed. Existing unrelated 737-line accumulated diff was preserved.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:26:39.693702Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:37:54.53369Z",
+  "started_at": "2026-08-28T00:35:40.23363Z",
+  "closed_at": "2026-08-28T00:37:54.53369Z",
+  "close_reason": "Contradictory OSCORE replay-persistence prose reconciled",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-btg2",
+      "depends_on_id": "project-LICHEN-worker6-4num",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T00:26:40.254562Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

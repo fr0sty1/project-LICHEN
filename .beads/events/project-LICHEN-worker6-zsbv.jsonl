@@ -1,0 +1,4 @@
+{"id":"01a045a1-3051-7320-98bf-cae45429e51f","issue_id":"project-LICHEN-worker6-zsbv","event_type":"created","actor":"Mark Atwood","old_value":"","new_value":"","created_at":"2026-08-27T23:49:46.705205Z"}
+{"id":"01a045a1-305c-7bb0-b2ad-14e0bd0b434c","issue_id":"project-LICHEN-worker6-zsbv","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: bug","created_at":"2026-08-27T23:49:46.716766Z"}
+{"id":"01a045a1-3062-7708-9f5f-7d622386b526","issue_id":"project-LICHEN-worker6-zsbv","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: test","created_at":"2026-08-27T23:49:46.722462Z"}
+{"id":"01a045a4-0755-7f1b-a692-0bd6b7706124","issue_id":"project-LICHEN-worker6-zsbv","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed off-by-one: changed upper bound assertions from 63 to 64 on lines 132-133","created_at":"2026-08-27T23:52:52.82199Z"}

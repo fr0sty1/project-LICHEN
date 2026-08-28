@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-6xk9",
+  "title": "IPSO Direct CoAP resource handlers",
+  "description": "Add IPSO Direct resource handling to CoAP server in python/src/lichen/coap/\n\n- Register /{object}/{instance}/{resource} URI pattern\n- GET: read sensor value, return Content-Format 60 (CBOR)\n- PUT: write actuator value from CBOR payload\n- Discovery: add rt=ipso to /.well-known/core\n- Wire up to existing sensor/actuator abstractions\n\nDepends on: IPSO Direct codec (worker6-rhkq)\nReference: spec/07-transport-app.md section 10.2.2",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:03:11.095528Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:03:11.095528Z"
+}

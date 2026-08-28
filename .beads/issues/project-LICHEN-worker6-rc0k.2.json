@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-rc0k.2",
+  "title": "Rust: Group Invitation COSE_Sign1",
+  "description": "Implement Group Invitation COSE_Sign1 in Rust using coset. Algorithm -65537, integer-keyed payload, RFC 9052 Sig_structure.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:19.416999Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:19.416999Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rc0k.2",
+      "depends_on_id": "project-LICHEN-worker6-rc0k",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:20.665097Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

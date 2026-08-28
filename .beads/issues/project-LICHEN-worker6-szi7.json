@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-szi7",
+  "title": "Persist Zephyr link replay and trust lineage across reboot",
+  "description": "Zephyr lichen_replay_table is static RAM and lichen_l2_init unconditionally calls lichen_replay_table_init at boot/re-enable. With a persistent identity, reboot forgets authenticated inbound replay floors/windows and peer/rekey lineage, so captured signed frames can become fresh. Add bounded authenticated versioned Settings persistence with commit-before-delivery, independent rollback/deletion authority, exact public-key binding, fail-closed restore, and deterministic reboot/corruption/torn/rollback tests. Preserve explicit administrative factory reset semantics.",
+  "notes": "Implemented bounded authenticated link replay persistence. Added alternating versioned Settings snapshots authenticated with a device-root-derived dedicated namespace key and anchored by an independent monotonic CAS authority. Snapshots bind the exact local public key and bounded exact peer public keys; authority-selected revision/digest detects rollback, deletion, corruption, stale/torn writes, and wrong roots. RX reserves a conservative 32-sequence floor before delivery, restores it as an all-seen window after reboot, and applies RAM mutations only after durable authority commit. TX reserves first-boot/reboot/runtime epochs before publication and fails terminally at epoch 255. Explicit peer removal persists before RAM deletion; protected capacity disables automatic LRU trust-lineage eviction. Integrated the durable commit API into link RX, TX wrap, L2 key load, disable/reinit, and peer removal. No dynamic allocation. Validation: host replay CMake/UBSan 1/1 PASS; isolated qemu_x86 replay_persist+Settings compile/runtime 9/9 PASS; full Link secure-backend qemu_x86 compile PASS; modified L2 key/peer/init object targets compile PASS with CONFIG_LICHEN_LINK_REPLAY_PERSIST=y. Broader ping_l2 image remains blocked only by unrelated pre-existing Zephyr-4.1 coap_client.send_mutex API mismatch.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:14:53.493333Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:06:39.854325Z",
+  "started_at": "2026-08-27T23:43:55.607853Z",
+  "closed_at": "2026-08-28T00:06:39.854325Z",
+  "close_reason": "Closed"
+}

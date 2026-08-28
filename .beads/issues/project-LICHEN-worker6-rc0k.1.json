@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-rc0k.1",
+  "title": "Python: Group Invitation COSE_Sign1",
+  "description": "Implement Group Invitation COSE_Sign1 in Python using pycose. Algorithm -65537, integer-keyed payload, RFC 9052 Sig_structure.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:15.093785Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:15.093785Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-rc0k.1",
+      "depends_on_id": "project-LICHEN-worker6-rc0k",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:16.420888Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

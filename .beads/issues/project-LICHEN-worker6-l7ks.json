@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-l7ks",
+  "title": "Dashboard: topology_node_count returns magic number 20",
+  "description": "In topology_node_count (app.py line 307), when no topology data exists, the function returns 20 as a hardcoded fallback. This causes the mesh stats display to show '20/20' active nodes when there is actually no data, which is misleading. Should return 0 or None and have the UI show a no-data state.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:27:27.778444Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:33:29.816065Z",
+  "closed_at": "2026-08-27T23:33:29.816065Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug",
+    "dashboard"
+  ]
+}

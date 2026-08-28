@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-7kel",
+  "title": "spec/02a-coordinated-capacity.md:269 - Undefined guard_ppm threshold",
+  "description": "The desync FSM state transition table references 'drift_ppm \u003e guard_ppm' as a condition for SYNCED-\u003eDESYNCED transition, but guard_ppm is never defined anywhere in this document or referenced from another spec. Implementations cannot correctly implement this transition without knowing the threshold value.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:47:40.748987Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:47:40.748987Z",
+  "labels": [
+    "spec",
+    "completeness",
+    "ccp"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-6jjp",
+  "title": "Dashboard: _refresh_sim_data task has no shutdown mechanism",
+  "description": "The _refresh_sim_data coroutine (app.py lines 115-127) runs an infinite while True loop with no cancellation support. When uvicorn shuts down, this task keeps running and may prevent clean exit or cause errors during shutdown. Should store the task handle and cancel it in a shutdown event handler.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:27:30.711837Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:33:33.771527Z",
+  "closed_at": "2026-08-27T23:33:33.771527Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug",
+    "dashboard"
+  ]
+}

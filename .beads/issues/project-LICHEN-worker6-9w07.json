@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-worker6-9w07",
+  "title": "test_channel.py: misleading comment about channel vs tdma formula",
+  "description": "## Location\npython/tests/link/test_channel.py:179-180\n\n## Bug\nComment incorrectly states:\n```python\n# tdma.py uses max(num_channels, 3) while channel.py uses max(n_channels - 1, 1)\n```\n\nBoth `synchronized_hop_channel` implementations use `max(n_channels, 3)`. The `max(n_channels - 1, 1)` formula is in `select_channel`'s hash-based path, not `synchronized_hop_channel`.\n\n## Impact\nCould mislead maintainers into incorrect changes or confusion about implementation parity.\n\n## Fix\nCorrect or remove the misleading comment. The implementations are identical for positive 32-bit seeds.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:49:53.724578Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:55:51.002712Z",
+  "closed_at": "2026-08-27T23:55:51.002712Z",
+  "close_reason": "Closed",
+  "labels": [
+    "bug",
+    "docs"
+  ]
+}

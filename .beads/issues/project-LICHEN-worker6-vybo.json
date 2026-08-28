@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-vybo",
+  "title": "root_dio_signature.py: from_cbor lacks type validation for decoded values",
+  "description": "In RootDioSignaturePayload.from_cbor() lines 151-159, decoded CBOR values are passed directly to the constructor without type validation. If a malformed payload has wrong types (e.g., dodag_id as an integer instead of bytes), __post_init__ will raise TypeError on len(self.dodag_id) rather than a clear ValueError.\n\nFile: python/src/lichen/crypto/root_dio_signature.py\nLines: 151-159\n\nFailure scenario: Attacker sends CBOR payload with dodag_id as integer (e.g., 42) instead of bytes. Validator sees 'TypeError: object of type int has no len()' instead of 'ValueError: dodag_id must be bytes'. Error reveals implementation details and may confuse error handling logic.\n\nFix: Add type assertions before passing to constructor, e.g.:\nif not isinstance(payload_map.get(_PAYLOAD_DODAG_ID), bytes):\n    raise ValueError('dodag_id must be bytes')",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:47:45.503504Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:47:45.503504Z",
+  "labels": [
+    "robustness",
+    "codereview"
+  ]
+}

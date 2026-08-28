@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-vpdi.5",
+  "title": "Cross-validate: Prefix Delegation Authorization parity",
+  "description": "Cross-validate Prefix Delegation Authorization implementations (Python, Rust, Zephyr) for bit-exact parity using shared test vectors.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:55.59826Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:55.59826Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-vpdi.5",
+      "depends_on_id": "project-LICHEN-worker6-vpdi",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:56.231788Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

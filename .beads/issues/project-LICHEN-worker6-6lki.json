@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-6lki",
+  "title": "spec/02a-coordinated-capacity.md:122 - Schnorr48 Ed25519 conflation",
+  "description": "Section 2a.5.1 says 'Schnorr48 Ed25519 signature' but these are different signature schemes. Schnorr48 is the LICHEN-specific scheme (per draft-lichen-schnorr-00), not Ed25519. This naming conflation could cause implementers to use the wrong algorithm. Should say just 'Schnorr48 signature'.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:47:30.683032Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:47:30.683032Z",
+  "labels": [
+    "spec",
+    "security",
+    "ccp"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-worker6-k0fg",
+  "title": "Off-by-one in synchronized_hop_channel returns out-of-bounds channel",
+  "description": "In python/src/lichen/link/channel.py, synchronized_hop_channel() uses:\n  n = max(n_channels, 3)\n  return 1 + (h % n)\n\nThis returns channels 1 to n (inclusive). With n_channels=64, returns 1-64, but valid channels are 0-63.\n\nCompare to hash-based path which correctly uses:\n  n = max(n_channels - 1, 1)\n  ch = 1 + (h % n)\n\nFix: Change line 82 to:\n  n = max(n_channels - 1, 2)\n\nThis ensures channel \u003c n_channels while preserving the minimum 3-channel spreading requirement.\n\nImpact: GNSS-synchronized hopping can select invalid channel numbers, causing undefined behavior in radio configuration.\n\nTags: codereview, correctness, channel",
+  "notes": "2026-08-27 collision handoff: another live worker is running cargo test --package lichen-core synchronized_hop in this shared checkout and rewrote rust/lichen-core/src/lib.rs during this leaf (mtime 17:24:56), reverting the corrected bounded modulus while validation was running. Stopped without overwriting. Python focused gate had passed 1057 tests (3 skipped), host C asn_sfn passed 1/1, scoped ruff passed; acceptance is not complete because the live Rust collision left the old max(n_channels,3) implementation present.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:48:02.93505Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:26:46.162632Z",
+  "started_at": "2026-08-28T00:08:03.091119Z"
+}

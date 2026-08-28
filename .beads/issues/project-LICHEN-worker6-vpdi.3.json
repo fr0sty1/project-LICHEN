@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-vpdi.3",
+  "title": "Zephyr: Prefix Delegation Authorization",
+  "description": "Implement Prefix Delegation Authorization in Zephyr C using COSE_Sign1 per spec/05-routing.md section 8.7.2.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-27T23:39:50.277292Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-27T23:39:50.277292Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-vpdi.3",
+      "depends_on_id": "project-LICHEN-worker6-vpdi",
+      "type": "parent-child",
+      "created_at": "2026-08-27T23:39:51.145545Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

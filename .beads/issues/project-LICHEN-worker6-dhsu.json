@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-dhsu",
+  "title": "spec/02a-coordinated-capacity.md:377 - SelectChannel epoch byte order inconsistent",
+  "description": "SelectChannel pseudocode at line 377 specifies 'Epoch as LE u32 bytes' for hashing, but the beacon format at line 44 says 'Multi-byte integers unsigned big-endian'. This inconsistency between hash input encoding and wire format could cause channel selection mismatches between implementations that follow different sections.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:47:48.157094Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:47:48.157094Z",
+  "labels": [
+    "spec",
+    "interop",
+    "ccp"
+  ]
+}

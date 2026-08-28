@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-06yf",
   "title": "test_sos_resource.py: Resource leak: client context created but never shut down",
   "description": "In test_retrigger_noop_when_idle (line 269), test_beacon_task_starts_on_activate (line 302), test_beacon_task_stops_on_cancel (line 313), and test_beacon_retriggers_periodically (line 333), the _setup() helper creates both client and server aiocoap contexts, but these tests only shut down the server. The client context (assigned to _) still holds asyncio tasks/transports that are never cleaned up, potentially causing ResourceWarnings, test hangs, or flaky parallel test behavior.\n\nFile: python/tests/coap/test_sos_resource.py\nLine: 269",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-08-17T04:12:14.64758Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-08-17T04:12:14.64758Z",
+  "updated_at": "2026-08-27T23:41:26.835671Z",
+  "closed_at": "2026-08-27T23:41:26.835671Z",
+  "close_reason": "Already fixed - all tests in test_sos_resource.py properly shut down both client and server aiocoap contexts in finally blocks. Verified by running all 107 tests with -W error::ResourceWarning and no warnings occurred.",
   "labels": [
     "bug",
     "codereview"

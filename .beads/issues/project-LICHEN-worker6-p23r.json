@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-worker6-p23r",
+  "title": "spec/02a-coordinated-capacity.md:63 - CDDL schema covers binary fields incorrectly",
+  "description": "The CDDL schema at lines 63-78 defines the entire beacon as a CBOR map with typed fields (epoch, num_slots, etc.), but the byte layout table at lines 43-59 shows these as fixed binary fields with only offset 24+ being CBOR (cbor_options). The CDDL incorrectly includes fixed binary header fields as if they were CBOR-encoded, which will cause interop failures if implementers follow the CDDL literally.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:47:45.270011Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:47:45.270011Z",
+  "labels": [
+    "spec",
+    "interop",
+    "ccp"
+  ]
+}

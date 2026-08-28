@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-worker6-rhkq",
+  "title": "IPSO Direct codec for Python",
+  "description": "Implement IPSO Direct encoding/decoding in python/src/lichen/ipso_direct.py\n\n- Encode Python values to bare CBOR for IPSO resources\n- Decode CBOR payloads to Python values\n- Path parser for /{object}/{instance}/{resource}\n- Type inference from IPSO registry (float for 5700, bool for 5850, etc.)\n- Reference: spec/07-transport-app.md section 10.2.2\n\nTest: assert round-trip encode/decode for temp, humidity, light on/off",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T00:02:58.025062Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T00:02:58.025062Z"
+}
