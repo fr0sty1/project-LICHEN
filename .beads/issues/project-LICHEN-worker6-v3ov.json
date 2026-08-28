@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-worker6-v3ov",
+  "title": "coap_rangetest.c: write-only s_initialized flag is dead code with drift risk",
+  "description": "coap_rangetest.c:37 :672 sets s_initialized, never reads it - violates repo No-Dead-Code rule; sibling coap_msg.c:171-176 checks the analogous flag and fails -ENODEV closed. Fix: either check it in handlers/update (fail-closed like coap_msg) or delete it.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T06:53:18.902913Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:31:20.78455Z",
+  "started_at": "2026-08-28T07:29:53.968193Z",
+  "closed_at": "2026-08-28T07:31:20.78455Z",
+  "close_reason": "Deleted s_initialized (decl :41, write at :676 pre-edit numbering) rather than fail-closing: coap_msg.c fails closed (:170/:221) because its handlers need lichen_msg_init() state, but rangetest is documented to serve static defaults with no provider (Kconfig help; metrics_get/hops_get/time_now all NULL-check), so a fail-closed gate would break the supported no-init mode. Behavior-neutral removal; twister qemu_x86/atom 7/7 test cases passed (incl. 6/6 byte-exact vectors). Commit \u003ccode\u003e."
+}
