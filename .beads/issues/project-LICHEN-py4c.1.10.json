@@ -26,7 +26,8 @@
     "python",
     "tests",
     "tui",
-    "zephyr"
+    "zephyr",
+    "local-ok"
   ],
   "dependencies": [
     {
