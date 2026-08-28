@@ -11,6 +11,7 @@
   "started_at": "2026-07-22T22:35:35.117596439Z",
   "labels": [
     "defer-external",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ]
 }
