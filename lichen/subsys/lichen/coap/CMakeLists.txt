@@ -91,6 +91,14 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_PRESENCE
   presence.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_LICHEN_CHECKIN
+  checkin.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_CHECKIN_RESOURCE
+  checkin_resource.c
+)
+
 if(CONFIG_LICHEN_COAP_LOCATION OR CONFIG_LICHEN_COAP_METRICS)
   zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../l2)
 endif()

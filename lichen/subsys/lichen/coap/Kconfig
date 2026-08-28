@@ -462,4 +462,67 @@ config LICHEN_PRESENCE
 
 	  Also provides presence cache encoding for /presence/cache endpoint.
 
+config LICHEN_CHECKIN
+	bool "Check-In / Roll Call codec and service (spec 18.6)"
+	default y
+	help
+	  Enable Check-In / Roll Call per spec section 18.6. Provides a pure
+	  C11 CBOR codec plus a deterministic service for:
+	  - POST /checkin (18.6.1): status ok/help/delayed, optional
+	    lat/lon (inclusive bounds, all-or-none) and msg
+	  - POST /rollcall (18.6.2): id coercion, timeout 1..604800,
+	    far-future rejection, prune-oldest and 5.03-at-capacity policies
+	  - GET /rollcall/<id> status documents (18.6.3)
+	  - scheduled check-in configuration (18.6.4)
+	  Storage is caller-provisioned; the module keeps no global state.
+	  Conformance vectors: test/vectors/checkin_rollcall.json.
+
+config LICHEN_CHECKIN_RESOURCE
+	bool "Check-In / Roll Call CoAP resources (/checkin, /rollcall)"
+	depends on LICHEN_CHECKIN
+	default n
+	help
+	  Register /checkin, /rollcall, and /config/checkin CoAP resources
+	  against the lichen_coap_server service. Requires
+	  CONFIG_LICHEN_COAP_SERVER_STANDALONE for the resource iterable
+	  section. The module owns a mutex-serialized service instance sized
+	  by CONFIG_LICHEN_CHECKIN_MAX_CHECKINS / MAX_ROLLCALLS.
+
+config LICHEN_CHECKIN_MAX_CHECKINS
+	int "Maximum stored check-ins (resource instance)"
+	depends on LICHEN_CHECKIN_RESOURCE
+	default 16
+	range 1 256
+	help
+	  Each entry is approximately 280 bytes. The conformance suite runs
+	  the oracle capacity of 256; constrained targets may lower this.
+
+config LICHEN_CHECKIN_MAX_ROLLCALLS
+	int "Maximum tracked roll calls (resource instance)"
+	depends on LICHEN_CHECKIN_RESOURCE
+	default 4
+	range 1 256
+	help
+	  Each roll call tracks up to LICHEN_ROLLCALL_TRACK_MAX responses.
+	  Overflowing POSTs receive 5.03 Service Unavailable.
+
+config LICHEN_CHECKIN_PAYLOAD_MAX
+	int "Check-In / Roll Call CBOR payload buffer size"
+	depends on LICHEN_CHECKIN_RESOURCE
+	default 5120
+	range 256 16384
+	help
+	  Static buffer used to decode requests and encode list/status
+	  documents. Must bound the worst-case {"checkins":[...]} document
+	  for the configured store sizes.
+
+config LICHEN_CHECKIN_LOG_LEVEL
+	int "Check-In / Roll Call log level"
+	depends on LICHEN_CHECKIN_RESOURCE
+	default 3
+	range 0 4
+	help
+	  Log level for the check-in resource: 0=off, 1=error, 2=warning,
+	  3=info, 4=debug
+
 endif # LICHEN_COAP

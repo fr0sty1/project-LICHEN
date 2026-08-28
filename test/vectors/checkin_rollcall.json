@@ -1,0 +1,508 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "name": "checkin_rollcall",
+  "description": "Check-In and Roll Call CBOR encoding test vectors per spec Section 18.6. Check-in (18.6.1) requires node, ts, status fields with optional lat, lon, msg. Roll call (18.6.2) requires id field with optional ts, timeout_s, from.",
+  "spec": "spec/12-apps.md Section 18.6",
+  "vectors": [
+    {
+      "name": "checkin_minimal",
+      "description": "Minimal check-in with required fields only: node, ts, status (spec 18.6.1).",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "status": "ok"
+      },
+      "cbor_hex": "a3646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a9066737461747573626f6b",
+      "cbor_length": 64,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.04 Changed",
+        "fields_present": ["node", "ts", "status"]
+      }
+    },
+    {
+      "name": "checkin_full",
+      "description": "Full check-in with all fields per spec 18.6.1.",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lat": 37.77,
+        "lon": -122.42,
+        "status": "ok",
+        "msg": "At checkpoint 2"
+      },
+      "cbor_hex": "a6646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4042e28f5c28f5c3636c6f6efbc05e9ae147ae147b66737461747573626f6b636d73676f417420636865636b706f696e742032",
+      "cbor_length": 110,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.04 Changed",
+        "fields_present": ["node", "ts", "lat", "lon", "status", "msg"]
+      }
+    },
+    {
+      "name": "checkin_status_help",
+      "description": "Check-in with 'help' status indicating assistance needed (spec 18.6.1).",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "status": "help",
+        "msg": "Needs assistance"
+      },
+      "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90667374617475736468656c70636d7367704e6565647320617373697374616e6365",
+      "cbor_length": 86,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.04 Changed",
+        "status_value": "help"
+      }
+    },
+    {
+      "name": "checkin_status_delayed",
+      "description": "Check-in with 'delayed' status indicating schedule slip (spec 18.6.1).",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "status": "delayed",
+        "msg": "Weather delay"
+      },
+      "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90667374617475736764656c61796564636d73676d576561746865722064656c6179",
+      "cbor_length": 85,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.04 Changed",
+        "status_value": "delayed"
+      }
+    },
+    {
+      "name": "checkin_boundary_coords",
+      "description": "Check-in with coordinates at valid boundary limits: lat=90, lon=-180.",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lat": 90.0,
+        "lon": -180.0,
+        "status": "ok"
+      },
+      "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4056800000000000636c6f6efbc06680000000000066737461747573626f6b",
+      "cbor_length": 83,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.04 Changed",
+        "note": "North pole at antimeridian is valid"
+      }
+    },
+    {
+      "name": "checkin_southern_hemisphere",
+      "description": "Check-in from southern hemisphere (Sydney coordinates).",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lat": -33.8688,
+        "lon": 151.2093,
+        "status": "ok"
+      },
+      "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fbc040ef34d6a161e5636c6f6efb4062e6b295e9e1b166737461747573626f6b",
+      "cbor_length": 83,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.04 Changed",
+        "lat_negative": true,
+        "note": "Southern hemisphere has negative latitude"
+      }
+    },
+    {
+      "name": "checkin_zero_coords",
+      "description": "Check-in at geographic origin (Gulf of Guinea).",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lat": 0.0,
+        "lon": 0.0,
+        "status": "ok"
+      },
+      "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb0000000000000000636c6f6efb000000000000000066737461747573626f6b",
+      "cbor_length": 83,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.04 Changed",
+        "note": "Zero coordinates are valid"
+      }
+    },
+    {
+      "name": "checkin_empty_msg",
+      "description": "Check-in with empty message string.",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "status": "ok",
+        "msg": ""
+      },
+      "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a9066737461747573626f6b636d736760",
+      "cbor_length": 68,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.04 Changed",
+        "note": "Empty string msg is valid but wasteful"
+      }
+    },
+    {
+      "name": "checkin_status_values",
+      "description": "Valid status values per spec 18.6.1.",
+      "valid_status_values": ["ok", "help", "delayed"],
+      "expected": {
+        "unknown_status_handling": "reject",
+        "note": "Implementations must reject unknown status values"
+      }
+    },
+    {
+      "name": "checkin_missing_node",
+      "description": "Error: check-in without required 'node' field.",
+      "cbor_payload": {
+        "ts": 1716742800,
+        "status": "ok"
+      },
+      "cbor_hex": "a26274731a66536a9066737461747573626f6b",
+      "cbor_length": 19,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "missing_required_field_node"
+      }
+    },
+    {
+      "name": "checkin_missing_ts",
+      "description": "Error: check-in without required 'ts' field.",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "status": "ok"
+      },
+      "cbor_hex": "a2646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a3636373766737461747573626f6b",
+      "cbor_length": 57,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "missing_required_field_ts"
+      }
+    },
+    {
+      "name": "checkin_missing_status",
+      "description": "Error: check-in without required 'status' field.",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800
+      },
+      "cbor_hex": "a2646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90",
+      "cbor_length": 55,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "missing_required_field_status"
+      }
+    },
+    {
+      "name": "checkin_invalid_status",
+      "description": "Error: check-in with invalid status value.",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "status": "invalid"
+      },
+      "cbor_hex": "a3646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a906673746174757367696e76616c6964",
+      "cbor_length": 69,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "invalid_status_value"
+      }
+    },
+    {
+      "name": "checkin_lat_without_lon",
+      "description": "Error: check-in with latitude but no longitude (coordinates must be paired).",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lat": 37.77,
+        "status": "ok"
+      },
+      "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4042e28f5c28f5c366737461747573626f6b",
+      "cbor_length": 75,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "incomplete_coordinate_pair"
+      }
+    },
+    {
+      "name": "checkin_lon_without_lat",
+      "description": "Error: check-in with longitude but no latitude (coordinates must be paired).",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lon": -122.42,
+        "status": "ok"
+      },
+      "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6f6efbc05e9ae147ae147b66737461747573626f6b",
+      "cbor_length": 75,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "incomplete_coordinate_pair"
+      }
+    },
+    {
+      "name": "checkin_lat_out_of_range",
+      "description": "Error: latitude exceeds valid range (+90).",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lat": 91.0,
+        "lon": 0.0,
+        "status": "ok"
+      },
+      "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4056c00000000000636c6f6efb000000000000000066737461747573626f6b",
+      "cbor_length": 83,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "coordinate_out_of_range"
+      }
+    },
+    {
+      "name": "checkin_lon_out_of_range",
+      "description": "Error: longitude exceeds valid range (+180).",
+      "cbor_payload": {
+        "node": "0200:0000:0000:0000:0011:2233:4455:6677",
+        "ts": 1716742800,
+        "lat": 0.0,
+        "lon": 181.0,
+        "status": "ok"
+      },
+      "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb0000000000000000636c6f6efb4066a0000000000066737461747573626f6b",
+      "cbor_length": 83,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "coordinate_out_of_range"
+      }
+    },
+    {
+      "name": "rollcall_minimal",
+      "description": "Minimal rollcall initiation with id only (spec 18.6.2).",
+      "cbor_payload": {
+        "id": "roll-001"
+      },
+      "cbor_hex": "a162696468726f6c6c2d303031",
+      "cbor_length": 14,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.01 Created",
+        "fields_present": ["id"]
+      }
+    },
+    {
+      "name": "rollcall_full",
+      "description": "Full rollcall initiation with all fields per spec 18.6.2.",
+      "cbor_payload": {
+        "id": "roll-001",
+        "from": "0200:0000:0000:0000:0000:0000:0000:1234",
+        "ts": 1716742800,
+        "timeout_s": 60
+      },
+      "cbor_hex": "a462696468726f6c6c2d3030316466726f6d7827303230303a303030303a303030303a303030303a303030303a303030303a303030303a313233346274731a66536a906974696d656f75745f73183c",
+      "cbor_length": 81,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.01 Created",
+        "fields_present": ["id", "from", "ts", "timeout_s"]
+      }
+    },
+    {
+      "name": "rollcall_integer_id",
+      "description": "Rollcall with integer id (spec allows string or integer).",
+      "cbor_payload": {
+        "id": 12345,
+        "ts": 1716742800,
+        "timeout_s": 120
+      },
+      "cbor_hex": "a36269641930396274731a66536a906974696d656f75745f731878",
+      "cbor_length": 27,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.01 Created",
+        "note": "Integer id is coerced to string internally"
+      }
+    },
+    {
+      "name": "rollcall_max_timeout",
+      "description": "Rollcall with maximum allowed timeout (7 days = 604800 seconds).",
+      "cbor_payload": {
+        "id": "weekly-001",
+        "ts": 1716742800,
+        "timeout_s": 604800
+      },
+      "cbor_hex": "a36269646a7765656b6c792d3030316274731a66536a906974696d656f75745f731a00093a80",
+      "cbor_length": 39,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.01 Created",
+        "note": "Maximum timeout is 7 days for scheduled check-ins"
+      }
+    },
+    {
+      "name": "rollcall_status_response",
+      "description": "Rollcall status response format per spec 18.6.3.",
+      "cbor_payload": {
+        "id": "roll-001",
+        "started": 1716742800,
+        "timeout_s": 60,
+        "responded": [
+          {"node": "0200:0000:0000:0000:0000:0000:0000:1111", "ts": 1716742810, "status": "ok"},
+          {"node": "0200:0000:0000:0000:0000:0000:0000:2222", "ts": 1716742815, "status": "ok"}
+        ],
+        "missing": [
+          {"node": "0200:0000:0000:0000:0000:0000:0000:3333", "last_seen": 1716740000}
+        ]
+      },
+      "cbor_hex": "a562696468726f6c6c2d30303167737461727465641a66536a906974696d656f75745f73183c69726573706f6e64656482a3646e6f64657827303230303a303030303a303030303a303030303a303030303a303030303a303030303a313131316274731a66536a9a66737461747573626f6ba3646e6f64657827303230303a303030303a303030303a303030303a303030303a303030303a303030303a323232326274731a66536a9f66737461747573626f6b676d697373696e6781a2646e6f64657827303230303a303030303a303030303a303030303a303030303a303030303a303030303a33333333696c6173745f7365656e1a66535fa0",
+      "cbor_length": 220,
+      "expected": {
+        "decode_success": true,
+        "response_code": "2.05 Content",
+        "fields_present": ["id", "started", "timeout_s", "responded", "missing"]
+      }
+    },
+    {
+      "name": "rollcall_missing_id",
+      "description": "Error: rollcall without required 'id' field.",
+      "cbor_payload": {
+        "ts": 1716742800,
+        "timeout_s": 60
+      },
+      "cbor_hex": "a26274731a66536a906974696d656f75745f73183c",
+      "cbor_length": 22,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "missing_required_field_id"
+      }
+    },
+    {
+      "name": "rollcall_timeout_zero",
+      "description": "Error: rollcall with timeout_s=0 (must be positive).",
+      "cbor_payload": {
+        "id": "roll-001",
+        "timeout_s": 0
+      },
+      "cbor_hex": "a262696468726f6c6c2d3030316974696d656f75745f7300",
+      "cbor_length": 24,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "invalid_timeout_value"
+      }
+    },
+    {
+      "name": "rollcall_timeout_negative",
+      "description": "Error: rollcall with negative timeout_s.",
+      "cbor_payload": {
+        "id": "roll-001",
+        "timeout_s": -1
+      },
+      "cbor_hex": "a262696468726f6c6c2d3030316974696d656f75745f7320",
+      "cbor_length": 24,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "invalid_timeout_value"
+      }
+    },
+    {
+      "name": "rollcall_timeout_exceeds_max",
+      "description": "Error: rollcall with timeout_s exceeding maximum (7 days + 1 second).",
+      "cbor_payload": {
+        "id": "roll-001",
+        "timeout_s": 604801
+      },
+      "cbor_hex": "a262696468726f6c6c2d3030316974696d656f75745f731a00093a81",
+      "cbor_length": 28,
+      "expected": {
+        "decode_success": false,
+        "response_code": "4.00 Bad Request",
+        "error": "timeout_exceeds_maximum"
+      }
+    },
+    {
+      "name": "checkin_coord_range",
+      "description": "Valid coordinate ranges for check-in position fields (same as SOS per spec).",
+      "lat_range": {
+        "min": -90.0,
+        "max": 90.0
+      },
+      "lon_range": {
+        "min": -180.0,
+        "max": 180.0
+      },
+      "expected": {
+        "coordinate_validation": "inclusive_bounds",
+        "note": "Ranges are inclusive; non-finite values must be rejected"
+      }
+    },
+    {
+      "name": "checkin_node_format",
+      "description": "Node field is full IPv6 address in colon-hex notation.",
+      "valid_node_examples": [
+        "0200:0000:0000:0000:0011:2233:4455:6677",
+        "fe80:0000:0000:0000:0200:00ff:fe00:0001"
+      ],
+      "invalid_node_examples": [
+        "192.168.1.1",
+        "0011:2233:4455:6677",
+        ""
+      ],
+      "expected": {
+        "format": "IPv6 full notation (8 groups, colon-separated)"
+      }
+    },
+    {
+      "name": "checkin_ts_semantics",
+      "description": "Timestamp is Unix epoch seconds per spec 18.6.1.",
+      "ts_example": 1716742800,
+      "expected": {
+        "ts_type": "uint",
+        "ts_negative_handling": "reject",
+        "note": "Negative timestamps must be rejected"
+      }
+    },
+    {
+      "name": "rollcall_ts_semantics",
+      "description": "Rollcall timestamp is Unix epoch seconds per spec 18.6.2.",
+      "ts_example": 1716742800,
+      "expected": {
+        "ts_type": "uint",
+        "ts_default": "current_time",
+        "ts_future_handling": "reject_if_far_future",
+        "note": "Far-future timestamps rejected to prevent indefinite rollcalls"
+      }
+    },
+    {
+      "name": "rollcall_constants",
+      "description": "Protocol constants for rollcall implementation.",
+      "max_rollcalls": 256,
+      "max_timeout_s": 604800,
+      "default_timeout_s": 60,
+      "expected": {
+        "note": "Service unavailable (5.03) when max rollcalls reached"
+      }
+    },
+    {
+      "name": "checkin_constants",
+      "description": "Protocol constants for check-in implementation.",
+      "max_checkins": 256,
+      "expected": {
+        "prune_policy": "remove_oldest_by_ts",
+        "note": "New check-ins replace oldest when capacity reached"
+      }
+    }
+  ]
+}
