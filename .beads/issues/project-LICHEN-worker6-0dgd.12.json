@@ -2,13 +2,15 @@
   "id": "project-LICHEN-worker6-0dgd.12",
   "title": "Integration: Cross-implementation vector validation",
   "description": "Validate all three implementations against shared test vectors.\n\n## Validation Script\ntest/validate_sync_hop.py\n\n## Requirements\n1. Load test/vectors/sync_hop.json\n2. Test each implementation:\n   - **Python**: Import and call directly\n   - **Rust**: Run cargo test --features sync-hop\n   - **C/Zephyr**: Compile and run test binary\n\n## Script Structure\n```python\n#!/usr/bin/env python3\nimport json\nimport subprocess\nimport sys\n\ndef load_vectors():\n    with open(\"test/vectors/sync_hop.json\") as f:\n        return json.load(f)\n\ndef test_python(vectors):\n    from lichen.link.channel import synchronized_hop_channel, sfn_from_unix_time\n    # ... validate against vectors\n\ndef test_rust(vectors):\n    # Run: cargo test --features sync-hop -- --test-threads=1\n    # Parse output for pass/fail\n\ndef test_zephyr(vectors):\n    # Build: west build -b native_sim lichen/tests/sync_hop\n    # Run: build/zephyr/zephyr.exe\n    # Parse output\n\nif __name__ == \"__main__\":\n    vectors = load_vectors()\n    results = {\n        \"python\": test_python(vectors),\n        \"rust\": test_rust(vectors),\n        \"zephyr\": test_zephyr(vectors),\n    }\n    # Report pass/fail per implementation per vector\n```\n\n## CI Integration\n- Add to .github/workflows/\n- Fail if any implementation diverges\n\n## Dependencies\nAll implementation tasks must be complete:\n- Python synchronized_hop_channel\n- Rust synchronized_hop_channel  \n- Zephyr sync_hop.c",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-26T21:54:13.205696Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-26T21:54:13.205696Z",
+  "updated_at": "2026-08-28T00:54:24.738525Z",
+  "closed_at": "2026-08-28T00:54:24.738525Z",
+  "close_reason": "Closed",
   "labels": [
     "zephyr",
     "needs-linux"
