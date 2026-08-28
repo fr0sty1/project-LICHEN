@@ -6,7 +6,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "task",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-01T20:15:42.424274Z",
   "created_by": "Mark Atwood",
@@ -31,7 +30,8 @@
     "protocol",
     "serial",
     "t-deck",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
