@@ -965,6 +965,20 @@ fn generated_drop_ids_are_canonical_and_unique() {
 }
 
 #[test]
+fn zero_storage_limit_is_a_config_error() {
+    let clock = TestClock::new();
+    let err = match DeadDropStore::with_clock(0, clock.clock()) {
+        Err(err) => err,
+        Ok(_) => panic!("zero storage_limit must be rejected"),
+    };
+    assert!(
+        matches!(err, lichen_client::Error::Config(_)),
+        "config-validation failure is Error::Config, not Encode: {err:?}"
+    );
+    assert!(err.to_string().contains("storage_limit"), "{err}");
+}
+
+#[test]
 fn internal_error_outcome_maps_to_500() {
     let outcome = PickupOutcome::InternalError;
     assert_eq!(outcome.response_code(), code::INTERNAL_SERVER_ERROR);

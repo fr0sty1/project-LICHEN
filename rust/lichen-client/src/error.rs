@@ -12,6 +12,9 @@ pub enum Error {
     Decode(String),
     /// Failed to encode a LICHEN domain type to CBOR.
     Encode(String),
+    /// A caller-supplied configuration parameter is invalid (e.g. a zero
+    /// storage budget); distinct from wire encode/decode failures.
+    Config(String),
 }
 
 impl fmt::Display for Error {
@@ -19,6 +22,7 @@ impl fmt::Display for Error {
         match self {
             Error::Decode(m) => write!(f, "CBOR decode error: {m}"),
             Error::Encode(m) => write!(f, "CBOR encode error: {m}"),
+            Error::Config(m) => write!(f, "configuration error: {m}"),
         }
     }
 }

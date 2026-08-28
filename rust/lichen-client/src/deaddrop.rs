@@ -855,9 +855,12 @@ impl DeadDropStore {
     }
 
     /// Create a store with an injected clock (Unix seconds).
+    ///
+    /// Rejects a zero *storage_limit* with [`Error::Config`] — a
+    /// configuration-validation failure, not a wire encode failure.
     pub fn with_clock(storage_limit: usize, clock: Clock) -> Result<Self, Error> {
         if storage_limit == 0 {
-            return Err(Error::Encode(
+            return Err(Error::Config(
                 "storage_limit must be a positive integer".into(),
             ));
         }
