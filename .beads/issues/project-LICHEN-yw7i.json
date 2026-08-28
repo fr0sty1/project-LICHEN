@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 1,
   "issue_type": "epic",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-27T17:05:31.532603Z",
   "created_by": "Mark Atwood",
@@ -14,6 +13,7 @@
   "close_reason": "All children complete",
   "labels": [
     "owner-reserved",
-    "review"
+    "review",
+    "local-ok"
   ]
 }
