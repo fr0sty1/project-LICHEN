@@ -13,7 +13,8 @@
   "close_reason": "Deferred - Renode board definitions are lower priority than core protocol work",
   "labels": [
     "owner-reserved",
-    "renode"
+    "renode",
+    "needs-linux"
   ],
   "dependencies": [
     {
