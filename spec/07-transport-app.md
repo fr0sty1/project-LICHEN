@@ -366,7 +366,64 @@ IPSO Smart Objects, LwM2M, and similar frameworks use CoAP with standard
 Content-Format values and well-known resource paths (`/3303/0` for
 temperature sensor instance 0).
 
-#### 10.2.2. CoAP Parameters for LoRa
+#### 10.2.2. IPSO Direct (Content-Format 60)
+
+CoAP resources MAY use OMA LwM2M/IPSO paths with bare CBOR payloads for
+minimal overhead when self-description is not required:
+
+```
+URI:     /{object_id}/{instance}/{resource_id}
+Payload: CBOR-encoded value (no wrapper)
+```
+
+Object and resource IDs per OMA LwM2M Registry. Common objects:
+
+| Object | Name | Resource | Type | Unit |
+|--------|------|----------|------|------|
+| 3303 | Temperature | 5700 | float | Cel |
+| 3304 | Humidity | 5700 | float | %RH |
+| 3311 | Light Control | 5850 | bool | on/off |
+| 3311 | Light Control | 5851 | uint | permille (0-1000) |
+| 3312 | Power Control | 5850 | bool | on/off |
+| 3315 | Barometer | 5700 | float | Pa |
+
+**Examples:**
+
+```
+GET /3303/0/5700
+Response: fb 40 37 80 00 00 00 00 00   (23.5 as CBOR float64)
+
+PUT /3311/0/5850
+Payload: f5                            (CBOR true = on)
+Response: 2.04 Changed
+```
+
+**Discovery:**
+
+```
+GET /.well-known/core?rt=ipso
+
+</3303/0>;rt="ipso";if="sensor",
+</3311/0>;rt="ipso";if="actuator"
+```
+
+**Wire Size Comparison:**
+
+| Encoding | temp=23.5 | Self-describing |
+|----------|-----------|-----------------|
+| SenML pack (uncompressed) | ~45 bytes | Yes |
+| SenML + SCHC | ~15-20 bytes | Yes |
+| IPSO Direct | ~9 bytes | No (path implies semantics) |
+
+**When to Use:**
+
+- IPSO Direct: Fixed schemas, minimal bandwidth, known receivers
+- SenML: Multi-sensor packs, time series, heterogeneous networks
+
+Both formats are valid over LICHEN. Gateways SHOULD translate between
+formats when bridging to external systems that expect one or the other.
+
+#### 10.2.3. CoAP Parameters for LoRa
 
 RFC 7252 defaults are tuned for low-latency networks. LoRa mesh requires
 adjusted parameters to avoid retry storms and duty cycle violations.
@@ -396,7 +453,7 @@ Use CON only when delivery confirmation is critical:
 - Firmware update blocks
 - SOS acknowledgments
 
-#### 10.2.3. Duty Cycle Awareness
+#### 10.2.4. Duty Cycle Awareness
 
 Nodes MUST track duty cycle usage and throttle transmissions accordingly.
 
