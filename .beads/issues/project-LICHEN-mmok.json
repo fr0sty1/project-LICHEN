@@ -13,7 +13,8 @@
   "heartbeat_at": "2026-07-22T15:02:13.609326033Z",
   "labels": [
     "defer-external",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
