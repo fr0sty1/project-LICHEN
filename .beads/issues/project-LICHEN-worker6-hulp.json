@@ -11,6 +11,7 @@
   "updated_at": "2026-08-17T18:31:37.061181Z",
   "labels": [
     "code-review",
-    "tx_queue"
+    "tx_queue",
+    "local-ok"
   ]
 }
