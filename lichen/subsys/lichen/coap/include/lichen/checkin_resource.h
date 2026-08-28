@@ -27,8 +27,10 @@
  * thread-unsafe by design). Payload encode/decode buffers are
  * CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX bytes.
  *
- * GET /rollcall/<id> for an unknown id returns the full list document,
- * matching the Python reference resource (2.05 Content).
+ * GET /rollcall/<id> for an unknown id returns the full list document
+ * (2.05 Content), per spec 18.6.3: roll-call ids are advisory labels and
+ * clients discover live roll calls by polling the collection, so an
+ * unknown id degrades to the collection rather than an error.
  *
  * Resource registration uses COAP_RESOURCE_DEFINE against the
  * lichen_coap_server service; enable CONFIG_LICHEN_CHECKIN_RESOURCE

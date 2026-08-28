@@ -319,7 +319,7 @@ ZTEST(checkin_resource, test_rollcall_lifecycle_and_capacity) {
 	zassert_false(contains_bytes(response_payload, response_payload_len,
 				     "roll-002"));
 
-	/* Unknown id falls back to the list document (Python reference). */
+	/* Unknown id falls back to the list document (spec 18.6.3). */
 	zassert_equal(call_handler(lichen_rollcall_get_handler, &resource,
 				   COAP_METHOD_GET, ROLLCALL_PATH, NULL, 0U),
 		      COAP_RESPONSE_CODE_CONTENT);

@@ -298,7 +298,8 @@ int lichen_rollcall_get_handler(struct coap_resource *resource,
 		ret = lichen_rollcall_render(rc, s_payload, sizeof(s_payload),
 					     &len);
 	} else {
-		/* No id, or unknown id: full list (Python reference). */
+		/* No id, or unknown id: full list document, per spec
+		 * 18.6.3 (discovery by polling, not strict lookup). */
 		ret = lichen_rollcall_list_encode(&s_service, s_payload,
 						  sizeof(s_payload), &len);
 	}
