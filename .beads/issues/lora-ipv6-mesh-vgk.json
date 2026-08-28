@@ -13,7 +13,8 @@
   "closed_at": "2026-06-23T18:57:00Z",
   "close_reason": "Closed",
   "labels": [
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ],
   "dependencies": [
     {
