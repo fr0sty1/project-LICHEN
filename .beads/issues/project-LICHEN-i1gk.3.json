@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 3,
   "issue_type": "bug",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-28T03:03:58.572291Z",
   "created_by": "Mark Atwood",
@@ -15,7 +14,8 @@
   "labels": [
     "exhaustive",
     "owner-reserved",
-    "review"
+    "review",
+    "local-ok"
   ],
   "dependencies": [
     {
