@@ -5,7 +5,6 @@
   "status": "open",
   "priority": 3,
   "issue_type": "decision",
-  "assignee": null,
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-27T17:07:41.864809Z",
   "created_by": "Mark Atwood",
@@ -14,7 +13,8 @@
   "close_reason": "Positive review observation recorded; no implementation action required.",
   "labels": [
     "owner-reserved",
-    "review"
+    "review",
+    "local-ok"
   ],
   "dependencies": [
     {
