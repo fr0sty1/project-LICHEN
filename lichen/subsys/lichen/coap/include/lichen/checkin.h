@@ -118,6 +118,17 @@ extern "C" {
 /** Conservative CBOR size bound for a check-in payload */
 #define LICHEN_CHECKIN_CBOR_MAX 512
 
+/**
+ * Worst-case encoded size of one fully-populated check-in (18.6.1):
+ * map(1) + node(5+41) + ts(3+9) + lat(4+9) + lon(4+9) + status(7+8)
+ * + msg(4+202), with a msg of up to LICHEN_CHECKIN_MSG_MAX-1 chars.
+ * The {"checkins":[...]} list document is therefore bounded by
+ * 16 + N x LICHEN_CHECKIN_ENTRY_CBOR_MAX bytes for N stored entries;
+ * checkin_resource.c enforces this against CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX
+ * at build time.
+ */
+#define LICHEN_CHECKIN_ENTRY_CBOR_MAX 306
+
 /** Conservative CBOR size bound for a roll-call request */
 #define LICHEN_ROLLCALL_REQ_CBOR_MAX 160
 
@@ -561,7 +572,8 @@ void lichen_checkin_config_apply(struct lichen_checkin_service *_Nonnull svc,
  * @brief Whether a scheduled check-in is due (18.6.4).
  *
  * True when enabled, a target is set, interval_s > 0, and
- * now - last_checkin_at >= interval_s.
+ * now - last_checkin_at >= interval_s. A clock step-back below
+ * last_checkin_at is never due (no unsigned wraparound).
  */
 bool lichen_checkin_due(const struct lichen_checkin_service *_Nonnull svc);
 

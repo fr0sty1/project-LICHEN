@@ -865,6 +865,66 @@ static int test_config_codec_and_due(void)
 	return 1;
 }
 
+static int test_due_clock_step_back(void)
+{
+	static struct lichen_checkin_entry checkins[1];
+	static struct lichen_rollcall rollcalls[1];
+	struct lichen_checkin_service svc;
+	struct lichen_checkin_config cfg;
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.enabled = true;
+	cfg.has_target = true;
+	strcpy(cfg.target, "0200:0000:0000:0000:0000:0000:0000:0001");
+	cfg.interval_s = 900U;
+
+	lichen_checkin_service_init(&svc, checkins, 1U, rollcalls, 1U);
+	lichen_checkin_config_apply(&svc, &cfg);
+
+	lichen_checkin_service_set_time(&svc, 10000U);
+	lichen_checkin_mark_sent(&svc);
+
+	/* Clock steps back 900s: must not wrap into "due". */
+	lichen_checkin_service_set_time(&svc, 9100U);
+	ASSERT_EQ(lichen_checkin_due(&svc), false, "step-back not due");
+	lichen_checkin_service_set_time(&svc, 0U);
+	ASSERT_EQ(lichen_checkin_due(&svc), false,
+		  "step-back to epoch not due");
+
+	/* Time resumes: elapsed is measured from the last send. */
+	lichen_checkin_service_set_time(&svc, 10000U);
+	ASSERT_EQ(lichen_checkin_due(&svc), false, "resumed at zero elapsed");
+	lichen_checkin_service_set_time(&svc, 10899U);
+	ASSERT_EQ(lichen_checkin_due(&svc), false, "before interval");
+	lichen_checkin_service_set_time(&svc, 10900U);
+	ASSERT_EQ(lichen_checkin_due(&svc), true, "due at interval");
+	return 1;
+}
+
+static int test_maximal_entry_within_bound(void)
+{
+	struct lichen_checkin c;
+	uint8_t wire[LICHEN_CHECKIN_CBOR_MAX];
+	size_t len = 0U;
+
+	/* Pins LICHEN_CHECKIN_ENTRY_CBOR_MAX to the encoder: the build-time
+	 * CONFIG_LICHEN_CHECKIN_PAYLOAD_MAX relation relies on this bound. */
+	memset(&c, 0, sizeof(c));
+	strcpy(c.node, "0200:0000:0000:0000:0011:2233:4455:6677");
+	c.ts = UINT64_MAX;
+	c.has_location = true;
+	c.lat = -90.0;
+	c.lon = 180.0;
+	c.status = LICHEN_CHECKIN_STATUS_DELAYED;
+	c.has_msg = true;
+	memset(c.msg, 'x', LICHEN_CHECKIN_MSG_MAX - 1U);
+	ASSERT_EQ(lichen_checkin_to_cbor(&c, wire, sizeof(wire), &len), 0,
+		  "maximal encode");
+	ASSERT_EQ(len <= LICHEN_CHECKIN_ENTRY_CBOR_MAX, 1,
+		  "entry within documented worst-case bound");
+	return 1;
+}
+
 /* --- buffer bounds --- */
 
 static int test_buffer_too_small(void)
@@ -899,6 +959,8 @@ int main(void)
 	RUN_TEST(test_rollcall_invalid_status_rejected);
 	RUN_TEST(test_list_encode_shapes);
 	RUN_TEST(test_config_codec_and_due);
+	RUN_TEST(test_due_clock_step_back);
+	RUN_TEST(test_maximal_entry_within_bound);
 	RUN_TEST(test_buffer_too_small);
 
 	printf("%d/%d tests passed\n", tests_passed, tests_run);

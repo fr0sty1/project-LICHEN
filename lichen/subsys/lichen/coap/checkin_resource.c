@@ -61,8 +61,10 @@ struct lichen_checkin_service *lichen_checkin_resource_service(void)
 
 void lichen_checkin_resource_set_time(uint64_t now, bool use_override)
 {
+	k_mutex_lock(&s_lock, K_FOREVER);
 	s_time_overridden = use_override;
 	s_time_override = now;
+	k_mutex_unlock(&s_lock);
 }
 
 static uint64_t resource_now(void)

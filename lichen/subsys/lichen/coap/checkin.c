@@ -1853,12 +1853,19 @@ void lichen_checkin_config_apply(struct lichen_checkin_service *svc,
 
 bool lichen_checkin_due(const struct lichen_checkin_service *svc)
 {
+	uint64_t elapsed;
+
 	if (!svc->config.enabled || !svc->config.has_target ||
 	    svc->config.interval_s == 0U) {
 		return false;
 	}
-	return svc->now - svc->last_checkin_at >=
-	       (uint64_t)svc->config.interval_s;
+	if (svc->last_checkin_at > svc->now) {
+		/* Clock stepped back: never treat the wraparound as an
+		 * elapsed interval (signed-safe, like rollcall_prune_expired). */
+		return false;
+	}
+	elapsed = svc->now - svc->last_checkin_at;
+	return elapsed >= (uint64_t)svc->config.interval_s;
 }
 
 void lichen_checkin_mark_sent(struct lichen_checkin_service *svc)
