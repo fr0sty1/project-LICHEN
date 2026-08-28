@@ -10,7 +10,8 @@
   "created_by": "AI Agent",
   "updated_at": "2026-07-23T05:17:56.567985359Z",
   "labels": [
-    "defer-external"
+    "defer-external",
+    "local-ok"
   ],
   "dependencies": [
     {

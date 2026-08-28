@@ -1,2 +1,3 @@
 {"id":"019f8d68-b1db-7c1c-b23f-109ef524df9b","issue_id":"project-LICHEN-8xx5.1","event_type":"created","actor":"AI Agent","old_value":"","new_value":"","created_at":"2026-07-23T05:17:56.571794324Z"}
 {"id":"019f8d68-b1df-7449-acda-b9eecf2d8aa1","issue_id":"project-LICHEN-8xx5.1","event_type":"label_added","actor":"AI Agent","comment":"Added label: defer-external","created_at":"2026-07-23T05:17:56.575281266Z"}
+{"id":"01a045dc-ad8d-7a06-833c-736bface4227","issue_id":"project-LICHEN-8xx5.1","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: local-ok","created_at":"2026-08-28T00:54:45.389658Z"}
