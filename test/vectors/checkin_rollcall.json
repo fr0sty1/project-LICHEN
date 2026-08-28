@@ -14,11 +14,15 @@
         "status": "ok"
       },
       "cbor_hex": "a3646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a9066737461747573626f6b",
-      "cbor_length": 64,
+      "cbor_length": 65,
       "expected": {
         "decode_success": true,
         "response_code": "2.04 Changed",
-        "fields_present": ["node", "ts", "status"]
+        "fields_present": [
+          "node",
+          "ts",
+          "status"
+        ]
       }
     },
     {
@@ -33,11 +37,18 @@
         "msg": "At checkpoint 2"
       },
       "cbor_hex": "a6646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4042e28f5c28f5c3636c6f6efbc05e9ae147ae147b66737461747573626f6b636d73676f417420636865636b706f696e742032",
-      "cbor_length": 110,
+      "cbor_length": 111,
       "expected": {
         "decode_success": true,
         "response_code": "2.04 Changed",
-        "fields_present": ["node", "ts", "lat", "lon", "status", "msg"]
+        "fields_present": [
+          "node",
+          "ts",
+          "lat",
+          "lon",
+          "status",
+          "msg"
+        ]
       }
     },
     {
@@ -50,7 +61,7 @@
         "msg": "Needs assistance"
       },
       "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90667374617475736468656c70636d7367704e6565647320617373697374616e6365",
-      "cbor_length": 86,
+      "cbor_length": 88,
       "expected": {
         "decode_success": true,
         "response_code": "2.04 Changed",
@@ -67,7 +78,7 @@
         "msg": "Weather delay"
       },
       "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90667374617475736764656c61796564636d73676d576561746865722064656c6179",
-      "cbor_length": 85,
+      "cbor_length": 88,
       "expected": {
         "decode_success": true,
         "response_code": "2.04 Changed",
@@ -85,7 +96,7 @@
         "status": "ok"
       },
       "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4056800000000000636c6f6efbc06680000000000066737461747573626f6b",
-      "cbor_length": 83,
+      "cbor_length": 91,
       "expected": {
         "decode_success": true,
         "response_code": "2.04 Changed",
@@ -103,7 +114,7 @@
         "status": "ok"
       },
       "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fbc040ef34d6a161e5636c6f6efb4062e6b295e9e1b166737461747573626f6b",
-      "cbor_length": 83,
+      "cbor_length": 91,
       "expected": {
         "decode_success": true,
         "response_code": "2.04 Changed",
@@ -122,7 +133,7 @@
         "status": "ok"
       },
       "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb0000000000000000636c6f6efb000000000000000066737461747573626f6b",
-      "cbor_length": 83,
+      "cbor_length": 91,
       "expected": {
         "decode_success": true,
         "response_code": "2.04 Changed",
@@ -139,7 +150,7 @@
         "msg": ""
       },
       "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a9066737461747573626f6b636d736760",
-      "cbor_length": 68,
+      "cbor_length": 70,
       "expected": {
         "decode_success": true,
         "response_code": "2.04 Changed",
@@ -149,7 +160,11 @@
     {
       "name": "checkin_status_values",
       "description": "Valid status values per spec 18.6.1.",
-      "valid_status_values": ["ok", "help", "delayed"],
+      "valid_status_values": [
+        "ok",
+        "help",
+        "delayed"
+      ],
       "expected": {
         "unknown_status_handling": "reject",
         "note": "Implementations must reject unknown status values"
@@ -209,7 +224,7 @@
         "status": "invalid"
       },
       "cbor_hex": "a3646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a906673746174757367696e76616c6964",
-      "cbor_length": 69,
+      "cbor_length": 70,
       "expected": {
         "decode_success": false,
         "response_code": "4.00 Bad Request",
@@ -226,7 +241,7 @@
         "status": "ok"
       },
       "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4042e28f5c28f5c366737461747573626f6b",
-      "cbor_length": 75,
+      "cbor_length": 78,
       "expected": {
         "decode_success": false,
         "response_code": "4.00 Bad Request",
@@ -243,7 +258,7 @@
         "status": "ok"
       },
       "cbor_hex": "a4646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6f6efbc05e9ae147ae147b66737461747573626f6b",
-      "cbor_length": 75,
+      "cbor_length": 78,
       "expected": {
         "decode_success": false,
         "response_code": "4.00 Bad Request",
@@ -261,7 +276,7 @@
         "status": "ok"
       },
       "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb4056c00000000000636c6f6efb000000000000000066737461747573626f6b",
-      "cbor_length": 83,
+      "cbor_length": 91,
       "expected": {
         "decode_success": false,
         "response_code": "4.00 Bad Request",
@@ -279,7 +294,7 @@
         "status": "ok"
       },
       "cbor_hex": "a5646e6f64657827303230303a303030303a303030303a303030303a303031313a323233333a343435353a363637376274731a66536a90636c6174fb0000000000000000636c6f6efb4066a0000000000066737461747573626f6b",
-      "cbor_length": 83,
+      "cbor_length": 91,
       "expected": {
         "decode_success": false,
         "response_code": "4.00 Bad Request",
@@ -293,11 +308,13 @@
         "id": "roll-001"
       },
       "cbor_hex": "a162696468726f6c6c2d303031",
-      "cbor_length": 14,
+      "cbor_length": 13,
       "expected": {
         "decode_success": true,
         "response_code": "2.01 Created",
-        "fields_present": ["id"]
+        "fields_present": [
+          "id"
+        ]
       }
     },
     {
@@ -310,11 +327,16 @@
         "timeout_s": 60
       },
       "cbor_hex": "a462696468726f6c6c2d3030316466726f6d7827303230303a303030303a303030303a303030303a303030303a303030303a303030303a313233346274731a66536a906974696d656f75745f73183c",
-      "cbor_length": 81,
+      "cbor_length": 79,
       "expected": {
         "decode_success": true,
         "response_code": "2.01 Created",
-        "fields_present": ["id", "from", "ts", "timeout_s"]
+        "fields_present": [
+          "id",
+          "from",
+          "ts",
+          "timeout_s"
+        ]
       }
     },
     {
@@ -342,7 +364,7 @@
         "timeout_s": 604800
       },
       "cbor_hex": "a36269646a7765656b6c792d3030316274731a66536a906974696d656f75745f731a00093a80",
-      "cbor_length": 39,
+      "cbor_length": 38,
       "expected": {
         "decode_success": true,
         "response_code": "2.01 Created",
@@ -357,19 +379,36 @@
         "started": 1716742800,
         "timeout_s": 60,
         "responded": [
-          {"node": "0200:0000:0000:0000:0000:0000:0000:1111", "ts": 1716742810, "status": "ok"},
-          {"node": "0200:0000:0000:0000:0000:0000:0000:2222", "ts": 1716742815, "status": "ok"}
+          {
+            "node": "0200:0000:0000:0000:0000:0000:0000:1111",
+            "ts": 1716742810,
+            "status": "ok"
+          },
+          {
+            "node": "0200:0000:0000:0000:0000:0000:0000:2222",
+            "ts": 1716742815,
+            "status": "ok"
+          }
         ],
         "missing": [
-          {"node": "0200:0000:0000:0000:0000:0000:0000:3333", "last_seen": 1716740000}
+          {
+            "node": "0200:0000:0000:0000:0000:0000:0000:3333",
+            "last_seen": 1716740000
+          }
         ]
       },
       "cbor_hex": "a562696468726f6c6c2d30303167737461727465641a66536a906974696d656f75745f73183c69726573706f6e64656482a3646e6f64657827303230303a303030303a303030303a303030303a303030303a303030303a303030303a313131316274731a66536a9a66737461747573626f6ba3646e6f64657827303230303a303030303a303030303a303030303a303030303a303030303a303030303a323232326274731a66536a9f66737461747573626f6b676d697373696e6781a2646e6f64657827303230303a303030303a303030303a303030303a303030303a303030303a303030303a33333333696c6173745f7365656e1a66535fa0",
-      "cbor_length": 220,
+      "cbor_length": 250,
       "expected": {
         "decode_success": true,
         "response_code": "2.05 Content",
-        "fields_present": ["id", "started", "timeout_s", "responded", "missing"]
+        "fields_present": [
+          "id",
+          "started",
+          "timeout_s",
+          "responded",
+          "missing"
+        ]
       }
     },
     {
@@ -380,7 +419,7 @@
         "timeout_s": 60
       },
       "cbor_hex": "a26274731a66536a906974696d656f75745f73183c",
-      "cbor_length": 22,
+      "cbor_length": 21,
       "expected": {
         "decode_success": false,
         "response_code": "4.00 Bad Request",

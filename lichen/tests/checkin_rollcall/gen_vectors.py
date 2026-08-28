@@ -6,8 +6,8 @@
 Reads the canonical oracle test/vectors/checkin_rollcall.json and emits a
 header with wire bytes, expected decode outcomes, CoAP response codes, and
 expected re-encodings. The JSON cbor_hex bytes are the sole wire oracle; the
-cbor_length fields in the source file are stale (several disagree with the
-hex) and are intentionally NOT consumed. Expected re-encodings are computed
+cbor_length fields are not consumed (the hex length is authoritative and
+the two are verified equal at generation time). Expected re-encodings are computed
 with cbor2 (the Python oracle) after applying the documented decode
 transforms (roll-call integer id is coerced to its decimal string form).
 """
