@@ -12,6 +12,7 @@
   "labels": [
     "bug",
     "codereview",
-    "zephyr"
+    "zephyr",
+    "needs-linux"
   ]
 }
