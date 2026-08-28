@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-dyrj",
+  "title": "checkin.c stack-usage Werror breaks coap-subsystem builds",
+  "description": "At d33b6a5956, building any config that enables LICHEN_COAP (e.g. lichen/tests/coap_client) against the local Attic Zephyr 4.1.0 workspace fails: lichen/subsys/lichen/coap/checkin.c:1722 lichen_rollcall_render 'stack usage might be 3424 bytes [-Werror=stack-usage=]' (module sets -Wstack-usage=2048 -Werror). Default-y LICHEN_CHECKIN pulls it into every LICHEN_COAP build. Need: shrink stack frame (render() likely has large locals) or raise the per-file budget/build-time assert. Note: checkin files have concurrent worker WIP (checkin OSCORE gating landed as 2cf5c25a93) - coordinate before fixing. Repro: west build -b qemu_x86/atom lichen/tests/coap_client -DZEPHYR_EXTRA_MODULES=\u003crepo\u003e/lichen with ZEPHYR_BASE=4.1.0 workspace.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T07:22:00.726448Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:22:00.726448Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-dyrj",
+      "depends_on_id": "project-LICHEN-worker6-o287",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T07:22:01.773198Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

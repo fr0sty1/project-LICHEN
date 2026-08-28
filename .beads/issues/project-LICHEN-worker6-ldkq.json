@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-worker6-ldkq",
+  "title": "committed coap/l2 sources incompatible with Zephyr 4.1.0 workspace",
+  "description": "Full compile of the coap subsystem against the local 4.1.0 Zephyr workspace (not the pinned v3.7.0) fails in files untouched by the o287 revert: (a) coap_client.c:180/:191 'struct coap_client has no member send_mutex' (Zephyr 4.x removed it); (b) lichen_util.c:16 vs lichen_util.h:70 -Werror=array-parameter (uint8_t* vs uint8_t[32]). Version-split only: CI/AWS builder uses pinned v3.7.0 where they compile. Either fix sources for both versions or document 4.1.0-workspace builds unsupported for those files. Discovered during o287 generate proof; generate itself passes.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-08-28T07:22:02.601601Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-08-28T07:22:02.601601Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-worker6-ldkq",
+      "depends_on_id": "project-LICHEN-worker6-o287",
+      "type": "discovered-from",
+      "created_at": "2026-08-28T07:22:03.424228Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
