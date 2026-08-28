@@ -2,3 +2,4 @@
 {"id":"01a045d5-ff21-76d6-b421-d5458dcd8120","issue_id":"project-LICHEN-worker6-7q71","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: spec","created_at":"2026-08-28T00:47:27.521449Z"}
 {"id":"01a045d5-ff25-7785-846f-9928a3eb653e","issue_id":"project-LICHEN-worker6-7q71","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: correctness","created_at":"2026-08-28T00:47:27.525494Z"}
 {"id":"01a045d5-ff29-7659-945a-30300745fff4","issue_id":"project-LICHEN-worker6-7q71","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: ccp","created_at":"2026-08-28T00:47:27.529416Z"}
+{"id":"01a045dd-42d1-7259-b87e-82abf3cc990c","issue_id":"project-LICHEN-worker6-7q71","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Closed","created_at":"2026-08-28T00:55:23.601155Z"}

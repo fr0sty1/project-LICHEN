@@ -2,3 +2,4 @@
 {"id":"01a045d6-0b96-76ae-b291-3ea735b52e7e","issue_id":"project-LICHEN-worker6-6lki","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: spec","created_at":"2026-08-28T00:47:30.71044Z"}
 {"id":"01a045d6-0ba3-731c-a209-0907270dcb1a","issue_id":"project-LICHEN-worker6-6lki","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: security","created_at":"2026-08-28T00:47:30.723205Z"}
 {"id":"01a045d6-0ba9-7d42-b5e8-ca7b82774504","issue_id":"project-LICHEN-worker6-6lki","event_type":"label_added","actor":"Mark Atwood","comment":"Added label: ccp","created_at":"2026-08-28T00:47:30.72987Z"}
+{"id":"01a045dd-4b59-714c-b192-cdc4aa91d04f","issue_id":"project-LICHEN-worker6-6lki","event_type":"closed","actor":"Mark Atwood","old_value":"","new_value":"Fixed: removed 'Ed25519' conflation from Schnorr48 signature reference in section 2a.5.1","created_at":"2026-08-28T00:55:25.785086Z"}
